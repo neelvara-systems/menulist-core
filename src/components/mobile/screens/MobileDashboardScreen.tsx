@@ -152,10 +152,11 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
         storeDetails?.storeId,
         { enabled: canShowBusinessHealthSummary },
     );
+    const isBusinessHealthReady = Boolean(businessHealthCurrent && businessHealthCurrent.status !== 'not_ready' && businessHealthCurrent.sourceRefs?.length);
     const { analytics: businessHealthAnalytics } = useOwnerBusinessAnalyticsIndex(
         selectedProjectId || undefined,
         storeDetails?.storeId,
-        { enabled: canShowBusinessHealthAnalytics },
+        { enabled: canShowBusinessHealthAnalytics && isBusinessHealthReady },
     );
 
     const viewModeLabel = VIEW_MODE_CONFIG[viewMode].label;

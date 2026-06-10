@@ -4,7 +4,7 @@
 
 Main website copy now includes owner-provided existing menu links as one setup source beside photo, PDF, and typed input. The copy is limited to source intake and review:
 
-> Start with a photo, PDF, existing menu link, or typed menu. MenuList prepares the official customer-facing version from one owner-approved source.
+> Start with a photo, PDF, typed menu, or permission-confirmed public menu link. MenuList prepares the official customer-facing version from one owner-approved source.
 
 Updated surfaces:
 
@@ -25,9 +25,9 @@ Website copy may mention "paste a public menu link" on `/create-menu`, but the m
 - "Automatic publishing"
 - "Works with delivery apps"
 
-## Launch Readiness Before Website Copy
+## Launch Readiness Status
 
-- Feature flag enabled for the target rollout.
-- Real owner URLs tested.
-- Failure-rate and extraction-quality logs reviewed.
-- Helpdoc published.
+- Feature flag is enabled for the current rollout.
+- Public copy may mention permission-confirmed public menu links as a setup source.
+- Website copy must continue to say owner review is required before publishing.
+- Failure-rate, extraction-quality, and real-owner URL review remain ongoing operational checks.

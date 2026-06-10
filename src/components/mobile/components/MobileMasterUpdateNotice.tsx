@@ -101,7 +101,7 @@ export default function MobileMasterUpdateNotice({
                             padding: '6px 12px',
                         }}
                     >
-                        <div style={{ minHeight: 40, minWidth: 40 }} />
+                        <div style={{ minHeight: 44, minWidth: 44 }} />
                         <Title level={4} style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}>
                             {isHistoryView ? 'Last changes' : 'Main menu updates'}
                         </Title>

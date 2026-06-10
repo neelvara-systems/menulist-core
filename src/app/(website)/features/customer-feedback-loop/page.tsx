@@ -6,28 +6,28 @@ import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-const title = 'QR Menu and Share Links - MenuList | One Current Menu Everywhere';
-const description = 'Create QR menus, stable share links, and saveable customer shortcuts from the same owner-approved menu source. Print files stay available when needed.';
+const title = 'Customer Feedback Loop - MenuList | Private Guest Feedback';
+const description = 'Let customers send private feedback from the menu, Official Business Page, QR, or direct link so owners can review issues and keep the public source correct.';
 
 export const metadata: Metadata = {
   title,
   description,
   alternates: {
-    canonical: '/features/qr-menu-links',
+    canonical: '/features/customer-feedback-loop',
   },
   openGraph: {
     title,
     description,
-    url: '/features/qr-menu-links',
+    url: '/features/customer-feedback-loop',
   },
 };
 
 export default function Page() {
   return (
     <div className="ws-page">
-      <WebsitePageStructuredData path="/features/qr-menu-links" title={title} description={description} />
+      <WebsitePageStructuredData path="/features/customer-feedback-loop" title={title} description={description} />
       <Header />
-      <FeatureDetailPage slug="qr-menu-links" />
+      <FeatureDetailPage slug="customer-feedback-loop" />
       <Footer />
       <ScrollToTopButton />
     </div>

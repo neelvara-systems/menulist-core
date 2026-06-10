@@ -25,7 +25,7 @@ import {
 import BrandWordmark from "./shared/BrandWordmark";
 import { FEATURE_FLAGS } from "@config/features";
 import { buildWebsiteSignInPath } from "@/lib/website/signInLinks";
-import { websiteFeatureNavGroups, websiteFeatureNavLinks } from "./features/featureNavigation";
+import { websiteFeatureNavGroups } from "./features/featureNavigation";
 
 const navItemKeys = [
   { href: "/features", key: "features", icon: LuLayoutGrid },
@@ -129,8 +129,8 @@ export default function Header() {
               if (item.key === "features") {
                 return (
                   <div key={item.href} className="ws-header-feature-menu">
-                    <Link
-                      href="/features"
+                    <button
+                      type="button"
                       className="ws-header-feature-menu__trigger"
                       aria-label={t("Header.featuresMenuAria")}
                       aria-haspopup="true"
@@ -146,7 +146,7 @@ export default function Header() {
                     >
                       {t("Header.features")}
                       <LuChevronDown size={14} aria-hidden="true" />
-                    </Link>
+                    </button>
                     <div className="ws-header-feature-menu__panel" role="menu" aria-label={t("Header.featuresMenuTitle")}>
                       <Link href="/features" role="menuitem" className="ws-header-feature-menu__overview">
                         <span>
@@ -159,23 +159,30 @@ export default function Header() {
                         <LuArrowRight size={18} aria-hidden="true" />
                       </Link>
                       <div className="ws-header-feature-menu__grid">
-                        {websiteFeatureNavLinks.map((featureLink) => {
-                          const FeatureIcon = featureLink.icon;
-                          return (
-                            <Link
-                              key={featureLink.href}
-                              href={featureLink.href}
-                              role="menuitem"
-                              className="ws-header-feature-menu__item"
-                            >
-                              <FeatureIcon size={17} aria-hidden="true" />
-                              <span>
-                                <strong>{t(`Header.${featureLink.key}`)}</strong>
-                                <small>{t(`Header.${featureLink.key}Desc`)}</small>
-                              </span>
-                            </Link>
-                          );
-                        })}
+                        {websiteFeatureNavGroups.map((group) => (
+                          <section key={group.key} className="ws-header-feature-menu__group" aria-label={t(`Header.${group.key}`)}>
+                            <p>{t(`Header.${group.key}`)}</p>
+                            <div>
+                              {group.links.map((featureLink) => {
+                                const FeatureIcon = featureLink.icon;
+                                return (
+                                  <Link
+                                    key={featureLink.href}
+                                    href={featureLink.href}
+                                    role="menuitem"
+                                    className="ws-header-feature-menu__item"
+                                  >
+                                    <FeatureIcon size={17} aria-hidden="true" />
+                                    <span>
+                                      <strong>{t(`Header.${featureLink.key}`)}</strong>
+                                      <small>{t(`Header.${featureLink.key}Desc`)}</small>
+                                    </span>
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          </section>
+                        ))}
                       </div>
 
                       <aside className="ws-header-feature-menu__proof" aria-label={t("Header.featureProofTitle")}>

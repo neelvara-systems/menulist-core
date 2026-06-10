@@ -23,6 +23,7 @@
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { FEATURE_FLAGS } from '@config/features';
+import { useOwnerBusinessHealthCurrent } from '@hook/ownerBusinessAssistant/useOwnerBusinessHealthCurrent';
 import { getStoredOwnerProjectId, setStoredOwnerProjectId } from '@lib/projects/projectSelection';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Card, Flex, Space, Typography } from 'antd';
@@ -66,6 +67,21 @@ const OwnerDashboard: React.FC = () => {
 
     // Use selector-chosen project if available, otherwise fall back to derived default
     const activeProjectId = selectedProjectId || fallbackProjectId;
+    const canShowBusinessHealthDashboardCard = Boolean(
+        FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
+        && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD
+        && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_PAGE
+    );
+    const { current: businessHealthCurrent, isLoading: isBusinessHealthLoading } = useOwnerBusinessHealthCurrent(
+        undefined,
+        storeDetails?.storeId,
+        { enabled: canShowBusinessHealthDashboardCard },
+    );
+    const isBusinessHealthReady = Boolean(
+        businessHealthCurrent
+        && businessHealthCurrent.status !== 'not_ready'
+        && businessHealthCurrent.sourceRefs?.length,
+    );
 
     const handleProjectChange = useCallback((projectId: string, _projectName: string) => {
         setSelectedProjectId(projectId);
@@ -258,14 +274,21 @@ const OwnerDashboard: React.FC = () => {
                     />
                 </Flex>
 
-                {FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
-                    && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD
-                    && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_PAGE ? (
-                    <BusinessHealthDashboardCard projectId={activeProjectId || undefined} />
+                {canShowBusinessHealthDashboardCard ? (
+                    <BusinessHealthDashboardCard
+                        current={businessHealthCurrent}
+                        isLoading={isBusinessHealthLoading}
+                        projectId={activeProjectId || undefined}
+                        storeScopeKey={storeDetails?.storeId}
+                    />
                 ) : null}
 
                 {FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX ? (
-                    <BusinessHealthAnalyticsStrip projectId={activeProjectId || undefined} storeScopeKey={storeDetails?.storeId} />
+                    <BusinessHealthAnalyticsStrip
+                        enabled={isBusinessHealthReady}
+                        projectId={activeProjectId || undefined}
+                        storeScopeKey={storeDetails?.storeId}
+                    />
                 ) : null}
 
                 <Flex

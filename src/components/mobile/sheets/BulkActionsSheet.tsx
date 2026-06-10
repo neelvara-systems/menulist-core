@@ -117,8 +117,8 @@ export default function BulkActionsSheet({
     } as const;
     const clearSelectionButtonStyle = {
         color: token.colorError,
-        minHeight: 32,
-        paddingInline: 0,
+        minHeight: 44,
+        paddingInline: 10,
     } as const;
 
     useEffect(() => {
@@ -1169,7 +1169,7 @@ export default function BulkActionsSheet({
                             <Button
                                 fill="outline"
                                 size="middle"
-                                style={{ height: 32, minHeight: 32, minWidth: 98 }}
+                                style={{ minHeight: 44, minWidth: 98 }}
                             >
                                 <Flex align="center" gap={6}>
                                     <LuFilter size={16} />

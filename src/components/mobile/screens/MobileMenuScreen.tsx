@@ -59,6 +59,7 @@ import MobileMenuCommandSheet from '../components/MobileMenuCommandSheet';
 import MobileMasterUpdateNotice from '../components/MobileMasterUpdateNotice';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
 import type { MobileMenuItemType as MenuItemType } from '../types';
 import useViewportInfo from '../../../hooks/useViewportInfo';
@@ -2816,7 +2817,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
             return;
         }
 
-        window.open(withAnalyticsSource(menuPreviewUrl, 'direct'), '_blank');
+        openMobilePublicLink(withAnalyticsSource(menuPreviewUrl, 'direct'));
     }, [menuPreviewUrl, tShare]);
 
     const handleOpenMenuCardExport = useCallback(async () => {
@@ -3709,7 +3710,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
                             zIndex: 5,
                         }}
                     >
-                        <div style={{ minHeight: 40, minWidth: 40 }} />
+                        <div style={{ minHeight: 44, minWidth: 44 }} />
                         <Title level={4} style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}>
                             {t('filters')}
                         </Title>
@@ -3807,7 +3808,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenPrintMenu }
                             zIndex: 5,
                         }}
                     >
-                        <div style={{ minHeight: 40, minWidth: 40 }} />
+                        <div style={{ minHeight: 44, minWidth: 44 }} />
                         <Title level={4} style={{ lineHeight: 1.2, margin: 0, textAlign: 'center' }}>{t('findAndFix')}</Title>
                         <Button fill="none" onClick={() => setIsFilterSheetOpen(false)} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                             <LuX size={18} />

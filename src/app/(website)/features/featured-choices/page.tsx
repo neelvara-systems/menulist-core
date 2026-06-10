@@ -6,8 +6,8 @@ import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-const title = 'Featured Choices - MenuList | Help Customers Choose Faster';
-const description = 'Show Featured, Quick, and Value choices from the current approved menu so customers can decide faster while owners keep control.';
+const title = 'Featured Choices - MenuList | Help Customers Choose More Easily';
+const description = 'Show Featured, Quick, and Value choices from the current approved menu so customers get a clearer starting point while owners keep control.';
 
 export const metadata: Metadata = {
   title,

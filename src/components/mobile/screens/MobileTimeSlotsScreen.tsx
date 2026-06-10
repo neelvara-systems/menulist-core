@@ -272,7 +272,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                         <Card title={t('color')}>
                             <Flex gap={8} wrap>
                                 {PRESET_COLORS.map((color) => (
-                                    <Button key={color} fill="none" onClick={() => setFormColor(color)} style={{ height: 'auto', padding: 2 }}>
+                                    <Button key={color} fill="none" onClick={() => setFormColor(color)} style={{ minHeight: 44, minWidth: 44, padding: 2 }}>
                                         <div
                                             style={{
                                                 alignItems: 'center',

@@ -7,7 +7,7 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 const title = 'Official Business Page - MenuList | One Current Customer Link';
-const description = 'Publish one official customer-facing page for your menu, hours, photos, directions, contact details, actions, and public business information.';
+const description = 'Publish one official customer-facing page for menu, hours, photos, directions, contact details, actions, QR options, and public business information.';
 
 export const metadata: Metadata = {
   title,

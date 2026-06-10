@@ -816,6 +816,8 @@ Key FAQ topics:
 
 **Dropdown links:**
 
+The desktop `Features` label is a menu trigger, not a direct route. The `/features` route is reached through the top `Feature overview` row inside the dropdown. This prevents accidental navigation when an owner is trying to open a feature link.
+
 1. Menu Import — `/features/menu-import`
 2. Menu Content Prep — `/features/menu-content-prep`
 3. Featured Choices — `/features/featured-choices`
@@ -824,13 +826,20 @@ Key FAQ topics:
 6. Print-ready Kit — `/features/print-ready-kit`
 7. Owner Phone Dashboard — `/features/owner-phone-dashboard`
 8. Business Health — `/features/business-health`
-9. Public Discovery — `/features/public-discovery`
+9. Customer Feedback Loop — `/features/customer-feedback-loop`
+10. Public Discovery — `/features/public-discovery`
+
+**Additional dedicated feature pages reachable from `/features` and discovery:**
+
+- Menu Quality Validation — `/features/menu-quality-validation`
 
 **Selection rationale:**
 
 - These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, prepare descriptions/images/languages, guide customers toward useful choices, create one public customer source, share it through QR/links, deploy print-ready files, manage it from a phone, know what needs attention, and provide a clearer public source for search/answer systems.
 - POS sync, staff roles, analytics depth, and advanced multi-location governance remain on `/features`, `/multi-location`, or supporting resources. They should not crowd the primary header dropdown unless the buyer strategy changes.
 - v3.6.39 adds `/features/menu-quality-validation` as a dedicated page but keeps it out of the desktop dropdown to preserve the restrained top-nav shape. The route is reached from `/features` quality, pricing integrity, and customer-trust cards because validation is high-value proof but not the first nine-link evaluation path.
+- v3.6.43 adds `/features/customer-feedback-loop` as a dedicated page and navigation link in the desktop Features dropdown and mobile hamburger feature list. Public customer feedback is valuable proof when framed as a correction loop from customer issue to owner source.
+- v3.6.44 groups the desktop dropdown by the same Start, Publish, and Operate categories used by mobile. Keep this grouping source shared through `websiteFeatureNavGroups`; do not return to a flat desktop list.
 - Mobile feature navigation groups the same top feature links as Start, Publish, and Operate so the drawer is readable on phone screens without becoming a full product sitemap.
 
 **Campaign page pattern:**
@@ -838,6 +847,8 @@ Key FAQ topics:
 - Each generic campaign page uses `FeatureDetailPage` plus `FeatureDetailJourney` for a focused hero, product preview, compact signal strip, Business Health-style sticky journey, folded support blocks, four trust/proof cards, and final CTA.
 - Copy must stay owner-readable. Avoid `AI-powered`, unsupported automation, ranking guarantees, POS replacement language, and generic dashboard-SaaS framing.
 - Use the sticky journey to show the end-to-end owner/customer logic for each feature page. Do not add one-off tab systems or carousels unless a future feature genuinely needs different interaction.
+- v3.6.45 keeps the shared desktop sticky journey as a left tab rail plus right story panel, but the right panel is one parent story card with a top narrative row and bottom full-width proof-card row. v3.6.46 keeps desktop panel height responsive with a tighter `32rem -> 72vh -> 39rem` clamp so taller screens do not create excessive empty card space. Do not return to a nested side-by-side copy/proof layout or internal copy/proof divider because it compresses copy-heavy proof cards and makes the panel feel split.
+- v3.6.42 completed the feature-detail parity pass after the Print-ready Kit page update. Menu Import now includes permission-confirmed public link intake; Menu Content Prep now owns descriptions, item images, and languages as one setup-relief story; Featured Choices now emphasizes owner pinning and availability-safe customer guidance; Official Business Page now includes QR options, photos, actions, and structured public facts; QR Menu and Links now focuses on stable access and customer shortcuts while leaving print depth to Print-ready Kit; Owner Phone Dashboard now names the mobile/PWA daily operations path; Public Discovery now includes sitemap, crawler, and LLM context without placement promises; Menu Quality Validation now has full key parity and no internal process language.
 
 **Validated external-suggestion decisions:**
 
@@ -847,7 +858,15 @@ Key FAQ topics:
 - Temporary status banners remain inside `/features/owner-phone-dashboard` because they are phone-first daily operations, not a standalone public marketing page.
 - Business discovery attributes remain inside `/features/official-business-page` and `/features/public-discovery` because payment methods, amenities, services, and structured public details support the official-page/discovery story.
 - Web and sharing links remain inside `/features/qr-menu-links`.
+- Customer feedback gets a dedicated page because the shipped flow is end to end: public menu/OBP/QR/direct-link entry points, private owner inbox, status handling, mobile access, and Business Health attention signals. It must be framed as customer-reported issue correction, not reviews, testimonials, sentiment analysis, or reputation automation.
 - External Menu Sync/POS remains an advanced Features-page/operations proof only until buyer demand and integration proof justify a dedicated public campaign page.
+
+**Clickable card rule:**
+
+- Cards on `/features` use a leading icon plus heading row.
+- Cards that route to a dedicated page must show the localized top-right `View` action pill and stronger link styling.
+- Static cards without a dedicated page stay informational and should not receive the action pill.
+- This keeps mixed feature groups clear when some capabilities are deep-linked campaign pages and others remain overview proof points.
 
 ### Menu Content Prep Page
 
@@ -919,6 +938,7 @@ Keep print capability out of the homepage as a full section, but expose it as a 
 - `Print files` means paper menu PDF, table card, counter card, or printer handoff packet from the current approved menu.
 - `Instant launch kit` can list table tent, single table card, counter card, entrance poster, delivery bag sticker, takeaway card, WhatsApp link, and Instagram story.
 - `Menu Kit: print-ready cards` can explain branded table/counter/entrance/takeaway files with QR code and business color, ready for a local printer.
+- `/features/print-ready-kit` can now mention Assets as a finished workflow: pick asset type, choose supported style family, preview generated output, then download PDF/image or Menu Kit ZIP. QR/display assets can reference up to nine materially different style families; assets with fewer real unique layouts should not be described as having nine choices.
 
 **Notes:**
 
@@ -942,6 +962,23 @@ Description:
 - This is the first Operations card because Business Health is now the website's owner-dashboard USP proof.
 - Keep the card compact and grounded in the shipped owner dashboard, mobile screen, scheduler read models, cache-first context packets, and safety guards.
 - Do not call it an AI assistant, chatbot, realtime monitor, revenue optimizer, prediction engine, competitor tracker, or autonomous public-menu editor.
+
+**Customer feedback loop card:**
+
+Title:
+
+> Customer feedback loop
+
+Description:
+
+> Customers can report wrong prices, missing items, outdated details, or service concerns from the public view. You review it privately and correct the approved source.
+
+**Notes:**
+
+- This card belongs in Operations because it answers what happens after customers find an issue in public.
+- The dedicated page is `/features/customer-feedback-loop`.
+- Use `Feedback`, not `Reviews`, for public website labels. Do not imply review gating, public reputation management, sentiment scoring, public testimonial collection, or automated public replies.
+- Keep Business Health as the quiet status surface; this page explains the underlying customer-to-owner correction path.
 
 **Mobile owner operations card:**
 

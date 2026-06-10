@@ -55,6 +55,7 @@ import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import { getLocalizedStoreValue, getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage } from '../utils/localizedStoreContent';
+import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 
 const MobileOfficialPagePreviewSheet = dynamic(() => import('../sheets/MobileOfficialPagePreviewSheet'), { ssr: false });
 const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { ssr: false });
@@ -968,7 +969,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                         isPrimary
                         label={tShare('officialBusinessLink')}
                         onCopy={() => void handleCopyLink(withSource(officialPageUrl, 'copy'), tShare('officialBusinessLink'))}
-                        onOpen={() => window.location.assign(withSource(officialPageUrl, 'direct'))}
+                        onOpen={() => openMobilePublicLink(withSource(officialPageUrl, 'direct'))}
                         onShare={supportsNativeShare ? () => void handleNativeShare({
                             label: tShare('officialBusinessLink'),
                             text: tShare('obpShareHint'),

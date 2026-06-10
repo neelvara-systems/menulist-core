@@ -27,6 +27,7 @@ import { LuArchiveRestore, LuCopy, LuExternalLink, LuPalette, LuPen, LuPower, Lu
 import MobileQrCodeSheet from './MobileQrCodeSheet';
 import MobileLocalizedLanguageSelector from './MobileLocalizedLanguageSelector';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 import { Button, Card, Dialog, DotLoading, Flex, Input, List, Popup, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 
 type ProjectSheetProject = {
@@ -1032,7 +1033,7 @@ export default function MobileProjectSelectorSheet({
         }
 
         setManagingProjectId(null);
-        window.location.assign(withSource(shareUrl, 'direct'));
+        openMobilePublicLink(withSource(shareUrl, 'direct'));
     };
 
     const handleShowProjectQr = (project: ProjectSheetProject) => {

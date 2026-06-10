@@ -42,6 +42,7 @@ import PrintableTemplatePreview from '@/components/shared/printableAssets/Printa
 import { buildExportDataFromProject, downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuBookOpen,
@@ -75,6 +76,7 @@ import MobileLinkCard from '../components/MobileLinkCard';
 import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet';
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 import useViewportInfo from '../../../hooks/useViewportInfo';
 
 type ProjectLink = {
@@ -176,6 +178,7 @@ export default function MobileShareScreen({
     onOpenPrintMenu,
 }: MobileShareScreenProps) {
     const { token } = theme.useToken();
+    const router = useRouter();
     const { isCompactHandheld } = useViewportInfo();
     const { isMasterUser, storeDetails, tenantDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
@@ -407,8 +410,12 @@ export default function MobileShareScreen({
 
     const openInternalLink = (url: string) => {
         if (!url) return;
-        window.location.assign(url);
+        openMobilePublicLink(url);
     };
+
+    const openMobileMoreSubScreen = useCallback((screen: 'digitalScreens' | 'posSync') => {
+        router.push(`/dashboard#mobile/more/${screen}`);
+    }, [router]);
 
     const recordStarterSignal = useCallback((signal?: StarterActivationSignal) => {
         if (!signal || !storeDetails?.storeId || !shouldRecordStarterActivationSignal(storeDetails)) return;
@@ -1623,7 +1630,7 @@ export default function MobileShareScreen({
                                     onOpenDigitalScreens();
                                     return;
                                 }
-                                window.location.assign('/business-settings');
+                                openMobileMoreSubScreen('digitalScreens');
                             }}>
                                 <Flex align="center" gap={6} justify="center">
                                     <LuMonitor size={16} />
@@ -1659,7 +1666,7 @@ export default function MobileShareScreen({
                                         onOpenPosSync();
                                         return;
                                     }
-                                    window.location.assign('/business-settings');
+                                    openMobileMoreSubScreen('posSync');
                                 }} style={{ flex: '1 1 140px' }}>
                                     <Flex align="center" gap={6} justify="center">
                                         <LuShield size={15} />
@@ -2057,7 +2064,7 @@ function DownloadTile({
                     fill="outline"
                     loading={secondaryLoading}
                     onClick={onSecondaryClick}
-                    style={{ minHeight: 34 }}
+                    style={{ minHeight: 44 }}
                 >
                     <Flex align="center" gap={6} justify="center">
                         <LuEye size={14} />

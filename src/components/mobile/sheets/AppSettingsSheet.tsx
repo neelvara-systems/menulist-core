@@ -209,7 +209,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
             <Flex style={{ height: '100%' }} vertical>
                 <NavBar
                     right={(
-                        <Button fill="none" onClick={onClose} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                        <Button fill="none" onClick={onClose} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                             <LuX size={18} />
                         </Button>
                     )}

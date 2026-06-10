@@ -6,8 +6,8 @@ import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-const title = 'Public Discovery - MenuList | Clear Business Information for Search and AI';
-const description = 'MenuList prepares clear public business information, structured pages, sitemap signals, and owner-controlled copy without promising rankings or AI placement.';
+const title = 'Public Discovery - MenuList | Clear Business Information for Search';
+const description = 'MenuList prepares clear public business information, structured pages, sitemap signals, crawler context, and owner-controlled copy without ranking or answer-placement promises.';
 
 export const metadata: Metadata = {
   title,

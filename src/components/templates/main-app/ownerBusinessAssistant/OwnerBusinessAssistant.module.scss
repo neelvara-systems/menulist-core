@@ -56,6 +56,10 @@
   gap: 16px;
 }
 
+.summaryGridSingle {
+  grid-template-columns: minmax(0, 760px);
+}
+
 .scopeSelectorCard {
   border-radius: 8px;
   border: 1px solid var(--ant-color-border);

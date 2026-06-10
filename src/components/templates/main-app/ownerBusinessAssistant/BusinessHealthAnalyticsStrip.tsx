@@ -42,11 +42,12 @@ const buildTopItemTeaser = (
   };
 };
 
-export function BusinessHealthAnalyticsStrip({ projectId, storeScopeKey }: {
+export function BusinessHealthAnalyticsStrip({ enabled = true, projectId, storeScopeKey }: {
+  enabled?: boolean;
   projectId?: string;
   storeScopeKey?: string | number;
 }) {
-  const { analytics, isLoading } = useOwnerBusinessAnalyticsIndex(projectId, storeScopeKey);
+  const { analytics, isLoading } = useOwnerBusinessAnalyticsIndex(projectId, storeScopeKey, { enabled });
   const primaryPeriod = firstAvailablePeriod(analytics?.periods);
 
   if (isLoading && !analytics) {

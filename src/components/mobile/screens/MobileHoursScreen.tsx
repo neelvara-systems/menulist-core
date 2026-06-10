@@ -35,6 +35,7 @@ import MobileTempStatusConfigurator, {
 import GrowthKitsMobileCard from '../components/GrowthKitsMobileCard';
 import TodayWeeklyGrowthPackCard from '../components/TodayWeeklyGrowthPackCard';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 
 type TodayStatus = 'open' | 'closed_today' | 'closed_after_hours';
 
@@ -460,7 +461,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
             return;
         }
-        window.location.assign(menuUrl);
+        openMobilePublicLink(menuUrl);
     };
 
     const handleSaveTodayHours = async () => {

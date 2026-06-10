@@ -22,7 +22,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme } from 'antd';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuActivity, LuCheckCheck, LuCheckCircle2, LuExternalLink, LuLayoutDashboard, LuLayers, LuQrCode, LuSend, LuSettings, LuSparkles, LuUtensils, LuUser, LuX } from 'react-icons/lu';
+import { LuActivity, LuCheckCheck, LuCheckCircle2, LuExternalLink, LuLayers, LuSend, LuSparkles, LuUser, LuX } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../shared/ProjectSelector';
 import { Button, Card, Flex, Input, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
@@ -86,7 +86,8 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
     const scopeStoreRef = useRef<string | number | null>(null);
     const scopedProjectId = businessHealthProjectId || undefined;
     const { current, isLoading, refresh } = useOwnerBusinessHealthCurrent(undefined, storeDetails?.storeId);
-    const { analytics } = useOwnerBusinessAnalyticsIndex(scopedProjectId, storeDetails?.storeId);
+    const isHealthReady = Boolean(current && current.status !== 'not_ready' && current.sourceRefs?.length);
+    const { analytics } = useOwnerBusinessAnalyticsIndex(scopedProjectId, storeDetails?.storeId, { enabled: isHealthReady });
     const { answer, ask, threadId, lastQuestion, isLoading: isAnswering } = useOwnerBusinessAssistantAnswer(scopedProjectId, {
         currentRoute: '/business-health',
         mobileTab: 'more',
@@ -139,7 +140,6 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
             specialMenuStatus: project.specialMenuStatus,
         })),
     ], [scopeProjects]);
-    const isHealthReady = Boolean(current && current.status !== 'not_ready' && current.sourceRefs?.length);
     const isFreeTextAskEnabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT && isHealthReady;
     const isSuggestedAskEnabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS && isHealthReady;
     const canUpdateChecks = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT
@@ -520,7 +520,7 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                     </Flex>
                 </Card>
 
-                {analyticsMetrics.length ? (
+                {isHealthReady && analyticsMetrics.length ? (
                     <Card title="Analytics">
                         <Flex gap={8} vertical>
                             {analyticsMetrics.map((metric) => (
@@ -623,103 +623,86 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                     </Card>
                 ) : null}
 
-                {!isHealthReady ? (
-                    <Card title="Open">
-                        <Flex gap={8} vertical>
-                            <Button block fill="outline" onClick={() => router.push('/dashboard')} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                                <LuLayoutDashboard size={16} /> Dashboard
-                            </Button>
-                            <Button block fill="outline" onClick={() => router.push('/projects')} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                                <LuUtensils size={16} /> Menu
-                            </Button>
-                            <Button block fill="outline" onClick={() => router.push('/qr-code')} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                                <LuQrCode size={16} /> Share
-                            </Button>
-                            <Button block fill="outline" onClick={() => router.push('/business-settings')} style={{ justifyContent: 'flex-start', minHeight: 44 }}>
-                                <LuSettings size={16} /> Settings
-                            </Button>
+                {isHealthReady ? (
+                    <Card title="Ask">
+                        <Flex gap={10} vertical>
+                            {showStarterQuestions && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS ? current?.suggestedQuestions?.slice(0, 5).map((suggested) => (
+                                <Button
+                                    block
+                                    disabled={!isSuggestedAskEnabled}
+                                    fill="outline"
+                                    key={suggested.id}
+                                    loading={isAnswering}
+                                    onClick={() => handleSuggested(suggested)}
+                                    style={{
+                                        justifyContent: 'flex-start',
+                                        lineHeight: 1.35,
+                                        minHeight: 44,
+                                        textAlign: 'left',
+                                        whiteSpace: 'normal',
+                                    }}
+                                >
+                                    {suggested.label}
+                                </Button>
+                            )) : null}
+                            <Flex gap={8}>
+                                <Input
+                                    disabled={!isFreeTextAskEnabled}
+                                    onChange={setQuestion}
+                                    placeholder={askPlaceholder}
+                                    value={question}
+                                />
+                                <Button
+                                    ariaLabel="Send question"
+                                    disabled={!canSendQuestion}
+                                    icon={<LuSend size={18} />}
+                                    loading={isAnswering}
+                                    onClick={() => void handleAsk(question)}
+                                    style={{
+                                        alignItems: 'center',
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        minWidth: 48,
+                                        paddingInline: 0,
+                                        width: 48,
+                                    }}
+                                    title="Send question"
+                                />
+                            </Flex>
+                            {chatMessages.length ? (
+                                <Flex gap={8} vertical>
+                                    {chatMessages.map((message: any, index: number) => {
+                                        const isLatestAssistant = message.role !== 'user' && index === latestAssistantMessageIndex;
+                                        const isCurrentAnswer = Boolean(answer?.answerId && message.answerId === answer.answerId);
+
+                                        return renderChatBubble({
+                                            content: message.content,
+                                            id: message.id || `${message.role || 'message'}-${index}`,
+                                            role: message.role === 'user' ? 'user' : 'assistant',
+                                            children: isLatestAssistant ? (
+                                                <>
+                                                    {message.freshnessLabel ? <Text type="secondary">{message.freshnessLabel}</Text> : null}
+                                                    {renderFollowUpQuestions(message.suggestedQuestions)}
+                                                    {isCurrentAnswer && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT && answer?.actions?.length ? (
+                                                        <Button
+                                                            block
+                                                            fill="outline"
+                                                            icon={<LuExternalLink />}
+                                                            loading={isActioning}
+                                                            onClick={() => setActionSheetOpen(true)}
+                                                        >
+                                                            Open action
+                                                        </Button>
+                                                    ) : null}
+                                                </>
+                                            ) : null,
+                                        });
+                                    })}
+                                </Flex>
+                            ) : null}
                         </Flex>
                     </Card>
-                ) : (
-                <Card title="Ask">
-                    <Flex gap={10} vertical>
-                        {showStarterQuestions && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS ? current?.suggestedQuestions?.slice(0, 5).map((suggested) => (
-                            <Button
-                                block
-                                disabled={!isSuggestedAskEnabled}
-                                fill="outline"
-                                key={suggested.id}
-                                loading={isAnswering}
-                                onClick={() => handleSuggested(suggested)}
-                                style={{
-                                    justifyContent: 'flex-start',
-                                    lineHeight: 1.35,
-                                    minHeight: 44,
-                                    textAlign: 'left',
-                                    whiteSpace: 'normal',
-                                }}
-                            >
-                                {suggested.label}
-                            </Button>
-                        )) : null}
-                        <Flex gap={8}>
-                            <Input
-                                disabled={!isFreeTextAskEnabled}
-                                onChange={setQuestion}
-                                placeholder={askPlaceholder}
-                                value={question}
-                            />
-                            <Button
-                                ariaLabel="Send question"
-                                disabled={!canSendQuestion}
-                                icon={<LuSend size={18} />}
-                                loading={isAnswering}
-                                onClick={() => void handleAsk(question)}
-                                style={{
-                                    alignItems: 'center',
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    minWidth: 48,
-                                    paddingInline: 0,
-                                    width: 48,
-                                }}
-                                title="Send question"
-                            />
-                        </Flex>
-                        {chatMessages.length ? (
-                            <Flex gap={8} vertical>
-                                {chatMessages.map((message: any, index: number) => {
-                                    const isLatestAssistant = message.role !== 'user' && index === latestAssistantMessageIndex;
-                                    const isCurrentAnswer = Boolean(answer?.answerId && message.answerId === answer.answerId);
-
-                                    return renderChatBubble({
-                                        content: message.content,
-                                        id: message.id || `${message.role || 'message'}-${index}`,
-                                        role: message.role === 'user' ? 'user' : 'assistant',
-                                        children: isLatestAssistant ? (
-                                            <>
-                                                {message.freshnessLabel ? <Text type="secondary">{message.freshnessLabel}</Text> : null}
-                                                {renderFollowUpQuestions(message.suggestedQuestions)}
-                                                {isCurrentAnswer && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT && answer?.actions?.length ? (
-                                                    <Button
-                                                        block
-                                                        fill="outline"
-                                                        icon={<LuExternalLink />}
-                                                        loading={isActioning}
-                                                        onClick={() => setActionSheetOpen(true)}
-                                                    >
-                                                        Open action
-                                                    </Button>
-                                                ) : null}
-                                            </>
-                                        ) : null,
-                                    });
-                                })}
-                            </Flex>
-                        ) : null}
-                    </Flex>
-                </Card>
-                )}
+                ) : null}
             </Flex>
             <MobileBusinessHealthActionSheet
                 actions={answer?.actions}

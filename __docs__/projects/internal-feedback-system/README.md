@@ -13,6 +13,7 @@
 | [Spec](./internal-feedback-system_spec.md)                   | CEO, PM, Clients | Business requirements, user flows, scope      |
 | [Implementation](./internal-feedback-system_impl.md)         | Developers       | Technical blueprint, DB schema, API contracts |
 | [Marketing](./internal-feedback-system_marketing.md)         | Sales, Marketing | Pitch deck, landing page copy, messaging      |
+| [Website](./internal-feedback-system_website.md)             | Website, Docs    | Public website placement and claim boundaries |
 | [Validation](./internal-feedback-system_validation.md)       | QA               | Implementation validation report              |
 | [Verification](./internal-feedback-system_verification.md)   | Architects       | Bug fixes and review documentation            |
 | [ChatGPT Review](./_archive/chatgpt-review-session-mar14.md) | Architects       | Strategic review (Mar 14, 2026)               |
@@ -21,17 +22,18 @@
 
 ## One-Liner
 
-> **A private feedback inbox where guests submit ratings directly to the owner — before reaching Google Reviews.**
+> **A private feedback inbox where guests can report menu, business, or service issues directly to the owner so the approved source can be corrected.**
 
 ---
 
 ## What It Is
 
-The Guest Feedback System is a **reputation firewall** — a private channel for guest feedback that:
+The Guest Feedback System is a **private correction channel** for guest feedback that:
 
-- Captures guest sentiment BEFORE it becomes a public Google Review
-- Gives owners a calm inbox (not a dashboard) to read feedback
-- Optionally prompts ALL guests (regardless of rating) to leave a Google Review
+- Captures customer-reported issues from public menu, QR, direct-link, and business-page surfaces
+- Gives owners a calm inbox (not a dashboard) to read and resolve feedback
+- Helps owners correct the same approved source that feeds customer-facing public surfaces
+- Optionally prompts all guests, regardless of rating, toward the configured public review URL when enabled
 
 **What it is NOT:**
 

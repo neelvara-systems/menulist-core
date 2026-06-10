@@ -168,7 +168,7 @@ export default function ColorPickerSheet({
                                         key={preset.color}
                                         fill="none"
                                         onClick={() => { setHexInput(preset.color); onChange(preset.color); }}
-                                        style={{ height: 'auto', padding: 0, width: '100%' }}
+                                        style={{ minHeight: 44, padding: 0, width: '100%' }}
                                     >
                                         <Flex align="center" gap={6} style={{ minWidth: 0, width: '100%' }} vertical>
                                             <Card style={{ alignItems: 'center', backgroundColor: preset.color, borderRadius: '50%', display: 'flex', height: 40, justifyContent: 'center', width: 40 }}>

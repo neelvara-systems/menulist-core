@@ -4,6 +4,7 @@ import {
   LuBuilding2,
   LuCamera,
   LuFileText,
+  LuMessageSquare,
   LuPrinter,
   LuQrCode,
   LuSearch,
@@ -31,6 +32,7 @@ export const websiteFeatureNavLinks: WebsiteFeatureNavLink[] = [
   { href: '/features/print-ready-kit', key: 'featurePrintReadyKit', icon: LuPrinter },
   { href: '/features/owner-phone-dashboard', key: 'featureOwnerPhoneDashboard', icon: LuSmartphone },
   { href: '/features/business-health', key: 'featureBusinessHealth', icon: LuActivity },
+  { href: '/features/customer-feedback-loop', key: 'featureCustomerFeedbackLoop', icon: LuMessageSquare },
   { href: '/features/public-discovery', key: 'featurePublicDiscovery', icon: LuSearch },
 ];
 
@@ -67,6 +69,7 @@ export const websiteFeatureNavGroups: WebsiteFeatureNavGroup[] = [
     links: [
       getFeatureLink('/features/owner-phone-dashboard'),
       getFeatureLink('/features/business-health'),
+      getFeatureLink('/features/customer-feedback-loop'),
       getFeatureLink('/features/public-discovery'),
     ],
   },

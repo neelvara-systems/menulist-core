@@ -94,7 +94,7 @@ Bounded chat history uses the same shared thread hook as desktop, but only when 
 
 The first mobile ask must create or reuse the local thread ID before calling `/answer`. Mobile then renders the pending owner question and latest answer immediately from hook state while the one-doc thread history refreshes. Once the thread doc returns, duplicate pending/answer bubbles are suppressed by question text and answer ID.
 
-When Business Health is not source-backed yet, the mobile screen hides the Ask input and suggested questions. It shows large navigation shortcuts to Dashboard, Menu, Share, and Settings instead of presenting a disabled chat surface.
+When Business Health is not source-backed yet, the mobile screen hides the Ask input, suggested questions, analytics strips, and fallback shortcut sections. The owner can still use the normal mobile tabs for Dashboard, Menu, Share, and More.
 
 Multi-location mobile summary reads `/api/owner-business-assistant/locations`, which returns one compact tenant summary doc normalized for legacy row shape, filtered by `storesSummary` active state, and filtered by mapped store access. It must not load every outlet's detailed Business Health packet.
 
@@ -194,7 +194,7 @@ When a source-backed doc exists, mobile must show a plain freshness line such as
 - Branch selector respects permissions.
 - Stable state shows "No action needed".
 - Not-ready state does not show "No action needed" and does not allow Ask submission.
-- Not-ready state uses neutral/info treatment and shows large navigation shortcuts instead of a disabled Ask panel.
+- Not-ready state uses neutral/info treatment and hides fallback shortcut sections instead of showing a disabled Ask panel.
 - Multi-store tenants see a compact location summary with outlet status/top reason; single-store tenants do not see the section.
 - Data coverage note is visible near the Business Health summary.
 - Priority checks are tappable with 44px targets, and review/dismiss hides the check locally for the current business date after the server audit write succeeds.

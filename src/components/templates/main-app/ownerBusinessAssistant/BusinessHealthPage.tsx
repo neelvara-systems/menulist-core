@@ -21,6 +21,7 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
   const router = useRouter();
   const [scopedProjectId, setScopedProjectId] = useState<string | undefined>(projectId);
   const { current, isLoading, error, refresh } = useOwnerBusinessContextPacket(undefined, storeDetails?.storeId);
+  const isHealthReady = Boolean(current && current.status !== 'not_ready' && current.sourceRefs?.length);
   const hasMultipleStores = Array.isArray(tenantDetails?.storesList)
     && tenantDetails.storesList.filter((store: any) => store?.active !== false && store?.storeDetails?.active !== false).length > 1;
   const handleScopeChange = useCallback((nextProjectId?: string) => {
@@ -54,7 +55,7 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
         {isLoading && !current ? (
           <Card loading className={styles.dashboardCard} />
         ) : (
-          <div className={styles.summaryGrid}>
+          <div className={`${styles.summaryGrid} ${isHealthReady ? '' : styles.summaryGridSingle}`}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <BusinessHealthSummaryCard current={current} />
               <BusinessHealthLocationSummary
@@ -62,23 +63,31 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
                 scopeKey={tenantDetails?.tenantId || storeDetails?.tenantId || storeDetails?.storeId}
                 storeScopeKey={storeDetails?.storeId}
               />
-              <BusinessHealthAnalyticsStrip projectId={scopedProjectId} storeScopeKey={storeDetails?.storeId} />
-              <BusinessHealthPriorityChecks
-                checks={current?.suggestedChecks}
-                localDate={current?.localDate}
+              <BusinessHealthAnalyticsStrip
+                enabled={isHealthReady}
                 projectId={scopedProjectId}
                 storeScopeKey={storeDetails?.storeId}
               />
+              {isHealthReady ? (
+                <BusinessHealthPriorityChecks
+                  checks={current?.suggestedChecks}
+                  localDate={current?.localDate}
+                  projectId={scopedProjectId}
+                  storeScopeKey={storeDetails?.storeId}
+                />
+              ) : null}
             </Space>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <OwnerAssistantPanel
-                key={`${storeDetails?.storeId || 'store'}:${scopedProjectId || 'all'}`}
-                current={current}
-                projectId={scopedProjectId}
-                questions={FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS ? current?.suggestedQuestions : undefined}
-                storeScopeKey={storeDetails?.storeId}
-              />
-            </Space>
+            {isHealthReady ? (
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <OwnerAssistantPanel
+                  key={`${storeDetails?.storeId || 'store'}:${scopedProjectId || 'all'}`}
+                  current={current}
+                  projectId={scopedProjectId}
+                  questions={FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS ? current?.suggestedQuestions : undefined}
+                  storeScopeKey={storeDetails?.storeId}
+                />
+              </Space>
+            ) : null}
           </div>
         )}
       </Space>

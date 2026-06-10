@@ -7,7 +7,7 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 const title = 'Menu Import - MenuList | Upload the Menu You Already Have';
-const description = 'Upload a menu photo, PDF, link, or typed menu. MenuList prepares items, prices, sections, descriptions, and languages for owner review before publishing.';
+const description = 'Upload a menu photo, PDF, typed menu, or permission-confirmed public menu link. MenuList prepares a review-ready draft before anything becomes public.';
 
 export const metadata: Metadata = {
   title,

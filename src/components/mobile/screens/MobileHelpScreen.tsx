@@ -268,8 +268,8 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
                         border-radius: 9px !important;
                         flex: 0 0 86px;
                         font-size: 13px !important;
-                        height: 40px !important;
-                        min-height: 40px !important;
+                        height: 44px !important;
+                        min-height: 44px !important;
                         min-width: 82px;
                         padding-left: 10px !important;
                         padding-right: 10px !important;

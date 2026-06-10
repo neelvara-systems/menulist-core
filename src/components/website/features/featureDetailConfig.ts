@@ -13,9 +13,11 @@ import {
   LuFileText,
   LuGlobe,
   LuImage,
+  LuInbox,
   LuLanguages,
   LuLink,
   LuMapPin,
+  LuMessageSquare,
   LuMonitor,
   LuPackage,
   LuPhoneCall,
@@ -42,6 +44,7 @@ export type FeatureDetailSlug =
   | 'print-ready-kit'
   | 'owner-phone-dashboard'
   | 'menu-quality-validation'
+  | 'customer-feedback-loop'
   | 'public-discovery';
 
 export type FeatureDetailConfig = {
@@ -180,6 +183,21 @@ export const featureDetailConfigs: Record<FeatureDetailSlug, FeatureDetailConfig
     ],
     supportIcons: [[LuWalletCards, LuFileText, LuBadgeCheck], [LuQrCode, LuMonitor, LuShieldCheck]],
     proofIcons: [LuShieldCheck, LuEye, LuCheckCircle2, LuBadgeCheck],
+  },
+  'customer-feedback-loop': {
+    slug: 'customer-feedback-loop',
+    key: 'customerFeedbackLoop',
+    heroIcon: LuMessageSquare,
+    stripIcons: [LuQrCode, LuMessageSquare, LuInbox, LuAlertTriangle, LuShieldCheck],
+    journeyIcons: [LuQrCode, LuMessageSquare, LuInbox, LuRefreshCw],
+    journeyCardIcons: [
+      [LuQrCode, LuLink, LuBuilding2],
+      [LuMessageSquare, LuAlertTriangle, LuBadgeCheck],
+      [LuInbox, LuSmartphone, LuShieldCheck],
+      [LuRefreshCw, LuCheckCircle2, LuShieldCheck],
+    ],
+    supportIcons: [[LuQrCode, LuLink, LuBuilding2], [LuShieldCheck, LuInbox, LuActivity]],
+    proofIcons: [LuShieldCheck, LuAlertTriangle, LuActivity, LuCheckCircle2],
   },
   'public-discovery': {
     slug: 'public-discovery',

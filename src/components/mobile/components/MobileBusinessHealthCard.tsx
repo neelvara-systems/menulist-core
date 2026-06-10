@@ -90,7 +90,7 @@ export default function MobileBusinessHealthCard({
                     <Tag color="success"><LuCheckCircle2 size={14} /> No action needed</Tag>
                 ) : null}
 
-                {metrics.length ? (
+                {isReady && metrics.length ? (
                     <Flex gap={8} wrap>
                         {metrics.map((metric) => (
                             <Flex

@@ -1,4 +1,5 @@
-import { PLATFORM_URL, normalizeBaseUrl } from '@constant/urls';
+import { getProductDeploymentTarget } from '@constant/deploymentTargets';
+import { normalizeBaseUrl } from '@constant/urls';
 import { WEBSITE_RESOURCE_ALL_DISCOVERY_PAGES } from '@/content/websiteResources';
 
 export type SitemapChangeFrequency = 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
@@ -56,7 +57,7 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
     {
         label: 'Menu Import',
         path: '/features/menu-import',
-        description: 'Upload a menu photo, PDF, link, or typed menu for owner review before publishing',
+        description: 'Upload a menu photo, PDF, typed menu, or permission-confirmed public menu link for owner review before publishing',
         changeFrequency: 'monthly',
         priority: 0.86,
     },
@@ -70,21 +71,21 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
     {
         label: 'Featured Choices',
         path: '/features/featured-choices',
-        description: 'Show Featured, Quick, and Value choices from the approved menu so customers have a clearer starting point',
+        description: 'Show Featured, Quick, and Value choices from the approved menu so customers have a clearer starting point while owners keep control',
         changeFrequency: 'monthly',
         priority: 0.86,
     },
     {
         label: 'Official Business Page',
         path: '/features/official-business-page',
-        description: 'One official customer-facing page for menu, hours, photos, contact details, actions, and business information',
+        description: 'One official customer-facing page for menu, hours, photos, contact details, actions, QR options, and business information',
         changeFrequency: 'monthly',
         priority: 0.86,
     },
     {
         label: 'QR Menu and Links',
         path: '/features/qr-menu-links',
-        description: 'QR menu, share links, saved shortcuts, and print materials from the same approved menu source',
+        description: 'QR menu, stable share links, saveable customer shortcuts, and optional print files from the same approved menu source',
         changeFrequency: 'monthly',
         priority: 0.86,
     },
@@ -98,14 +99,14 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
     {
         label: 'Owner Phone Dashboard',
         path: '/features/owner-phone-dashboard',
-        description: 'Mobile owner dashboard for reviewing, publishing, and managing daily menu operations without a desktop',
+        description: 'Mobile owner dashboard for reviewing, publishing, sharing QR links, checking Business Health, and managing daily menu operations without a desktop',
         changeFrequency: 'monthly',
         priority: 0.84,
     },
     {
         label: 'Menu Quality Validation',
         path: '/features/menu-quality-validation',
-        description: 'Menu quality checks for missing prices, incomplete details, and public-readiness issues before publishing',
+        description: 'Menu quality, pricing, detail, and public-readiness checks before publishing the approved source',
         changeFrequency: 'monthly',
         priority: 0.86,
     },
@@ -117,9 +118,16 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 0.88,
     },
     {
+        label: 'Customer Feedback Loop',
+        path: '/features/customer-feedback-loop',
+        description: 'Private customer feedback from public menu, Official Business Page, QR, or direct links so owners can review issues and keep the approved source correct',
+        changeFrequency: 'monthly',
+        priority: 0.84,
+    },
+    {
         label: 'Public Discovery',
         path: '/features/public-discovery',
-        description: 'Clear public business information, structured pages, and discovery signals without ranking or AI placement promises',
+        description: 'Clear public business information, structured pages, sitemap signals, crawler context, and discovery files without ranking or answer-placement promises',
         changeFrequency: 'monthly',
         priority: 0.84,
     },
@@ -231,12 +239,14 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
     },
 ];
 
-export function getPlatformDiscoveryBaseUrl(baseUrl = PLATFORM_URL): string {
-    return normalizeBaseUrl(baseUrl) || PLATFORM_URL;
+const PLATFORM_DISCOVERY_BASE_URL = normalizeBaseUrl(getProductDeploymentTarget('menulist', 'production').url) || 'https://menulist.ai';
+
+export function getPlatformDiscoveryBaseUrl(baseUrl = PLATFORM_DISCOVERY_BASE_URL): string {
+    return normalizeBaseUrl(baseUrl) || PLATFORM_DISCOVERY_BASE_URL;
 }
 
 export function buildPlatformDiscoveryUrl(path: string, baseUrl = getPlatformDiscoveryBaseUrl()): string {
-    const normalizedBase = normalizeBaseUrl(baseUrl) || PLATFORM_URL;
+    const normalizedBase = normalizeBaseUrl(baseUrl) || PLATFORM_DISCOVERY_BASE_URL;
     if (!path || path === '/') return normalizedBase;
     return `${normalizedBase}/${path.replace(/^\/+/, '')}`;
 }

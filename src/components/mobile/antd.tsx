@@ -33,7 +33,7 @@ import {
 } from 'antd';
 import type { MessageInstance } from 'antd/es/message/interface';
 import { useLocale } from 'next-intl';
-import type { ComponentProps, CSSProperties, MouseEvent, ReactElement, ReactNode } from 'react';
+import type { ComponentProps, CSSProperties, KeyboardEvent as ReactKeyboardEvent, MouseEvent, ReactElement, ReactNode } from 'react';
 import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
@@ -199,6 +199,7 @@ function disabledButtonStyles(token: ReturnType<typeof theme.useToken>['token'],
 }
 
 type ButtonProps = {
+    'aria-label'?: string;
     ariaLabel?: string;
     block?: boolean;
     children?: ReactNode;
@@ -215,7 +216,7 @@ type ButtonProps = {
     title?: string;
 };
 
-export function Button({ ariaLabel, block, children, className, color, disabled, fill = 'solid', htmlType, icon, loading, onClick, size, style, title }: ButtonProps) {
+export function Button({ 'aria-label': ariaLabelAttribute, ariaLabel, block, children, className, color, disabled, fill = 'solid', htmlType, icon, loading, onClick, size, style, title }: ButtonProps) {
     const { token } = theme.useToken();
     const antType = fill === 'solid' ? 'primary' : 'default';
     const antSize = size === 'mini' ? 'small' : size || 'middle';
@@ -227,7 +228,7 @@ export function Button({ ariaLabel, block, children, className, color, disabled,
 
     return (
         <AntButton
-            aria-label={ariaLabel}
+            aria-label={ariaLabel ?? ariaLabelAttribute}
             block={block}
             className={className}
             danger={color === 'danger'}
@@ -256,8 +257,28 @@ type CardProps = {
 };
 
 export function Card({ children, className, onClick, size = 'small', style, title }: CardProps) {
+    const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (!onClick) return;
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        onClick();
+    };
+
     return (
-        <AntCard className={className} onClick={onClick} size={size} style={sanitizeStyle(style)} title={title}>
+        <AntCard
+            className={className}
+            onClick={onClick}
+            onKeyDown={handleKeyDown}
+            role={onClick ? 'button' : undefined}
+            size={size}
+            style={sanitizeStyle({
+                cursor: onClick ? 'pointer' : undefined,
+                minHeight: onClick ? 56 : undefined,
+                ...style,
+            })}
+            tabIndex={onClick ? 0 : undefined}
+            title={title}
+        >
             {children}
         </AntCard>
     );
@@ -330,7 +351,11 @@ function ListItem({ arrow, children, description, extra, onClick, prefix, style,
                 </Flex>
             )}
             onClick={onClick}
-            style={sanitizeStyle(style)}
+            style={sanitizeStyle({
+                cursor: onClick ? 'pointer' : undefined,
+                minHeight: onClick ? 56 : undefined,
+                ...style,
+            })}
         >
             <AntList.Item.Meta
                 avatar={prefix}
@@ -854,11 +879,11 @@ export function NavBar({
             }}
         >
             {showBackButton ? (
-                <Button fill="none" onClick={onBack} style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}>
+                <Button fill="none" onClick={onBack} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                     {backIcon ?? <LuArrowLeft size={18} />}
                 </Button>
             ) : reserveLeadingSpace ? (
-                <div style={{ minHeight: 40, minWidth: 40 }} />
+                <div style={{ minHeight: 44, minWidth: 44 }} />
             ) : (
                 null
             )}
@@ -866,13 +891,21 @@ export function NavBar({
                 {hasTitle ? (
                     <Title
                         level={5}
-                        style={{ lineHeight: 1.2, margin: 0, textAlign: effectiveTitleAlign }}
+                        style={{
+                            lineHeight: 1.2,
+                            margin: 0,
+                            maxWidth: '100%',
+                            overflow: 'hidden',
+                            textAlign: effectiveTitleAlign,
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                        }}
                     >
                         {children}
                     </Title>
                 ) : null}
             </Flex>
-            <Flex align="center" justify="flex-end" style={{ minHeight: 40, minWidth: 40 }}>
+            <Flex align="center" justify="flex-end" style={{ minHeight: 44, minWidth: 44 }}>
                 {right}
             </Flex>
         </Flex>
@@ -946,11 +979,11 @@ export function Picker({
                     }}
                     vertical
                 >
-                    <Flex align="center" justify="space-between" style={{ minHeight: 40 }}>
+                    <Flex align="center" justify="space-between" style={{ minHeight: 44 }}>
                         <Button
                             fill="none"
                             onClick={onClose}
-                            style={{ minHeight: 40, minWidth: 40, paddingInline: 0 }}
+                            style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}
                         >
                             <LuX size={18} />
                         </Button>
@@ -965,7 +998,7 @@ export function Picker({
                             }}
                             style={{
                                 color: token.colorPrimary,
-                                minHeight: 40,
+                                minHeight: 44,
                                 minWidth: 64,
                             }}
                         >
@@ -1053,7 +1086,7 @@ export function Input({
 }) {
     const isTemporalInput = type === 'time' || type === 'date' || type === 'datetime-local' || type === 'month' || type === 'week';
     const mergedStyle = sanitizeStyle({
-        ...(isTemporalInput ? { minHeight: 40 } : {}),
+        ...(isTemporalInput ? { minHeight: 44 } : {}),
         ...(style || {}),
     });
 

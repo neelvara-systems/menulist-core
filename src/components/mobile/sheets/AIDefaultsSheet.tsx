@@ -129,11 +129,11 @@ export default function AIDefaultsSheet({
                 borderRadius: '999px',
                 boxShadow: token.boxShadowTertiary,
                 cursor: disabled ? 'not-allowed' : 'pointer',
-                height: 40,
+                height: 44,
                 opacity: disabled ? 0.45 : 1,
                 overflow: 'hidden',
                 position: 'relative',
-                width: 40,
+                width: 44,
             }}
         >
             <div

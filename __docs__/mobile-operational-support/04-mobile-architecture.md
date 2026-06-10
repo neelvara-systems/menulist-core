@@ -1,7 +1,7 @@
 # Mobile Architecture & Implementation Plan
 
 **Created:** February 14, 2026  
-**Status:** ✅ IMPLEMENTED — Feature flag OFF, ready for testing  
+**Status:** ✅ IMPLEMENTED — Feature flag ON, owner mobile shell active on handheld devices
 **Author:** Lead Architect (Cascade)  
 **Source:** Codebase Analysis + Architecture Decision  
 **Depends On:** `01-antd-upgrade-and-library-decision.md`, `02-mobile-ui-doctrine.md`
@@ -104,7 +104,8 @@ src/
 │   └── designSystem.ts                  ← Shared: Design system re-exports for mobile
 │
 └── utils/
-    └── campaignUtils.ts                 ← Shared: Campaign utility functions
+    ├── campaignUtils.ts                 ← Shared: Campaign utility functions
+    └── openMobilePublicLink.ts          ← Owner PWA-safe public link opener
 ```
 
 ### Existing Files Modified (Minimal Changes)
@@ -148,6 +149,17 @@ src/
 ---
 
 ## Key Technical Decisions
+
+### June 9, 2026 Owner Mobile QA Pass
+
+The owner mobile cross-check confirmed the handheld owner workflow remains shell-first:
+
+- `AntdLayoutWrapper` renders `MobileShell` on handheld devices when `ENABLE_MOBILE_UI` is enabled.
+- Owner routes such as `/dashboard`, `/projects`, `/use-menulist`, `/qr-code`, `/feedback`, `/billing`, `/transactions`, `/locations`, `/users`, and `/business-settings` are mapped into the mobile shell instead of rendering desktop pages on phones.
+- More-tab sub-screens remain state/hash driven through `#mobile/more/...`; setup fallbacks should route through those hashes instead of assigning desktop settings URLs.
+- Owner PWA public preview links for menu, OBP, feedback, customer app, and screen links should open through `openMobilePublicLink()` instead of same-window `window.location.assign(...)`, so dismissing the external view returns to the existing shell state without remounting the app.
+- Shared mobile primitives must preserve the 44px minimum touch-target rule for navigation, picker, filter, close, color, and date/time controls.
+- Literal colors in mobile screens are allowed only for previews, swatches, brand-output examples, or existing Ant Design CSS variables; owner screen surfaces should use theme tokens.
 
 ### 1. Device Detection: Layout-Level Switch
 

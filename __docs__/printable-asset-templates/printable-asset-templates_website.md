@@ -2,7 +2,7 @@
 
 ## Publication Decision
 
-Do not create a standalone public website page for this feature before implementation. After the dashboard route ships, add a light website mention under existing MenuList output/print file copy.
+The dashboard route has shipped, so the public website should explain this capability inside `/features/print-ready-kit`. Do not create a separate public "template gallery" page. Keep template choice attached to the owner outcome: finished print files from the current approved menu source.
 
 ## Website Section Draft
 
@@ -13,6 +13,10 @@ Print files that look ready.
 ### Subheadline
 
 Download table, counter, entrance, feedback, and paper menu files with your logo, color, and current menu link already applied.
+
+Add one explicit proof point:
+
+Owners can choose supported finished template families for each asset type. QR/display assets can expose up to nine materially different style families; full Print Menu should show only its real unique PDF layouts until all nine families are genuinely supported.
 
 ### CTA
 
@@ -39,7 +43,8 @@ MenuList creates finished print files from the current approved menu. The owner 
 
 1. Open **Assets**.
 2. Pick the file and style.
-3. Download the print-ready file.
+3. Preview the generated output.
+4. Download the print-ready file as PDF or image where supported.
 
 ## FAQ
 
@@ -67,6 +72,9 @@ Use:
 
 - "print files"
 - "finished styles"
+- "supported template families"
+- "preview before download"
+- "PDF or image download"
 - "current menu link"
 - "logo and color applied"
 - "ready to download"
@@ -77,4 +85,6 @@ Avoid:
 - "smart"
 - "dynamic"
 - "customize"
+- "template gallery"
+- "unlimited design"
 - "advanced"

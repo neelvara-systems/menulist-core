@@ -22,10 +22,18 @@ const getDashboardFeedbackLine = (current: OwnerBusinessHealthCurrentDoc) => {
   return total > 0 ? 'Guest feedback is clear' : null;
 };
 
-export function BusinessHealthDashboardCard({ projectId }: { projectId?: string }) {
+export function BusinessHealthDashboardCard({ current: providedCurrent, isLoading: providedIsLoading, projectId, storeScopeKey }: {
+  current?: OwnerBusinessHealthCurrentDoc | null;
+  isLoading?: boolean;
+  projectId?: string;
+  storeScopeKey?: string | number;
+}) {
   const router = useRouter();
   const { storeDetails } = useContext(PlatformGlobalDataContext);
-  const { current, isLoading } = useOwnerBusinessHealthCurrent(undefined, storeDetails?.storeId);
+  const usesProvidedCurrent = providedCurrent !== undefined || providedIsLoading !== undefined;
+  const fallback = useOwnerBusinessHealthCurrent(undefined, storeScopeKey || storeDetails?.storeId, { enabled: !usesProvidedCurrent });
+  const current = usesProvidedCurrent ? providedCurrent || null : fallback.current;
+  const isLoading = usesProvidedCurrent ? Boolean(providedIsLoading) : fallback.isLoading;
   const healthHref = projectId ? `/business-health?projectId=${encodeURIComponent(projectId)}` : '/business-health';
 
   if (isLoading && !current) {

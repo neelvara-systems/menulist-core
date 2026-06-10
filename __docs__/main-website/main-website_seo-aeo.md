@@ -25,6 +25,10 @@
 
 > June 8, 2026 feature-campaign note: the main website now exposes a compact Features dropdown and five additional dedicated feature campaign pages: `/features/menu-import`, `/features/official-business-page`, `/features/qr-menu-links`, `/features/owner-phone-dashboard`, and `/features/public-discovery`. These join `/features/business-health` in `PLATFORM_DISCOVERY_PAGES`, static sitemap, `llms.txt`, and `llms-full.txt`.
 
+> June 10, 2026 feature-detail readiness note: all generic feature-detail pages now have claim-safe public copy parity after the Print-ready Kit pass. `/features/menu-content-prep`, `/features/featured-choices`, `/features/menu-quality-validation`, and `/features/print-ready-kit` are part of the canonical feature discovery set alongside Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, Business Health, and Public Discovery. Discovery copy must keep owner approval, no ranking/answer-placement promises, and no internal feature names. Platform discovery URL generation now defaults to the MenuList production deployment target (`https://menulist.ai`) so local/preview runtime defaults do not leak into sitemap or agent-readable discovery output.
+
+> June 10, 2026 customer-feedback-loop note: `/features/customer-feedback-loop` is now part of the canonical feature discovery set. Public copy must frame feedback as private customer issue reports that help owners correct the approved source. Do not frame it as review management, sentiment analysis, testimonials, reputation automation, or public review gating.
+
 ---
 
 ## 1. SEO Foundation
@@ -36,11 +40,16 @@
 | Homepage         | MenuList - One Official Menu Source for Customers                     | `(website)/layout.tsx`                |
 | Features         | Features — MenuList \| No Extra Work for Your Menu                    | `(website)/features/page.tsx`         |
 | Menu Import      | Menu Import - MenuList \| Upload the Menu You Already Have            | `(website)/features/menu-import/page.tsx` |
+| Menu Content Prep | Menu Content Prep - MenuList \| Descriptions, Images, and Languages | `(website)/features/menu-content-prep/page.tsx` |
+| Featured Choices | Featured Choices - MenuList \| Help Customers Choose More Easily     | `(website)/features/featured-choices/page.tsx` |
 | Official Business Page | Official Business Page - MenuList \| One Current Customer Link  | `(website)/features/official-business-page/page.tsx` |
 | QR Menu and Share Links | QR Menu and Share Links - MenuList \| One Current Menu Everywhere | `(website)/features/qr-menu-links/page.tsx` |
+| Print-ready Kit  | Print-ready Kit - MenuList \| Table, Counter, Social, and Printer Files | `(website)/features/print-ready-kit/page.tsx` |
 | Owner Phone Dashboard | Owner Phone Dashboard - MenuList \| Manage Your Menu Without a Desktop | `(website)/features/owner-phone-dashboard/page.tsx` |
+| Menu Quality Validation | Menu Quality Validation - MenuList \| Catch Menu Issues Before Customers See Them | `(website)/features/menu-quality-validation/page.tsx` |
 | Business Health  | Business Health - MenuList \| Know What Needs Attention               | `(website)/features/business-health/page.tsx` |
-| Public Discovery | Public Discovery - MenuList \| Clear Business Information for Search and AI | `(website)/features/public-discovery/page.tsx` |
+| Customer Feedback Loop | Customer Feedback Loop - MenuList \| Private Guest Feedback        | `(website)/features/customer-feedback-loop/page.tsx` |
+| Public Discovery | Public Discovery - MenuList \| Clear Business Information for Search  | `(website)/features/public-discovery/page.tsx` |
 | How It Works     | How MenuList Works — From Current Menu to Official Public Source      | `(website)/how-it-works/page.tsx`     |
 | Pricing          | Pricing — MenuList \| Simple, Transparent Plans for Every Business    | `(website)/pricing/page.tsx`          |
 | Multi-Location   | Multi-Location Menu Management — MenuList \| One Menu, Every Outlet   | `(website)/multi-location/page.tsx`   |
@@ -63,6 +72,7 @@
 | Homepage       | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
 | Features       | Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place. |
 | Business Health | Business Health shows the latest MenuList check, customer attention, last checked date, and whether anything needs action in the owner dashboard. |
+| Customer Feedback Loop | Let customers send private feedback from the menu, Official Business Page, QR, or direct link so owners can review issues and keep the public source correct. |
 | How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source behind the customer-facing menu and related public links.   |
 | Pricing        | Start with a 7-day MenuList setup, then choose the plan that keeps your official menu link live, updated, and ready for customers.                  |
 | Multi-Location | Manage menu source changes across locations from one place. Keep outlet menus consistent while preserving location-level control.       |

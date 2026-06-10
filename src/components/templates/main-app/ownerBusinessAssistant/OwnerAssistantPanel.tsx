@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Space, message } from 'antd';
+import { Card, message } from 'antd';
 import { FEATURE_FLAGS } from '@config/features';
 import type { OwnerBusinessHealthCurrentDoc, OwnerBusinessHealthQuestion } from '@lib/ownerBusinessAssistant/types';
 import { useOwnerBusinessAssistantAnswer } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer';
@@ -51,23 +51,7 @@ export function OwnerAssistantPanel({ current, projectId, questions, storeScopeK
   };
 
   if (!isHealthReady && showStarterQuestions) {
-    return (
-      <Card title="Business Health" className={styles.dashboardCard}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Alert
-            type="info"
-            showIcon
-            message="Questions will be available after the latest check finishes."
-          />
-          <Space wrap>
-            <Button href="/dashboard">Open dashboard</Button>
-            <Button href="/projects">Open menu</Button>
-            <Button href="/qr-code">Open share</Button>
-            <Button href="/business-settings">Open settings</Button>
-          </Space>
-        </Space>
-      </Card>
-    );
+    return null;
   }
 
   return (

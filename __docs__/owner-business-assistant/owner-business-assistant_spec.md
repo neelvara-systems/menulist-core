@@ -199,7 +199,8 @@ First-run/not-ready owner experience:
 
 - Do not show "No action needed".
 - Do not show an active Ask input or suggested questions.
-- Show calm navigation shortcuts to existing Dashboard, Menu, Share, and Settings surfaces.
+- Do not show analytics strips before the current Business Health check is source-backed.
+- Do not show fallback navigation shortcut sections; the owner can still use normal dashboard navigation.
 - Show freshness copy that explains Business Health is not realtime and the first source-backed check will provide the data date.
 
 Multi-location owner experience:

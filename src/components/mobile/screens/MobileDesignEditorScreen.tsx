@@ -45,6 +45,7 @@ import MobileProjectSelectorSheet from '../components/MobileProjectSelectorSheet
 import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
+import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 import { MENU_SHEET_BODY_STYLE, MENU_SHEET_CONTAINER_STYLE } from '../sheets/menuSheetLayout';
 
 const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { ssr: false });
@@ -415,7 +416,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         icon={<LuLink2 color={token.colorText} size={18} />}
                         label={tShare('directOfferingLink', { offering: labels.offeringTitle })}
                         onCopy={() => void handleCopyLink(withSource(menuUrl, 'copy'), tShare('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
-                        onOpen={() => window.location.assign(withSource(menuUrl, 'direct'))}
+                        onOpen={() => openMobilePublicLink(withSource(menuUrl, 'direct'))}
                         onShare={supportsNativeShare ? () => void handleNativeShare({
                             label: tShare('directOfferingLink', { offering: labels.offeringTitle }),
                             text: tShare('directOfferingLinkDesc', { offering: labels.offeringLower }),

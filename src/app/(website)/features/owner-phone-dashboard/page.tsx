@@ -7,7 +7,7 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 const title = 'Owner Phone Dashboard - MenuList | Manage Your Menu Without a Desktop';
-const description = 'Use the MenuList owner dashboard from a phone browser or PWA to update menus, publish changes, check signals, and manage daily operations.';
+const description = 'Use the MenuList owner dashboard from a phone browser or PWA to update menus, publish changes, share QR links, check Business Health, and manage daily operations.';
 
 export const metadata: Metadata = {
   title,

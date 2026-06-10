@@ -19,6 +19,7 @@ import MobileQrCodeSheet from '../components/MobileQrCodeSheet';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
 import type { MobileFeedbackItemType as FeedbackItem } from '../types';
+import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 
 const MobileFeedbackDetail = dynamic(() => import('./MobileFeedbackDetail'), { ssr: false });
 
@@ -118,7 +119,7 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
 
     const handleOpenFeedbackLink = () => {
         if (!feedbackUrl) return;
-        window.open(feedbackUrl, '_blank', 'noopener,noreferrer');
+        openMobilePublicLink(feedbackUrl);
     };
 
     const handleNativeShare = async () => {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { LuActivity, LuBadgeCheck, LuBarChart3, LuBriefcase, LuCamera, LuCheck, LuEye, LuFileText, LuImage, LuLanguages, LuLayoutGrid, LuLink, LuList, LuMessageSquare, LuMonitor, LuPackage, LuPalette, LuPrinter, LuQrCode, LuRefreshCw, LuShield, LuSmartphone, LuSparkles, LuTrendingUp, LuUsers, LuZap } from 'react-icons/lu';
+import { LuActivity, LuArrowRight, LuBadgeCheck, LuBarChart3, LuBriefcase, LuCamera, LuCheck, LuEye, LuFileText, LuImage, LuLanguages, LuLayoutGrid, LuLink, LuList, LuMessageSquare, LuMonitor, LuPackage, LuPalette, LuPrinter, LuQrCode, LuRefreshCw, LuShield, LuSmartphone, LuSparkles, LuTrendingUp, LuUsers, LuZap } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import LogoMark from '../shared/LogoMark';
 import SectionHeading from '../shared/SectionHeading';
@@ -17,7 +17,7 @@ const groupIcons = [
   [LuQrCode, LuLayoutGrid, LuMonitor, LuLink, LuFileText, LuList],
   [LuPalette, LuPackage, LuPrinter],
   [LuSparkles, LuUsers, LuBarChart3, LuTrendingUp],
-  [LuActivity, LuRefreshCw, LuZap, LuBriefcase, LuEye, LuMessageSquare, LuList, LuLink, LuSmartphone, LuUsers],
+  [LuActivity, LuRefreshCw, LuZap, LuBriefcase, LuEye, LuMessageSquare, LuList, LuLink, LuSmartphone, LuUsers, LuMessageSquare],
   [LuShield, LuCheck, LuBadgeCheck],
 ];
 
@@ -35,6 +35,7 @@ const featurePageHrefByCard = new Map<string, string>([
   ['3-3', '/features/menu-quality-validation'],
   ['4-0', '/features/business-health'],
   ['4-8', '/features/owner-phone-dashboard'],
+  ['4-10', '/features/customer-feedback-loop'],
   ['5-0', '/features/menu-quality-validation'],
   ['5-1', '/features/menu-quality-validation'],
   ['5-2', '/features/menu-quality-validation'],
@@ -145,13 +146,20 @@ export default function FeaturesPage() {
                     icon={Icon}
                     title={feature.title}
                     description={feature.desc}
+                    action={feature.href ? (
+                      <span className="ws-feature-card__action">
+                        {t('Features.cardAction')}
+                        <LuArrowRight size={15} aria-hidden="true" />
+                      </span>
+                    ) : undefined}
+                    leadingIcon
                     compact
                   />
                 );
                 return (
                   <AnimateStaggerChild key={feature.title} index={fi}>
                     {feature.href ? (
-                      <Link href={feature.href} className="ws-feature-card-link" aria-label={`${feature.title}`}>
+                      <Link href={feature.href} className="ws-feature-card-link" aria-label={`${feature.title} - ${t('Features.cardCta')}`}>
                         {card}
                       </Link>
                     ) : card}

@@ -6,6 +6,89 @@
 
 ---
 
+## June 10, 2026 — Customer Feedback Loop Feature Page
+
+### New
+
+- **Customer Feedback Loop added as a dedicated website feature page** - `/features/customer-feedback-loop` now explains the public-to-owner correction loop for private guest feedback from public menus, Official Business Page, QR, or direct links.
+- **Feature navigation now links to the feedback loop** - The Operations group, desktop Features dropdown, and mobile hamburger feature list include `Customer feedback loop`.
+
+### Fixed
+
+- **Features dropdown trigger no longer navigates away** - The desktop `Features` header item now behaves as a menu trigger; `/features` remains available through the `Feature overview` row inside the dropdown.
+- **Features dropdown is grouped on desktop** - Desktop now mirrors mobile with Start, Publish, and Operate groups so the feature menu reads like a product map instead of one flat list.
+- **Features dropdown hover bridge added** - The panel has a small invisible pointer bridge and softer border treatment so it stays open while moving from the trigger into the menu and feels less outlined in dark mode.
+- **Clickable feature cards are now distinguishable** - Cards on `/features` now use a leading icon and title row; cards that open a dedicated feature page show a compact top-right `View` action, stronger resting border treatment, and clearer hover/focus movement. Static informational cards keep the same leading-icon structure without the action pill.
+- **Feature journey proof cards have more room** - Shared feature detail pages now place the active story copy above the proof-card row on desktop, inside one parent story card without an internal divider, so the three supporting cards no longer feel squeezed inside a narrow right column.
+- **Feature journey height is more responsive** - The shared sticky journey now uses a tighter desktop height clamp and responsive proof-card minimums, reducing empty vertical space on tall displays while keeping enough room on shorter laptops.
+- **Feature journey pill spacing improved** - The pill row now has a small explicit gap before the proof-card row, so labels such as `Descriptions`, `Images`, and `Languages` do not sit too close to the cards below.
+
+### Documentation
+
+- **Discovery files updated** - `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt` now include the new feature route.
+- **Internal Feedback System website guidance added** - The feature docs now define the public copy boundary: frame feedback as issue correction and owner review, not review management, sentiment analysis, or public reputation automation.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website route, locale, metadata, discovery, and documentation work only. It does not change guest feedback runtime, owner inbox runtime, mobile shell runtime, Firebase rules, Cloud Functions, auth, pricing, payment, or customer menu runtime.
+
+## June 10, 2026 — Feature Detail Page Readiness Pass
+
+### Improved
+
+- **Feature pages now match the Print-ready Kit readiness bar** - Menu Import, Menu Content Prep, Featured Choices, Official Business Page, QR Menu and Links, Owner Phone Dashboard, Menu Quality Validation, and Public Discovery now explain the real owner/customer workflow with stronger proof, owner-control boundaries, and claim-safe language.
+- **Menu Quality Validation key parity fixed** - The page now has the full generic feature-detail copy set in English and Hindi, and internal process wording was removed from public copy.
+- **Metadata and discovery descriptions aligned** - Feature page metadata, the discovery registry, `llms.txt`, and static sitemap dates now match the updated public feature positioning.
+
+### Fixed
+
+- **Platform discovery base URL now uses the production canonical domain** - `getPlatformDiscoveryBaseUrl()` derives its default from the MenuList production deployment target so generated discovery URLs stay on `https://menulist.ai` instead of local or preview defaults.
+
+### Cost
+
+- **No Firebase cost change** - This is public website locale, metadata, discovery, and documentation copy only. It does not change owner dashboard runtime, mobile shell runtime, extraction workers, Assets runtime, Firebase rules, Cloud Functions, auth, pricing, payment, or customer menu runtime.
+
+## June 10, 2026 — Print-ready Kit Feature Page Parity
+
+### Improved
+
+- **Print-ready Kit page now reflects the Assets workflow** - `/features/print-ready-kit` copy now explains asset type selection, supported style families, image-first preview, PDF/image downloads, Menu Kit ZIP, print-shop handoff, and reprint guidance instead of only describing a generic Menu Kit bundle.
+- **Template choice wording is accurate** - Public copy uses "up to nine" style families for QR/display assets and avoids claiming every asset has nine templates when some outputs expose only real supported layouts.
+
+### Documentation
+
+- **Print Assets and Printable Asset Templates website docs updated** - Website guidance now matches the implemented Assets route and keeps internal renderer/catalog details out of public copy.
+
+### Cost
+
+- **No Firebase cost change** - This is public website locale and documentation copy only. It does not change owner Assets runtime, printable rendering, mobile shell, Firebase rules, Cloud Functions, auth, pricing, extraction, or customer menu runtime.
+
+## June 10, 2026 — Business Health Not-Ready Cleanup
+
+### Fixed
+
+- **Business Health first-run state no longer shows fallback shortcut sections** - Desktop and mobile Business Health now keep Ask, suggested questions, priority-check workflow, and fallback shortcut cards hidden until a source-backed store check exists.
+
+### Cost
+
+- **No Firebase cost change** - This is owner UI gating and documentation alignment only. It does not change Firestore reads/writes, Cloud Functions, Firebase rules, auth, pricing, scheduler behavior, or customer menu runtime.
+
+## June 9, 2026 — Owner Mobile Screen QA
+
+### Improved
+
+- **Shared mobile navigation controls now meet the 44px touch target rule** - The mobile `NavBar`, picker header actions, temporal inputs, app-settings close action, help search button, bulk-action controls, time-slot color choices, and AI-defaults color input now use mobile-safe touch sizing.
+- **Share setup fallbacks stay inside the mobile shell** - Digital Screen and POS setup fallback actions now route to the matching `#mobile/more/...` sub-screen instead of assigning `/business-settings` directly.
+
+### Verified
+
+- **Owner mobile shell route inventory reviewed** - Dashboard, Today, Menu, Share, Feedback, Billing, Transactions, Locations, Users, Business Settings, Print Assets, Business Health, POS Sync, SEO/analytics, domain settings, customer app, and More sub-screens remain routed through `MobileShell` on handheld devices.
+- **Theme-token sweep completed for owner mobile screens** - Remaining literal colors in `src/components/mobile/` are preview/swatch/brand-output colors or token-compatible CSS variables, not broad hardcoded owner screen backgrounds.
+
+### Cost
+
+- **No Firebase cost change** - This is owner mobile UI routing, tap-target, and documentation polish only. It does not change Firestore reads/writes, Cloud Functions, Firebase rules, auth, pricing, extraction, or customer menu runtime.
+
 ## June 9, 2026 — Website Production Readiness Polish
 
 ### Improved

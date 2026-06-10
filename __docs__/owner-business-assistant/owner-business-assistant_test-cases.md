@@ -203,7 +203,7 @@ Desktop:
 - Data coverage note says which settled date Business Health uses and does not imply realtime analytics.
 - Optional thread history shows latest bounded messages when thread flag is enabled.
 - Thread history is absent and no thread write happens when thread flag is disabled.
-- First-run/not-ready state hides the Ask input and shows stable navigation shortcuts until a source-backed check exists.
+- First-run/not-ready state hides the Ask input, suggested questions, analytics strips, priority-check workflow, and fallback shortcut sections until a source-backed check exists.
 - Not-ready and insufficient-data states render neutral/info treatment, not "No action needed" or success styling.
 - Multi-location summary shows compact outlet status/check counts/top reason only for multi-store tenants and does not load every detailed store packet.
 - Multi-location summary shows per-outlet freshness (`Checked {date}`) because outlets can rebuild at different local times.
@@ -228,7 +228,7 @@ Mobile:
 - Message bubbles stay readable at phone width, with owner messages aligned right and Business Health responses aligned left.
 - Follow-up question buttons remain full-width touch targets inside the latest Business Health bubble.
 - Mobile shows the pending owner question and returned answer immediately before thread history refresh finishes.
-- Mobile first-run/not-ready state hides the Ask input and shows large navigation shortcuts.
+- Mobile first-run/not-ready state hides the Ask input and does not show fallback shortcut sections.
 - Mobile multi-location summary shows compact outlet state only for multi-store tenants.
 - Mobile multi-location rows show per-outlet freshness and avoid one misleading tenant-level timestamp.
 - Bottom sheet actions have 44px targets.

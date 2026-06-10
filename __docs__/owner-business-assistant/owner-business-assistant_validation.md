@@ -66,7 +66,7 @@ Business Health and Action Support are implemented as separate runtime tracks:
 - Successful low-risk navigation actions no longer write action audit docs; blocked navigation, drafts, check workflow, and guarded/risky outcomes remain auditable.
 - Scheduler writes `platformSummary/ownerBusinessHealthMultiLocation_{tId}` with one compact `stores.{sId}` entry per store rebuild. `/api/owner-business-assistant/locations` reads that tenant summary doc plus `storesSummary`, then filters deactivated outlets and mapped store access.
 - Desktop and mobile Business Health screens show compact multi-location status only for multi-store tenants, reuse scoped SWR/localStorage cache on repeat opens, and do not load every store-specific packet.
-- First-run/not-ready UX hides the Ask box and shows stable navigation shortcuts until a source-backed check exists.
+- First-run/not-ready UX hides Ask, suggested questions, analytics strips, priority-check workflow, and fallback shortcut sections until a source-backed check exists.
 - Not-ready/insufficient-data visual states use neutral/info styling instead of success styling.
 - Unsupported answers now include a supported alternative, such as customer attention or standard supported periods.
 - Answer freshness labels use "Uses data through {date}. Today may not be complete yet." when source-window dates are available.
@@ -560,7 +560,7 @@ Validated reviewer findings:
 
 Fixes:
 
-- `BusinessHealthAnalyticsStrip` now reads `useOwnerBusinessAnalyticsIndex(projectId, storeScopeKey)` and builds its tiles from the scoped analytics-index periods.
+- `BusinessHealthAnalyticsStrip` now reads `useOwnerBusinessAnalyticsIndex(projectId, storeScopeKey, { enabled })`, builds tiles from scoped analytics-index periods, and lets dashboard/page/mobile callers keep analytics hidden until the current Health check is source-backed.
 - `useOwnerBusinessLocationsSummary` now includes route, tenant/store scope, and active store scope in the SWR key: `[url, scope, selectedStoreScope]`.
 - `/api/owner-business-assistant/locations` now reads `storesSummary`, parses legacy/nested summary shapes, filters inactive stores before permission filtering, and reports `firestoreReadCount: 2`.
 
