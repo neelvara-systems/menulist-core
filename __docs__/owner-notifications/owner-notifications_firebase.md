@@ -19,6 +19,8 @@ Do not mix product data in one collection unless the runtime explicitly requires
 
 Append-only trigger queue.
 
+MenuList recipient and formatting context reads use canonical top-level `stores/{storeId}` first. The processor keeps a nested tenant-store fallback only for old data compatibility, so normal MenuList delivery does not depend on duplicate store documents under tenants.
+
 | Field | Type | Cost note |
 | --- | --- | --- |
 | `productId` | string | Required for product boundary |

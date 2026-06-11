@@ -1,7 +1,7 @@
 # Razorpay — Firebase Cost Tracking
 
 **Purpose:** Track ALL Firestore reads/writes/deletes for the Razorpay billing system.
-**Last Updated:** May 21, 2026
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -45,7 +45,7 @@
 
 | Operation | Collection | Count per call | Type | Description |
 |-----------|-----------|---------------|------|-------------|
-| Query | `subscriptions` | 1 read | READ | Find pending subscription |
+| Read | `subscriptions` | 1 read | READ | Find pending/current subscription by provider subscription ID after Razorpay checkout signature, payment status, and payment-subscription ownership are verified server-side |
 | Update | `subscriptions` | 1 write | WRITE | Activate subscription (status, dates, credits) |
 
 **Frequency:** Once per new subscription or renewal verification
@@ -67,7 +67,7 @@
 | `cancel-subscription` | 1 (fetch direct store sub or provided sub) | 1 (update status) | Sets cancelled/completed + subscriptionEndDate. Uses direct store lookup, not outlet/master fallback. |
 | `pause-subscription` | 0 while `ENABLE_SUBSCRIPTION_PAUSE=false` | 0 while disabled | Self-service pause is disabled by default. Route returns unavailable before Razorpay or Firestore mutation. If the flag is enabled later, the route uses the direct store lookup and sets paused. |
 | `resume-subscription` | 0 while `ENABLE_SUBSCRIPTION_PAUSE=false` | 0 while disabled | Self-service resume is disabled by default. Route returns unavailable before Razorpay or Firestore mutation. If the flag is enabled later, the route uses the direct store lookup and sets active. |
-| `upgrade-subscription` | 1 (fetch old sub) | 1 (expire old sub) | Old sub → expired, new sub created separately |
+| `upgrade-subscription` | 2 (fetch old + new sub) | 2 (expire old sub + server-computed carry-forward on new sub) | Browser no longer supplies credit authority. New subscription starts with zero top-up credits; upgrade route computes remaining old credits server-side and stamps `carryForwardFromSubscriptionId` for idempotency. |
 
 ---
 
@@ -77,7 +77,7 @@
 |-----------|-----------|---------------|------|-------------|
 | Query | `subscriptions` | 1 read | READ | Primary query (status in active/past_due/paused + cycleEndDate >= now) |
 | Query | `subscriptions` | 0-1 read | READ | Fallback query for paused subs with expired cycle |
-| Update | `subscriptions` | 0-1 write | WRITE | Auto-expire if grace period ended (rare) |
+| Update | `subscriptions` | 0 writes from browser | WRITE | Browser reads never mutate billing docs. If grace is over, the browser returns no active access; server-owned paths perform expiry writes and entitlement/cache sync. |
 
 **Frequency:** Every page load in the main app (cached in session provider)
 
@@ -96,8 +96,19 @@ Mutation routes use the direct lookup variant when no explicit subscription ID i
 
 | Route | Reads | Writes | Description |
 |-------|-------|--------|-------------|
-| `create-topup-order` | 0 | 1 | Creates Razorpay order and writes `topups/{orderId}` as `pending` |
+| `create-topup-order` | 1 | 1 | After auth, permission, and rate limit, verifies an active subscription exists before creating Razorpay order and writing `topups/{orderId}` as `pending` |
 | `verify-topup` | 2 reads | 2 writes | Verifies signature/order/payment, updates subscription credits, and marks `topups/{orderId}` as `paid` in a transaction |
+
+## Billing History
+
+Owner-facing desktop/mobile billing history reads the unified payment transaction ledger with:
+
+- tenant/store equality filters
+- successful payment events only: `subscription.charged` and `order.paid`
+- `created_at desc`
+- `limit(50)`
+
+This keeps the billing UI bounded for long-running stores. A future full export should use a separate paginated/export path rather than widening the owner page query.
 
 ---
 
@@ -107,8 +118,8 @@ Mutation routes use the direct lookup variant when no explicit subscription ID i
 |---------|-------------|-------------|-------|
 | Nightly reconciliation | N+1 | 0-2 typical after entitlement backfill | N = active subscriptions. One-time entitlement repair may add store + storesSummary + subscription marker writes for stale records. |
 | Webhooks | ~3 per store/month | ~3 per store/month plus entitlement mirror on status change | Charged, renewed, failed, paused, resumed, cancelled, completed events. |
-| User actions | 1-2 per enabled action | 1 subscription write plus entitlement mirror when status changes | Cancel and upgrade/change plan. Pause/resume are feature-flag disabled by default and cost 0 Firestore reads/writes while disabled. |
-| Page loads | 1 per session | 0 (usually) | Cached after first load |
+| User actions | 1-2 per enabled action | 1-2 subscription writes plus entitlement mirror when status changes | Cancel and upgrade/change plan. Pause/resume are feature-flag disabled by default and cost 0 Firestore reads/writes while disabled. |
+| Page loads | 1 per session | 0 from browser | Cached after first load; client-side grace expiry no longer attempts forbidden billing writes |
 
 **For 100 stores:** ~101 reads/night from reconciliation, ~300 webhook reads/month, ~100 writes/month total.
 

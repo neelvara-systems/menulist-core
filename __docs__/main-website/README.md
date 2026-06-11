@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.51 (Feature Visual Launch Polish)
+**Version:** 3.6.54 (Regional Workspace Settings Proof)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 10, 2026
+**Last Updated:** June 11, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,13 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.51** | **Feature Visual Launch Polish** | **"Dedicated feature visuals are clean, readable, and launch-ready."** | **ACTIVE** |
+| **3.6.54** | **Regional Workspace Settings Proof** | **"Regional owner settings belong in Operations, not the homepage hero."** | **ACTIVE** |
+
+Version 3.6.54 adds a compact `/features` Operations card for regional workspace settings: owner workspace language preference, timezone, date format, and time format. The copy keeps customer-facing menu languages tied to the approved source and does not expand public website/resource locale claims beyond reviewed website languages. This is static public website locale/component/docs work only; owner dashboard runtime, customer menu runtime, public website language switcher, sitemap, hreflang, LLM discovery files, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, and Vercel deployment were not changed.
+
+Version 3.6.53 removes the shared trailing proof-chip row from `FeatureDetailVisual` so dedicated feature pages no longer repeat the same tags inside the hero visual, below the visual, and again in the page signal strip. Feature-specific chips remain only where they are part of the visual composition, while the separate signal strip remains the page-level proof row. Local route smoke covered all ten generic feature pages with no missing-message markers and no rendered `.ws-feature-visual__pills` nodes; lint, TypeScript, and diff whitespace checks passed. This is public website component/CSS/docs cleanup only; copy, pricing, payment, auth, upload/extraction, customer menu runtime, owner dashboard runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.52 is the production-audit mobile grid hardening pass across public website pages. Fixed-width `auto-fit` grid minimums on homepage support sections, Contact, Multi-location, Product, and Trust/Security were replaced with container-safe `minmax(min(100%, ...), 1fr)` tracks so cards cannot force horizontal overflow on narrow phones. Local checks covered TypeScript, lint, diff whitespace, agent/resource discovery verification, and 390px browser smoke for `/`, `/contact`, `/multi-location`, `/pricing`, `/trust-security`, and legacy `/product` redirecting to `/how-it-works`. This is public website CSS/component/docs polish only; pricing, payment, auth, upload/extraction, customer menu runtime, owner dashboard runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
 Version 3.6.51 is the feature visual launch-polish pass after screenshot review found the Official Business Page hero visual too nested and compressed. The shared feature-detail hero now gives the media column more room, `FeatureDetailVisual` avoids duplicate internal marketing headlines, the Official Business Page visual removes the nested browser border and redundant bottom pill row, visual chips use softer treatment, and mobile microcopy/print asset cards stay readable without horizontal overflow. Local browser checks covered representative feature pages at desktop and 390px mobile widths plus light/dark theme toggling. This is static public website component/CSS/docs polish only; pricing, payment, auth, upload/extraction, customer menu runtime, owner dashboard runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
@@ -703,6 +709,9 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.54 | June 11, 2026 | Added a `/features` Operations card for regional workspace settings while keeping public website/resource language exposure limited to reviewed website locales. |
+| 3.6.53 | June 11, 2026 | Removed the shared trailing proof-chip row from dedicated feature-page hero visuals so tags are not repeated three times on mobile pages. |
+| 3.6.52 | June 11, 2026 | Hardened public website grid tracks with container-safe `minmax(min(100%, ...), 1fr)` values and verified representative pages at 390px mobile width with no horizontal overflow. |
 | 3.6.40 | June 9, 2026 | Final production-readiness polish: website-scoped body theme handling, resource/industry reveal parity, legal mobile overflow hardening, sticky layout width guards, compact mobile analytics consent, and light/dark runtime verification. |
 | 3.6.39 | June 9, 2026 | Upgraded generic feature campaign pages to a Business Health-style sticky journey layout, added `/features/menu-quality-validation`, grouped mobile feature navigation, folded secondary feature suggestions into the right existing pages, and registered the new route in sitemap/LLM discovery. |
 | 3.6.38 | June 9, 2026 | Tightened the desktop Features dropdown into a viewport-centered elevated overview + three-column feature grid + compact proof/CTA strip so it no longer visually blends into the hero. |

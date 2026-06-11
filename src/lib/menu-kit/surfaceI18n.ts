@@ -144,7 +144,7 @@ export function getSurfaceStrings(locale?: string): SurfaceStrings {
  */
 export function isLatinLocale(locale?: string): boolean {
     if (!locale) return true;
-    const nonLatinPrefixes = ['hi', 'ar', 'ta', 'te', 'mr', 'bn'];
+    const nonLatinPrefixes = ['hi', 'ar', 'ta', 'te', 'mr', 'bn', 'gu', 'kn', 'ml', 'pa', 'ur', 'or', 'as', 'ne', 'mai', 'kok', 'sd', 'ks', 'doi', 'mni', 'sat', 'brx', 'zh', 'ja', 'ko', 'th', 'el', 'uk', 'he', 'fa'];
     const prefix = locale.split('-')[0];
     return !nonLatinPrefixes.includes(prefix);
 }

@@ -1,6 +1,6 @@
 # Razorpay Payment System — Mobile Support
 
-**Last Updated:** May 21, 2026 (v3 — pause/resume self-service disabled)
+**Last Updated:** June 11, 2026
 **Decision:** ✅ FULL MOBILE SUPPORT — Zero desktop dependency for billing
 
 ---
@@ -35,6 +35,9 @@
 ## DAL Parity
 
 - Uses same `usePaymentHandler` hook as desktop (Razorpay script works on mobile browsers)
+- Subscription verification posts Razorpay's checkout signature to `/api/razorpay/verify-subscription`; mobile does not activate billing from a payment ID alone.
+- Upgrade carry-forward credits are computed by `/api/razorpay/upgrade-subscription` from the old subscription. Mobile does not send or calculate credit authority for the new subscription.
 - Same `getActiveSubscriptionForStore`, `getBillingHistoryForStore` DAL functions
+- Billing history uses the shared 50-row successful-payment limit.
 - Same `getB2CPlansList`, `aiEnhancementPacksList` data
 - Same `calculateRemainingCredits`, `getGracePeriodInfo`, `hasValidSubscriptionAccess` utilities

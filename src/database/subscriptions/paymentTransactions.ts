@@ -2,7 +2,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
-import { addDoc, collection, getDocs, orderBy, query, where } from "firebase/firestore";
+import { addDoc, collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.PAYMENT_TRANSACTIONS;
 
@@ -38,7 +38,8 @@ export const getBillingHistoryForStore = async (tenantId: number, storeId: numbe
                 where("storeId", "==", Number(storeId)),
                 // We only care about events that represent a successful payment.
                 where("event", "in", ["subscription.charged", "order.paid"]),
-                orderBy("created_at", "desc") // Show the most recent payments first
+                orderBy("created_at", "desc"), // Show the most recent payments first
+                limit(50),
             );
 
             const querySnapshot = await getDocs(q);

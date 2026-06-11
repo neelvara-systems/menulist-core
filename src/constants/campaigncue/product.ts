@@ -1,0 +1,5 @@
+export const CAMPAIGNCUE_PRODUCT_ID = "campaigncue" as const;
+export const CAMPAIGNCUE_PRODUCT_NAME = "CampaignCue" as const;
+export const CAMPAIGNCUE_SIGNIN_PRODUCT_PARAM = CAMPAIGNCUE_PRODUCT_ID;
+export const CAMPAIGNCUE_RATE_LIMIT_NAMESPACE = CAMPAIGNCUE_PRODUCT_ID;
+

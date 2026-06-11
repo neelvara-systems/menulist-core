@@ -14,6 +14,7 @@ import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
 import { UpgradeSubscriptionRequestSchema } from "@lib/validation/apiSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
+import { calculateRemainingCredits } from "@util/razorpay";
 import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
@@ -87,18 +88,26 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
-        const { rc, nSi, oSi } = validation.data;
-        const remainingCredits = Number(rc);
+        const { nSi, oSi } = validation.data;
         const newSubscriptionId = nSi;
         const oldSubscriptionId = oSi;
 
-        const internalSub: FirestoreSubscriptionDoc = await getProductSubscriptionById(productId, oldSubscriptionId);
+        if (newSubscriptionId === oldSubscriptionId) {
+            return NextResponse.json({ error: "New and old subscriptions must be different." }, { status: 400 });
+        }
+
+        const internalSub = await getProductSubscriptionById(productId, oldSubscriptionId);
         if (!internalSub || !internalSub.providerSubscriptionId) {
             return NextResponse.json({ error: "No active subscription found to upgrade." }, { status: 404 });
         }
 
+        const newInternalSub = await getProductSubscriptionById(productId, newSubscriptionId);
+        if (!newInternalSub || !newInternalSub.providerSubscriptionId) {
+            return NextResponse.json({ error: "New subscription was not found." }, { status: 404 });
+        }
+
         // 🔒 CRITICAL: Verify old subscription belongs to user's tenant/store
-        if (Number(tenantId) != internalSub.tenantId || Number(storeId) != internalSub.storeId) {
+        if (Number(tenantId) != Number(internalSub.tenantId) || Number(storeId) != Number(internalSub.storeId)) {
             logger.security('Unauthorized Subscription Upgrade Attempt', {
                 ...buildSecurityContext(session, request),
                 endpoint: '/api/razorpay/upgrade-subscription',
@@ -113,6 +122,41 @@ export const POST = withAuth(async (request, session) => {
                 { status: 403 }
             );
         }
+
+        if (Number(tenantId) != Number(newInternalSub.tenantId) || Number(storeId) != Number(newInternalSub.storeId)) {
+            logger.security('Unauthorized New Subscription Upgrade Attempt', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/upgrade-subscription',
+                error: 'User attempted to carry credits to a subscription for different tenant/store',
+                productId,
+                newSubscriptionTenantId: newInternalSub.tenantId,
+                newSubscriptionStoreId: newInternalSub.storeId,
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        const alreadyAppliedCarryForward = (newInternalSub as any).carryForwardFromSubscriptionId === oldSubscriptionId;
+        if (internalSub.status === 'expired' && alreadyAppliedCarryForward) {
+            await safeSyncProductSubscriptionEntitlementFromSubscription(
+                productId,
+                { ...internalSub, status: 'expired' },
+                'api:upgrade-subscription:old-expired-idempotent',
+            );
+            return NextResponse.json({ success: true, message: "Subscription upgraded successfully." });
+        }
+
+        const calculatedCredits = calculateRemainingCredits(internalSub);
+        const remainingCredits = Math.max(
+            0,
+            Math.min(
+                1_000_000,
+                Math.floor(Number(calculatedCredits.totalRemainingCredits || 0)),
+            ),
+        );
 
         await writeLogEntry({
             logFileName: LOG_FILE,
@@ -162,6 +206,24 @@ export const POST = withAuth(async (request, session) => {
                 },
             ],
         });
+        if (!alreadyAppliedCarryForward) {
+            await updateProductSubscription(productId, newInternalSub.id, {
+                topUpCredits: remainingCredits,
+                carryForwardCredits: remainingCredits,
+                carryForwardFromSubscriptionId: oldSubscriptionId,
+                carryForwardAppliedAt: Timestamp.now(),
+                statuses: [
+                    ...(newInternalSub.statuses || []),
+                    {
+                        status: 'carry_forward_applied',
+                        timestamp: Timestamp.now(),
+                        amount: newInternalSub.amount,
+                        currency: newInternalSub.currency,
+                        remark: `Credits carried forward from upgraded subscription: ${remainingCredits}`,
+                    },
+                ],
+            } as Partial<FirestoreSubscriptionDoc>);
+        }
         await safeSyncProductSubscriptionEntitlementFromSubscription(
             productId,
             { ...internalSub, status: 'expired' },

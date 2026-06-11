@@ -17,7 +17,6 @@ import { getWidgetRuntimeStatusFromStoreData } from '@lib/answerlattice/widgetRu
 import {
     ANSWERLATTICE_WIDGET_KEY_LIMIT,
     buildAnswerlatticeWidgetKeySummaries,
-    getAnswerlatticeWidgetKeyEncryptionReadiness,
     normalizeAnswerlatticeWidgetApiState,
 } from '@lib/answerlattice/widgetKeyManager';
 import {
@@ -53,14 +52,11 @@ const buildConfigResponse = (storeData: Record<string, any>) => ({
     schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
     config: normalizeWidgetConfig(storeData.widgetConfig),
     allowedOrigins: normalizeWidgetAllowedOrigins(storeData.widgetAllowedOrigins),
-    keyPrefix: normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi).keyPrefix || storeData.publicApi?.keyPrefix || null,
-    hasWidgetKey: (
-        normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi).keyHashes.length > 0
-        || Boolean(storeData.publicApi?.apiKeyHash || storeData.publicApi?.apiKey)
-    ),
+    keyPrefix: normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi).keyPrefix || null,
+    hasWidgetKey: normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi).keyHashes.length > 0,
     keys: buildAnswerlatticeWidgetKeySummaries(storeData.answerlatticeWidgetApi),
     keyLimit: ANSWERLATTICE_WIDGET_KEY_LIMIT,
-    encryptionConfigured: getAnswerlatticeWidgetKeyEncryptionReadiness().configured,
+    encryptionConfigured: false,
     configVersion: Number(storeData.widgetConfigVersion || 0),
     runtimeStatus: getWidgetRuntimeStatusFromStoreData(storeData),
 });
@@ -193,14 +189,11 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
             config,
             allowedOrigins,
-            keyPrefix: normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi).keyPrefix || storeData.publicApi?.keyPrefix || null,
-            hasWidgetKey: (
-                normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi).keyHashes.length > 0
-                || Boolean(storeData.publicApi?.apiKeyHash || storeData.publicApi?.apiKey)
-            ),
+            keyPrefix: normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi).keyPrefix || null,
+            hasWidgetKey: normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi).keyHashes.length > 0,
             keys: buildAnswerlatticeWidgetKeySummaries(storeData.answerlatticeWidgetApi),
             keyLimit: ANSWERLATTICE_WIDGET_KEY_LIMIT,
-            encryptionConfigured: getAnswerlatticeWidgetKeyEncryptionReadiness().configured,
+            encryptionConfigured: false,
             configVersion: Number(storeData.widgetConfigVersion || 0) + 1,
         });
     } catch (error) {

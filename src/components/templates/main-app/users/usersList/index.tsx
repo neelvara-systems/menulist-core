@@ -36,6 +36,14 @@ const userMatchesSearch = (user: any, query: string) => {
     return searchableText.includes(query);
 }
 
+const userHasCurrentStore = (user: any, storeId: number | string | undefined) => (
+    Boolean(storeId)
+    && (
+        user?.storeIds?.some((id: any) => Number(id) === Number(storeId))
+        || user?.stores?.some((store: any) => Number(store?.storeId) === Number(storeId))
+    )
+);
+
 function UsersListPage() {
 
     const [searchQuery, setSearchQuery] = useState('')
@@ -146,6 +154,7 @@ function UsersListPage() {
         });
         const usersListCopy = removeObjRef(getSafeUsersList(usersList));
         const nextUsers = response.user?.deleted
+            || !userHasCurrentStore(response.user, storeDetails.storeId)
             ? usersListCopy.filter((item) => item.id !== user.id)
             : usersListCopy.map((item) => item.id === user.id ? response.user : item);
         resetFilters(nextUsers);

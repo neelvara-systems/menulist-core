@@ -1,6 +1,6 @@
 # Roles & Permissions — Mobile Support
 
-**Last Updated:** May 19, 2026 (v5 — signed-in profile owns account access)
+**Last Updated:** June 11, 2026 (v6 — current-store staff isolation verified)
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage roles and permissions from phone
 
 ---
@@ -43,7 +43,7 @@
 
 ## DAL Parity
 
-- Uses same `/api/staff`, `/api/staff/password-reset`, and `/api/staff/roles` server contracts as desktop
+- Uses same `/api/staff`, `/api/staff/password-reset`, `/api/staff/force-signout`, and `/api/staff/roles` server contracts as desktop
 - Mobile add/reset supports email, phone, and Staff ID aliases. When mobile create has a phone number, it sends the store country/dial code as the fallback phone context. Owner create/reset shows a temporary passcode once in a closeable mobile sheet with row-level copy icons, equal-width **WhatsApp** and **Share** actions, and a `wa.me` share link that targets the staff phone number when one is saved.
 - Mobile self-service password change uses the shared `/api/auth/change-password` route from the signed-in profile screen. The old top-level More row is intentionally removed because account access is a rare profile action, not a daily settings action.
 - Mobile signed-in profile edit uses `/api/auth/update-profile` for the current user's name, display/contact email, and phone fields. This does not change the Firebase Auth login email; password/passcode changes stay under Account access.
@@ -67,4 +67,4 @@
 
 ## RBAC Enforcement (Inherited)
 
-Mobile calls the same staff/role APIs as desktop. Those routes enforce `withAuth()`, tenant/store checks, `canManageUsers`, `canAssignRoles`, role validation, and last-owner protection. Mobile also hides unavailable bottom tabs and More sub-screens before navigation; direct hash/sub-screen access falls back to More with a short unavailable message.
+Mobile calls the same staff/role APIs as desktop. Those routes enforce `withAuth()`, tenant/store checks, `canManageUsers`, `canAssignRoles`, role validation, current-store scoped staff payloads for non-master managers, and last-owner protection. Mobile also hides unavailable bottom tabs and More sub-screens before navigation; direct hash/sub-screen access falls back to More with a short unavailable message. Removing a staff member from the current store removes them from the current-store mobile list even if the account remains assigned to another location.

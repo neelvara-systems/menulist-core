@@ -1,6 +1,6 @@
 # Stores Management — Mobile Support
 
-**Last Updated:** February 16, 2026
+**Last Updated:** June 11, 2026
 **Decision:** ❌ DESKTOP-ONLY — Internal admin tool for platform operators
 
 ---
@@ -14,4 +14,19 @@
 | **Touch** | ❌ FAIL | Form-heavy admin interface |
 | **Value** | ❌ FAIL | Admin work done at desk |
 
-**Decision:** Desktop-only. This is an internal platform admin tool restricted to `ECOMSAI_PLATFORM_USER_ROLE`. Regular owners never see this. Store settings that owners DO manage (name, address, hours) are available via MobileBasicSettingsScreen, MobilePublicInfoScreen, and MobileHoursScreen.
+**Decision:** Desktop-only for platform store CRUD. This is an internal platform admin tool restricted to `ECOMSAI_PLATFORM_USER_ROLE`. Regular owners never see platform store creation/edit tables.
+
+Owner-managed store settings have mobile parity through the mobile PWA shell:
+
+- Basic business profile: `MobileBasicSettingsScreen`
+- Public address and map coordinates: `MobilePublicInfoScreen`
+- Official Business Page fields/media/actions: `MobileOfficialPageScreen`
+- Business attributes: `MobileBusinessAttributesScreen`
+- Customer app/PWA settings: `MobileCustomerAppScreen`
+- Domain and subdomain settings: `MobileDomainSettingsScreen` / `MobileSubdomainScreen`
+- Locale, timezone, and business-day cutoff: `MobileLocaleSettingsScreen`
+- Working hours and temporary status: `MobileHoursScreen`, `MobileWorkingHoursEditScreen`, `MobileTempStatusScreen`
+- Time-slot presets: `MobileTimeSlotsScreen`
+- SEO/analytics/verification: `MobileSeoAnalyticsScreen`
+
+These owner mobile screens reuse the same `updateStore()`, `/api/domain`, `/api/store/temp-status`, `updateTimeSlotPresets()`, `updatePresetInAllCategories()`, and `removePresetFromAllCategories()` write paths as desktop, so public cache invalidation and category time-window cleanup stay aligned.

@@ -28,6 +28,7 @@ import { getStoredOwnerProjectId, setStoredOwnerProjectId } from '@lib/projects/
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Card, Flex, Space, Typography } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import React, { useCallback, useContext, useEffect, useState } from 'react';
 
 import DailyView from './DailyView';
@@ -49,9 +50,9 @@ import { BusinessHealthDashboardCard } from '../../ownerBusinessAssistant/Busine
 import styles from './OwnerDashboard.module.scss';
 
 const { Text, Title } = Typography;
-const SETTLED_TAB_HELPER_TEXT = 'Settled analytics are fetched only when this tab is opened. After the first fetch, this device uses cached settled data until the next store end-of-day cycle.';
 
 const OwnerDashboard: React.FC = () => {
+    const t = useTranslations('Dashboard.owner');
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
     // Derive a fallback projectId from storeDetails immediately (no SWR wait needed)
@@ -136,12 +137,12 @@ const OwnerDashboard: React.FC = () => {
     if (error) {
         return (
             <Card className={styles.errorCard}>
-                <Alert
-                    type="error"
-                    message="Unable to load dashboard"
-                    description="Please try refreshing the page. If the problem persists, contact support."
-                    showIcon
-                />
+                    <Alert
+                        type="error"
+                        message={t('unableToLoad')}
+                        description={t('refreshOrContactSupport')}
+                        showIcon
+                    />
             </Card>
         );
     }
@@ -155,14 +156,14 @@ const OwnerDashboard: React.FC = () => {
             case 'today':
                 return (
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        <Title level={4} style={{ margin: 0 }}>Today so far</Title>
+                        <Title level={4} style={{ margin: 0 }}>{t('views.todaySoFar')}</Title>
                         <Flex gap={16} wrap="wrap">
                             <div style={{ flex: '1 1 420px', minWidth: 0 }}>
                                 <TodaySoFarCard
                                     data={data?.today || null}
                                     loading={loadingToday}
                                     fetchedAt={data?.lastFetched}
-                                    title="Menu"
+                                    title={t('menu')}
                                 />
                             </div>
                             <div style={{ flex: '1 1 420px', minWidth: 0 }}>
@@ -181,8 +182,8 @@ const OwnerDashboard: React.FC = () => {
                 if (loading && !data?.overview && !hasOBPSettledData) return <LoadingState />;
                 return (
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        <Title level={4} style={{ margin: 0 }}>Overview</Title>
-                        <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
+                        <Title level={4} style={{ margin: 0 }}>{t('views.overview')}</Title>
+                        <Text type="secondary">{t('settledTabHelper')}</Text>
                         <OverviewView
                             data={data?.overview || null}
                             qualitySignalsSlot={<MenuQualitySignals projectId={activeProjectId} />}
@@ -200,8 +201,8 @@ const OwnerDashboard: React.FC = () => {
                 if (loadingDaily) return <LoadingState />;
                 return (
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        <Title level={4} style={{ margin: 0 }}>Yesterday</Title>
-                        <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
+                        <Title level={4} style={{ margin: 0 }}>{t('views.yesterday')}</Title>
+                        <Text type="secondary">{t('settledTabHelper')}</Text>
                         <DailyView data={data?.daily || null} />
                         <OBPMetricsCard
                             data={obpDashboard.data}
@@ -215,8 +216,8 @@ const OwnerDashboard: React.FC = () => {
                 if (loadingWeekly) return <LoadingState />;
                 return (
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        <Title level={4} style={{ margin: 0 }}>Last 7 Days</Title>
-                        <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
+                        <Title level={4} style={{ margin: 0 }}>{t('views.last7Days')}</Title>
+                        <Text type="secondary">{t('settledTabHelper')}</Text>
                         <WeeklyView data={data?.weekly || null} />
                         <OBPMetricsCard
                             data={obpDashboard.data}
@@ -230,8 +231,8 @@ const OwnerDashboard: React.FC = () => {
                 if (loadingMonthly) return <LoadingState />;
                 return (
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        <Title level={4} style={{ margin: 0 }}>This Month</Title>
-                        <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
+                        <Title level={4} style={{ margin: 0 }}>{t('views.thisMonth')}</Title>
+                        <Text type="secondary">{t('settledTabHelper')}</Text>
                         <MonthlyView data={data?.monthly || null} />
                         <OBPMetricsCard
                             data={obpDashboard.data}
@@ -245,8 +246,8 @@ const OwnerDashboard: React.FC = () => {
                 if (loading && !data?.overall && !hasOBPSettledData) return <LoadingState />;
                 return (
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        <Title level={4} style={{ margin: 0 }}>Overall</Title>
-                        <Text type="secondary">{SETTLED_TAB_HELPER_TEXT}</Text>
+                        <Title level={4} style={{ margin: 0 }}>{t('views.overall')}</Title>
+                        <Text type="secondary">{t('settledTabHelper')}</Text>
                         {data?.overall ? <OverallFooter data={data.overall} /> : null}
                         <MenuAnalyticsDetailsCard data={data?.overall || null} />
                         <OBPMetricsCard
@@ -266,7 +267,7 @@ const OwnerDashboard: React.FC = () => {
         <div className={styles.ownerDashboard}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <Flex align="center" gap={8}>
-                    <Text type="secondary" style={{ fontSize: 13 }}>Viewing:</Text>
+                    <Text type="secondary" style={{ fontSize: 13 }}>{t('viewing')}</Text>
                     <DashboardProjectSelector
                         selectedProjectId={activeProjectId}
                         onProjectChange={handleProjectChange}

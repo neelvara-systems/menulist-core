@@ -1,6 +1,7 @@
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { Descriptions, Divider, Image, Table, Tag, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import React, { useContext } from 'react';
 import { TransactionDetails } from '../TransactionDetailsModal'; // Adjust import path if needed
 
@@ -9,9 +10,14 @@ interface ImageProcessingDetailsViewProps {
 }
 
 // Helper to render extracted menu items from image processing
-const renderExtractedMenuItems = (clientResponse: any, categories: any[], currencySymbol: string) => {
+const renderExtractedMenuItems = (
+    clientResponse: any,
+    categories: any[],
+    currencySymbol: string,
+    t: (key: string) => string,
+) => {
     if (!clientResponse?.data?.items || clientResponse.data.items.length === 0) {
-        return <Typography.Text>No menu items found</Typography.Text>;
+        return <Typography.Text>{t('noMenuItemsFound')}</Typography.Text>;
     }
     const items = clientResponse.data.items;
 
@@ -19,23 +25,23 @@ const renderExtractedMenuItems = (clientResponse: any, categories: any[], curren
         <Table
             dataSource={items.map((item: any) => ({
                 key: item.id,
-                name: typeof item.name === 'object' ? item.name?.en : String(item.name) || 'Unnamed Item',
+                name: typeof item.name === 'object' ? item.name?.en : String(item.name) || t('unnamedItem'),
                 category: (() => {
                     const category = categories.find((c: any) => c.id === item.category);
                     if (category && typeof category.name === 'object') {
-                        return category.name?.en || 'Unknown';
+                        return category.name?.en || t('unknown');
                     }
-                    return category?.name || 'Unknown';
+                    return category?.name || t('unknown');
                 })(),
-                price: item.price || (item.attributes ? 'Multiple prices' : 'N/A')
+                price: item.price || (item.attributes ? t('multiplePrices') : t('notAvailable'))
             }))}
             columns={[
-                { title: 'Item Name', dataIndex: 'name', key: 'name' },
-                { title: 'Category', dataIndex: 'category', key: 'category' },
+                { title: t('itemName'), dataIndex: 'name', key: 'name' },
+                { title: t('category'), dataIndex: 'category', key: 'category' },
                 {
-                    title: 'Price', dataIndex: 'price', key: 'price',
+                    title: t('price'), dataIndex: 'price', key: 'price',
                     render: (price) => {
-                        if (typeof price === 'string' && price !== 'N/A' && price !== 'Multiple prices') {
+                        if (typeof price === 'string' && price !== t('notAvailable') && price !== t('multiplePrices')) {
                             const numericPrice = parseFloat(price);
                             return isNaN(numericPrice) ? price : formatMenuPrice(numericPrice, currencySymbol, { fractionDigits: 2 });
                         }
@@ -59,13 +65,13 @@ const renderExtractedMenuItems = (clientResponse: any, categories: any[], curren
                                 item.attributes.map((attr: any, index: number) => ({
                                     ...attr,
                                     key: `${record.key}-attr-${index}`,
-                                    name: typeof attr.name === 'string' ? attr.name : 'Variation',
+                                    name: typeof attr.name === 'string' ? attr.name : t('variation'),
                                     price: typeof attr.price === 'string' ? attr.price : '0'
                                 })) : []}
                             columns={[
-                                { title: 'Variation', dataIndex: 'name', key: 'name' },
+                                { title: t('variation'), dataIndex: 'name', key: 'name' },
                                 {
-                                    title: 'Price',
+                                    title: t('price'),
                                     dataIndex: 'price',
                                     key: 'price',
                                     render: (price) => {
@@ -96,6 +102,7 @@ const renderExtractedMenuItems = (clientResponse: any, categories: any[], curren
 };
 
 const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({ transaction }) => {
+    const t = useTranslations('Transactions');
     const { files, targetLanguages, clientResponse } = transaction;
     const { tenantDetails, storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const currencySymbol = storeDetails?.currencySymbol || '₹';
@@ -105,8 +112,8 @@ const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({
 
     return (
         <>
-            <Descriptions title="Processing Information" column={1}>
-                <Descriptions.Item label="Target Languages">
+            <Descriptions title={t('processingInformation')} column={1}>
+                <Descriptions.Item label={t('targetLanguages')}>
                     {targetLanguages?.map((lang) => (
                         <Tag key={lang.code}>{lang.name} ({lang.code})</Tag>
                     ))}
@@ -119,11 +126,11 @@ const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({
                 {/* Left section - Image */}
                 {files && files.length > 0 && (
                     <div style={{ flex: '0 0 45%', minWidth: '300px' }}>
-                        <Typography.Title level={5}>Input Image</Typography.Title>
+                        <Typography.Title level={5}>{t('inputImage')}</Typography.Title>
                         <div style={{ textAlign: 'center' }}>
                             <Image
                                 src={files[0].url}
-                                alt="Input Image"
+                                alt={t('inputImage')}
                                 style={{ maxHeight: '400px', maxWidth: '100%' }}
                             />
                         </div>
@@ -132,7 +139,7 @@ const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({
 
                 {/* Right section - Extracted Content */}
                 <div style={{ flex: '1 1 45%', minWidth: '300px' }}>
-                    <Typography.Title level={5}>Extracted Content</Typography.Title>
+                    <Typography.Title level={5}>{t('extractedContent')}</Typography.Title>
                     <div style={{ maxHeight: 400, overflow: 'auto' }}>
                         {tenantDetails?.businessEntityType === 'B2B' ? (
                             // Raw JSON for B2B
@@ -144,19 +151,19 @@ const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({
                             <>
                                 {categories.length > 0 && (
                                     <div style={{ marginBottom: '16px' }}>
-                                        <Typography.Text strong>Menu Categories:</Typography.Text>
+                                        <Typography.Text strong>{t('menuCategories')}</Typography.Text>
                                         {categories.map((category: any) => (
                                             <Tag key={category.id} color="blue" style={{ margin: '4px' }}>
-                                                {category.name?.en || 'Unnamed Category'}
+                                                {category.name?.en || t('unnamedCategory')}
                                             </Tag>
                                         ))}
                                     </div>
                                 )}
 
-                                {renderExtractedMenuItems(clientResponse, categories, currencySymbol)}
+                                {renderExtractedMenuItems(clientResponse, categories, currencySymbol, t)}
 
                                 {items.length === 0 && categories.length === 0 && (
-                                    <Typography.Text>No menu items or categories found</Typography.Text>
+                                    <Typography.Text>{t('noMenuItemsOrCategoriesFound')}</Typography.Text>
                                 )}
                             </>
                         )}

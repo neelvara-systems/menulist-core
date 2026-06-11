@@ -92,7 +92,7 @@ export default function ContactPage() {
 
       {/* Two-column layout */}
       <SectionWrapper variant="subtle">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 'var(--ws-space-12)', maxWidth: '1000px', margin: '0 auto', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: 'var(--ws-space-12)', maxWidth: '1000px', margin: '0 auto', alignItems: 'start' }}>
 
           {/* Left: Why */}
           <AnimateOnScroll>

@@ -1,7 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { getAnswerlatticeTimestampMillis } from '@lib/answerlattice/cacheFreshness';
 import { AiSearchHistory } from '@type/aiSearchHistory';
 import LoginUserType from '@type/loginUser';
 
@@ -61,18 +60,12 @@ export const findCachedSearchByCacheKeyServer = async (
         .where('cacheKey', '==', cacheKey)
         .where('tId', '==', Number(session.tId))
         .where('sId', '==', Number(session.sId))
+        .orderBy('createdOn', 'desc')
         .limit(1)
         .get();
 
     if (snapshot.empty) return null;
 
-    const candidates = snapshot.docs
-        .map((docSnapshot) => ({ ...docSnapshot.data(), id: docSnapshot.id } as AiSearchHistory))
-        .sort((a, b) => {
-            const bCreated = getAnswerlatticeTimestampMillis(b.createdOn || b.modifiedOn);
-            const aCreated = getAnswerlatticeTimestampMillis(a.createdOn || a.modifiedOn);
-            return bCreated - aCreated;
-        });
-
-    return candidates[0] || null;
+    const docSnapshot = snapshot.docs[0];
+    return { ...docSnapshot.data(), id: docSnapshot.id } as AiSearchHistory;
 };

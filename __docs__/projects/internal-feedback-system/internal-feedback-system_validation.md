@@ -1,6 +1,7 @@
 # Internal Feedback System — Validation Report
 
 **Generated:** February 2026  
+**Last Runtime Audit:** June 11, 2026
 **Status:** ✅ FULLY IMPLEMENTED  
 **Spec Compliance:** 100%
 
@@ -68,11 +69,11 @@ The Internal Feedback System core implementation is complete and ready for integ
 | 2   | XSS prevention          | `sanitizeString()` in publicApi.ts       | ✅     |
 | 3   | Rate limiting           | IP-based, 10/10min (`publicLimiter.ts`)  | ✅     |
 | 4   | Bot detection           | Honeypot field (`website` must be empty) | ✅     |
-| 5   | Tenant isolation        | `tId` + `sId` required on all queries    | ✅     |
+| 5   | Tenant isolation        | `tId` + `sId` required on all queries; owner updates enforce tenant and store | ✅     |
 | 6   | Auth for owner routes   | NextAuth session check                   | ✅     |
 | 7   | RBAC for multi-outlet   | Manager sees own store, HQ sees all      | ✅     |
 | 8   | No contact data in logs | Not logged in console.error              | ✅     |
-| 9   | Firestore rules         | Public create, auth read/update          | ✅     |
+| 9   | Firestore rules         | API-only creates, auth tenant/store read, status-only update | ✅     |
 | 10  | HTTPS only              | Vercel default                           | ✅     |
 
 ---
@@ -218,6 +219,14 @@ The Guest Feedback System is **fully implemented** across all phases.
 - ✅ Full security (Zod, sanitization, tenant isolation, Firestore rules)
 - ✅ 90-day retention via Cloud Function in nightly scheduler
 - ✅ Mobile screens (MobileFeedbackScreen + MobileFeedbackDetail)
+
+## June 11, 2026 Audit Addendum
+
+- Public feedback API now writes through `src/database/guestFeedback/server.ts` with Firebase Admin SDK.
+- Direct unauthenticated `guestFeedback` Firestore creates are denied.
+- Store contact-field defaults are enforced server-side; hidden fields are dropped and required fields are validated.
+- Manager/store-scoped status updates cannot cross store boundaries inside the same tenant.
+- Phone input has server-side format validation.
 - ✅ Business settings tab with feedback defaults and Google Review URL
 - ✅ Sidebar navigation (`/feedback` with LuTicket icon)
 - ✅ Menu footer feedback link integration

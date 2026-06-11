@@ -88,32 +88,18 @@ const fetchSubscriptionRaw = async (tenantId: number, storeId: number): Promise<
 const expireIfGracePeriodEnded = async (sub: FirestoreSubscriptionDoc): Promise<FirestoreSubscriptionDoc | null> => {
     if (!sub.pastDueSinceAt) return sub;
 
-    const { remainingDays, graceEndsDate } = getGracePeriodInfo(sub.pastDueSinceAt);
+    const { remainingDays } = getGracePeriodInfo(sub.pastDueSinceAt);
 
     if (remainingDays > 0) {
         // User is INSIDE the grace period — still has access
         return sub;
     }
 
-    // User is OUTSIDE the grace period — auto-expire
-    if (!validateTransition(sub.status, 'expired', 'dal:grace-period-auto-expire')) {
+    // Client reads cannot mutate billing documents. Server-owned access paths
+    // perform the authoritative expiry write and entitlement sync.
+    if (!validateTransition(sub.status, 'expired', 'dal:grace-period-client-check')) {
         return sub;
     }
-    await updateSubscription(sub.id, {
-        status: 'expired',
-        cycleEndDate: Timestamp.now(),
-        subscriptionEndDate: Timestamp.now(),
-        statuses: [
-            ...sub.statuses,
-            {
-                status: "expired",
-                timestamp: Timestamp.now(),
-                amount: sub.amount,
-                currency: sub.currency,
-                remark: `Expired due to payment failed and past due since ${graceEndsDate?.toLocaleDateString()}`
-            },
-        ],
-    });
     return null;
 };
 

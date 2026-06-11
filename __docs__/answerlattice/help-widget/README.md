@@ -4,7 +4,7 @@
 > **Status:** v2 IMPLEMENTED
 > **Date:** 2026-05-12
 > **Feature Flags:** `ENABLE_ANSWERLATTICE_WIDGET` (core), `ENABLE_ANSWERLATTICE_CONTEXT_AWARE` (context layer), `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS` (procedure rendering)
-> **Auth:** API key via `X-API-Key` header. Widget keys live on `stores/{sId}.answerlatticeWidgetApi` as bounded named keys (`keyHashes` + `keysByHash`), validate by SHA-256 hash, and are copyable later only when encrypted key storage is configured.
+> **Auth:** API key via `X-API-Key` header. Widget keys live on `stores/{sId}.answerlatticeWidgetApi` as bounded named keys (`keyHashes` + `keysByHash`), validate by SHA-256 hash, and are shown only once at creation time.
 
 ---
 
@@ -81,11 +81,11 @@ Route blocklists are stored in the same dashboard config and evaluated inside th
 
 Widget keys are stored separately from broader Answerlattice public API credentials:
 
-- `answerlatticeWidgetApi` — bounded embeddable widget key manager with `widget:*` scopes, name/rename/copy/delete actions, hash lookup, and optional encrypted key recovery.
+- `answerlatticeWidgetApi` — bounded embeddable widget key manager with `widget:*` scopes, name/rename/delete actions, hash lookup, and one-time raw key display at creation.
 - `publicApi` — Answerlattice public API credential with public API scope.
 
 Widget runtime routes opt into `answerlatticeWidgetApi` only. Answerlattice public API routes continue to use `publicApi` and reject widget-only keys.
-Set `ANSWERLATTICE_WIDGET_KEY_ENCRYPTION_SECRET` in each Answerlattice runtime environment to make newly generated widget keys copyable later. Without that secret, new keys still validate by hash and are returned after creation, but existing raw keys cannot be recovered.
+Raw widget keys are never stored for dashboard recovery. If an operator loses a raw widget key after creation, they create a replacement key and update the client install.
 
 ---
 

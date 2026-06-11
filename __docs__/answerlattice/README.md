@@ -40,6 +40,8 @@ Answerlattice dashboard navigation is grouped by the product-owner workflow. The
 
 The Activation Command Center reads compact summary docs only. Generated entity candidates and canonical answer drafts appear in Governance for human approval; drafts are never auto-published.
 
+Owner-facing setup surfaces must stay direct and founder-readable. The dashboard metadata identifies Answerlattice instead of inheriting MenuList social metadata, Activation avoids time-to-launch promises, setup-state messages avoid backend implementation terms, Install Center snippets use an explicit full-key placeholder instead of a saved key prefix, Weekly Digest describes the prepared summary in owner terms, and review queues explain the next useful action when empty. These usability changes add no Firebase reads, writes, listeners, indexes, or scheduler work.
+
 ---
 
 ## Document Index
@@ -169,7 +171,7 @@ The mobile More tab does not route-hop to `/answerlattice/*`; it renders `src/co
 - `/sites/answerlattice/sitemap.xml`, `/sites/answerlattice/robots.txt` → Answerlattice product-domain SEO metadata routes
 - `/widget/[apiKey]` → embeddable end-user help widget
 
-The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, safe page context from `AnswerlatticeWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are managed as bounded named keys on `stores/{sId}.answerlatticeWidgetApi`; malformed keys short-circuit before Firestore lookup, runtime validation uses key hashes, and copy-anytime is available only for encrypted widget keys when the Answerlattice widget-key encryption secret is configured. The public site avoids exposing tenant/store ids and routes completed onboarding to `/answerlattice/activation`.
+The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, safe page context from `AnswerlatticeWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are managed as bounded named keys on `stores/{sId}.answerlatticeWidgetApi`; malformed keys short-circuit before Firestore lookup, runtime validation uses key hashes, and raw keys are shown only once at creation time. The public site avoids exposing tenant/store ids and routes completed onboarding to `/answerlattice/activation`.
 
 ### API Routes
 
@@ -181,7 +183,7 @@ The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions
 - `GET/PUT /api/answerlattice/workspace-profile` — Product URL, support email, billing model, scheduler timezone/support-day end time, and initial surface profile
 - `GET/PUT /api/answerlattice/widget-config` — Protected widget configuration, allowed origins, blocked routes, and runtime status
 - `GET /api/answerlattice/operations/status` — Protected Activation Daily Governance status from compact scheduler summaries and capped run logs
-- `POST /api/answerlattice/widget-key` — Protected widget key create/rename/copy/delete management
+- `POST /api/answerlattice/widget-key` — Protected widget key create/rename/delete management; raw keys are shown only once on create
 - `POST /api/answerlattice/tenant-summary` — Authenticated server-side sync for `platformSummary/answerlatticeTenantsSummary` after client-side entity creation
 - `POST /api/answerlattice/product-surfaces/rebuild-summary` — Authenticated rebuild of compact `platformSummary/contextContent_{tId}_{sId}` for route-aware related content
 
@@ -321,7 +323,7 @@ Planned docs only: Owner Support Assistant defines `ENABLE_ANSWERLATTICE_OWNER_S
 
 Owner Support Assistant docs add no assistant-owned Firestore collection, action queue, or dedicated owner analytics collection. The planned route must reuse compact summaries, existing daily aggregates, existing ticket, Support Board/Governance records, target histories, `answerlattice_auditLogs` when assistant execution needs explicit audit, and `answerlattice_aiOperations` only for LLM-backed operations. New read models are planned as compact `platformSummary/ownerSupportAssistantSummary_{tId}_{sId}` and `platformSummary/ownerSupportAnalyticsSummary_{tId}_{sId}` documents.
 
-**Rules, auth, and indexes:** Answerlattice tenant-scoped rules are mirrored in `firestore.rules` for explicit shared-mode/emulator recovery and `firestore-answerlattice.rules` for the active Answerlattice Firebase targets (`answerlattice-qa` locally/in Preview, `answerlattice` in Production). `/api/auth/set-claims` returns a separate Answerlattice custom token when `ANSWERLATTICE_FIREBASE_MODE=separate` and the request is Answerlattice-scoped with `productId: 'AL'`; normal MenuList auth sync must not mint Answerlattice tokens. The client signs into the Answerlattice Firebase app with Answerlattice-scoped `platformRole`, `tenantId`, `storeId`, and Answerlattice permission claims resolved from the default user document's `productAccounts.AL` bridge, the Answerlattice `users` document, and `stores/{sId}.answerlatticeRoles`. Answerlattice query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-answerlattice.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
+**Rules, auth, and indexes:** Answerlattice tenant-scoped rules are mirrored in `firestore.rules` for explicit shared-mode/emulator recovery and `firestore-answerlattice.rules` for the active Answerlattice Firebase targets (`answerlattice-qa` locally/in Preview, `answerlattice` in Production). `/api/auth/set-claims` returns a separate Answerlattice custom token when `ANSWERLATTICE_FIREBASE_MODE=separate` and the request is Answerlattice-scoped with `productId: 'AL'`; normal MenuList auth sync must not mint Answerlattice tokens. The client signs into the Answerlattice Firebase app with Answerlattice-scoped `platformRole`, `tenantId`, `storeId`, and Answerlattice permission claims resolved from the default user document's `productAccounts.AL` bridge, the Answerlattice `users` document, and `stores/{sId}.answerlatticeRoles`. Platform/support fallback claims must still use the `productAccounts.AL` tenant/store scope, not the default MenuList store. If separate Answerlattice Firebase Auth cannot mint the custom token, the route returns a controlled service-unavailable response rather than silently falling back to MenuList Firebase credentials. Answerlattice query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-answerlattice.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
 
 ---
 
@@ -411,6 +413,7 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-11 | 3.4.11  | Hardened founder/operator usability across Answerlattice setup surfaces: product-scoped dashboard metadata, safer widget-key placeholders, clearer intake/governance empty states, mobile file selection, and owner-readable digest copy. |
 | 2026-06-07 | 3.4.10  | Marked Owner Support Assistant docs frozen after final codebase-truth cross-check across storage, routes, permissions, tickets, Support Board, analytics, actions, and Firebase cost. |
 | 2026-06-07 | 3.4.9   | Added Owner Support Assistant supported cases/actions catalogue covering handled prompts, permission gates, confirmed actions, and unsupported boundaries. |
 | 2026-06-07 | 3.4.8   | Added Owner Support Assistant action-support architecture: typed preview/execute adapters over existing ticket, Support Board, Knowledge Intake, and Governance write paths with no action queue. |

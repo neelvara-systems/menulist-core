@@ -182,10 +182,14 @@ function htmlToPlainText(html: string, fallback: string): string {
 }
 
 async function getStoreInfo(event: OwnerNotificationEventDoc): Promise<StoreInfo | null> {
-  const storeDoc = await db
-    .collection(DB_COLLECTIONS.TENANTS).doc(event.tenantId)
-    .collection(DB_COLLECTIONS.STORES).doc(event.storeId)
-    .get();
+  let storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(event.storeId).get();
+
+  if (!storeDoc.exists) {
+    storeDoc = await db
+      .collection(DB_COLLECTIONS.TENANTS).doc(event.tenantId)
+      .collection(DB_COLLECTIONS.STORES).doc(event.storeId)
+      .get();
+  }
 
   const data = storeDoc.exists ? storeDoc.data() || {} : {};
   const settings = data.notificationSettings || {};

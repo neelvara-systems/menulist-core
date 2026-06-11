@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { answerlatticeStorageAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { handlePublicApiCorsPreflight, withPublicApiCors } from '@lib/publicApi/auth';
 import { secureError } from '@lib/security/secureLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -24,14 +25,20 @@ const getBucket = () => {
     return answerlatticeStorageAdmin.bucket();
 };
 
-const buildBundleResponse = (buffer: Buffer, cacheControl: string) => new NextResponse(buffer, {
+const buildBundleResponse = (request: NextRequest, buffer: Buffer, cacheControl: string) => withPublicApiCors(new NextResponse(buffer, {
     headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'Cache-Control': cacheControl || 'public, max-age=300',
         'Content-Length': String(buffer.length),
         'X-Content-Type-Options': 'nosniff',
     },
-});
+}), request);
+
+const jsonResponse = (
+    request: NextRequest,
+    body: Record<string, any>,
+    init?: ResponseInit,
+): NextResponse => withPublicApiCors(NextResponse.json(body, init), request);
 
 const rememberPublicBundle = (storagePath: string, buffer: Buffer, cacheControl: string): void => {
     if (buffer.length > MAX_PUBLIC_BUNDLE_PROXY_CACHE_BYTES) return;
@@ -46,33 +53,42 @@ const rememberPublicBundle = (storagePath: string, buffer: Buffer, cacheControl:
     });
 };
 
-export async function GET(_request: NextRequest, context: { params: { path?: string[] } }) {
+export function OPTIONS(request: NextRequest) {
+    return handlePublicApiCorsPreflight(request);
+}
+
+export async function GET(request: NextRequest, context: { params: { path?: string[] } }) {
     try {
         const requestedPath = (context.params.path || []).join('/');
         if (!PUBLIC_BUNDLE_PATH_PATTERN.test(requestedPath) || requestedPath.includes('..')) {
-            return NextResponse.json({ error: 'Not found' }, { status: 404 });
+            return jsonResponse(request, { error: 'Not found' }, { status: 404 });
         }
 
         const storagePath = `answerlattice-context/public/${requestedPath}`;
         const cached = publicBundleProxyCache.get(storagePath);
         if (cached && cached.expiresAt > Date.now()) {
-            return buildBundleResponse(cached.buffer, cached.cacheControl);
+            return buildBundleResponse(request, cached.buffer, cached.cacheControl);
         }
         if (cached) publicBundleProxyCache.delete(storagePath);
 
         const file = getBucket().file(storagePath);
         const [exists] = await file.exists();
         if (!exists) {
-            return NextResponse.json({ error: 'Not found' }, { status: 404 });
+            return jsonResponse(request, { error: 'Not found' }, { status: 404 });
         }
 
         const [buffer] = await file.download();
         const [metadata] = await file.getMetadata().catch(() => [{ cacheControl: 'public, max-age=300' } as any]);
         const cacheControl = metadata.cacheControl || 'public, max-age=300';
         rememberPublicBundle(storagePath, buffer, cacheControl);
-        return buildBundleResponse(buffer, cacheControl);
+        return buildBundleResponse(request, buffer, cacheControl);
     } catch (error) {
         secureError('[Answerlattice Bundles] Public bundle proxy failed', error as Error);
-        return NextResponse.json({ error: 'Bundle unavailable' }, { status: 500 });
+        return jsonResponse(request, { error: 'Bundle unavailable' }, {
+            status: 503,
+            headers: {
+                'Cache-Control': 'no-store',
+            },
+        });
     }
 }

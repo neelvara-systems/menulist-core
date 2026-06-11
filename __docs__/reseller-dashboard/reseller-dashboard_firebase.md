@@ -1,8 +1,9 @@
 # Reseller Dashboard — Firebase Cost Tracking
 
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
-**Status:** 📝 DOCUMENTED  
+**Status:** Implemented — billing/reseller slice audited June 11, 2026
 **Created:** February 27, 2026  
+**Last Updated:** June 11, 2026
 **Audience:** Developers
 
 ---
@@ -52,16 +53,16 @@ Same as offline, minus reseller profile offline cap update unless a profile exis
 | ----------------------- | ---------------------- | ----- | ----------- | ---------------------- |
 | Read subscription       | `subscriptions`        | READ  | 1           | Verify ownership       |
 | Update subscription     | `subscriptions`        | WRITE | 1           | Set active + confirmed |
-| Update transaction      | `resellerTransactions` | WRITE | 1           | Update status          |
-| Update reseller profile | `resellerProfiles`     | WRITE | 1           | Increment count        |
-| **Total**               |                        |       | **1R + 3W** |                        |
+| Sync store entitlement  | `stores`, `platformSummary`, `subscriptions` | WRITE | 2-3 | Mirrors active plan and invalidates public/assistant cache |
+| **Total**               |                        |       | **1R + 3-4W** |                      |
 
 ### 3.4 List Reseller Clients
 
 | Operation          | Collection             | Type | Count  | Notes                    |
 | ------------------ | ---------------------- | ---- | ------ | ------------------------ |
-| Query transactions | `resellerTransactions` | READ | 1      | Where resellerId == user |
-| **Total**          |                        |      | **1R** |                          |
+| Query transactions | `resellerTransactions` | READ | up to 100 reseller / 200 platform | Where resellerId == user for resellers; platform sees latest 200 |
+| Read current subscriptions | `subscriptions` | READ | up to one per visible subscription ID | Bounded `getAll()` keeps current status/quantity/payment-link accurate without duplicating subscription truth into every transaction |
+| **Total**          |                        |      | **bounded transaction rows + bounded subscription docs** | |
 
 ### 3.5 Client Detail
 
@@ -86,6 +87,14 @@ Same as offline, minus reseller profile offline cap update unless a profile exis
 | ------------ | ------------------ | ---- | ------ | ------------ |
 | Read profile | `resellerProfiles` | READ | 1-2    | Direct auth-user doc lookup, then email fallback for legacy auto-ID profiles |
 | **Total**    |                    |      | **1-2R** |            |
+
+### 3.6A Monthly Summary
+
+| Operation | Collection | Type | Count | Notes |
+| --------- | ---------- | ---- | ----- | ----- |
+| Query transactions | `resellerTransactions` | READ | up to 2000 monthly rows | Date range scoped; non-platform also filters `resellerId` |
+| Read visible profile docs | `resellerProfiles` | READ | 1-2 reseller / up to 50 platform | Reseller users no longer read the full profile collection |
+| **Total** | | | **bounded monthly rows + bounded profile docs** | |
 
 ### 3.7 Reseller Management
 
@@ -129,7 +138,7 @@ Same as offline, minus reseller profile offline cap update unless a profile exis
 | ------------------------------ | ---------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------- |
 | `createResellerOnboarding()`   | tenants, stores, users, platformSummary, subscriptions, resellerTransactions, resellerProfiles | 2R + 7-8W  | `src/app/api/reseller/onboard/route.ts` |
 | `confirmOfflinePayment()`      | subscriptions, resellerTransactions, resellerProfiles                                          | 1R + 3W    | `src/database/reseller/index.ts`         |
-| `getResellerClients()`         | resellerTransactions, subscriptions                                                           | 1 query + bounded subscription reads | `src/app/api/reseller/clients/route.ts` |
+| `getResellerClients()`         | resellerTransactions, subscriptions                                                           | Bounded transaction query + bounded subscription reads | `src/app/api/reseller/clients/route.ts` |
 | `getClientDetail()`            | subscriptions, resellerTransactions                                                            | 2R         | `src/database/reseller/index.ts`         |
 | `getResellerProfile()`         | resellerProfiles                                                                               | 1-2R       | `src/database/reseller/index.ts`         |
 | `renewResellerLicense()`       | subscriptions, resellerTransactions, resellerProfiles                                           | 1R + 2-3W  | `src/app/api/reseller/renew/route.ts`    |

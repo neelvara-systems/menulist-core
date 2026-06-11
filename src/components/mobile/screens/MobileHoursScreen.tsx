@@ -367,7 +367,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             operationalCampaigns: sortedOperationalCampaigns,
             primaryCampaign,
             projectName: selectedProjectSummary?.name || 'your menu',
-            staffPromptText: staffPrompt?.text,
+            staffPromptText: staffPrompt?.eligible ? staffPrompt.text : undefined,
             tempStatusMessage: currentTempStatus?.message,
             todayTimingsLabel,
         });
@@ -378,6 +378,7 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         primaryCampaign,
         selectedProjectSummary?.name,
         sortedOperationalCampaigns,
+        staffPrompt?.eligible,
         staffPrompt?.text,
         storeDetails,
         todayMenuLink,
@@ -473,16 +474,22 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
 
         setIsSavingTodayHours(true);
         const previousHours = storeDetails.workingHours || {};
+        const previousHoursLastUpdatedAt = (storeDetails as any).hoursLastUpdatedAt;
         const nextRange = `${todayOpenTime}-${todayCloseTime}`;
         const nextHours = { ...previousHours, [todayKey]: nextRange };
-        setStoreDetails((previous: any) => ({ ...previous, workingHours: nextHours }));
+        const hoursLastUpdatedAt = new Date().toISOString();
+        setStoreDetails((previous: any) => ({ ...previous, hoursLastUpdatedAt, workingHours: nextHours }));
 
         try {
-            await updateStore({ ...storeDetails, workingHours: nextHours } as any);
+            await updateStore({ ...storeDetails, hoursLastUpdatedAt, workingHours: nextHours } as any);
             setIsTodayHoursSheetOpen(false);
             Toast.show({ content: `${todayLabel} hours updated`, duration: 1400 });
         } catch {
-            setStoreDetails((previous: any) => ({ ...previous, workingHours: previousHours }));
+            setStoreDetails((previous: any) => ({
+                ...previous,
+                hoursLastUpdatedAt: previousHoursLastUpdatedAt,
+                workingHours: previousHours,
+            }));
             Toast.show({ content: t('failedToUpdate'), duration: 1500 });
         } finally {
             setIsSavingTodayHours(false);

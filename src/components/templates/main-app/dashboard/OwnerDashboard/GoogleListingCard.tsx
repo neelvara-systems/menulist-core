@@ -18,6 +18,7 @@ import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { StoreDataType } from '@type/platform/store';
 import { updateStore } from '@database/stores';
 import { Button, Card, Flex, Typography, message, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuStore } from 'react-icons/lu';
 
@@ -34,6 +35,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
     const [copied, setCopied] = useState(false);
     const [saving, setSaving] = useState(false);
     const { token } = theme.useToken();
+    const t = useTranslations('Dashboard.owner');
 
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
     if (FEATURE_FLAGS.ENABLE_GBP_SYNC) return null;
@@ -47,10 +49,10 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
         try {
             await navigator.clipboard.writeText(obpUrl);
             setCopied(true);
-            message.success('Link copied');
+            message.success(t('googleListing.linkCopied'));
             setTimeout(() => setCopied(false), 2000);
         } catch {
-            message.error('Could not copy link');
+            message.error(t('googleListing.couldNotCopy'));
         }
     };
 
@@ -73,9 +75,9 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                     googleLinkUpdatedAt: new Date().toISOString(),
                 },
             } as any);
-            message.success('Google listing marked as updated');
+            message.success(t('googleListing.markedUpdated'));
         } catch {
-            message.error('Could not save');
+            message.error(t('googleListing.couldNotSave'));
         } finally {
             setSaving(false);
         }
@@ -100,8 +102,8 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                         <LuCheck size={16} style={{ color: token.colorSuccess }} />
                     </Flex>
                     <Flex vertical style={{ flex: 1 }}>
-                        <Text strong style={{ fontSize: 13 }}>Google listing</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>Website link set to your official page</Text>
+                        <Text strong style={{ fontSize: 13 }}>{t('googleListing.title')}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{t('googleListing.updatedDescription')}</Text>
                     </Flex>
                 </Flex>
             </Card>
@@ -126,7 +128,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                     <LuStore size={16} style={{ color: GOOGLE_BUSINESS_PROFILE_BLUE }} />
                 </Flex>
                 <Flex vertical style={{ flex: 1, minWidth: 0 }}>
-                    <Text strong style={{ fontSize: 13 }}>Set your official link on Google</Text>
+                    <Text strong style={{ fontSize: 13 }}>{t('googleListing.setOfficialLink')}</Text>
                     <Text
                         type="secondary"
                         style={{
@@ -136,7 +138,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                             whiteSpace: 'nowrap',
                         }}
                     >
-                        Update your Google Business Profile website to {obpUrl}
+                        {t('googleListing.updateProfileWebsite', { url: obpUrl })}
                     </Text>
                 </Flex>
                 <Flex gap={6} wrap="wrap" justify="flex-end">
@@ -146,7 +148,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                         onClick={handleCopy}
                         style={{ minHeight: 32 }}
                     >
-                        {copied ? 'Copied' : 'Copy'}
+                        {copied ? t('googleListing.copied') : t('googleListing.copy')}
                     </Button>
                     <Button
                         size="small"
@@ -154,7 +156,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                         onClick={() => window.open('https://business.google.com/', '_blank', 'noopener,noreferrer')}
                         style={{ minHeight: 32 }}
                     >
-                        Open Google
+                        {t('googleListing.openGoogle')}
                     </Button>
                     <Button
                         size="small"
@@ -163,7 +165,7 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
                         loading={saving}
                         style={{ minHeight: 32 }}
                     >
-                        Done
+                        {t('googleListing.done')}
                     </Button>
                 </Flex>
             </Flex>

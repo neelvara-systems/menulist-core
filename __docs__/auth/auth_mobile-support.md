@@ -1,6 +1,6 @@
 # Authentication — Mobile Support
 
-**Last Updated:** February 16, 2026
+**Last Updated:** June 11, 2026
 **Decision:** ✅ SHARED INFRASTRUCTURE — Auth works identically on mobile and desktop
 
 ---
@@ -18,6 +18,7 @@ Not applicable — auth is shared infrastructure, not a separate mobile feature.
 - **Login page**: Mobile-responsive SCSS (fixed in Feb 2026 — overflow, min-width, media queries)
 - **Logout**: `MobileMoreScreen` → `signOutSession()` with confirmation dialog
 - **Session persistence**: Redux Persist + NextAuth cookies — survives PWA restarts
+- **Staff/account access**: `MobileMoreScreen`, `MobileUsersScreen`, and `MobileRolesScreen` use the same server auth, staff, and role APIs as desktop. Mobile staff creation, passcode reset, force sign-out, and role changes are supported.
 
 ## No Separate Mobile Auth
 
@@ -42,5 +43,5 @@ All mobile screens use the exact same auth layer as desktop. No mobile-specific 
 
 ### Staff Creation
 
-- **Desktop only** — staff management is an admin task done at desk
-- **No mobile component needed**
+- **Mobile supported** — staff management is available in `MobileUsersScreen` for phone-only owners.
+- Mobile uses the same `/api/staff` server contract as desktop and receives current-store scoped staff payloads for non-master managers.

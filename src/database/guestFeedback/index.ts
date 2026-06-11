@@ -187,8 +187,13 @@ export const getFeedbackById = async (feedbackId: string) => {
 
             const data = docSnap.data() as GuestFeedback;
 
-            // Tenant isolation check
-            if (data.tId !== session.tId) {
+            // Tenant/store isolation check. HQ sessions may not carry a single
+            // sId; store-scoped manager sessions must stay inside their store.
+            if (String(data.tId) !== String(session.tId)) {
+                return null;
+            }
+
+            if (session.sId && String(data.sId) !== String(session.sId)) {
                 return null;
             }
 

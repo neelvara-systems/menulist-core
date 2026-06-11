@@ -1,6 +1,6 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { APP_THEME_COLOR } from '@constant/common';
-import { addImageBatchProcessingJob } from '@database/imageBatchProcessing';
+import { addImageBatchProcessingJob, updateImageBatchProcessingJob } from '@database/imageBatchProcessing';
 import { applyProjectImagePreferencesToGenerationConfig, extractImagePreferencePatch, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
@@ -125,7 +125,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     const [imageEditModal, setImageEditModal] = useState<{ active: boolean, imageData: UserUploadedFileType | null }>({ active: false, imageData: null });
     const [selectedItemsForBatch, setSelectedItemsForBatch] = useState<string[]>([]); // Store IDs of selected items
     const [isUploadingSingleItem, setIsUploadingSingleItem] = useState(false);
-    const { activeProject, activeBatchImageJob } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
+    const { activeProject, activeBatchImageJob, setActiveBatchImageJob } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const [batchGenerationConfig, setBatchGenerationConfig] = useState<GenerateImageViaApiPayloadGenerationConfiType>(DefaultGenerationConfig);
     const dispatch = useAppDispatch()
@@ -351,6 +351,8 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     };
 
     const onStartBatchGeneration = async (): Promise<void> => {
+        let createdJobId: string | null = null;
+        let createdJobSnapshot: BatchImageGenerationJobType | null = null;
         try {
             dispatch(startLoader("Starting batch image generation"));
 
@@ -370,6 +372,12 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 itemsList: []//initially its empty and whene image is generated via task queue it will be pushed to this array on by one
             };
             const jobId = await addImageBatchProcessingJob(newJob);
+            createdJobId = jobId;
+            createdJobSnapshot = {
+                ...newJob,
+                id: jobId,
+            } as BatchImageGenerationJobType;
+            setActiveBatchImageJob?.(createdJobSnapshot);
 
             const payload: GenerateImageViaApiPayloadBatchType = {
                 generationConfig: batchGenerationConfig,
@@ -398,6 +406,37 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             message.success('Batch image generation started successfully');
 
         } catch (error: any) {
+            if (createdJobId && activeProject?.projectId) {
+                const failureReason = error instanceof AICapacityError
+                    ? "Additional AI enhancements needed for this batch."
+                    : "Batch image generation could not start.";
+                const failedStatusEntry = {
+                    status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
+                    reason: failureReason,
+                    createdOn: getISOStringDate(),
+                };
+                await updateImageBatchProcessingJob({
+                    error: failureReason,
+                    id: createdJobId,
+                    status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
+                    statusHistory: [
+                        failedStatusEntry,
+                    ],
+                }, activeProject.projectId).catch((updateError) => {
+                    logger.error('Failed to mark batch image job failed after trigger error', updateError, { jobId: createdJobId });
+                });
+                if (createdJobSnapshot) {
+                    setActiveBatchImageJob?.({
+                        ...createdJobSnapshot,
+                        error: failureReason,
+                        status: BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,
+                        statusHistory: [
+                            ...(createdJobSnapshot.statusHistory || []),
+                            failedStatusEntry,
+                        ],
+                    });
+                }
+            }
             if (error instanceof AICapacityError) {
                 message.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {

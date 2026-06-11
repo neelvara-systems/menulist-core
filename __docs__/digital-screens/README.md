@@ -1,7 +1,7 @@
 # Digital Screens — Documentation Hub
 
 **Feature:** In-Store Digital Menu Display (TV/Tablet Screens)  
-**Status:** 🔒 v2.2 LOCKED (readability, owner-trust, and public-read hardening applied June 2026) — Only readability/reliability/scale fixes allowed.
+**Status:** 🔒 v2.3 LOCKED (readability, owner-trust, public-read, and listener-isolation hardening applied June 2026) — Only readability/reliability/scale fixes allowed.
 **One-liner:** "Your full menu on your shop TV. Always up to date. Never touch it."
 
 ---
@@ -26,6 +26,7 @@ June 2026 hardening keeps that boundary while making the feature owner-trustwort
 - Highlights no longer overlays management captions on custom poster slides; owner-uploaded artwork is treated as the screen content.
 - Public menu cache invalidation now also touches screen content version when a screen exists, so ordinary menu edits can refresh connected TVs.
 - Public screen cold renders now use a generated available-item menu projection inside the existing screen summary when it matches the current menu/version and base menu slug context, with the old project-read fallback still intact.
+- Public screen clients now listen to a tiny safe `platformSummary/screen_{storeId}` mirror instead of the internal `campaigns_{storeId}` owner summary document.
 
 **Problem solved:** Shop TVs showing outdated slideshows or blank screens because nobody remembers to update them. And the 70%+ of restaurants that need a full menu board on screen, not just promotional slides.
 
@@ -62,6 +63,7 @@ src/types/campaigns.ts                      # ScreenSlide, DigitalScreenState ty
 src/config/features.ts                      # DIGITAL_SCREENS_* feature flags + MODE
 src/lib/screen/                             # Utilities, slide generators, renderer
 src/lib/screen/screenContent.ts             # Content normalization, price parsing, tags, captions, screen menu extraction
+src/lib/screen/publicScreenState.ts         # Public-safe listener mirror for screen content version
 src/lib/screen/screenInvalidation.ts        # Public-cache-linked screen content version touch + menu projection refresh
 src/app/screen/[token]/page.tsx             # Server component (SSR, projection/fallback menu resolution, mode routing)
 src/app/screen/[token]/ScreenDisplay.tsx    # Highlights mode client (rotation, cache, listener)
@@ -113,4 +115,4 @@ See `digital-screens_firebase.md` for full breakdown.
 
 ---
 
-**Last Updated:** June 6, 2026
+**Last Updated:** June 11, 2026

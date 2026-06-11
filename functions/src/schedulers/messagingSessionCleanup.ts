@@ -22,6 +22,7 @@ import {
 const logger = functions.logger;
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
+const inboundMessagesCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_INBOUND_MESSAGES;
 const EXPIRABLE_STATES: MessagingOnboardingState[] = [
   "COLLECTING_INPUT",
   "VALIDATING_ASSETS",
@@ -40,16 +41,18 @@ export async function messagingSessionCleanupLogic(): Promise<{
   expired: number;
   reminders: number;
   cleaned: number;
+  inboundCleaned: number;
   errors: number;
 }> {
   if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING) {
-    return { expired: 0, reminders: 0, cleaned: 0, errors: 0 };
+    return { expired: 0, reminders: 0, cleaned: 0, inboundCleaned: 0, errors: 0 };
   }
 
   const now = Timestamp.now();
   let expired = 0;
   let reminders = 0;
   let cleaned = 0;
+  let inboundCleaned = 0;
   let errors = 0;
 
   // 1. Expire old sessions (24h)
@@ -221,14 +224,38 @@ export async function messagingSessionCleanupLogic(): Promise<{
   // stores those file URLs for owner dashboard source preview and extraction
   // retry workflows. Expired/non-published sessions are still cleaned above.
 
-  if (expired > 0 || reminders > 0 || cleaned > 0) {
+  // 4. Clean durable inbound queue docs after their retention window.
+  // Firestore TTL may also be enabled, but this keeps cost bounded in projects
+  // where TTL setup is delayed or disabled.
+  try {
+    const inboundSnapshot = await db
+      .collection(inboundMessagesCol)
+      .where("expiresAt", "<=", now)
+      .limit(100)
+      .get();
+
+    if (!inboundSnapshot.empty) {
+      const batch = db.batch();
+      inboundSnapshot.docs.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+      inboundCleaned = inboundSnapshot.size;
+    }
+  } catch (err) {
+    logger.error("[Cleanup] Failed to clean inbound queue", {
+      error: (err as Error).message,
+    });
+    errors++;
+  }
+
+  if (expired > 0 || reminders > 0 || cleaned > 0 || inboundCleaned > 0) {
     logger.info("[Cleanup] Run complete", {
       expired,
       reminders,
       cleaned,
+      inboundCleaned,
       errors,
     });
   }
 
-  return { expired, reminders, cleaned, errors };
+  return { expired, reminders, cleaned, inboundCleaned, errors };
 }

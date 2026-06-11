@@ -1,7 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { getProjectsList } from '@database/projects';
+import { getExistingProjectsListWithoutLoader } from '@database/projects';
 import { isOBPAnalyticsEnabled } from '@lib/analytics/preferences';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackOBPShare } from '@lib/analytics/unified';
@@ -41,7 +41,7 @@ export default function OBPLinkCard({ storeDetails }: OBPLinkCardProps) {
         let cancelled = false;
         (async () => {
             try {
-                const result = await getProjectsList();
+                const result = await getExistingProjectsListWithoutLoader();
                 const projects = result?.projects || [];
                 const def = projects.find((p: any) => p.isDefault) || projects[0];
                 if (!def || cancelled) return;

@@ -1,9 +1,19 @@
 # Reseller Dashboard — Implementation Plan
 
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
-**Status:** 📝 DOCUMENTED  
+**Status:** Implemented — billing/reseller slice audited June 11, 2026
 **Created:** February 27, 2026  
+**Last Updated:** June 11, 2026
 **Audience:** Developers
+
+June 11, 2026 runtime corrections:
+
+- Reseller routes are server-owned through `withAuth()` and Admin SDK writes; Firestore client writes to reseller billing collections remain denied.
+- Platform reseller management no longer uses a client-bundled password gate. The hardcoded `ECOMSAI_PLATFORM_PASSWORD` constant was removed; `/reseller/manage`, `/api/reseller/manage`, and `/api/reseller/monthly-summary` rely on platform-role checks instead of shipping a secret to the browser.
+- Reseller client lists are bounded: 100 transactions for reseller users, 200 for platform users, plus one bounded subscription read per visible subscription ID for current status/quantity/payment-link truth.
+- Reseller monthly summary no longer reads all reseller profiles for a normal reseller. Platform users read up to 50 profiles; reseller users read only direct/email-matched profile docs.
+- Manual/offline subscription activation and renewal sync store entitlement and public/assistant cache state through `safeSyncStorePlanEntitlementFromSubscription()`.
+- Reseller online subscriptions use the same hardened Razorpay verification contract as self-serve subscriptions.
 
 ---
 

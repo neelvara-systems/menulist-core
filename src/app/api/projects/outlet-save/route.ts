@@ -50,6 +50,7 @@ const overridesSchema = z.object({
     attributes: z.record(overrideIdSchema, attributeOverrideSchema).optional(),
 }).strict();
 const schema = z.object({
+    publish: z.boolean().optional(),
     project: z.object({
         projectId: projectIdSchema,
         masterProjectId: projectIdSchema,
@@ -446,6 +447,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const localMutationAt = admin.firestore.Timestamp.now();
         const localMutationDetected = hasOutletLocalMutation(project, existingProject);
         const previousOutletLocalState = asSafeRecord(existingProject?.outletLocalState);
+        const shouldPublish = validation.data.publish === true;
+        const nextMenuVersion = Number(existingProject?.menuVersion || 0) + 1;
 
         const safeProject = sanitizeForFirestore({
             ...pickOutletProjectWriteFields(project),
@@ -460,6 +463,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             uId: session.uId || session.user?.id,
             modifiedBy: session.user?.name || session.user?.email || "system",
             modifiedOn: localMutationAt,
+            ...(shouldPublish ? {
+                lastPublishedAt: localMutationAt,
+                menuVersion: nextMenuVersion,
+            } : {}),
             ...(localMutationDetected ? {
                 outletLocalState: {
                     ...previousOutletLocalState,

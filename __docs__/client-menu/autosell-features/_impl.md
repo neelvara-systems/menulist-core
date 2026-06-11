@@ -435,6 +435,8 @@ export function generatePresetId(tenantId: number, storeId: number): string {
 }
 ```
 
+When an existing preset is edited, `updatePresetInAllCategories()` scans the current store's project docs, updates only category `timeSlots[]` entries with the matching `presetId`, writes changed project docs, and revalidates the affected public menu cache. When a preset is deleted, `removePresetFromAllCategories()` removes matching category windows and performs the same per-project revalidation.
+
 ---
 
 ## Validation Checklist

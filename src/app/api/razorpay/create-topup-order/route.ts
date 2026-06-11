@@ -1,7 +1,11 @@
 export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { canManageBillingMutation } from "@lib/billing/billingAccess";
-import { getBillingFirestoreAdminForProduct, resolveBillingScopeFromSession } from "@lib/billing/productBillingServer";
+import {
+    getActiveProductSubscriptionForStore,
+    getBillingFirestoreAdminForProduct,
+    resolveBillingScopeFromSession,
+} from "@lib/billing/productBillingServer";
 import { getCreditPacksForProduct, isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
@@ -102,6 +106,18 @@ export const POST = withAuth(async (request, session) => {
                 error: 'Too many topup attempts. Please try again later.',
                 resetAt: rateLimitResult.resetAt
             }, { status: 429 });
+        }
+
+        const activeSubscription = await getActiveProductSubscriptionForStore(
+            productId,
+            Number(tenantId),
+            Number(storeId),
+        );
+        if (!activeSubscription) {
+            return NextResponse.json(
+                { error: 'An active subscription is required before buying enhancement packs.' },
+                { status: 404 }
+            );
         }
 
         const { packId, currency } = validation.data;

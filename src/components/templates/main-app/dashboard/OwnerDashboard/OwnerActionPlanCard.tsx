@@ -5,6 +5,7 @@ import {
     SourceQuality,
 } from '@template/main-app/projects/types';
 import { Card, Col, Empty, Row, Space, Tag, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuCheckCircle, LuCompass, LuFlame, LuLock, LuZap } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
@@ -30,8 +31,9 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
     confidence,
     sourceQuality = [],
     analyticsAiEntitlement,
-    title = "Today's Action List",
+    title,
 }) => {
+    const t = useTranslations('Dashboard.owner');
     const actions = actionPlan?.actions || [];
     const bestSource = sourceQuality[0];
     const isPlanLocked = analyticsAiEntitlement
@@ -49,7 +51,7 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
             title={(
                 <Space>
                     <LuZap />
-                    <span>{title}</span>
+                    <span>{title || t('actionPlan.todayTitle')}</span>
                 </Space>
             )}
             variant="borderless"
@@ -60,9 +62,9 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                         image={<LuLock style={{ color: token.colorPrimary, fontSize: 32 }} />}
                         description={(
                             <Space direction="vertical" size={4}>
-                                <Text strong>Available on Pro</Text>
+                                <Text strong>{t('actionPlan.availableOnPro')}</Text>
                                 <Text type="secondary">
-                                    Pro adds menu intelligence, owner action lists, and plain-language summaries from your menu activity.
+                                    {t('actionPlan.proDescription')}
                                 </Text>
                             </Space>
                         )}
@@ -80,10 +82,13 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
 
                 {!isPlanLocked && bestSource ? (
                     <div>
-                        <Text type="secondary">Best source right now: </Text>
+                        <Text type="secondary">{t('actionPlan.bestSourcePrefix')} </Text>
                         <Text strong>{bestSource.label}</Text>
                         <Text type="secondary">
-                            {` · ${bestSource.menuSessions} visits · ${bestSource.actionRate}% action rate`}
+                            {t('actionPlan.bestSourceStats', {
+                                visits: bestSource.menuSessions,
+                                rate: bestSource.actionRate,
+                            })}
                         </Text>
                     </div>
                 ) : null}
@@ -119,19 +124,24 @@ const OwnerActionPlanCard: React.FC<OwnerActionPlanCardProps> = ({
                 ) : !isPlanLocked ? (
                     <Empty
                         image={<LuCheckCircle style={{ color: token.colorSuccess, fontSize: 32 }} />}
-                        description="No action needed. Menu state is stable."
+                        description={t('actionPlan.noActionNeeded')}
                     />
                 ) : null}
 
                 {!isPlanLocked && sourceQuality.length > 1 ? (
                     <div>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 6 }}>
-                            Action rate by source
+                            {t('actionPlan.actionRateBySource')}
                         </Text>
                         <Space wrap>
                             {sourceQuality.slice(0, 4).map((source) => (
                                 <Tag key={source.source} icon={<LuFlame />}>
-                                    {`${source.label}: ${source.menuSessions} visits · ${source.actionSessions} action sessions · ${source.actionRate}%`}
+                                    {t('actionPlan.sourceQualityTag', {
+                                        source: source.label,
+                                        visits: source.menuSessions,
+                                        sessions: source.actionSessions,
+                                        rate: source.actionRate,
+                                    })}
                                 </Tag>
                             ))}
                         </Space>

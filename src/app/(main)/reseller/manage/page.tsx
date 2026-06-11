@@ -11,7 +11,7 @@ import { Spin, Flex } from "antd";
  * 
  * This page is ONLY for the founder/platform admin to manage reseller profiles.
  * Resellers themselves access /reseller (not /reseller/manage).
- * Protected by PLATFORM role check + platform password gate in the component.
+ * Protected by PLATFORM role checks on the page and backing APIs.
  */
 export default function ResellerManagePage() {
     const { data: session, status } = useSession();

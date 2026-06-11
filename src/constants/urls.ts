@@ -26,6 +26,7 @@
  */
 
 import { ALL_PRODUCT_DOMAINS } from './productDomains';
+import { CAMPAIGNCUE_PRODUCT_ID } from '@constant/campaigncue/product';
 import {
     getActiveProductDomains,
     getDeploymentStage,
@@ -256,4 +257,5 @@ export const RESERVED_SUBDOMAINS = [
     HELP_SUBDOMAIN,
     SUPPORT_SUBDOMAIN,
     'status',
+    CAMPAIGNCUE_PRODUCT_ID,
 ];

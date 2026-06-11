@@ -104,6 +104,9 @@ export const POST = withAuth(async (request, session) => {
         if (outlet.isMaster) {
             return NextResponse.json({ error: 'Cannot rename master store via this endpoint' }, { status: 400 });
         }
+        if (outlet.active === false) {
+            return NextResponse.json({ error: 'Cannot rename an inactive outlet' }, { status: 400 });
+        }
 
         // Derive the proposed slug. Explicit slug overrides the name-derived
         // one so owners can pick a custom slug when the derived form is

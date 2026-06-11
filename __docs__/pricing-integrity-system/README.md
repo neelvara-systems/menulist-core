@@ -52,6 +52,7 @@ Price Change (Dashboard)
 | File                                   | Purpose                        |
 | -------------------------------------- | ------------------------------ |
 | `src/lib/pricing/integrityEngine.ts`   | Core orchestrator              |
+| `src/lib/pricing/formatMenuPrice.ts`   | Shared public/owner price display formatter |
 | `src/lib/pricing/molLogger.ts`         | Audit logging (MOL)            |
 | `src/lib/pricing/pdfQueue.ts`          | Background regen (flagged OFF) |
 | `src/lib/validation/pricing.schema.ts` | Zod validation schemas         |
@@ -79,4 +80,4 @@ Enable only if users report slowness with on-demand PDF generation.
 
 ---
 
-_Last Updated: January 18, 2026_
+_Last Updated: June 11, 2026_

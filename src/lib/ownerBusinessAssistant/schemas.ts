@@ -53,6 +53,23 @@ const OwnerBusinessAssistantActionTargetKindSchema = z.enum([
   'team',
   'compliance',
 ]);
+const MAX_ACTION_PAYLOAD_CHARS = 12_000;
+const OwnerBusinessAssistantActionPayloadSchema = z.record(z.unknown()).superRefine((value, ctx) => {
+  try {
+    if (JSON.stringify(value).length <= MAX_ACTION_PAYLOAD_CHARS) return;
+  } catch {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Action payload must be JSON serializable.',
+    });
+    return;
+  }
+
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: 'Action payload is too large.',
+  });
+});
 
 export const OwnerBusinessAssistantAnswerRequestSchema = z.object({
   question: z.string().min(1).max(800),
@@ -73,7 +90,7 @@ export const OwnerBusinessAssistantActionRequestSchema = z.object({
   targetId: z.string().max(180).optional(),
   draftId: z.string().max(180).optional(),
   actionId: z.string().max(180).optional(),
-  payload: z.record(z.unknown()).optional(),
+  payload: OwnerBusinessAssistantActionPayloadSchema.optional(),
   clientContext: OwnerBusinessAssistantClientContextSchema.optional(),
 }).strict();
 

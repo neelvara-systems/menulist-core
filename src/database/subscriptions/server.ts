@@ -8,6 +8,7 @@ import {
 } from "@constant/user";
 import { DB_COLLECTIONS } from "@constant/database";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
+import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { MinimalStoreDataType } from "@type/platform/store";
@@ -190,6 +191,10 @@ const expireIfGracePeriodEndedServer = async (
             },
         ],
     });
+    await safeSyncStorePlanEntitlementFromSubscription(
+        { ...sub, status: "expired" },
+        "server:grace-period-auto-expire",
+    );
 
     return null;
 };

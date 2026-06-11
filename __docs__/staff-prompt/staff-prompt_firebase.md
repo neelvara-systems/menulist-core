@@ -1,15 +1,15 @@
 # Staff Prompt — Firebase Cost Tracking
 
 **Feature:** Staff-Facing Menu Quick Reference  
-**Status:** 📋 SPEC LOCKED  
-**Last Updated:** February 7, 2026  
-**Priority:** LOW — Reads existing project data. Zero incremental Firebase cost.
+**Status:** ✅ IMPLEMENTED AS READ-ONLY TODAY SUMMARY DISPLAY
+**Last Updated:** June 11, 2026
+**Priority:** LOW — Included in existing Today summary read. Zero incremental Firebase cost.
 
 ---
 
 ## Summary
 
-- **Collections Used:** `projects/{tId}/{sId}` (existing), `stores` (existing)
+- **Collections Used:** `platformSummary/campaigns_{sId}` (existing Today summary)
 - **Storage Buckets:** None
 - **Cloud Functions:** None
 - **Estimated Monthly Cost:** **$0.00** — Uses existing data reads
@@ -22,12 +22,11 @@
 
 | Operation | Collection | Trigger | Frequency | Docs Read | Notes |
 |-----------|-----------|---------|-----------|-----------|-------|
-| Load project data | `projects/{tId}/{sId}/{projectId}` | Staff opens prompt | Per staff session | 1 | Same project doc — items, prices, descriptions. Already loaded by existing DAL. |
-| Load store data | `stores/{storeId}` | Staff opens prompt | Per session | 1 | Working hours, business info. Already loaded. |
+| Load Today summary | `platformSummary/campaigns_{sId}` | Owner opens Today/mobile Today | Per Today open, SWR deduped 30s | 1 | Same summary read already used for Today campaigns, physical surfaces, and staffPrompt. |
 
 ### Writes
 
-None — staff prompt is read-only.
+None in the active owner UI. If a scheduler writes `staffPrompt`, it writes the existing campaigns summary document with the rest of Today state.
 
 ### Deletes
 
@@ -37,7 +36,7 @@ None.
 
 ## Cost Estimate
 
-**$0.00/month** — No incremental Firebase cost. Uses existing data that's already being read.
+**$0.00/month incremental** — Staff Prompt is included in the existing Today summary read.
 
 ---
 
@@ -45,5 +44,4 @@ None.
 
 | Function | File | Operation Type |
 |----------|------|---------------|
-| `getStoreById` | `src/database/stores/index.ts` | Read (existing) |
-| Project data | `src/database/projects/index.ts` | Read (existing) |
+| `getTodayCampaigns` | `src/database/campaigns/index.ts` | Read existing Today summary |

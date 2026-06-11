@@ -252,6 +252,10 @@ async function getDetail(eventId?: string, cost?: PlatformNotificationOpsCost): 
 }
 
 export const GET = withAuth(async (request, session) => {
+  if (!FEATURE_FLAGS.ENABLE_PLATFORM_NOTIFICATION_DASHBOARD) {
+    return NextResponse.json({ error: 'Platform notification dashboard is disabled' }, { status: 404 });
+  }
+
   const validation = validateAPIInput(GetQuerySchema, Object.fromEntries(request.nextUrl.searchParams.entries()));
   if (validation.success === false) {
     logger.security('Platform Notification Ops Query Validation Failed', {
@@ -312,6 +316,10 @@ export const GET = withAuth(async (request, session) => {
 }, { requiredPlatformRole: 'PLATFORM' });
 
 export const POST = withAuth(async (request, session) => {
+  if (!FEATURE_FLAGS.ENABLE_PLATFORM_NOTIFICATION_DASHBOARD) {
+    return NextResponse.json({ error: 'Platform notification dashboard is disabled' }, { status: 404 });
+  }
+
   const body = await request.json().catch(() => ({}));
   const validation = validateAPIInput(PostActionSchema, body);
   if (validation.success === false) {

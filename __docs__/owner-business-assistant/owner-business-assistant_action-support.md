@@ -4,7 +4,7 @@
 **Internal Slug:** owner-business-assistant-action-support
 **Product:** MenuList
 **Status:** Implemented behind dedicated Action Support flags
-**Last Updated:** June 8, 2026
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -32,7 +32,7 @@ ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_IMAGE: false,
 ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: true,
 ```
 
-`ENABLE_OWNER_BUSINESS_HEALTH` and `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` must be independent.
+`ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` is an independent kill switch inside Business Health. The `/action` route still requires the parent `ENABLE_OWNER_BUSINESS_HEALTH` flag, so Action Support cannot stay reachable when Business Health itself is disabled.
 
 ## Action Registry
 
@@ -167,7 +167,7 @@ Drafts store:
 
 - Target IDs.
 - Target fingerprint.
-- Proposed patch or payload.
+- Proposed patch or payload, capped at 12,000 JSON characters by the API schema before storage.
 - Preview summary when available.
 - Expiry.
 - Source question/intent ID.

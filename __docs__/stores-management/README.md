@@ -2,7 +2,7 @@
 
 > **Feature:** Manual Store Creation + Multi-Chain Support  
 > **Status:** ✅ Implemented  
-> **Last Updated:** February 13, 2026  
+> **Last Updated:** June 11, 2026
 > **Version:** 2.1
 
 > **Scope:** Platform admin store CRUD and multi-chain store creation. For outlet-specific onboarding flow, see [Store Onboarding](../multi-outlet-consistency/store-onboarding/). For permissions, see [Roles & Permissions](../roles-permissions/).
@@ -86,7 +86,9 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 | Operation            | Function                    | Collections Updated                                                  |
 | -------------------- | --------------------------- | -------------------------------------------------------------------- |
 | Create Store         | `addStore()`                | `stores`, `platformSummary/default`, `platformSummary/storesSummary` |
-| Update Store         | `updateStore()`             | `stores`, `platformSummary/storesSummary`                            |
+| Update Store         | `updateStore()`             | `stores`, `platformSummary/storesSummary` when summary fields change |
+| Manage custom domain | `POST/GET/DELETE /api/domain` | `stores`; public cache tags `menu-store-{storeId}`, `store-{storeId}`, `client-stores` |
+| Manage time-slot presets | `updateTimeSlotPresets()`, `updatePresetInAllCategories()`, `removePresetFromAllCategories()` | `stores`; changed `projects/{tId}/{sId}` docs only when assigned category windows need edit/delete cleanup |
 | Block/unblock Entity | `POST /api/platform/entity-blocks` via `updatePlatformEntityBlockState()` | `tenants`, `stores`, or `users`; store blocks sync public summary/cache, and tenant blocks update `platformSummary/storesSummary.stores.{storeId}.tenantBlocked` before revalidating affected stores |
 | Link Store to Tenant | `updateTenantsStoreslist()` | `tenants`                                                            |
 | Get Next Store ID    | `getPlatformSummary()`      | Read `platformSummary/default`                                       |
@@ -105,6 +107,8 @@ Multi-chain business owners can add their own outlet stores via the Add Outlet m
 | Multi-chain outlet creation via owner flow             | ✅ Done |
 | Platform summary sync on store create/update           | ✅ Done |
 | Dedicated tenant/store/user block control with audit details | ✅ Done |
+| Custom-domain add/verify/remove full public cache invalidation | ✅ Done |
+| Time-slot preset edit/delete cascades to assigned category windows | ✅ Done |
 
 ---
 

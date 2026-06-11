@@ -16,6 +16,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getProjectData } from '@database/projects';
 import { computeQualitySignals, getPrimaryQualitySignal, getVisibleSignals, isAllClear, isRepairMenuSignal, QualitySignal } from '@lib/mce/qualitySignals';
 import { Button, Card, Flex, Skeleton, theme, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { LuAlertCircle, LuCheckCircle, LuDollarSign, LuEyeOff, LuFileText, LuFolder, LuImage, LuLanguages, LuSparkles, LuTrendingDown } from 'react-icons/lu';
@@ -42,6 +43,7 @@ const PENDING_QUALITY_ACTION_STORAGE_KEY = 'menulist:pendingQualityAction';
 const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) => {
     const router = useRouter();
     const { token } = useToken();
+    const t = useTranslations('Dashboard.owner');
     const [signals, setSignals] = useState<QualitySignal[]>([]);
     const [allSignals, setAllSignals] = useState<QualitySignal[]>([]);
     const [checkedAt, setCheckedAt] = useState<number | null>(null);
@@ -115,21 +117,21 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
             title={
                 <Flex align="center" gap={8}>
                     <LuSparkles size={16} style={{ color: allClear ? token.colorSuccess : token.colorWarning }} />
-                    <Text strong style={{ fontSize: 14 }}>Menu Check</Text>
+                    <Text strong style={{ fontSize: 14 }}>{t('menuQuality.menuCheck')}</Text>
                 </Flex>
             }
             extra={checkedAt ? (
-                <Text type="secondary" style={{ fontSize: 11 }}>Checked just now</Text>
+                <Text type="secondary" style={{ fontSize: 11 }}>{t('menuQuality.checkedJustNow')}</Text>
             ) : null}
         >
             {allClear ? (
                 <Flex align="center" gap={12} style={{ padding: '8px 0' }}>
                     <LuCheckCircle size={24} style={{ color: token.colorSuccess }} />
                     <div>
-                        <Text strong>No action needed</Text>
+                        <Text strong>{t('menuQuality.noActionNeeded')}</Text>
                         <br />
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            Your public menu is ready.
+                            {t('menuQuality.publicMenuReady')}
                         </Text>
                     </div>
                 </Flex>
@@ -148,7 +150,7 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
                         >
                             <Flex vertical gap={2} style={{ minWidth: 0 }}>
                                 <Text strong style={{ fontSize: 13 }}>
-                                    {isRepairMenuSignal(primarySignal) ? 'Repair what can be fixed now' : 'Review the top issue'}
+                                    {isRepairMenuSignal(primarySignal) ? t('menuQuality.repairNow') : t('menuQuality.reviewTopIssue')}
                                 </Text>
                                 <Text type="secondary" style={{ fontSize: 11 }}>
                                     {primarySignal.label}
@@ -159,7 +161,7 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
                                 type="primary"
                                 onClick={() => handleAction(primarySignal)}
                             >
-                                {isRepairMenuSignal(primarySignal) ? 'Repair Menu' : 'Review'}
+                                {isRepairMenuSignal(primarySignal) ? t('menuQuality.repairMenu') : t('menuQuality.review')}
                             </Button>
                         </Flex>
                     ) : null}
@@ -206,7 +208,7 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectId }) =>
                                     onClick={() => handleAction(signal)}
                                     style={{ fontSize: 12, padding: '0 4px' }}
                                 >
-                                    {isRepairMenuSignal(signal) ? 'Repair' : signal.actionLabel}
+                                    {isRepairMenuSignal(signal) ? t('menuQuality.repair') : signal.actionLabel}
                                 </Button>
                             )}
                         </Flex>

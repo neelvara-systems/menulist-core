@@ -27,7 +27,7 @@ const MuteAlertsRequestSchema = z.object({
 
 export const POST = withAuth(async (request, session) => {
   try {
-    const validation = MuteAlertsRequestSchema.safeParse(await request.json());
+    const validation = MuteAlertsRequestSchema.safeParse(await request.json().catch(() => ({})));
 
     if (!validation.success) {
       logger.security('Ops mute-alerts input validation failed', {

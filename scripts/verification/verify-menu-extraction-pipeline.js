@@ -67,10 +67,17 @@ contains(
     'loadRetryContext',
     'normalizeProjectJobSource(retryData.source)',
     'isAllowedMenuLinkImportUrl',
+    'buildOwnerUploadSourceFingerprint',
+    'findReusableCompletedOwnerJob',
+    'deleteUnreferencedOwnerUploadFiles',
+    'projectChangedAfterExtraction',
+    '.limit(50)',
+    'sourceFingerprint: ownerUploadFingerprint.fingerprint',
+    'reusedCompletedJob: true',
     'MENU_EXTRACTION_SOURCES.OWNER_UPLOAD',
     'MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT',
   ],
-  'Owner job API centralizes auth, retry, source, and routing checks',
+  'Owner job API centralizes auth, retry, source, routing, and trusted owner-upload dedupe checks',
 );
 
 notContains(
@@ -90,8 +97,9 @@ contains(
     'destination?: MenuExtractionJobDestination',
     'destinationType?: MenuExtractionDestinationType',
     'skipProjectSave?: boolean',
+    'reusedCompletedJob',
   ],
-  'Client helper creates jobs through protected API and exposes the job destination type contract',
+  'Client helper creates jobs through protected API and handles active/completed job reuse',
 );
 
 notContains(
@@ -112,8 +120,19 @@ contains(
     'PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES',
     'publicMenuDrafts/${draftToken}/',
     'MENU_EXTRACTION_SOURCES.PUBLIC_CREATE_MENU',
+    'statusOnly',
+    'resultReady',
   ],
-  'Public create-menu queues durable public draft jobs with identity metadata',
+  'Public create-menu queues durable public draft jobs with identity metadata and status-only polling support',
+);
+
+contains(
+  'src/app/(website)/create-menu/PreviewClient.tsx',
+  [
+    "params.set('statusOnly', '1')",
+    "data.status === 'completed' && !data.extractedData && statusOnly",
+  ],
+  'Public preview polls lightweight status first and fetches the full extraction result only when ready',
 );
 
 contains(
@@ -133,7 +152,6 @@ notContains(
   'src/app/api/public/create-menu/route.ts',
   [
     'triggerExtraction',
-    'PUBLIC_MENU_EXTRACTION',
     'gemini-2.0-flash',
   ],
   'Public create-menu no longer runs inline extraction',
@@ -154,14 +172,36 @@ contains(
 contains(
   'src/lib/extraction/applyChanges.ts',
   [
+    'function assertOwnedPreviewJob',
+    "jobData.status !== 'preview_ready'",
+    "throw new Error('Extraction review does not belong to this business')",
     'function ensureReviewSourceFiles',
     'active: true',
     'deleted: false',
     'index: nextIndex++',
     "message: ''",
+    "await saveLinkedOutletProject(linkedOutletProjectPayload)",
+    "'/api/projects/outlet-save'",
     "await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges')",
   ],
-  'Review apply creates standard project file shells and revalidates public render cache',
+  'Review apply validates ownership/status, creates standard project file shells, routes linked outlets through outlet-save, and revalidates public render cache',
+);
+
+contains(
+  'functions/src/triggers/shared.ts',
+  [
+    'Direct menu extraction is disabled',
+    'Use the MenuList extraction job queue',
+  ],
+  'Legacy direct processMenuImages callable is disabled in favor of the job queue',
+);
+
+notContains(
+  'functions/src/triggers/shared.ts',
+  [
+    'processMenuImagesLogic(data)',
+  ],
+  'Legacy direct processMenuImages callable does not invoke AI processing',
 );
 
 contains(
@@ -232,8 +272,39 @@ contains(
     'markPublicDraftExtractionFailed',
     'getExtractionShapeError',
     'revalidatePublicClientCacheForStore',
+    '../utils/menuExtractionResultSummary',
+    'buildExtractionTimings',
+    'buildExtractionResultSummary',
+    'summary: buildExtractionResultSummary',
+    'timings: buildExtractionTimings',
   ],
-  'Worker enforces shared limits, public draft lifecycle, shape checks, and cache revalidation',
+  'Worker enforces shared limits, public draft lifecycle, shape checks, cache revalidation, timing telemetry, and result summaries',
+);
+
+contains(
+  'functions/src/schedulers/menuJobCleanup.ts',
+  [
+    'export async function pruneCompletedProjectJobPayloadsLogic',
+    'buildExtractionResultSummary(',
+    "'result.combinedData': FieldValue.delete()",
+    "'result.dataPrunedReason': 'project_auto_saved'",
+    'data.isFirstExtraction !== true',
+    'data.skipProjectSave === true',
+  ],
+  'Maintenance cleanup prunes heavy completed project job payloads without touching public, messaging, or review jobs',
+);
+
+contains(
+  'functions/src/utils/menuExtractionResultSummary.ts',
+  [
+    'export function buildExtractionResultSummary',
+    'categoriesCount',
+    'itemsCount',
+    'dietaryTaggedItemsCount',
+    'attributedItemsCount',
+    'confidenceSummary',
+  ],
+  'Extraction result summaries use one shared Functions helper for worker writes and pruning fallback',
 );
 
 contains(

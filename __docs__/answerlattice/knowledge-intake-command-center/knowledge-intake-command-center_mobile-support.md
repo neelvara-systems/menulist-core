@@ -92,6 +92,7 @@ No horizontal overflow.
 ## Accessibility
 
 - Minimum 44px touch targets.
+- Browser file selection should be exposed through a 44px `Choose files` button on mobile instead of relying on the native unstyled file input.
 - Clear color contrast in light/dark themes.
 - Source risk labels must not rely on color alone.
 - Approve/reject controls require text labels.
@@ -119,3 +120,4 @@ No horizontal overflow.
 | --- | --- | --- |
 | 2026-05-31 | 1.0.0 | Initial mobile support contract for Knowledge Intake Command Center. |
 | 2026-05-31 | 1.1.0 | Added summary-first mobile loading and urgent-review preview rules. |
+| 2026-06-11 | 1.1.1 | Added the mobile-friendly file selection requirement and aligned the implemented intake screen with a visible 44px file chooser plus clearer first-run empty states. |

@@ -27,6 +27,8 @@ import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessA
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError, secureLog } from '@lib/security/secureLogger';
+import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
+import { buildSummaryProjectPayload } from '@lib/firestore/summaryProjectsWriter';
 import { slugify } from '@lib/utils/slugify';
 import { revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
@@ -358,6 +360,27 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             const projectCollectionPath = `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`;
             const projectId = `${tenantId}-${Date.now().toString(36)}-${storeId}`;
             const projectRef = db.collection(projectCollectionPath).doc(projectId);
+            const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeId}`);
+            const summaryUpdate: Record<string, any> = { lastUpdated: now };
+            if (hasExistingAccount) {
+                const existingSummaryDoc = await transaction.get(projectsSummaryRef);
+                const existingSummaryProjects = existingSummaryDoc.exists
+                    ? parseSummaryProjects(existingSummaryDoc.data())
+                    : {};
+                Object.entries(existingSummaryProjects).forEach(([existingProjectId, existingProject]) => {
+                    if (
+                        existingProjectId !== projectId
+                        && existingProject?.isDefault === true
+                        && existingProject?.deleted !== true
+                    ) {
+                        Object.assign(summaryUpdate, buildSummaryProjectPayload(existingProjectId, {
+                            ...existingProject,
+                            isDefault: false,
+                            modifiedOn: now,
+                        }));
+                    }
+                });
+            }
             const fileEntry = {
                 uid: `file_${Date.now()}`,
                 name: draft.originalFileName || 'menu.jpg',
@@ -398,11 +421,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
             transaction.set(projectRef, projectData);
 
-            const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${storeId}`);
             const projectSlug = slugify(projectName) || 'menu';
-            transaction.set(projectsSummaryRef, {
-                lastUpdated: now,
-                [`projects.${projectId}`]: {
+            Object.assign(summaryUpdate, buildSummaryProjectPayload(projectId, {
                     name: projectName,
                     description: projectName === businessName ? `Menu for ${businessName}` : `${projectName} for ${businessName}`,
                     businessType: resolvedBusinessType,
@@ -412,8 +432,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     slug: projectSlug,
                     createdOn: now,
                     modifiedOn: now,
-                },
-            }, { merge: true });
+            }));
+            transaction.set(projectsSummaryRef, summaryUpdate, { merge: true });
 
             transaction.update(draftRef, {
                 claimed: true,

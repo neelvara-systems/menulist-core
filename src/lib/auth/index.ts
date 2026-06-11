@@ -271,6 +271,7 @@ export const authOptions: NextAuthOptions = {
                     deleted: (dbUser as any).deleted,
                     tenantId: dbUser.tenantId,
                     storeId: dbUser.storeId,
+                    storeIds: Array.isArray((dbUser as any).storeIds) ? (dbUser as any).storeIds : [],
                     pId: (dbUser as any).pId || DEFAULT_PRODUCT_ID,
                     productId: (dbUser as any).productId || (dbUser as any).pId || DEFAULT_PRODUCT_ID,
                     productAccounts: serializeAuthSessionValue((dbUser as any).productAccounts),
@@ -535,6 +536,13 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         }
         : productAccounts;
     const safeProductAccounts = serializeAuthSessionValue(normalizedProductAccounts);
+    const storeIds = Array.from(new Set([
+        ...(Array.isArray(sanitized.storeIds) ? sanitized.storeIds : []),
+        ...(Array.isArray(sanitized.stores) ? sanitized.stores.map((store: any) => store?.storeId) : []),
+        sanitized.storeId,
+    ]
+        .map((storeId) => Number(storeId))
+        .filter((storeId) => Number.isSafeInteger(storeId) && storeId > 0)));
 
     // ✅ PERFORMANCE: Keep JWT cookie small
     // NextAuth JWT is stored in a cookie (header). If it gets too big, the app will fail with HTTP 431.
@@ -553,6 +561,7 @@ const getDatabaseUserForSession = (dbUser: any): any => {
         deleted: sanitized.deleted,
         tenantId: sanitized.tenantId,
         storeId: sanitized.storeId,
+        storeIds,
         pId: normalizeAuthProductId(sanitized.pId)
             || normalizeAuthProductId(sanitized.productId)
             || DEFAULT_PRODUCT_ID,

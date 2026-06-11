@@ -943,6 +943,7 @@ export const getLinkedOutletStoreIds = async (
             }
 
             const storeIds = (tenantSnap.data()?.storesList || [])
+                .filter((store: any) => store?.active !== false && store?.isMaster !== true)
                 .map((store: any) => Number(store?.storeId))
                 .filter((storeId: number) => Number.isFinite(storeId) && storeId > 0);
 
@@ -1009,16 +1010,18 @@ export const hasLinkedOutlets = async (
  * ```
  */
 export function canHaveLinkedOutlets(tenantDetails: {
-    storesList?: Array<{ isMaster?: boolean }>;
+    storesList?: Array<{ active?: boolean; isMaster?: boolean }>;
 } | null): boolean {
     if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) return false;
     if (!tenantDetails?.storesList) return false;
 
+    const activeStores = tenantDetails.storesList.filter((store) => store.active !== false);
+
     // Single store = no multi-chain possible
-    if (tenantDetails.storesList.length <= 1) return false;
+    if (activeStores.length <= 1) return false;
 
     // Multiple stores but no master = no linked outlets
-    const hasMasterStore = tenantDetails.storesList.some(s => s.isMaster === true);
+    const hasMasterStore = activeStores.some(s => s.isMaster === true);
     return hasMasterStore;
 }
 

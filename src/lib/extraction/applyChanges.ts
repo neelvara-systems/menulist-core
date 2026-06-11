@@ -285,6 +285,121 @@ function applyStableIdAliases(files: any[], aliases?: {
     return applied;
 }
 
+function pickRecordFields(record: unknown, allowedFields: Set<string>): Record<string, any> {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) return {};
+
+    return Object.entries(record as Record<string, any>).reduce<Record<string, any>>((result, [key, value]) => {
+        if (allowedFields.has(key) && value !== undefined) {
+            result[key] = value;
+        }
+        return result;
+    }, {});
+}
+
+function normalizeOutletOverrides(overrides: any = {}) {
+    const itemFields = new Set([
+        'active',
+        'available',
+        'description',
+        'duration',
+        'images',
+        'isBestSeller',
+        'orderIndex',
+        'ownerBoost',
+        'price',
+    ]);
+    const categoryFields = new Set(['active', 'orderIndex', 'timeSlots']);
+    const attributeFields = new Set(['active', 'orderIndex', 'price']);
+
+    const normalizeBucket = (bucket: unknown, fields: Set<string>) => {
+        const source = bucket && typeof bucket === 'object' && !Array.isArray(bucket)
+            ? bucket as Record<string, any>
+            : {};
+
+        return Object.entries(source).reduce<Record<string, any>>((result, [id, value]) => {
+            const sanitizedValue = pickRecordFields(value, fields);
+            if (Object.keys(sanitizedValue).length > 0) {
+                result[id] = sanitizedValue;
+            }
+            return result;
+        }, {});
+    };
+
+    return {
+        attributes: normalizeBucket(overrides.attributes, attributeFields),
+        categories: normalizeBucket(overrides.categories, categoryFields),
+        items: normalizeBucket(overrides.items, itemFields),
+    };
+}
+
+function buildLinkedOutletProjectSavePayload(params: {
+    files: any[];
+    overrides: any;
+    projectData: Record<string, any>;
+    projectId: string;
+}) {
+    const { files, overrides, projectData, projectId } = params;
+
+    return sanitizeFirestoreValue({
+        active: projectData.active,
+        config: projectData.config,
+        defaultLanguage: projectData.defaultLanguage,
+        files,
+        languages: projectData.languages,
+        masterProjectId: projectData.masterProjectId,
+        menuSettings: projectData.menuSettings,
+        outletStatus: projectData.outletStatus,
+        overrides,
+        projectId,
+    });
+}
+
+async function saveLinkedOutletProject(project: Record<string, any>): Promise<void> {
+    const response = await fetch('/api/projects/outlet-save', {
+        body: JSON.stringify({ project }),
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+    });
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(result.error || `Linked outlet save failed: ${response.status}`);
+    }
+}
+
+function idsMatch(left: unknown, right: unknown): boolean {
+    return String(left ?? '').trim() === String(right ?? '').trim();
+}
+
+function assertOwnedPreviewJob(jobData: any, session: Awaited<ReturnType<typeof getActiveSession>>, projectId?: string): void {
+    if (!session) {
+        throw new Error('User not authenticated');
+    }
+
+    if (!jobData) {
+        throw new Error('Extraction review job not found');
+    }
+
+    if (jobData.status !== 'preview_ready') {
+        throw new Error('This extraction review is no longer available');
+    }
+
+    if (projectId && !idsMatch(jobData.projectId, projectId)) {
+        throw new Error('Extraction review does not belong to this menu');
+    }
+
+    if (!idsMatch(jobData.tId, session.tId) || !idsMatch(jobData.sId, session.sId)) {
+        throw new Error('Extraction review does not belong to this business');
+    }
+
+    const sessionUserIds = [session.uId, session.user?.id].filter(Boolean);
+    if (jobData.uId && !sessionUserIds.some((userId) => idsMatch(jobData.uId, userId))) {
+        throw new Error('Extraction review does not belong to this user');
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -341,9 +456,11 @@ export async function applyExtractionChanges(
         const projectData = projectSnap.data();
         const files = cloneFiles(projectData.files || []);
         const jobData = jobSnap.exists() ? jobSnap.data() : null;
+        assertOwnedPreviewJob(jobData, session, projectId);
 
         // Single update payload — all mutations collected here, written once
         const updatePayload: Record<string, any> = {};
+        let linkedOutletProjectPayload: Record<string, any> | null = null;
 
         if (applyPlan.mode === 'SINGLE_STORE' || applyPlan.mode === 'MASTER_PROJECT') {
             // ═══════════════════════════════════════════════════════════
@@ -450,12 +567,16 @@ export async function applyExtractionChanges(
         } else if (applyPlan.mode === 'OUTLET_LINKED') {
             // ═══════════════════════════════════════════════════════════
             // OUTLET_LINKED: Local items + price overrides
-            // All mutations applied in-memory, written once
+            // Local files and overrides must pass through /api/projects/outlet-save
+            // so linked-outlet policy and local-only ID validation stay server-side.
             // ═══════════════════════════════════════════════════════════
 
             const mutations = applyPlan.outletMutations;
             if (!mutations) {
                 throw new Error('No outlet mutations in apply plan');
+            }
+            if (!projectData.masterProjectId) {
+                throw new Error('Outlet extraction review requires a linked master menu');
             }
 
             // Add local-only categories and items to files[0].extractedData.data.
@@ -479,22 +600,17 @@ export async function applyExtractionChanges(
                 stats.itemsAdded = mutations.upsertLocalItems.length;
             }
 
-            applyStableIdAliases(files, mutations.stableIdAliases);
-
-            // Collect modified files into payload
-            updatePayload.files = files;
-
-            // Collect overrides into payload (dot-notation for merge, not replace)
-            const now = Timestamp.now();
+            const aliasApplied = applyStableIdAliases(files, mutations.stableIdAliases);
+            const nextOverrides = normalizeOutletOverrides(projectData.overrides);
 
             for (const override of mutations.applyOverrides) {
                 if (!override.masterItemId) {
                     console.warn('[applyExtractionChanges] Skipping override with empty masterItemId');
                     continue;
                 }
-                updatePayload[`overrides.items.${override.masterItemId}`] = {
-                    ...override.patch,
-                    updatedAt: now,
+                nextOverrides.items[override.masterItemId] = {
+                    ...(nextOverrides.items[override.masterItemId] || {}),
+                    ...sanitizeFirestoreValue(override.patch || {}),
                 };
                 stats.overridesApplied++;
             }
@@ -502,33 +618,38 @@ export async function applyExtractionChanges(
             // Collect category overrides if any
             if (mutations.applyCategoryOverrides) {
                 for (const override of mutations.applyCategoryOverrides) {
-                    updatePayload[`overrides.categories.${override.masterCategoryId}`] = {
-                        ...override.patch,
-                        updatedAt: now,
+                    nextOverrides.categories[override.masterCategoryId] = {
+                        ...(nextOverrides.categories[override.masterCategoryId] || {}),
+                        ...sanitizeFirestoreValue(override.patch || {}),
                     };
                 }
             }
 
             if (
-                stats.categoriesAdded > 0
+                aliasApplied
+                || stats.categoriesAdded > 0
                 || stats.itemsAdded > 0
                 || stats.overridesApplied > 0
                 || (mutations.applyCategoryOverrides?.length || 0) > 0
                 || (mutations.stableIdAliases?.categoryAliases?.length || 0) > 0
                 || (mutations.stableIdAliases?.itemAliases?.length || 0) > 0
             ) {
-                const previousLocalState = projectData.outletLocalState || {};
-                updatePayload['outletLocalState.localVersion'] = Number(previousLocalState.localVersion || 0) + 1;
-                updatePayload['outletLocalState.lastLocalChangeAt'] = now;
-                updatePayload['outletLocalState.lastLocalChangeBy'] = session.uId || session.user?.id || 'unknown';
-                updatePayload['outletLocalState.lastLocalChangeReason'] = 'extraction_apply';
+                linkedOutletProjectPayload = buildLinkedOutletProjectSavePayload({
+                    files,
+                    overrides: nextOverrides,
+                    projectData,
+                    projectId,
+                });
             }
         }
 
         // ═══════════════════════════════════════════════════════════
         // STEP 2: SINGLE ATOMIC WRITE — all project mutations
         // ═══════════════════════════════════════════════════════════
-        if (Object.keys(updatePayload).length > 0) {
+        if (linkedOutletProjectPayload) {
+            await saveLinkedOutletProject(linkedOutletProjectPayload);
+            await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
+        } else if (Object.keys(updatePayload).length > 0) {
             await updateDoc(projectRef, sanitizeFirestoreValue(updatePayload));
             await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
 
@@ -600,7 +721,11 @@ export async function applyExtractionChanges(
  * @param jobId - The job ID to discard
  */
 export async function discardExtractionChanges(jobId: string): Promise<void> {
+    const session = await getActiveSession();
     const jobRef = doc(firebaseClient, DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS, jobId);
+    const jobSnap = await getDoc(jobRef);
+    const jobData = jobSnap.exists() ? jobSnap.data() : null;
+    assertOwnedPreviewJob(jobData, session);
 
     await updateDoc(jobRef, {
         status: 'cancelled',

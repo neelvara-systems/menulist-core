@@ -1,8 +1,8 @@
 # AI Image Generation — Documentation Hub
 
-> **Feature:** AI-Powered Image Generation & Editing  
-> **Status:** ✅ Production Ready (Verified)  
-> **Last Updated:** January 30, 2026  
+> **Feature:** Menu Image Generation & Editing
+> **Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
+> **Last Updated:** June 11, 2026
 > **Version:** 2.2
 
 ---
@@ -20,7 +20,7 @@
 
 ## What Is This Feature?
 
-**One-liner:** AI-powered image generation and editing system that creates professional menu item images using Gemini 2.5 Flash and Imagen 3 models.
+**One-liner:** Owner-reviewed image generation and editing system that prepares menu item images using Gemini 2.5 Flash and Imagen 3 models.
 
 **Problem Solved:** Restaurant and business owners often lack professional photography for their menu items. Hiring photographers is expensive, time-consuming, and creates consistency issues across menu updates. Many businesses end up with no images or low-quality photos that hurt customer perception.
 

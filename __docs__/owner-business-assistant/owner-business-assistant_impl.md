@@ -4,7 +4,7 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Implemented behind feature flags
-**Last Updated:** June 10, 2026
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -92,6 +92,12 @@ ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: true,
 ```
 
 Cloud Functions/provider-cost flags must be separate when provider-backed answers are enabled. Frontend flags do not protect server-side provider spend. Context-packet cache flags control read cost only; they do not authorize provider calls.
+
+Runtime flag guardrails verified June 11, 2026:
+
+- `/api/owner-business-assistant/action` requires both `ENABLE_OWNER_BUSINESS_HEALTH` and `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT`.
+- `/api/owner-business-assistant/locations` requires both `ENABLE_OWNER_BUSINESS_HEALTH` and `ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION`.
+- Action payloads are capped at 12,000 JSON characters before draft/audit storage.
 
 Existing precedent:
 
@@ -432,6 +438,7 @@ Server packet cache writes add each packet key to `owner-business-assistant:pack
 Action target validation:
 
 - Action execution derives project scope from `projectId`, `targetKind='project'`, selected client context, or compact payload fields only for project-aware action definitions.
+- Action payloads are schema-capped at 12,000 JSON characters before they can be stored in drafts or action audit docs.
 - Project/menu-item/category actions validate membership through `platformSummary/projects_{sId}` first and fall back to `projects/{tId}/{sId}/{projectId}`.
 - Invalid, deleted, inactive, or missing projects are blocked before navigation, draft preparation, or workflow writes.
 - Store-level actions such as settings, billing, users, and feedback do not pay the project-summary read just because the frontend has a selected project.

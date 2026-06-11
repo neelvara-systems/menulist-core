@@ -1,4 +1,5 @@
 import { isStarterPublicSurfaceExpired, STARTER_ACTIVATION_STATUS } from '@lib/onboarding/starterActivation';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import type { StoreDataType } from '@type/platform/store';
 
 export type PublicTruthSurface = 'obp' | 'outlet_obp' | 'menu';
@@ -60,9 +61,7 @@ function hasAnyWorkingHours(workingHours: unknown): boolean {
 function isStoreActiveForPublicTruth(store: Record<string, any>): boolean {
     return store.active !== false
         && store.deleted !== true
-        && store.blocked !== true
-        && store.tenantBlocked !== true
-        && store.blockDetails?.active !== true;
+        && !isPlatformEntityBlocked(store);
 }
 
 function isStarterSurfaceBlocked(store: Record<string, any>): boolean {

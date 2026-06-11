@@ -27,7 +27,7 @@ export default function SmartFeaturesSection() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
           gap: 'var(--ws-space-6)',
           marginTop: 'var(--ws-space-12)',
           maxWidth: '960px',

@@ -25,7 +25,14 @@ import {
     normalizeAnswerlatticeChatImageMimeType,
 } from '@lib/answerlattice/chatImagePolicy';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
-import { hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
+import {
+    handlePublicApiCorsPreflight,
+    hashApiKey,
+    hasPublicApiCredentialScope,
+    isRequestOriginAllowed,
+    validatePublicApiKey,
+    withPublicApiCors,
+} from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
@@ -56,20 +63,30 @@ const WidgetSearchRequestSchema = z.object({
 
 const isLikelyBase64 = (value: string): boolean => /^[A-Za-z0-9+/]+={0,2}$/.test(value);
 
+const jsonResponse = (
+    request: NextRequest,
+    body: Record<string, any>,
+    init?: ResponseInit,
+): NextResponse => withPublicApiCors(NextResponse.json(body, init), request);
+
+export function OPTIONS(request: NextRequest) {
+    return handlePublicApiCorsPreflight(request);
+}
+
 export async function POST(request: NextRequest) {
     // Feature flag check
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
-        return NextResponse.json({ error: 'Widget not enabled' }, { status: 404 });
+        return jsonResponse(request, { error: 'Widget not enabled' }, { status: 404 });
     }
 
     try {
         // API key authentication
         const apiKey = request.headers.get('x-api-key')?.trim();
         if (!apiKey) {
-            return NextResponse.json({ error: 'Missing API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Missing API key' }, { status: 401 });
         }
         if (!apiKey.startsWith('al_')) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
         const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
@@ -81,7 +98,8 @@ export async function POST(request: NextRequest) {
         });
         if (!rateLimitResult.allowed) {
             const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
-            return NextResponse.json(
+            return jsonResponse(
+                request,
                 { error: 'Rate limit exceeded. Please try again later.' },
                 {
                     status: 429,
@@ -98,19 +116,19 @@ export async function POST(request: NextRequest) {
             preferAnswerlatticeWidgetApi: true,
         });
         if (!authResult) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
         const { storeData, storeId } = authResult;
         const credential = authResult.credential || {};
         if (credential.productId && credential.productId !== 'AL') {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
         if (credential.purpose && !String(credential.purpose).startsWith('answerlattice')) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:search')) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
@@ -120,19 +138,19 @@ export async function POST(request: NextRequest) {
                 new Error('Authenticated API key does not resolve to a valid tenant/store'),
                 { storeId }
             );
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
         // ===== ORIGIN ALLOWLIST CHECK =====
         const requestOrigin = request.headers.get('origin');
         if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
-            return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
+            return jsonResponse(request, { error: 'Origin not allowed' }, { status: 403 });
         }
 
         // Parse and validate request body
         const validation = WidgetSearchRequestSchema.safeParse(await request.json());
         if (!validation.success) {
-            return NextResponse.json({ error: 'Query is required' }, { status: 400 });
+            return jsonResponse(request, { error: 'Query is required' }, { status: 400 });
         }
         const body = validation.data;
         const query = body.query;
@@ -274,12 +292,13 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        return NextResponse.json(response);
+        return jsonResponse(request, response);
 
     } catch (err: any) {
         if (isAIProviderRateLimitError(err)) {
             const retryAfter = getAIProviderRetryAfter(err) || 60;
-            return NextResponse.json(
+            return jsonResponse(
+                request,
                 {
                     error: `Search is temporarily busy. Please wait ${retryAfter} seconds before trying again.`,
                     retryAfter,
@@ -291,7 +310,8 @@ export async function POST(request: NextRequest) {
             );
         }
         secureError('[Widget Search] Error', err as Error);
-        return NextResponse.json(
+        return jsonResponse(
+            request,
             { error: 'Something went wrong. Please try again.' },
             { status: 500 }
         );

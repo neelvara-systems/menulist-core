@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Card, Flex, Typography, message, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuCheck, LuCopy, LuLink, LuX } from 'react-icons/lu';
 
@@ -20,6 +21,7 @@ const { useToken } = theme;
  */
 export default function BehaviorNudgeCard() {
     const { token } = useToken();
+    const t = useTranslations('Dashboard.owner');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [dismissed, setDismissed] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -55,10 +57,10 @@ export default function BehaviorNudgeCard() {
         try {
             await navigator.clipboard.writeText(obpUrl);
             setCopied(true);
-            message.success('Link copied');
+            message.success(t('behaviorNudge.linkCopied'));
             setTimeout(() => setCopied(false), 2000);
         } catch {
-            message.error('Could not copy link');
+            message.error(t('behaviorNudge.couldNotCopy'));
         }
     };
 
@@ -89,10 +91,10 @@ export default function BehaviorNudgeCard() {
                     </Flex>
                     <Flex vertical gap={4} style={{ flex: 1 }}>
                         <Text strong style={{ fontSize: 14 }}>
-                            This is your official customer menu link
+                            {t('behaviorNudge.title')}
                         </Text>
                         <Text type="secondary" style={{ fontSize: 13 }}>
-                            Use this instead of sending menu photos or PDFs. Customers will always see your latest menu.
+                            {t('behaviorNudge.description')}
                         </Text>
                         <Flex gap={8} align="center" style={{ marginTop: 4 }}>
                             <Text
@@ -113,7 +115,7 @@ export default function BehaviorNudgeCard() {
                                 type={copied ? 'primary' : 'default'}
                                 size="small"
                             >
-                                {copied ? 'Copied' : 'Copy'}
+                                {copied ? t('behaviorNudge.copied') : t('behaviorNudge.copy')}
                             </Button>
                         </Flex>
                     </Flex>

@@ -4,8 +4,8 @@
 > **Audience:** Existing customers (restaurant/salon/spa owners, non-technical)
 > **Language:** Zero jargon. Written for non-tech Indian SMB owners.
 > **Status:** Implemented
-> **Last Updated:** May 23, 2026
-> **Version:** 2.2
+> **Last Updated:** June 11, 2026
+> **Version:** 2.3
 
 ---
 
@@ -60,9 +60,9 @@ If you don't know your provider connection URL, you have two options:
 1. In the External Menu Sync section, find **Share setup instructions with your provider or developer**
 2. Enter your provider's email address
 3. Click **Send**
-4. MenuList will prepare the setup information and track the send
-5. Share the setup details and sample update file with your provider directly
-   > You can send up to 3 instruction emails per day.
+4. MenuList opens an email draft with the setup information and tracks the handoff
+5. Review the draft and send it from your own email app
+   > You can prepare up to 3 provider email drafts per day.
    > 📸 **Screenshot:** Show the "Send Instructions" section with email field and send button.
 
 ### How to test your connection

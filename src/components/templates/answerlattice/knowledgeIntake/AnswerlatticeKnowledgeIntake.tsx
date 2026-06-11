@@ -249,6 +249,7 @@ export default function AnswerlatticeKnowledgeIntake() {
     const [entitySearching, setEntitySearching] = useState(false);
     const entitySearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const entitySearchSeqRef = useRef(0);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const {
         activeJob,
@@ -695,14 +696,28 @@ export default function AnswerlatticeKnowledgeIntake() {
                                                 <Tag icon={<LuVideo />} color="geekblue">Video: 2 credits</Tag>
                                             </Space>
                                             <input
+                                                ref={fileInputRef}
                                                 type="file"
                                                 multiple
                                                 accept={FILE_UPLOAD_ACCEPT}
+                                                style={{ display: 'none' }}
                                                 onChange={(event) => {
                                                     handleFiles(event.target.files);
                                                     event.currentTarget.value = '';
                                                 }}
                                             />
+                                            <Flex align={isMobile ? 'stretch' : 'center'} gap={8} vertical={isMobile}>
+                                                <Button
+                                                    icon={<LuUpload />}
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    style={{ minHeight: 44 }}
+                                                >
+                                                    Choose files
+                                                </Button>
+                                                <Text type="secondary">
+                                                    Select up to 8 files at a time. Large docs are capped before review to control cost.
+                                                </Text>
+                                            </Flex>
                                             <Alert
                                                 type="info"
                                                 showIcon
@@ -762,16 +777,27 @@ export default function AnswerlatticeKnowledgeIntake() {
                                         </Flex>
                                     ) : (
                                         <Empty description="No review drafts yet">
-                                            <Button disabled={!counts.sourcesReady} icon={<LuSparkles />} onClick={() => activeJobId && analyzeJob(activeJobId)}>
-                                                Generate review drafts
-                                            </Button>
+                                            <Space direction="vertical" size={8} align="center">
+                                                {!counts.sourcesReady ? (
+                                                    <Text type="secondary">
+                                                        Add a URL, paste source content, or upload a file first.
+                                                    </Text>
+                                                ) : null}
+                                                <Button disabled={!counts.sourcesReady} icon={<LuSparkles />} onClick={() => activeJobId && analyzeJob(activeJobId)}>
+                                                    Generate review drafts
+                                                </Button>
+                                            </Space>
                                         </Empty>
                                     )}
                                 </Card>
                             </>
                         ) : (
                             <Card>
-                                <Empty description="Create an intake job to start teaching Answerlattice." />
+                                <Empty description="Create an intake job to start teaching Answerlattice.">
+                                    <Button type="primary" icon={<LuFileInput />} onClick={() => setCreateOpen(true)}>
+                                        New intake
+                                    </Button>
+                                </Empty>
                             </Card>
                         )}
                     </Flex>

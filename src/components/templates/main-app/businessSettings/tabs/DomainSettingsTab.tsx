@@ -13,6 +13,7 @@ const { Text, Title, Paragraph } = Typography;
 interface DomainSettingsTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
     storeDetails?: any;
+    onStoreStateUpdate?: (updates: any) => void;
     onStoreUpdate?: (updates: any) => void;
 }
 
@@ -52,7 +53,7 @@ function normalizeDnsRecords(config: any, domain: string) {
     return records;
 }
 
-function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSettingsTabProps) {
+function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStoreUpdate }: DomainSettingsTabProps) {
     const t = useTranslations('BusinessSettings');
     const [subdomainValue, setSubdomainValue] = useState(storeDetails?.subdomain || '');
     const [availability, setAvailability] = useState<{
@@ -145,14 +146,14 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
             const res = await axios.get('/api/domain');
             setDomainStatus(res.data);
             if (res.data?.verified) {
-                onStoreUpdate?.({ domainVerified: true });
+                onStoreStateUpdate?.({ domainVerified: true });
             }
         } catch {
             setDomainError(t('dnsVerificationDesc'));
         } finally {
             setStatusLoading(false);
         }
-    }, [onStoreUpdate, storeDetails?.customDomain, t]);
+    }, [onStoreStateUpdate, storeDetails?.customDomain, t]);
 
     useEffect(() => {
         void refreshDomainStatus();
@@ -173,13 +174,13 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
                 verified: false,
                 config: res.data?.verification,
             });
-            onStoreUpdate?.({ customDomain: nextDomain, domainVerified: false });
+            onStoreStateUpdate?.({ customDomain: nextDomain, domainVerified: false });
         } catch (err: any) {
             setDomainError(err.response?.data?.error || 'Failed to add domain.');
         } finally {
             setDomainLoading(false);
         }
-    }, [domainInput, onStoreUpdate]);
+    }, [domainInput, onStoreStateUpdate]);
 
     const handleCheckDomain = useCallback(async () => {
         if (!normalizedDomainInput) return;
@@ -205,13 +206,13 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreUpdate }: DomainSet
             await axios.delete('/api/domain');
             setDomainStatus(null);
             setDomainInput('');
-            onStoreUpdate?.({ customDomain: null, domainVerified: false });
+            onStoreStateUpdate?.({ customDomain: undefined, domainVerified: undefined });
         } catch {
             setDomainError('Failed to remove domain.');
         } finally {
             setDomainLoading(false);
         }
-    }, [onStoreUpdate]);
+    }, [onStoreStateUpdate]);
 
     return (
         <Card size="small" ref={scrollRef}>

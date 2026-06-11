@@ -1,8 +1,8 @@
 # Digital Screens — Technical Implementation
 
 **Created:** January 4, 2026  
-**Status:** 🔒 **v2.2 LOCKED — Production complete. Only readability/reliability/scale fixes allowed.**  
-**Last Audit:** June 6, 2026 (screen menu projection and public read hardening)
+**Status:** 🔒 **v2.3 LOCKED — Controlled owner testing ready; full production certification pending the overall MenuList audit.**
+**Last Audit:** June 11, 2026 (public listener isolation and Firestore rule hardening)
 **Applies:** 3-Year Architecture Freeze Rule
 
 ---
@@ -24,12 +24,12 @@ generateScreenSlides()     → Owner Pinned + Campaign + Evergreen + Brand Fallb
   mode=default → MenuBoardDisplay.tsx  (full menu, categories, prices, auto-paginate)
   mode=highlights → ScreenDisplay.tsx  (rotating slides, 8s interval, hero images)
 
-Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signal (1/day)
+Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{storeId}` mirror (onSnapshot) · Seen signal (1/day)
 ```
 
 **Key decisions:**
 
-- **No separate collection** — screen state in `platformSummary/campaigns_{sId}.screen`
+- **No separate screen collection** — canonical screen state stays in `platformSummary/campaigns_{sId}.screen`; public clients receive only a safe `platformSummary/screen_{sId}` listener mirror.
 - **No API routes for screen display** — server component + DAL pattern
 - **No polling** — Firebase `onSnapshot` doc listener for real-time updates
 - **No Service Worker** — removed; localStorage cache sufficient
@@ -38,6 +38,7 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 - **Mode via URL only** — no settings UI for mode selection; zero cognitive load
 - **Menu source is automatic** — screens follow the store's active menu truth; no project picker
 - **Generated menu projection stays inside screen state** — no separate screen-menu document; cold public renders use `screen.menuProjection` only when it matches `baseProjectId`, base menu slug context, active special-menu state, and `contentVersion`; the stored projection contains display-eligible available items only.
+- **Public listeners are isolated** — `ScreenDisplay` and `MenuBoardDisplay` listen to `platformSummary/screen_{sId}`, not the internal `campaigns_{sId}` summary that contains Today, staff-prompt, physical-surface, and campaign data.
 - **Owner-only override is real** — Highlights uses valid custom slides only when `ownerOverrideEnabled` is on, with brand fallback if all custom slides expire.
 - **Content is normalized before display** — screen extraction normalizes localized text, strips HTML-like/control text, parses currency-bearing prices, blocks technical category IDs, dedupes items, normalizes tags, and caps custom slide captions.
 - **Currency symbol follows store settings** — `ScreenStoreInfo.currencySymbol` is hydrated from the store document and passed to Menu Board / Highlights price renderers.
@@ -55,13 +56,14 @@ Both share: Cache (localStorage) · Firebase listener (onSnapshot) · Seen signa
 - `src/types/campaigns.ts:370-461` — `MenuItemForSlide`, `ScreenStoreInfo`, `ScreenSlide`, `DigitalScreenState`, `ScreenAPIResponse`, `SCREEN_CONFIDENCE_THRESHOLD` (0.7)
 - `src/config/features.ts` — `DIGITAL_SCREENS_ENABLED` (true), `_CONFIDENCE_THRESHOLD` (0.7), `_UPLOAD_EXPIRY_DAYS` (14), `_MAX_UPLOADS` (3), **`DIGITAL_SCREENS_MODE`** (v2.0)
 
-### Library (`src/lib/screen/` — 6 files)
+### Library (`src/lib/screen/` — 7 files)
 
 - `utils.ts` (~100 lines) — High-entropy screen token generation, URL builder, expiry helpers, `guardedReload(componentName)` shared reload throttle
 - `screenContent.ts` — Shared content normalization and extraction: text, truncation, price parsing, category fallback, image URL validation, tag normalization, diet tag detection, owner caption safety, item dedupe, and capped screen menu projection payload.
 - `evergreenSlides.ts` (~95 lines) — `generateEvergreenSlides()`, `generateBrandFallback()` (imports `MenuItemForSlide` from `@type/campaigns`)
 - `slideGenerator.ts` — 4-layer stack generator; respects owner-only custom slide mode; normalizes min/max slide counts with unique repeat IDs
 - `screenRenderer.ts` (~140 lines) — `SCREEN_CONFIG` constants, `ScreenRendererState` (uses `ScreenStoreInfo`), `getSlideLabel()`
+- `publicScreenState.ts` — Converts canonical screen state into the public-safe listener mirror and writes `platformSummary/screen_{sId}`.
 - `screenInvalidation.ts` — Browser-side screen content-version touch used by public cache invalidation. It reads the existing summary first, never creates partial screen state, and materializes a compact default-menu projection when a screen already exists.
 
 ### Screen Page (`src/app/screen/[token]/` — 3 files)
@@ -139,7 +141,7 @@ Browser → /screen/[token] or /screen/[token]?mode=highlights
 3. Cache data to localStorage [line 109-116]
 4. Lazy QR: Delay rendering by 2s [line 119-125]
 5. Start slide rotation timer (8s interval) [line 158-168]
-6. Set up Firebase onSnapshot doc listener [line 174-206]
+6. Set up Firebase onSnapshot listener on `platformSummary/screen_{storeId}` [line 174-206]
 7. Send daily seen signal (1/day via localStorage check) [line 130-147]
 8. Start 30-min offline fallback timer [line 209-218]
 9. Start 6-hour proactive refresh timer [line 220-233]
@@ -151,9 +153,10 @@ Browser → /screen/[token] or /screen/[token]?mode=highlights
 Owner saves menu → bumpScreenContentVersion() [DAL]
   → OR public client cache invalidation → touchDigitalScreenContentVersion()
   → contentVersion++ in platformSummary/campaigns_{sId}
+  → platformSummary/screen_{sId} mirror updated with safe contentVersion state
   → screen.menuProjection refreshed from the automatic default menu when available
   → /api/revalidate/menu store invalidation also clears screen-data cache tag
-  → onSnapshot fires on all connected screens for that store
+  → onSnapshot fires on all connected screens for that store through the safe mirror
   → newVersion > currentVersion → window.location.reload()
   → Full SSR re-render → fresh slides
 ```
@@ -186,6 +189,7 @@ Owner edits item in Editor (price, name, availability)
   → public cache invalidation calls touchDigitalScreenContentVersion() when screen exists
   → contentVersion++ in platformSummary/campaigns_{sId}
   → screen.menuProjection refreshed inside the same existing screen summary doc when default menu data is available
+  → platformSummary/screen_{sId} mirror updates
   → onSnapshot fires on MenuBoardDisplay.tsx
   → newVersion > currentVersion → window.location.reload()
   → page.tsx uses matching screen.menuProjection, or falls back to getMenuItemsForScreen()
@@ -206,23 +210,23 @@ HIGHLIGHTS: System manages content; owner can add images
 ─────────────────────────────────────────────────────────
 System (automatic):
   Campaign engine generates slide → stored in platformSummary
-  → onSnapshot fires on ScreenDisplay.tsx → reload → fresh slides
+  → contentVersion mirror updates → onSnapshot fires on ScreenDisplay.tsx → reload → fresh slides
   → Labels stay factual: Today / Popular / Featured / category / On menu
 
 Owner (optional):
-  Upload image → addPinnedSlide() → pinnedSlides[] + contentVersion bump
+  Upload image → addPinnedSlide() → pinnedSlides[] + contentVersion bump + safe mirror update
   → onSnapshot fires → reload → image appears in rotation as artwork
   → Caption is a management label, not a forced overlay on the TV
 
-  Remove image → removePinnedSlide() → array update + contentVersion bump
+  Remove image → removePinnedSlide() → array update + contentVersion bump + safe mirror update
   → onSnapshot fires → reload → image removed from rotation
 ```
 
 ```
 BOTH MODES: Same trigger mechanism
 ───────────────────────────────────
-Any change to platformSummary/campaigns_{sId}
-  → contentVersion bump
+Any screen content change in platformSummary/campaigns_{sId}
+  → contentVersion bump + platformSummary/screen_{sId} mirror update
   → ALL connected screens (both modes) receive onSnapshot
   → ALL screens reload with fresh data
   → Menu Board: re-renders full menu
@@ -249,6 +253,19 @@ Any change to platformSummary/campaigns_{sId}
 | `menuProjection`       | object?       | Generated default-menu read model; capped available-item payload, `baseProjectId`, `baseProjectSlug`, active special-menu marker, `contentVersion`, `updatedAt` |
 
 `screen` does not store an owner-selected project assignment. Menu resolution remains store-level and automatic; `menuProjection.baseProjectId` and `baseProjectSlug` are generated only to prove the cached payload and QR/menu URL context match the current automatic source.
+
+### `platformSummary/screen_{sId}` (public listener mirror)
+
+| Field                 | Type      | Purpose                                      |
+| --------------------- | --------- | -------------------------------------------- |
+| `storeId`             | string    | Must match the document id suffix            |
+| `screenToken`         | string    | Screen URL token, validated by Firestore rule |
+| `enabled`             | boolean   | Public read allowed only when true           |
+| `contentVersion`      | number    | Safe reload trigger for public clients       |
+| `lastContentChangeAt` | Timestamp | Debug/freshness timestamp                    |
+| `updatedAt`           | Timestamp | Mirror write timestamp                       |
+
+Firestore rules allow unauthenticated reads only for this exact safe field set. `platformSummary/campaigns_{sId}` remains owner/authenticated/admin-only.
 
 ### Firestore Index
 
@@ -278,10 +295,10 @@ Any change to platformSummary/campaigns_{sId}
 | ---------------------- | ----------------------------------------------- | ------------------------ |
 | No storeId in URL      | Token-based: `/screen/[token]`                  | `page.tsx:31`            |
 | License check          | `active === false` or `blocked === true` → null | `campaigns/index.ts:570` |
-| No sensitive data      | Only menu items + images + store name           | `page.tsx:49-59`         |
+| No sensitive data      | Public SSR returns menu/display data only; live listener reads safe mirror only | `page.tsx`, `publicScreenState.ts`, `firestore.rules` |
 | Protected settings     | DAL functions require `getActiveSession()`      | `campaigns/index.ts:598` |
 | Upload rate limit      | Max 3 slides enforced in DAL                    | `campaigns/index.ts:687` |
-| Seen signal validation | Token format 6-12 chars + 1hr server rate limit | `seen/route.ts:30-38`    |
+| Seen signal validation | Token/store format validation + 1hr server rate limit | `seen/route.ts`          |
 
 ---
 
@@ -524,7 +541,7 @@ useEffect(() => {
 
 ```
 [Screen] v{version} - Using cached data (N slides)
-[Screen] Setting up doc listener: platformSummary/campaigns_{sId}
+[Screen] Setting up doc listener: platformSummary/screen_{sId}
 [Screen] QR ready
 [Screen] Daily seen signal sent
 [Screen] Content version changed (X → Y), refreshing...
@@ -538,6 +555,7 @@ useEffect(() => {
 3. `screen.pinnedSlides` array exists (may be empty)
 4. `screen.menuProjection` is optional; when present, `baseProjectId`, `activeSpecialMenuId`, and `contentVersion` must match the current screen data before public render uses it
 5. `screen.screenLastSeenAt` updates daily
+6. `platformSummary/screen_{sId}` exists after screen initialization or content mutation and contains only the public-safe listener fields
 
 ---
 
@@ -571,3 +589,4 @@ The following historical docs are in `_archive/` — their content has been abso
 | 10.0    | 2026-06-02 | Codex   | **Owner trust + TV readability hardening:** Setup cards/status, mobile parity, owner-only mode enforcement, ordered Menu Board, screen-grade typography, and public-cache-linked screen version touch.                                                                                                                                              |
 | 11.0    | 2026-06-02 | Codex   | **Content trust hardening:** Shared content normalization, safer price/category/tag parsing, factual highlight labels, evergreen category variety, custom-slide artwork rendering, and sanitized owner captions.                                                                                                                              |
 | 12.0    | 2026-06-06 | Codex   | **Public read hardening:** Added generated `screen.menuProjection` inside existing screen summary state, shared extraction helper, validity guard, and project-read fallback for stale/missing projection data.                                                                                                                            |
+| 13.0    | 2026-06-11 | Codex   | **Public listener isolation:** Added safe `platformSummary/screen_{sId}` mirror, moved display listeners off internal campaign summary docs, hardened `/api/screen/seen` validation/logging, and deployed Firestore rules. |

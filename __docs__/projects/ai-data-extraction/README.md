@@ -1,9 +1,9 @@
 # AI Data Extraction
 
-**Sub-feature of:** Projects (Menu Digitization)  
-**Status:** ✅ Production Ready  
-**Model:** `gemini-2.5-flash` via `@google/genai` SDK  
-**Last Updated:** May 2, 2026
+**Sub-feature of:** Projects (Menu Digitization)
+**Status:** Controlled owner testing ready; production deploy pending for the legacy callable hardening
+**Model:** `gemini-2.5-flash` via `@google/genai` SDK
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -36,6 +36,7 @@ AI Data Extraction uses Google Gemini to read menu images and extract structured
 - **Job Queue:** `menuImageProcessingJobs/{jobId}`
 - **PROD:** Firestore onCreate trigger (`functions/src/triggers/production.ts`)
 - **DEV:** `dev_triggerProcessMenuImages` callable
+- **Legacy Callable:** `processMenuImages` remains exported but fails closed; owners must use the job queue
 - **Batch Processing:** Max 10 images per Gemini call, sequential between batches
 - **File Upload:** Parallel via `Promise.all` to Gemini File API
 - **Category Continuation:** Cross-batch category/item ID continuation
@@ -85,6 +86,8 @@ functions/src/sharedData/
 - Circuit breaker with feature flag (`ENABLE_CIRCUIT_BREAKER`)
 - Idempotency via Firestore transaction (prevents double processing)
 - Multi-tenant isolation (`tId`/`sId` in job docs)
+- Review apply/discard validates `preview_ready` job ownership/status before mutation
+- Linked-outlet review applies use `POST /api/projects/outlet-save` instead of direct linked-project `files` writes
 - Sentry error tracking
 
 ### Quality Scoring

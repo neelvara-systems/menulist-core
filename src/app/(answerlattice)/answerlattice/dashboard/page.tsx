@@ -127,7 +127,7 @@ export default function AnswerlatticeDashboardPage() {
                 type="warning"
                 showIcon
                 message="Readiness metrics are unavailable"
-                description="Refresh after Answerlattice Firebase and onboarding scope are configured."
+                description="Refresh after this Answerlattice workspace is fully connected."
                 action={<Button onClick={() => loadSummary(true)}>Retry</Button>}
             />
         );

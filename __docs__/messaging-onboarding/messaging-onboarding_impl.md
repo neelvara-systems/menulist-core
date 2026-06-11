@@ -85,6 +85,7 @@
 │  messagingOnboardingInboundMessages/{id}   ← Durable webhook queue     │
 │  messagingOnboardingRateLimits/{userHash} ← Per-user rate limits      │
 │  messagingOnboardingEvents/{eventId}       ← Lifecycle/cost events     │
+│  systemHealth/messaging_onboarding_control ← Last health snapshot id    │
 │  systemHealth/messaging_onboarding_*       ← Hourly health snapshots   │
 │  menuImageProcessingJobs/{jobId}         ← Reused extraction jobs     │
 │  tenants/{tId}                           ← Created on publish         │

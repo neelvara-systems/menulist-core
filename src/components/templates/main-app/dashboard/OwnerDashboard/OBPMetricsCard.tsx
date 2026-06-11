@@ -10,6 +10,7 @@ import {
 } from '@database/ownerDashboard';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
 import { Card, Col, Divider, Empty, Flex, Row, Statistic, Tag, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import {
     LuArrowDownRight,
@@ -27,6 +28,7 @@ import styles from './OwnerDashboard.module.scss';
 const { Text } = Typography;
 
 type OBPCardMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly' | 'overall';
+type DashboardTranslator = (key: string, values?: Record<string, string | number>) => string;
 
 interface OBPMetricsCardProps {
     data: OBPDashboardViewData | null;
@@ -35,56 +37,56 @@ interface OBPMetricsCardProps {
     mode: OBPCardMode;
 }
 
-function ChangeIndicator({ change }: { change: number | null }) {
-    if (change === null) return <Text type="secondary" style={{ fontSize: 11 }}>No comparison</Text>;
-    if (change === 0) return <Tag icon={<LuMinus size={10} />} color="default" style={{ fontSize: 11 }}>Same as last week</Tag>;
-    if (change > 0) return <Tag icon={<LuArrowUpRight size={10} />} color="success" style={{ fontSize: 11 }}>+{change}% vs last week</Tag>;
-    return <Tag icon={<LuArrowDownRight size={10} />} color="warning" style={{ fontSize: 11 }}>{change}% vs last week</Tag>;
+function ChangeIndicator({ change, t }: { change: number | null; t: DashboardTranslator }) {
+    if (change === null) return <Text type="secondary" style={{ fontSize: 11 }}>{t('obp.noComparison')}</Text>;
+    if (change === 0) return <Tag icon={<LuMinus size={10} />} color="default" style={{ fontSize: 11 }}>{t('obp.sameAsLastWeek')}</Tag>;
+    if (change > 0) return <Tag icon={<LuArrowUpRight size={10} />} color="success" style={{ fontSize: 11 }}>{t('weekly.vsLastWeek', { sign: '+', change })}</Tag>;
+    return <Tag icon={<LuArrowDownRight size={10} />} color="warning" style={{ fontSize: 11 }}>{t('weekly.vsLastWeek', { sign: '', change })}</Tag>;
 }
 
-function ActionBreakdown({ actions }: { actions: OBPActionBreakdown }) {
+function ActionBreakdown({ actions, t }: { actions: OBPActionBreakdown; t: DashboardTranslator }) {
     const hasAny = actions.call > 0 || actions.whatsapp > 0 || actions.directions > 0 || actions.reserve > 0 || actions.order > 0;
     if (!hasAny) return null;
 
     return (
         <Flex gap={16} wrap="wrap">
-            {actions.call > 0 && <Statistic title="Calls" value={actions.call} prefix={<LuPhone size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {actions.whatsapp > 0 && <Statistic title="WhatsApp" value={actions.whatsapp} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {actions.directions > 0 && <Statistic title="Directions" value={actions.directions} prefix={<LuMapPin size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {actions.reserve > 0 && <Statistic title="Reserve" value={actions.reserve} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {actions.order > 0 && <Statistic title="Order" value={actions.order} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {actions.call > 0 && <Statistic title={t('actions.calls')} value={actions.call} prefix={<LuPhone size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {actions.whatsapp > 0 && <Statistic title={t('actions.whatsapp')} value={actions.whatsapp} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {actions.directions > 0 && <Statistic title={t('actions.directions')} value={actions.directions} prefix={<LuMapPin size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {actions.reserve > 0 && <Statistic title={t('actions.reserve')} value={actions.reserve} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {actions.order > 0 && <Statistic title={t('actions.order')} value={actions.order} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
         </Flex>
     );
 }
 
-function ShareBreakdown({ shares }: { shares: OBPShareBreakdown }) {
+function ShareBreakdown({ shares, t }: { shares: OBPShareBreakdown; t: DashboardTranslator }) {
     const hasAny = shares.whatsapp > 0 || shares.copy_link > 0 || shares.copy_message > 0;
     if (!hasAny) return null;
 
     return (
         <Flex gap={16} wrap="wrap">
-            {shares.whatsapp > 0 && <Statistic title="WhatsApp Shares" value={shares.whatsapp} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {shares.copy_link > 0 && <Statistic title="Copy Link" value={shares.copy_link} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {shares.copy_message > 0 && <Statistic title="Copy Message" value={shares.copy_message} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {shares.whatsapp > 0 && <Statistic title={t('obp.whatsappShares')} value={shares.whatsapp} prefix={<LuMessageSquare size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {shares.copy_link > 0 && <Statistic title={t('obp.copyLink')} value={shares.copy_link} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {shares.copy_message > 0 && <Statistic title={t('obp.copyMessage')} value={shares.copy_message} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
         </Flex>
     );
 }
 
-function LinkBreakdown({ links }: { links: OBPLinkBreakdown }) {
+function LinkBreakdown({ links, t }: { links: OBPLinkBreakdown; t: DashboardTranslator }) {
     const hasAny = links.google_review > 0 || links.instagram > 0 || links.facebook > 0 || links.website > 0;
     if (!hasAny) return null;
 
     return (
         <Flex gap={16} wrap="wrap">
-            {links.google_review > 0 && <Statistic title="Google Reviews" value={links.google_review} prefix={<LuGlobe size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {links.instagram > 0 && <Statistic title="Instagram" value={links.instagram} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {links.facebook > 0 && <Statistic title="Facebook" value={links.facebook} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
-            {links.website > 0 && <Statistic title="Website" value={links.website} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {links.google_review > 0 && <Statistic title={t('obp.googleReviews')} value={links.google_review} prefix={<LuGlobe size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {links.instagram > 0 && <Statistic title={t('obp.instagram')} value={links.instagram} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {links.facebook > 0 && <Statistic title={t('obp.facebook')} value={links.facebook} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
+            {links.website > 0 && <Statistic title={t('obp.website')} value={links.website} prefix={<LuExternalLink size={12} />} valueStyle={{ fontSize: 16 }} />}
         </Flex>
     );
 }
 
-function SourceBreakdown({ sources }: { sources?: OBPSourceBreakdown[] }) {
+function SourceBreakdown({ sources, t }: { sources?: OBPSourceBreakdown[]; t: DashboardTranslator }) {
     const rows = (sources || []).filter((source) => (
         source.views > 0 || source.actionClicks > 0 || source.menuClicks > 0 || source.linkClicks > 0
     ));
@@ -93,7 +95,7 @@ function SourceBreakdown({ sources }: { sources?: OBPSourceBreakdown[] }) {
     return (
         <div>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                Visitor sources
+                {t('details.sections.visitorSources')}
             </Text>
             <Flex gap={8} wrap="wrap">
                 {rows.slice(0, 6).map((source) => (
@@ -101,10 +103,10 @@ function SourceBreakdown({ sources }: { sources?: OBPSourceBreakdown[] }) {
                         <Flex vertical gap={2}>
                             <Text strong style={{ fontSize: 12 }}>{source.label}</Text>
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                {source.views.toLocaleString()} views
-                                {source.menuClicks > 0 ? ` · ${source.menuClicks.toLocaleString()} menu` : ''}
-                                {source.actionClicks > 0 ? ` · ${source.actionClicks.toLocaleString()} actions` : ''}
-                                {source.linkClicks > 0 ? ` · ${source.linkClicks.toLocaleString()} links` : ''}
+                                {t('obp.sourceViews', { count: source.views.toLocaleString() })}
+                                {source.menuClicks > 0 ? ` · ${t('obp.sourceMenu', { count: source.menuClicks.toLocaleString() })}` : ''}
+                                {source.actionClicks > 0 ? ` · ${t('obp.sourceActions', { count: source.actionClicks.toLocaleString() })}` : ''}
+                                {source.linkClicks > 0 ? ` · ${t('obp.sourceLinks', { count: source.linkClicks.toLocaleString() })}` : ''}
                             </Text>
                         </Flex>
                     </Card>
@@ -114,7 +116,7 @@ function SourceBreakdown({ sources }: { sources?: OBPSourceBreakdown[] }) {
     );
 }
 
-function LanguageBreakdown({ languages }: { languages?: OBPLanguageUsage[] }) {
+function LanguageBreakdown({ languages, t }: { languages?: OBPLanguageUsage[]; t: DashboardTranslator }) {
     const rows = (languages || []).filter((language) => (
         language.views > 0 || language.sessions > 0 || language.adoptions > 0
     ));
@@ -123,7 +125,7 @@ function LanguageBreakdown({ languages }: { languages?: OBPLanguageUsage[] }) {
     return (
         <div>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                OBP languages
+                {t('obp.languages')}
             </Text>
             <Flex gap={8} wrap="wrap">
                 {rows.slice(0, 5).map((language) => (
@@ -131,8 +133,8 @@ function LanguageBreakdown({ languages }: { languages?: OBPLanguageUsage[] }) {
                         <Flex vertical gap={2}>
                             <Text strong style={{ fontSize: 12 }}>{language.label}</Text>
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                {Math.max(language.sessions, language.views).toLocaleString()} page opens
-                                {language.adoptions > 0 ? ` · ${language.adoptions.toLocaleString()} stayed after switch` : ''}
+                                {t('obp.pageOpens', { count: Math.max(language.sessions, language.views).toLocaleString() })}
+                                {language.adoptions > 0 ? ` · ${t('obp.stayedAfterSwitch', { count: language.adoptions.toLocaleString() })}` : ''}
                             </Text>
                         </Flex>
                     </Card>
@@ -142,7 +144,7 @@ function LanguageBreakdown({ languages }: { languages?: OBPLanguageUsage[] }) {
     );
 }
 
-function WeeklyTrend({ weeks }: { weeks: OBPHistoricalWeek[] }) {
+function WeeklyTrend({ weeks, t }: { weeks: OBPHistoricalWeek[]; t: DashboardTranslator }) {
     const { token } = theme.useToken();
 
     if (weeks.length === 0) return null;
@@ -151,7 +153,7 @@ function WeeklyTrend({ weeks }: { weeks: OBPHistoricalWeek[] }) {
     return (
         <div>
             <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
-                Weekly Trend (Last 4 Weeks)
+                {t('obp.weeklyTrend')}
             </Text>
             <Flex gap={4} align="flex-end" style={{ height: 48 }}>
                 {weeks.map((week, index) => (
@@ -180,49 +182,50 @@ function WeeklyTrend({ weeks }: { weeks: OBPHistoricalWeek[] }) {
     );
 }
 
-function renderPeriodGrid(metrics: OBPPeriodMetrics) {
+function renderPeriodGrid(metrics: OBPPeriodMetrics, t: DashboardTranslator) {
     return (
         <>
             <Row gutter={[16, 12]} style={{ marginTop: 8 }}>
                 <Col xs={12} sm={8}>
-                    <Statistic title="Page Views" value={metrics.views} prefix={<LuGlobe size={14} />} />
+                    <Statistic title={t('obp.pageViews')} value={metrics.views} prefix={<LuGlobe size={14} />} />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Statistic title="View Menu Clicks" value={metrics.menuClicks} prefix={<LuExternalLink size={14} />} />
+                    <Statistic title={t('obp.viewMenuClicks')} value={metrics.menuClicks} prefix={<LuExternalLink size={14} />} />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Statistic title="Actions" value={metrics.actionClicks} prefix={<LuTrendingUp size={14} />} />
+                    <Statistic title={t('obp.actions')} value={metrics.actionClicks} prefix={<LuTrendingUp size={14} />} />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Statistic title="Link Taps" value={metrics.linkClicks} prefix={<LuExternalLink size={14} />} />
+                    <Statistic title={t('obp.linkTaps')} value={metrics.linkClicks} prefix={<LuExternalLink size={14} />} />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Statistic title="Shares" value={metrics.shares} />
+                    <Statistic title={t('obp.shares')} value={metrics.shares} />
                 </Col>
                 <Col xs={12} sm={8}>
-                    <Statistic title="Days Active" value={metrics.daysWithData} />
+                    <Statistic title={t('metrics.daysActive')} value={metrics.daysWithData} />
                 </Col>
             </Row>
             <div style={{ marginTop: 12 }}>
-                <ActionBreakdown actions={metrics.actions} />
+                <ActionBreakdown actions={metrics.actions} t={t} />
             </div>
             <div style={{ marginTop: 12 }}>
-                <LinkBreakdown links={metrics.links} />
+                <LinkBreakdown links={metrics.links} t={t} />
             </div>
             <div style={{ marginTop: 12 }}>
-                <ShareBreakdown shares={metrics.shareMethods} />
+                <ShareBreakdown shares={metrics.shareMethods} t={t} />
             </div>
             <div style={{ marginTop: 12 }}>
-                <SourceBreakdown sources={metrics.sources} />
+                <SourceBreakdown sources={metrics.sources} t={t} />
             </div>
             <div style={{ marginTop: 12 }}>
-                <LanguageBreakdown languages={metrics.topLanguages} />
+                <LanguageBreakdown languages={metrics.topLanguages} t={t} />
             </div>
         </>
     );
 }
 
 const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingToday, mode }) => {
+    const t = useTranslations('Dashboard.owner');
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
     const today = data?.today || null;
@@ -232,21 +235,21 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
     if (mode === 'today') {
         if (loadingToday && !today) {
             return (
-                <Card className={styles.obpCard} variant="borderless" title="Official Business Page">
-                    <Text type="secondary">Loading current OBP activity…</Text>
+                <Card className={styles.obpCard} variant="borderless" title={t('obp.officialBusinessPage')}>
+                    <Text type="secondary">{t('obp.loadingCurrentActivity')}</Text>
                 </Card>
             );
         }
 
         return (
-            <Card className={styles.obpCard} variant="borderless" title="Official Business Page">
+            <Card className={styles.obpCard} variant="borderless" title={t('obp.officialBusinessPage')}>
                 <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-                    Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
+                    {t('obp.sharedInfo')}
                 </Text>
                 {today ? (
-                    renderPeriodGrid(today)
+                    renderPeriodGrid(today, t)
                 ) : (
-                    <Text type="secondary">No OBP activity yet today.</Text>
+                    <Text type="secondary">{t('obp.noActivityToday')}</Text>
                 )}
             </Card>
         );
@@ -254,14 +257,14 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
 
     const modeTitle =
         mode === 'overall'
-            ? 'Official Business Page · Overall'
+            ? t('obp.titles.overall')
             : mode === 'daily'
-            ? 'Official Business Page · Yesterday'
+            ? t('obp.titles.daily')
             : mode === 'weekly'
-                ? 'Official Business Page · Last 7 Days'
+                ? t('obp.titles.weekly')
                 : mode === 'monthly'
-                    ? 'Official Business Page · This Month'
-                    : 'Official Business Page';
+                    ? t('obp.titles.monthly')
+                    : t('obp.officialBusinessPage');
 
     const selectedMetrics =
         mode === 'daily'
@@ -284,7 +287,7 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                     </span>
                 }
             >
-                <Text type="secondary">Loading OBP activity…</Text>
+                <Text type="secondary">{t('obp.loadingActivity')}</Text>
             </Card>
         );
     }
@@ -302,83 +305,83 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
             extra={
                 mode === 'overview'
                     ? overview?.status === 'working'
-                        ? <Tag color="success" style={{ fontSize: 11 }}>Active</Tag>
+                        ? <Tag color="success" style={{ fontSize: 11 }}>{t('states.active')}</Tag>
                         : overview?.status === 'low_activity'
-                            ? <Tag color="warning" style={{ fontSize: 11 }}>Low Activity</Tag>
-                            : <Tag style={{ fontSize: 11 }}>No Data</Tag>
+                            ? <Tag color="warning" style={{ fontSize: 11 }}>{t('states.lowActivity')}</Tag>
+                            : <Tag style={{ fontSize: 11 }}>{t('states.noData')}</Tag>
                     : null
             }
         >
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-                Actions count final OBP clicks on Call, WhatsApp, Directions, Reserve, and Order. Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
+                {t('obp.sharedInfo')}
             </Text>
 
             {mode === 'overall' ? null : mode === 'overview' ? (
                 <>
                     {overview?.wtd ? (
                         <>
-                            <Text type="secondary" style={{ fontSize: 12 }}>Last 7 Days</Text>
+                            <Text type="secondary" style={{ fontSize: 12 }}>{t('views.last7Days')}</Text>
                             <Row gutter={[16, 12]} style={{ marginTop: 8 }}>
                                 <Col xs={12} sm={6}>
-                                    <Statistic title="Page Views" value={overview.wtd.views} prefix={<LuGlobe size={14} />} />
+                                    <Statistic title={t('obp.pageViews')} value={overview.wtd.views} prefix={<LuGlobe size={14} />} />
                                 </Col>
                                 <Col xs={12} sm={6}>
-                                    <Statistic title="View Menu Clicks" value={overview.wtd.menuClicks} prefix={<LuExternalLink size={14} />} />
+                                    <Statistic title={t('obp.viewMenuClicks')} value={overview.wtd.menuClicks} prefix={<LuExternalLink size={14} />} />
                                 </Col>
                                 <Col xs={12} sm={6}>
-                                    <Statistic title="Actions" value={overview.wtd.actionClicks} prefix={<LuTrendingUp size={14} />} />
+                                    <Statistic title={t('obp.actions')} value={overview.wtd.actionClicks} prefix={<LuTrendingUp size={14} />} />
                                 </Col>
                                 <Col xs={12} sm={6}>
-                                    <Statistic title="Link Taps" value={overview.wtd.linkClicks} prefix={<LuExternalLink size={14} />} />
+                                    <Statistic title={t('obp.linkTaps')} value={overview.wtd.linkClicks} prefix={<LuExternalLink size={14} />} />
                                 </Col>
                                 <Col xs={12} sm={6}>
-                                    <Statistic title="Shares" value={overview.wtd.shares} />
+                                    <Statistic title={t('obp.shares')} value={overview.wtd.shares} />
                                 </Col>
                                 <Col xs={12} sm={6}>
                                     <div style={{ paddingTop: 4 }}>
-                                        <ChangeIndicator change={overview.viewsChange} />
+                                        <ChangeIndicator change={overview.viewsChange} t={t} />
                                     </div>
                                 </Col>
                             </Row>
                             <div style={{ marginTop: 12 }}>
-                                <ActionBreakdown actions={overview.wtd.actions} />
+                                <ActionBreakdown actions={overview.wtd.actions} t={t} />
                             </div>
                             <div style={{ marginTop: 12 }}>
-                                <LinkBreakdown links={overview.wtd.links} />
+                                <LinkBreakdown links={overview.wtd.links} t={t} />
                             </div>
                             <div style={{ marginTop: 12 }}>
-                                <ShareBreakdown shares={overview.wtd.shareMethods} />
+                                <ShareBreakdown shares={overview.wtd.shareMethods} t={t} />
                             </div>
                             <div style={{ marginTop: 12 }}>
-                                <SourceBreakdown sources={overview.wtd.sources} />
+                                <SourceBreakdown sources={overview.wtd.sources} t={t} />
                             </div>
                             <div style={{ marginTop: 12 }}>
-                                <LanguageBreakdown languages={overview.wtd.topLanguages} />
+                                <LanguageBreakdown languages={overview.wtd.topLanguages} t={t} />
                             </div>
                         </>
                     ) : (
-                        <Empty description={<Text type="secondary">No settled OBP activity yet.</Text>} />
+                        <Empty description={<Text type="secondary">{t('obp.noSettledActivity')}</Text>} />
                     )}
 
                     {overview?.mtd ? (
                         <>
                             <Divider style={{ margin: '16px 0 12px' }} />
                             <Text type="secondary" style={{ fontSize: 12 }}>{overview.mtd.monthName}</Text>
-                            {renderPeriodGrid(overview.mtd)}
+                            {renderPeriodGrid(overview.mtd, t)}
                         </>
                     ) : null}
 
                     {overview && overview.historicalWeeks.length > 1 ? (
                         <>
                             <Divider style={{ margin: '16px 0 12px' }} />
-                            <WeeklyTrend weeks={overview.historicalWeeks} />
+                            <WeeklyTrend weeks={overview.historicalWeeks} t={t} />
                         </>
                     ) : null}
                 </>
             ) : selectedMetrics ? (
-                renderPeriodGrid(selectedMetrics)
+                renderPeriodGrid(selectedMetrics, t)
             ) : (
-                <Empty description={<Text type="secondary">No settled OBP activity yet for this period.</Text>} />
+                <Empty description={<Text type="secondary">{t('obp.noSettledActivityPeriod')}</Text>} />
             )}
 
             {mode === 'overall' ? (
@@ -386,32 +389,38 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                     <>
                         <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                Lifetime: {overall.lifetimeViews.toLocaleString()} views, {overall.lifetimeMenuClicks.toLocaleString()} View Menu clicks, {overall.lifetimeActionClicks.toLocaleString()} actions, {overall.lifetimeLinkClicks.toLocaleString()} link taps, {overall.lifetimeShares.toLocaleString()} shares
+                                {t('obp.lifetimeSummary', {
+                                    views: overall.lifetimeViews.toLocaleString(),
+                                    menuClicks: overall.lifetimeMenuClicks.toLocaleString(),
+                                    actions: overall.lifetimeActionClicks.toLocaleString(),
+                                    links: overall.lifetimeLinkClicks.toLocaleString(),
+                                    shares: overall.lifetimeShares.toLocaleString(),
+                                })}
                             </Text>
                             {overall.firstDataDate ? (
                                 <Text type="secondary" style={{ fontSize: 11 }}>
-                                    Since {overall.firstDataDate}
+                                    {t('overall.since', { date: overall.firstDataDate })}
                                 </Text>
                             ) : null}
                         </Flex>
                         <div style={{ marginTop: 12 }}>
-                            <ActionBreakdown actions={overall.lifetimeActions} />
+                            <ActionBreakdown actions={overall.lifetimeActions} t={t} />
                         </div>
                         <div style={{ marginTop: 12 }}>
-                            <LinkBreakdown links={overall.lifetimeLinks} />
+                            <LinkBreakdown links={overall.lifetimeLinks} t={t} />
                         </div>
                         <div style={{ marginTop: 12 }}>
-                            <ShareBreakdown shares={overall.lifetimeShareMethods} />
+                            <ShareBreakdown shares={overall.lifetimeShareMethods} t={t} />
                         </div>
                         <div style={{ marginTop: 12 }}>
-                            <SourceBreakdown sources={overall.lifetimeSources} />
+                            <SourceBreakdown sources={overall.lifetimeSources} t={t} />
                         </div>
                         <div style={{ marginTop: 12 }}>
-                            <LanguageBreakdown languages={overall.lifetimeLanguages} />
+                            <LanguageBreakdown languages={overall.lifetimeLanguages} t={t} />
                         </div>
                     </>
                 ) : (
-                    <Empty description={<Text type="secondary">No lifetime OBP activity yet.</Text>} />
+                    <Empty description={<Text type="secondary">{t('obp.noLifetimeActivity')}</Text>} />
                 )
             ) : null}
         </Card>

@@ -1,5 +1,5 @@
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
-import { removePresetFromAllCategories } from '@database/projects';
+import { removePresetFromAllCategories, updatePresetInAllCategories } from '@database/projects';
 import { generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
@@ -117,6 +117,12 @@ const TimeSlotPresetsTab: React.FC<TimeSlotPresetsTabProps> = ({
 
             // Persist to DB and update context
             await updateTimeSlotPresets(storeId, updatedPresets);
+            if (editingPreset) {
+                const updatedPreset = updatedPresets.find((preset) => preset.id === editingPreset.id);
+                if (updatedPreset) {
+                    await updatePresetInAllCategories(updatedPreset);
+                }
+            }
             onPresetsChange(updatedPresets);
 
             setIsModalOpen(false);

@@ -128,7 +128,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                     prompt: prompt || "",
                     referanceImage: sourceImage,
                     feature: selectedFeature.featureName == "Custom Prompt" ? (Boolean(selectedPromptImage?.url) ? "Generic Two-Image Edit" : "Generic Single-Image Edit") : selectedFeature.featureName,
-                    promptImages: [selectedPromptImage],
+                    promptImages: selectedPromptImage?.url ? [selectedPromptImage] : [],
                 },
                 projectId: activeProject?.projectId || '',
                 fileId: sourceImage?.uid || '',

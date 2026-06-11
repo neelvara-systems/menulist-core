@@ -227,7 +227,7 @@ function TransactionPage() {
             title: t('action'),
             dataIndex: 'action',
             key: 'action',
-            render: (action: string) => <Tag color={getActionTagColor(action)}>{formatAiOperationActionLabel(action)}</Tag>,
+            render: (action: string) => <Tag color={getActionTagColor(action)}>{formatAiOperationActionLabel(action, t)}</Tag>,
         },
         {
             title: t('project'),
@@ -236,22 +236,22 @@ function TransactionPage() {
             render: (projectId: string) => getProjectName(projectId),
         },
         {
-            title: 'Result',
+            title: t('result'),
             key: 'result',
             render: (_: any, record: TransactionData) => (
-                <Text>{getAiOperationOwnerSummary(record)}</Text>
+                <Text>{getAiOperationOwnerSummary(record, t)}</Text>
             ),
         },
         {
-            title: 'Credits Used',
+            title: t('creditsUsed'),
             dataIndex: 'unitsConsumed',
             key: 'unitsConsumed',
             render: (units: number) => {
                 const consumed = Number(units ?? 0);
                 if (consumed <= 0) {
-                    return <Tag color="default">{formatAiOperationCredits(consumed)}</Tag>;
+                    return <Tag color="default">{formatAiOperationCredits(consumed, t)}</Tag>;
                 }
-                return <Tag color="green">{formatAiOperationCredits(consumed)}</Tag>;
+                return <Tag color="green">{formatAiOperationCredits(consumed, t)}</Tag>;
             },
             sorter: (a: TransactionData, b: TransactionData) => Number(a.unitsConsumed || 0) - Number(b.unitsConsumed || 0),
         },
@@ -280,8 +280,8 @@ function TransactionPage() {
 
     const actionOptions = useMemo(() => Object.values(AI_ACTIONS_TYPES as Record<string, string>).map((value) => ({
         value,
-        label: formatAiOperationActionLabel(value),
-    })), []);
+        label: formatAiOperationActionLabel(value, t),
+    })), [t]);
 
     // Show transaction details in modal
     const showTransactionDetails = (transaction: TransactionData) => {
@@ -326,22 +326,22 @@ function TransactionPage() {
                     >
                         {t('reset')}
                     </Button>
-                    {hasActiveFilters ? <Tag color="blue">Filtered</Tag> : null}
+                    {hasActiveFilters ? <Tag color="blue">{t('filtered')}</Tag> : null}
                 </Flex>
             </Row>
 
             {!loading && transactions.length > 0 ? (
                 <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 16 }}>
                     <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
-                        <Text type="secondary">Shown on this page</Text>
+                        <Text type="secondary">{t('shownOnThisPage')}</Text>
                         <div><Text strong style={{ fontSize: 20 }}>{transactions.length.toLocaleString()}</Text></div>
                     </div>
                     <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
-                        <Text type="secondary">Credits used on page</Text>
+                        <Text type="secondary">{t('creditsUsedOnPage')}</Text>
                         <div><Text strong style={{ fontSize: 20 }}>{pageCreditsUsed.toLocaleString()}</Text></div>
                     </div>
                     <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
-                        <Text type="secondary">No-credit actions</Text>
+                        <Text type="secondary">{t('noCreditActions')}</Text>
                         <div><Text strong style={{ fontSize: 20 }}>{freeOperationsOnPage.toLocaleString()}</Text></div>
                     </div>
                 </div>
@@ -367,14 +367,18 @@ function TransactionPage() {
                     />
                     <Flex align="center" justify="space-between" style={{ marginTop: 16 }} wrap="wrap" gap={12}>
                         <Text type="secondary">
-                            Page {pagination.current.toLocaleString()} · {transactions.length.toLocaleString()} shown{pagination.hasMore ? ' · More available' : ''}
+                            {t('pageSummary', {
+                                page: pagination.current.toLocaleString(),
+                                count: transactions.length.toLocaleString(),
+                            })}
+                            {pagination.hasMore ? ` ${t('moreAvailable')}` : ''}
                         </Text>
                         <Flex gap={8}>
                             <Button icon={<LuArrowLeft />} onClick={goToPreviousPage} disabled={loading || pagination.current <= 1}>
-                                Previous
+                                {t('previous')}
                             </Button>
                             <Button type="primary" icon={<LuArrowRight />} onClick={goToNextPage} disabled={loading || !pagination.hasMore}>
-                                Next
+                                {t('next')}
                             </Button>
                         </Flex>
                     </Flex>

@@ -1,7 +1,7 @@
 # Stores Management — Technical Implementation
 
 > **Audience:** Developers  
-> **Last Updated:** February 13, 2026  
+> **Last Updated:** June 11, 2026
 > **Version:** 1.1
 
 ---
@@ -67,8 +67,10 @@
 | File                                    | Purpose                                |
 | --------------------------------------- | -------------------------------------- |
 | `src/database/stores/index.tsx`         | Store CRUD operations                  |
+| `src/database/projects/index.ts`        | Time-slot preset category cascades     |
 | `src/database/tenants/index.tsx`        | Tenant operations, storesList updates  |
 | `src/database/platformSummary/index.ts` | Counter management, store summary sync |
+| `src/app/api/domain/route.ts`           | Custom-domain add/verify/remove writes |
 
 ### Types
 
@@ -140,7 +142,8 @@ if (Object.keys(updatedChanges).length > 0) {
   // Internally:
   //   - Uploads new logo if base64 provided
   //   - Updates stores/{storeId}
-  //   - Syncs to platformSummary/storesSummary
+  //   - Revalidates public menu/OBP store cache tags
+  //   - Syncs to platformSummary/storesSummary when summary fields changed
 
   // 5. Update tenant if name changed
   if ("name" in updatedChanges) {
@@ -407,11 +410,29 @@ const addUpdateDetails = async (changesToUpload) => {
 | Locale       | `LocaleSettingsTab`  | timezone, currency, dateFormat        |
 | Contact      | `ContactPersonTab`   | contact person details                |
 | Hours        | `WorkingHoursTab`    | Mon-Sun time ranges                   |
-| Time Slots   | `TimeSlotPresetsTab` | Custom time slot presets              |
+| Time Slots   | `TimeSlotPresetsTab` | Custom time slot presets; edit/delete cascades assigned category windows |
 | Social       | `SocialMediaTab`     | Social media URLs                     |
 | SEO          | `SeoTab`             | Meta title, description, keywords     |
 | Analytics    | `AnalyticsTab`       | Google Analytics ID                   |
 | Integrations | `IntegrationsTab`    | Google My Business                    |
+
+### Public Cache and Domain Writes
+
+Store fields that affect public menu, OBP, metadata, PWA, domain routing, or owner-assistant context must invalidate public truth cache tags:
+
+- `menu-store-{storeId}`
+- `store-{storeId}`
+- `client-stores`
+
+`updateStore()` handles desktop and mobile owner settings through `revalidatePublicClientCache()`. Custom-domain add, verification, and removal are API-owned writes in `src/app/api/domain/route.ts`; the desktop and mobile domain screens update local UI state after the API succeeds and must not call `updateStore()` for the same domain fields.
+
+### Time-Slot Preset Cascades
+
+Categories store `presetId` plus copied `startTime` / `endTime` values so public menu rendering does not need an extra store read to evaluate category visibility. Therefore:
+
+- Creating a preset writes only `stores/{storeId}.timeSlotPresets`.
+- Editing a preset writes `stores/{storeId}.timeSlotPresets`, then `updatePresetInAllCategories()` updates only current-store project docs that reference the preset and revalidates their public cache.
+- Deleting a preset writes `stores/{storeId}.timeSlotPresets`, then `removePresetFromAllCategories()` removes matching category windows from changed projects and revalidates their public cache.
 
 ---
 

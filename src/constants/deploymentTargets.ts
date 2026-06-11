@@ -1,14 +1,15 @@
 /**
- * Deployment target matrix for the shared MenuList + Answerlattice Vercel app.
+ * Deployment target matrix for the shared MenuList + Answerlattice +
+ * CampaignCue Vercel app.
  *
  * Domain routing and Firebase project selection must stay aligned:
- * - local development keeps MenuList at / and Answerlattice under /__answerlattice
+ * - local development keeps MenuList at / and product sites under /__{product}
  * - Vercel preview/QA uses staging domains and QA Firebase projects
  * - Vercel production uses production domains and production Firebase projects
  */
 
 export type DeploymentStage = 'local' | 'preview' | 'production';
-export type DeploymentProductId = 'menulist' | 'answerlattice' | 'mycodex';
+export type DeploymentProductId = 'menulist' | 'answerlattice' | 'campaigncue' | 'mycodex';
 
 export interface ProductDeploymentTarget {
     productId: DeploymentProductId;
@@ -41,6 +42,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '/__answerlattice',
             firebaseProjectId: 'answerlattice-qa',
         },
+        campaigncue: {
+            productId: 'campaigncue',
+            url: 'http://localhost:3000/__campaigncue/',
+            domains: [],
+            devPathPrefix: '/__campaigncue',
+            firebaseProjectId: 'campaigncue-qa',
+        },
         mycodex: {
             productId: 'mycodex',
             url: 'http://localhost:3000/__mycodex/',
@@ -64,6 +72,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '',
             firebaseProjectId: 'answerlattice-qa',
         },
+        campaigncue: {
+            productId: 'campaigncue',
+            url: 'https://campaigncue.menulist.online',
+            domains: ['campaigncue.menulist.online'],
+            devPathPrefix: '',
+            firebaseProjectId: 'campaigncue-qa',
+        },
         mycodex: {
             productId: 'mycodex',
             url: 'https://menulist.digital',
@@ -86,6 +101,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             domains: ['answerlattice.com', 'www.answerlattice.com'],
             devPathPrefix: '',
             firebaseProjectId: 'answerlattice',
+        },
+        campaigncue: {
+            productId: 'campaigncue',
+            url: 'https://campaigncue.ai',
+            domains: ['campaigncue.ai', 'www.campaigncue.ai'],
+            devPathPrefix: '',
+            firebaseProjectId: 'campaigncue',
         },
         mycodex: {
             productId: 'mycodex',
@@ -139,7 +161,7 @@ export function resolveKnownProductIdByHostname(hostname: string | null | undefi
     if (!hostname) return null;
     const normalizedHost = hostname.split(':')[0].toLowerCase();
 
-    for (const productId of ['menulist', 'answerlattice', 'mycodex'] as DeploymentProductId[]) {
+    for (const productId of ['menulist', 'answerlattice', 'campaigncue', 'mycodex'] as DeploymentProductId[]) {
         if (getKnownProductDomains(productId).includes(normalizedHost)) {
             return productId;
         }

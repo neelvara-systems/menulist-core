@@ -95,15 +95,20 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
         setIsSaving(true);
         const workingHours: Record<string, string> = {};
         DAYS.forEach(({ key }) => { workingHours[key] = serializeDay(schedule[key]); });
+        const hoursLastUpdatedAt = new Date().toISOString();
 
-        setStoreDetails((previous: any) => ({ ...previous, workingHours }));
+        setStoreDetails((previous: any) => ({ ...previous, hoursLastUpdatedAt, workingHours }));
         Toast.show({ content: t('hoursSaved'), duration: 1000 });
 
         try {
-            await updateStore({ ...storeDetails, workingHours } as any);
+            await updateStore({ ...storeDetails, hoursLastUpdatedAt, workingHours } as any);
             setOriginalSchedule(schedule);
         } catch {
-            setStoreDetails((previous: any) => ({ ...previous, workingHours: storeDetails.workingHours }));
+            setStoreDetails((previous: any) => ({
+                ...previous,
+                hoursLastUpdatedAt: (storeDetails as any).hoursLastUpdatedAt,
+                workingHours: storeDetails.workingHours,
+            }));
             Toast.show({ content: t('failedToSave'), duration: 2000 });
         } finally {
             setIsSaving(false);

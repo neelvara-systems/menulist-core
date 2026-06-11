@@ -34,6 +34,16 @@
     radial-gradient(circle at 48% 58%, rgba(49, 46, 129, 0.28), transparent 48%);
 }
 
+.loadingWrapCampaigncue {
+  background: #f5f7f4;
+}
+
+.loadingWrapCampaigncue::before {
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.1), transparent 44%),
+    linear-gradient(315deg, rgba(245, 158, 11, 0.1), transparent 46%);
+}
+
 .loadingWatermark {
   position: absolute;
   width: clamp(380px, 48vw, 640px);
@@ -45,6 +55,13 @@
 
 .loadingWatermarkAnswerlattice {
   opacity: 0.085;
+  filter: none;
+}
+
+.loadingWatermarkCampaigncue {
+  width: clamp(280px, 36vw, 460px);
+  height: clamp(280px, 36vw, 460px);
+  opacity: 0.05;
   filter: none;
 }
 
@@ -62,6 +79,12 @@
   filter: none;
 }
 
+.loadingLogoCampaigncue {
+  width: clamp(96px, 11vw, 138px);
+  height: clamp(96px, 11vw, 138px);
+  filter: drop-shadow(0 18px 36px rgba(15, 118, 110, 0.18));
+}
+
 @media (max-width: 640px) {
   .loadingLogo {
     width: clamp(150px, 52vw, 230px);
@@ -73,8 +96,18 @@
     height: clamp(98px, 36vw, 144px);
   }
 
+  .loadingLogoCampaigncue {
+    width: clamp(88px, 28vw, 124px);
+    height: clamp(88px, 28vw, 124px);
+  }
+
   .loadingWatermark {
     width: clamp(280px, 92vw, 420px);
     height: clamp(161px, 53vw, 241px);
+  }
+
+  .loadingWatermarkCampaigncue {
+    width: clamp(220px, 70vw, 340px);
+    height: clamp(220px, 70vw, 340px);
   }
 }

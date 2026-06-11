@@ -1,8 +1,8 @@
 # AI Image Generation — Firebase Cost Tracking
 
-**Feature:** AI-Powered Image Generation & Editing  
-**Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
+**Feature:** Menu Image Generation & Editing
+**Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
+**Last Updated:** June 11, 2026
 **Priority:** HIGH — Most expensive AI feature. Direct Gemini API + Storage costs per generation.
 
 ---
@@ -10,7 +10,7 @@
 ## Summary
 
 - **Collections Used:** `imageBatchProcessingJobs/{tId}/{sId}`, `projects/{tId}/{sId}` (projectsData)
-- **Storage Buckets:** `MenuListAi/project/generated/{projectId}/{fileId}`, `MenuListAi/project/assets/{projectId}/{fileId}`
+- **Storage Buckets:** `media/menuItem/{tId}/{sId}/{entityId}/{fileId}` for item images; `media/menuBackground/...` and `media/projectImage/...` for design/project media through shared media profiles
 - **Cloud Functions:** None (uses API routes + Google Cloud Tasks for batch)
 - **Estimated Monthly Cost:** **HIGH** — Gemini/Imagen API costs dominate
 
@@ -22,18 +22,20 @@
 
 | Operation | Collection | Trigger | Frequency | Docs Read | Indexed? | Notes |
 |-----------|-----------|---------|-----------|-----------|----------|-------|
-| Load project for generation | `projects/{tId}/{sId}/{projectId}` | User opens image gen modal | Per modal open | 1 | Direct doc | Reads project to get item details for prompt. |
-| Batch job status listener | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Batch generation started | Real-time (onSnapshot) | 1 per update | Direct doc | `useImageBatchJobListener` hook. Updates per item processed. |
-| Batch job items listener | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}/items` | Batch generation | Real-time (onSnapshot) | 1-50+ per batch | Subcollection | Each item gets its own status doc. Listener fires per item completion. |
+| Linked-outlet policy check | `projects/{tId}/{sId}/{projectId}`, `stores/{masterStoreId}` | Image generation/editing and batch trigger | Per request | 1-2 | Direct doc | Project read always runs for project-scoped requests; master store read runs only for linked outlets. |
+| AI capacity check | `subscriptions/{subscriptionId}` | Before Gemini/provider work | Per request or worker item | 1 | Query/direct helper | Prevents provider spend when credits are unavailable. |
+| Batch job status listener | `imageBatchProcessingJobs/{tId}/{sId}` | Batch generation started | Real-time (onSnapshot) | Up to 5 per update | Query: projectId + status, limit 5 | `useImageBatchJobListener` hook selects the newest visible job client-side. This keeps reads bounded and avoids a new composite index. |
+| Batch worker job read | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Cloud Tasks worker | Per item task | 1 | Direct doc | Verifies job, project, requested item, terminal/idempotent state. |
 
 ### Writes
 
 | Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |
 |-----------|-----------|---------|-----------|-------------|--------|-------|
-| Create batch job | `imageBatchProcessingJobs/{tId}/{sId}` | User starts batch gen | Per batch request | 1 | Full job doc | `addImageBatchProcessingJob()`. Contains item list, config, status. |
-| Update batch item status | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}/items/{itemId}` | Per item processed | Per item in batch | 1 per item | status, imageUrl, error | Worker updates each item as it completes. |
-| Update batch job progress | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Per item processed | Per item | 1 | progress count, status | Incremental progress updates. |
+| Create batch job | `imageBatchProcessingJobs/{tId}/{sId}` | User starts batch gen | Per batch request | 1 | Full job doc | Client creates the visible job before trigger call. |
+| Register requested item IDs | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Batch trigger validated | Per batch request | 1 | requestedItemIds | Admin SDK write used by worker authorization/idempotency. |
+| Update batch job progress | `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` | Per item processed | Per item | 1 | itemsList, generatedCount, status | Worker uses an Admin SDK transaction to merge the item result and compute the next generated count/status from the latest job doc; no item subcollection. |
 | Save generated image URL to project | `projects/{tId}/{sId}/{projectId}` | User accepts image | Per accepted image | 1 | files[].extractedData.data.items[].image | Merge update with new image URL after Storage upload. |
+| AI accounting | AI operation/accounting collections + subscription doc | Successful provider response | Per generated/edited image request | 1-2 | operation ledger, balance | Response/provider image bytes are summarized, not stored. |
 
 ### Deletes
 
@@ -47,8 +49,8 @@
 
 | Operation | Path Pattern | Trigger | Size | Notes |
 |-----------|-------------|---------|------|-------|
-| Upload accepted single image | `MenuListAi/project/assets/{projectId}/{fileId}` | User accepts generated image | 0.5-2MB | Base64 → Storage upload via `uploadBase64ToStorage`. |
-| Upload accepted batch images | Same pattern | User accepts batch results | 0.5-2MB per item | Multiple uploads for batch acceptance. |
+| Upload accepted single image | `media/menuItem/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{ext}` | User accepts generated image | Profile-bounded | Shared `uploadFile()` media profile path. Public-read image URL is saved only after owner acceptance. |
+| Upload batch worker image | `media/menuItem/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{ext}` | Worker generates item image | Profile MIME/source-size guarded | Admin SDK upload with public Firebase download token; no browser session required. |
 
 ---
 
@@ -70,10 +72,10 @@
 
 ## Security Rules Impact
 
-- `imageBatchProcessingJobs`: Write requires auth + tenant match. Read requires auth + own tenant.
-- Storage upload: requires auth. Path includes projectId for tenant isolation.
+- `imageBatchProcessingJobs`: Browser read/write requires auth + tenant/store match. Server worker uses Admin SDK after task secret and project/job/item validation.
+- Storage upload: browser uploads require auth + tenant/store path; worker uploads use Admin SDK only after authenticated Cloud Task secret validation.
 - Rate limiting: `checkExpensiveAILimit()` — 5 requests per minute per user.
-- All API routes protected with `withAuth()` middleware.
+- Owner API routes use `withAuth()`; the worker route is Cloud Tasks-only and requires `project-id` plus `x-menulist-task-secret`.
 
 ---
 
@@ -81,9 +83,13 @@
 
 ### Current Optimizations
 - **Rate limiting**: 5/min prevents runaway costs
-- **Batch via Cloud Tasks**: Items processed sequentially, prevents Gemini rate limit errors
-- **User review before save**: Generated images shown as preview — only accepted images uploaded to Storage
-- **Discarded images not stored**: If user rejects, no Storage cost
+- **Capacity before provider work**: Single and worker routes build deterministic prompts first, then check AI capacity using the actual prompt/image quantity before calling Gemini/Imagen.
+- **Batch preflight capacity check**: Batch trigger estimates deterministic prompt/image quantity before enqueuing tasks, so multi-prompt batches are blocked before Cloud Tasks are created when capacity is insufficient.
+- **Batch via Cloud Tasks**: Items are queued independently; each worker validates job/project/item state before provider work.
+- **Bounded prompt/upload concurrency**: Multi-prompt image generation and worker Storage uploads run with small concurrency caps instead of unbounded parallelism.
+- **Worker idempotency guard**: Replayed item tasks skip when an item already has generated images.
+- **Payload summaries**: Provider responses and reference-image data are summarized in logs/accounting instead of storing image bytes.
+- **User review before save**: Single generated images are returned as base64 previews and uploaded to Storage only when the owner accepts them.
 
 ### Potential Optimizations
 - **Image caching**: Same item name → same image. Cache by item name hash
@@ -117,16 +123,20 @@
 
 | Function | File | Operation Type |
 |----------|------|---------------|
-| `addImageBatchProcessingJob` | `src/database/projects/imageBatch.ts` | Write (addDoc) |
+| `addImageBatchProcessingJob` | `src/database/imageBatchProcessing/index.tsx` | Write (addDoc) |
 | `useImageBatchJobListener` | `src/hooks/useImageBatchJobListener.ts` | Read (onSnapshot) |
 | `uploadBase64ToStorage` | `src/database/storage/uploadBase64ToStorage.ts` | Storage upload |
+| `uploadBase64MediaImageAdmin` | `src/database/storage/uploadBase64MediaImageAdmin.ts` | Server worker Storage upload |
+| `getImageBatchProcessingJobByIdAdmin` | `src/database/imageBatchProcessing/server.ts` | Worker job read |
+| `updateImageBatchProcessingJobAdmin` | `src/database/imageBatchProcessing/server.ts` | Worker/job server updates |
+| `appendImageBatchItemResultAdmin` | `src/database/imageBatchProcessing/server.ts` | Transactional worker progress update |
 | `updateProject` | `src/database/projects/index.ts:382` | Write (setDoc merge) |
 
 ## API Routes & Their Firebase Impact
 
 | Route | Method | Firebase Ops | Rate Limited? | Notes |
 |-------|--------|-------------|---------------|-------|
-| `/api/image-generation` | POST | 0R + 0W (Gemini only) | Yes (5/min) | Single image gen. Returns base64. No Firestore. |
-| `/api/image-generation/batch-trigger` | POST | 1R + 1W | Yes (5/min) | Creates Cloud Tasks for batch. |
-| `/api/image-generation/batch-generation` | POST | 1R + 2W | N/A (worker) | Per-item worker. Reads job, writes result + progress. |
-| `/api/image-editing` | POST | 0R + 0W | Yes (5/min) | Edit existing image. Returns base64. No Firestore. |
+| `/api/image-generation` | POST | 2-3R + 1-2W on success | Yes (5/min) | Project/outlet policy + prompt-count AI capacity before provider; accounting write after success. Returns base64 preview and does not write Storage until owner acceptance. |
+| `/api/image-generation/batch-trigger` | POST | 2-4R + 1W | Yes (3/5min) | Project/outlet policy + prompt-count batch capacity, registers requested item IDs, then enqueues Cloud Tasks. |
+| `/api/image-generation/batch-generation` | POST | 2R + Storage uploads + 2-3W on success | Task secret | Reads job + prompt-count capacity, uploads generated images via Admin SDK with bounded concurrency, writes accounting and transactional progress. |
+| `/api/image-editing` | POST | 2-3R + 1-2W on success | Yes (5/min) | Project/outlet policy + AI capacity before provider; accounting write after success. Returns base64 preview. |

@@ -1,8 +1,8 @@
 # AI Data Extraction — Firebase Cost Tracking
 
-**Feature:** OCR & Menu Extraction with Gemini AI  
-**Status:** ✅ Production Ready  
-**Last Updated:** May 2, 2026
+**Feature:** OCR & Menu Extraction with Gemini AI
+**Status:** Controlled owner testing ready; production deploy pending for the legacy callable hardening
+**Last Updated:** June 11, 2026
 **Priority:** HIGH — Every new project triggers this. Direct cost per user action.
 
 ---
@@ -11,7 +11,7 @@
 
 - **Collections Used:** `menuImageProcessingJobs`, `projects/{tId}/{sId}` (projectsData)
 - **Storage Buckets:** `MenuListAi/project/files/{timestamp}-{uid}` (uploaded menu images)
-- **Cloud Functions:** `processMenuImagesJob` (onCreate trigger), `dev_triggerProcessMenuImages` (dev callable)
+- **Cloud Functions:** `processMenuImagesJob` (onCreate trigger), `dev_triggerProcessMenuImages` (dev callable), `processMenuImages` (legacy callable, fails closed in code)
 - **Estimated Monthly Cost:** **Medium** — Scales with number of new projects + re-extractions
 - **Category Icon Defaults:** No extra Firebase operations. Icon defaults are applied in-memory during extraction finalization and saved with the existing project/job writes.
 
@@ -37,6 +37,7 @@
 | Update job status → completed  | `menuImageProcessingJobs/{jobId}`  | Cloud Function end              | Per extraction         | 1            | status, completedAt, results, provenance | Final status + extracted data + `rawBatchResponses[]` + `promptVersion` + `model` + `confidenceSummary`. Provenance piggybacked on existing write (zero extra cost). |
 | Record AI operation            | `MENULIST_AI_OPERATIONS`           | After extraction                | Per extraction         | 1            | Full transaction object                  | Cost tracking, token usage. Written by CF `addAiOperation()`. File: `functions/src/logic/processMenuImages.ts`                                                       |
 | Save extracted data to project | `projects/{tId}/{sId}/{projectId}` | After extraction                | Per extraction         | 1            | files[].extractedData                    | Merge update with extracted categories, item data, category icon defaults, prices, languages. Heavy write (~50KB).                                                   |
+| Apply reviewed extraction      | `projects/{tId}/{sId}/{projectId}` | Owner approves preview          | Per review apply       | 1            | files/overrides                          | Single-store/master applies update the project directly after job ownership/status validation. Linked outlets route through `/api/projects/outlet-save` for server-side local-only ID and outlet-policy validation. |
 
 ### Deletes
 
@@ -61,6 +62,7 @@
 | ------------------------------ | ----------------------------------------------- | ---------------------- | ------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `processMenuImagesJob`         | Firestore onCreate on `menuImageProcessingJobs` | Per extraction request | 30-120s (depends on file count) | 2GiB   | Calls Gemini 2.5 Flash. Parallel upload, sequential batch processing. Hardening pipeline. Provenance tracking. File: `functions/src/triggers/production.ts` |
 | `dev_triggerProcessMenuImages` | Callable (dev only)                             | Dev testing            | Same as above                   | 2GiB   | Same logic, manually triggered. Not deployed to production. File: `functions/src/dev-triggers.ts`                                                           |
+| `processMenuImages`            | Callable                                        | Compatibility only     | N/A                             | 2GiB   | Direct AI processing is disabled in code and returns `failed-precondition`; extraction must use the job queue. Deployment was blocked on June 11, 2026 by `ecomsai` billing-disabled Secret Manager 403. |
 
 ---
 
@@ -70,6 +72,7 @@
 - `projects`: Write requires auth + tenant isolation (`{tId}/{sId}`). Cloud Function uses admin SDK (bypasses rules).
 - Storage: Upload requires auth. Path must match `MenuListAi/project/files/*`.
 - Rate limiting: `checkExpensiveAILimit()` — 5 requests per minute per user.
+- Preview review apply/discard rejects missing jobs, non-`preview_ready` jobs, project mismatches, tenant/store mismatches, and user mismatches before updating project or job state.
 
 ---
 

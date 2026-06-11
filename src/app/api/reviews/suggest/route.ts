@@ -101,9 +101,13 @@ const FALLBACK_REPLIES: Record<string, string> = {
 const ACTION = AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION;
 
 export const POST = withAuth(async (request: NextRequest, session) => {
-    if (!FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST) {
+    if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION || !FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST) {
         return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
     }
+
+    const { checkSafeMode } = await import('@lib/ops/safeMode');
+    const safeModeResponse = await checkSafeMode();
+    if (safeModeResponse) return safeModeResponse;
 
     // Rate limiting — 10 suggestions per minute per user
     const rateLimitResult = await checkRateLimit({

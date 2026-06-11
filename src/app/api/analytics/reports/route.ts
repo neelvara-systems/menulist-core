@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getAnalyticsReport, getRealTimeUsers } from '@lib/analytics/server/index';
 import { PERMISSIONS } from '@constant/permissions';
+import { requireConfiguredGoogleAnalyticsProperty, toGoogleAnalyticsPropertyResource } from '@lib/analytics/googlePropertyAccess';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { withAuth } from '../../../../middleware/auth';
 
@@ -12,13 +13,11 @@ export const GET = withAuth(async (request, session) => {
     try {
         const { searchParams } = new URL(request.url);
         const rawPropertyId = searchParams.get('propertyId');
-        const propertyId = rawPropertyId?.startsWith('properties/') ? rawPropertyId : `properties/${rawPropertyId}`;
+        const propertyAccessError = await requireConfiguredGoogleAnalyticsProperty(request, session, rawPropertyId);
+        if (propertyAccessError) return propertyAccessError;
+        const propertyId = toGoogleAnalyticsPropertyResource(rawPropertyId)!;
         const startDate = searchParams.get('startDate') || '7daysAgo';
         const endDate = searchParams.get('endDate') || 'today';
-
-        if (!propertyId) {
-            return NextResponse.json({ error: 'Property ID is required' }, { status: 400 });
-        }
 
         const [reportData, realtimeData] = await Promise.all([
             getAnalyticsReport(propertyId, startDate, endDate),

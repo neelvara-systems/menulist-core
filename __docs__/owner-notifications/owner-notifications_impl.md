@@ -1,6 +1,7 @@
 # Owner Notifications - Implementation Plan
 
 **Status:** Implemented for MenuList lifecycle owner notifications, Answerlattice owner test notification, and internal ops tracking
+**Last Reviewed:** June 11, 2026
 **Date:** 2026-06-02
 **Audience:** Developers
 
@@ -13,6 +14,8 @@ Trigger points do not send email or WhatsApp directly. They create an owner noti
 This removes direct owner-facing SMTP sends from billing routes, schedulers, and product-specific support code for the implemented trigger set. WhatsApp is implemented as a guarded channel adapter and remains disabled by default until approved template/session rollout is configured.
 
 WhatsApp recipients must be normalized to international digits before hashing, rate limiting, delivery logging, or Graph API calls. Recipient resolution uses the store/workspace `countryCode`, `dialCode`, canonical `phone`, local `phoneNumber`, notification settings WhatsApp number, and explicit recipient hints. Bare local Indian numbers default to `+91`; explicit `+...` / `00...` numbers override the stored/default country.
+
+For MenuList, recipient and formatting context resolution reads canonical top-level `stores/{storeId}` first. A nested `tenants/{tenantId}/stores/{storeId}` fallback exists only for legacy compatibility; new MenuList owner-notification code must not depend on nested store documents.
 
 Internal recovery is handled through a platform-only dashboard. It does not create owner-facing settings or live workflow notifications; it gives the platform team a bounded tracking surface for failed/partial/skipped events, retry, system send to a chosen destination, and manual handoff recording.
 
@@ -141,6 +144,8 @@ The first implementation migrates Answerlattice Next-side owner test notificatio
 Route: `/ops/owner-notifications`.
 
 Access: `platformRole === 'PLATFORM'` only, enforced both by the page guard and `withAuth(..., { requiredPlatformRole: 'PLATFORM' })` on the API route.
+
+The API is also feature-flag guarded: it returns `404` before Firestore reads or recovery writes when either `ENABLE_OWNER_NOTIFICATIONS` or `ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD` is disabled.
 
 Capabilities:
 

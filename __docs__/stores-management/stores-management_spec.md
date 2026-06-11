@@ -134,6 +134,8 @@ When creating a store, **default time slot presets** are automatically assigned 
 - Retail → Morning, Afternoon, Evening slots
 - Service → Hourly appointment slots
 
+When an owner edits an existing preset, MenuList updates assigned category time windows in the current store's projects so the public menu follows the saved preset. When a preset is deleted, assigned category windows using that preset are removed from changed projects. Both paths revalidate public menu/OBP cache for affected projects.
+
 ---
 
 ## Data Model Overview

@@ -7,6 +7,7 @@ import type {
     SourceQuality,
 } from '@template/main-app/projects/types';
 import { theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { LuCheckCircle, LuLock, LuSparkles } from 'react-icons/lu';
 import { Card, Flex, List, Tag, Text } from '../../antd';
 
@@ -29,9 +30,10 @@ export default function MobileOwnerActionPlanCard({
     confidence,
     sourceQuality = [],
     analyticsAiEntitlement,
-    title = "Today's Action List",
+    title,
 }: MobileOwnerActionPlanCardProps) {
     const { token } = theme.useToken();
+    const t = useTranslations('Dashboard.owner');
     const actions = actionPlan?.actions || [];
     const bestSource = sourceQuality[0];
     const isPlanLocked = analyticsAiEntitlement
@@ -46,7 +48,7 @@ export default function MobileOwnerActionPlanCard({
         <Card size="small" title={(
             <Flex align="center" gap={6}>
                 <LuSparkles size={14} />
-                <Text strong>{title}</Text>
+                <Text strong>{title || t('actionPlan.todayTitle')}</Text>
             </Flex>
         )}>
             <Flex gap={10} vertical>
@@ -54,9 +56,9 @@ export default function MobileOwnerActionPlanCard({
                     <Flex align="center" gap={8}>
                         <LuLock color={token.colorPrimary} size={18} />
                         <Flex gap={2} vertical>
-                            <Text strong>Available on Pro</Text>
+                            <Text strong>{t('actionPlan.availableOnPro')}</Text>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                Pro adds menu intelligence, owner action lists, and plain-language summaries from your menu activity.
+                                {t('actionPlan.proDescription')}
                             </Text>
                         </Flex>
                     </Flex>
@@ -73,7 +75,11 @@ export default function MobileOwnerActionPlanCard({
 
                 {!isPlanLocked && bestSource ? (
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        {`Best source right now: ${bestSource.label} · ${bestSource.menuSessions} visits · ${bestSource.actionRate}% action rate`}
+                        {t('actionPlan.bestSourceMobile', {
+                            source: bestSource.label,
+                            visits: bestSource.menuSessions,
+                            rate: bestSource.actionRate,
+                        })}
                     </Text>
                 ) : null}
 
@@ -97,7 +103,7 @@ export default function MobileOwnerActionPlanCard({
                 ) : !isPlanLocked ? (
                     <Flex align="center" gap={8}>
                         <LuCheckCircle color={token.colorSuccess} size={18} />
-                        <Text type="secondary">No action needed. Menu state is stable.</Text>
+                        <Text type="secondary">{t('actionPlan.noActionNeeded')}</Text>
                     </Flex>
                 ) : null}
 
@@ -105,7 +111,11 @@ export default function MobileOwnerActionPlanCard({
                     <Flex gap={6} wrap>
                         {sourceQuality.slice(0, 4).map((source) => (
                             <Tag key={source.source} color="default">
-                                {`${source.label}: ${source.menuSessions} visits · ${source.actionRate}%`}
+                                {t('actionPlan.sourceQualityTagCompact', {
+                                    source: source.label,
+                                    visits: source.menuSessions,
+                                    rate: source.actionRate,
+                                })}
                             </Tag>
                         ))}
                     </Flex>

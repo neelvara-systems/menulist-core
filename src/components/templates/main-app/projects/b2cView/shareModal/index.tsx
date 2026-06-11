@@ -6,8 +6,8 @@ import { resolveMenuKitBrandTokens } from '@lib/menu-kit/brandTokens';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
 import { downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
-import { generateProjectUrl, slugify } from '@lib/utils/slugify';
-import { Button, Card, Checkbox, ColorPicker, Divider, Flex, message, Modal, QRCode, theme, Tooltip, Typography } from 'antd';
+import { generateProjectUrl } from '@lib/utils/slugify';
+import { Alert, Button, Card, Checkbox, ColorPicker, Divider, Flex, message, Modal, QRCode, theme, Tooltip, Typography } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -22,7 +22,7 @@ interface ShareModalProps {
     onClose: () => void;
     projectId: string;
     projectName?: string;     // Project name for slug generation
-    isDefaultProject?: boolean; // If true, uses root URL without slug
+    isDefaultProject?: boolean; // Retained for caller compatibility; R5 URLs always use the project slug.
     storeName?: string;
     storeDescription?: string;
     storeLogo?: string;
@@ -72,7 +72,6 @@ function ShareModal({
     onClose,
     projectId,
     projectName,
-    isDefaultProject,
     storeName = 'Your Menu',
     storeDescription,
     storeLogo,
@@ -109,29 +108,17 @@ function ShareModal({
         return modifiedMs > lastDownloadMs;
     }, [menuModifiedOn, PDF_DOWNLOAD_KEY]);
 
-    // Generate share URL based on domain settings
-    // Priority: customDomain → subdomain → fallback to path-based (localhost only)
-    // URL structure: subdomain.menulist.ai/{project-slug} or root for default
-    const getShareUrl = () => {
+    const shareUrl = useMemo(() => {
+        const normalizedSubdomain = subdomain?.trim();
+        const normalizedCustomDomain = customDomain?.trim();
+        if (!normalizedCustomDomain && !normalizedSubdomain) return '';
         // R5 link-emitter audit (§9 PUBLIC-ROUTING-DOCTRINE): share URL is the
         // real canonical slug URL for every project — default or not. Under
         // R5 the default project's canonical URL is its real slug, not /menu.
-        if (customDomain || subdomain) {
-            return generateProjectUrl(
-                subdomain,
-                customDomain,
-                projectName,
-                false
-            );
-        }
-        // Fallback for localhost/development or stores without domain setup
-        const slug = projectName ? slugify(projectName) : projectId;
-        return `${typeof window !== 'undefined' ? window.location.origin : ''}/menu/${slug}`;
-    };
-    const shareUrl = getShareUrl();
-    const qrShareUrl = withEntrySource(shareUrl, 'qr');
-
-    const [copied, setCopied] = useState(false);
+        return generateProjectUrl(normalizedSubdomain, normalizedCustomDomain, projectName, false);
+    }, [customDomain, projectName, subdomain]);
+    const hasPublicShareUrl = Boolean(shareUrl);
+    const qrShareUrl = hasPublicShareUrl ? withEntrySource(shareUrl, 'qr') : '';
 
     // QR customization (hidden by default)
     const [qrColor, setQrColor] = useState(brandTokens.qrDark);
@@ -153,17 +140,11 @@ function ShareModal({
         }
     }, [qrColor, qrBgColor]);
 
-    const handleCopyLink = async () => {
-        try {
-            await navigator.clipboard.writeText(withEntrySource(shareUrl, 'copy_link'));
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch {
-            message.error('Failed to copy link');
-        }
-    };
-
     const handleDownloadQR = async () => {
+        if (!hasPublicShareUrl) {
+            message.warning('Public link is not ready yet');
+            return;
+        }
         try {
             const dataUrl = await generateBrandedQrCodeDataUrl(qrShareUrl, {
                 brandColor,
@@ -184,6 +165,10 @@ function ShareModal({
     };
 
     const handleShare = (platform: 'whatsapp' | 'facebook' | 'instagram') => {
+        if (!hasPublicShareUrl) {
+            message.warning('Public link is not ready yet');
+            return;
+        }
         const urlWithUTM = withEntrySource(shareUrl, platform);
         const urls = {
             whatsapp: `https://wa.me/?text=${encodeURIComponent(
@@ -336,60 +321,71 @@ function ShareModal({
 
                 <Divider style={{ margin: '8px 0' }} />
 
+                {!hasPublicShareUrl ? (
+                    <Alert
+                        showIcon
+                        type="warning"
+                        message="Public link is not ready"
+                        description="Set the store's public address before sharing QR codes, social links, or printable files."
+                    />
+                ) : null}
+
                 {/* QR Code Section - Full width layout */}
-                <Card size="small" styles={{ body: { padding: 16 } }}>
-                    <Flex vertical gap={12}>
-                        <Flex gap={16} align="flex-start">
-                            <div id="share-qrcode" style={{ background: qrBgColor, borderRadius: 8, padding: 8 }}>
-                                <QRCode
-                                    value={qrShareUrl}
-                                    size={160}
-                                    errorLevel="H"
-                                    color={qrColor}
-                                    bgColor={qrBgColor}
-                                    icon={showLogo ? (storeLogo || LOGO_SMALL) : undefined}
-                                    iconSize={showLogo ? 28 : undefined}
-                                />
-                            </div>
-                            <Flex vertical gap={8} style={{ flex: 1 }}>
-                                <Flex gap={8}>
-                                    <Tooltip title={isMenuUpdatedSincePdf ? 'Menu updated since last PDF download' : undefined}>
+                {hasPublicShareUrl ? (
+                    <Card size="small" styles={{ body: { padding: 16 } }}>
+                        <Flex vertical gap={12}>
+                            <Flex gap={16} align="flex-start">
+                                <div id="share-qrcode" style={{ background: qrBgColor, borderRadius: 8, padding: 8 }}>
+                                    <QRCode
+                                        value={qrShareUrl}
+                                        size={160}
+                                        errorLevel="H"
+                                        color={qrColor}
+                                        bgColor={qrBgColor}
+                                        icon={showLogo ? (storeLogo || LOGO_SMALL) : undefined}
+                                        iconSize={showLogo ? 28 : undefined}
+                                    />
+                                </div>
+                                <Flex vertical gap={8} style={{ flex: 1 }}>
+                                    <Flex gap={8}>
+                                        <Tooltip title={isMenuUpdatedSincePdf ? 'Menu updated since last PDF download' : undefined}>
+                                            <Button
+                                                icon={isMenuUpdatedSincePdf ? <LuAlertTriangle style={{ color: token.colorWarning }} /> : <LuFileText />}
+                                                onClick={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport : handleDownloadPdf}
+                                                loading={generatingPdf}
+                                                disabled={items.length === 0}
+                                            >
+                                                {FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Print Menu' : 'Menu PDF'}
+                                            </Button>
+                                        </Tooltip>
                                         <Button
-                                            icon={isMenuUpdatedSincePdf ? <LuAlertTriangle style={{ color: token.colorWarning }} /> : <LuFileText />}
-                                            onClick={FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? handleOpenMenuCardExport : handleDownloadPdf}
-                                            loading={generatingPdf}
-                                            disabled={items.length === 0}
+                                            icon={<LuDownload />}
+                                            onClick={handleDownloadQR}
                                         >
-                                            {FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT ? 'Print Menu' : 'Menu PDF'}
+                                            Download QR
                                         </Button>
-                                    </Tooltip>
-                                    <Button
-                                        icon={<LuDownload />}
-                                        onClick={handleDownloadQR}
-                                    >
-                                        Download QR
-                                    </Button>
+                                    </Flex>
+                                </Flex>
+                            </Flex>
+                            {/* QR Customization - inline, full width */}
+                            <Flex gap={16} justify="space-between" align="center" style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 }}>
+                                <Flex align="center" gap={8}>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>Color:</Text>
+                                    <ColorPicker size="small" value={qrColor} onChange={(c) => setQrColor(c.toHexString())} />
+                                </Flex>
+                                <Flex align="center" gap={8}>
+                                    <Text type="secondary" style={{ fontSize: 12 }}>Background:</Text>
+                                    <ColorPicker size="small" value={qrBgColor} onChange={(c) => setQrBgColor(c.toHexString())} />
+                                </Flex>
+                                <Flex align="center" gap={8}>
+                                    <Checkbox checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)}>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>Show logo</Text>
+                                    </Checkbox>
                                 </Flex>
                             </Flex>
                         </Flex>
-                        {/* QR Customization - inline, full width */}
-                        <Flex gap={16} justify="space-between" align="center" style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 }}>
-                            <Flex align="center" gap={8}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Color:</Text>
-                                <ColorPicker size="small" value={qrColor} onChange={(c) => setQrColor(c.toHexString())} />
-                            </Flex>
-                            <Flex align="center" gap={8}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Background:</Text>
-                                <ColorPicker size="small" value={qrBgColor} onChange={(c) => setQrBgColor(c.toHexString())} />
-                            </Flex>
-                            <Flex align="center" gap={8}>
-                                <Checkbox checked={showLogo} onChange={(e) => setShowLogo(e.target.checked)}>
-                                    <Text type="secondary" style={{ fontSize: 12 }}>Show logo</Text>
-                                </Checkbox>
-                            </Flex>
-                        </Flex>
-                    </Flex>
-                </Card>
+                    </Card>
+                ) : null}
 
                 {/* Social Sharing - Priority: WhatsApp (primary) > Instagram > Facebook */}
                 <Flex gap={12}>
@@ -399,6 +395,7 @@ function ShareModal({
                         type="primary"
                         icon={<FaWhatsapp />}
                         onClick={() => handleShare('whatsapp')}
+                        disabled={!hasPublicShareUrl}
                         style={{ background: '#25D366', borderColor: '#25D366' }}
                     >
                         WhatsApp
@@ -408,6 +405,7 @@ function ShareModal({
                         size="large"
                         icon={<FaInstagram />}
                         onClick={() => handleShare('instagram')}
+                        disabled={!hasPublicShareUrl}
                     >
                         Instagram
                     </Button>
@@ -416,6 +414,7 @@ function ShareModal({
                         size="large"
                         icon={<FaFacebook />}
                         onClick={() => handleShare('facebook')}
+                        disabled={!hasPublicShareUrl}
                     >
                         Facebook
                     </Button>
@@ -457,7 +456,7 @@ function ShareModal({
                 </Card>
 
                 {/* Menu Kit — Print + Social asset pack */}
-                {FEATURE_FLAGS.ENABLE_MENU_KIT && (
+                {FEATURE_FLAGS.ENABLE_MENU_KIT && hasPublicShareUrl && (
                     <MenuKitSection
                         storeName={storeName}
                         menuUrl={shareUrl}
@@ -477,10 +476,10 @@ function ShareModal({
                         We track scans and opens so you can see what works
                     </Text>
                     <Flex gap={8}>
-                        <Button size="small" type="text" icon={<LuExternalLink />} onClick={() => window.location.assign(withEntrySource(shareUrl, 'direct'))}>
+                        <Button size="small" type="text" icon={<LuExternalLink />} disabled={!hasPublicShareUrl} onClick={() => window.location.assign(withEntrySource(shareUrl, 'direct'))}>
                             Open
                         </Button>
-                        <Button size="small" type="text" icon={<LuCopy />} onClick={() => { navigator.clipboard.writeText(withEntrySource(shareUrl, 'copy_link')); message.success('URL copied'); }}>
+                        <Button size="small" type="text" icon={<LuCopy />} disabled={!hasPublicShareUrl} onClick={() => { navigator.clipboard.writeText(withEntrySource(shareUrl, 'copy_link')); message.success('URL copied'); }}>
                             Copy URL
                         </Button>
                     </Flex>

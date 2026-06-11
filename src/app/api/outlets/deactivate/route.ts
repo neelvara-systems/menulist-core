@@ -64,22 +64,58 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Only master can deactivate" }, { status: 403 });
         }
 
-        // Target must be in same tenant and not master
+        // Target must be in same tenant and not master. Validate against the
+        // canonical store doc before writing because this server route runs
+        // with Admin privileges and cannot trust a stale tenant storesList
+        // entry as its only tenant boundary.
         const tenantSnap = await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get();
         const storesList = tenantSnap.data()?.storesList || [];
         const target = storesList.find((s: any) => Number(s.storeId) === Number(outletStoreId));
         if (!target || target.isMaster) {
             return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
         }
+        const targetStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreId}`);
+        const targetStoreSnap = await targetStoreRef.get();
+        const targetStore = targetStoreSnap.data();
+        if (
+            !targetStoreSnap.exists
+            || Number(targetStore?.tenantId) !== Number(tenantId)
+            || targetStore?.isMaster === true
+        ) {
+            return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
+        }
+        if (targetStore?.active === false && target.active === false) {
+            return NextResponse.json({ success: true, outletStoreId, alreadyInactive: true, billingReduced: false });
+        }
 
         // Update store, summary, and tenant storesList atomically so location
         // visibility cannot drift if one write fails.
-        const updatedStoresList = storesList.map((s: any) =>
-            Number(s.storeId) === Number(outletStoreId) ? { ...s, active: false } : s
-        );
-        const activeStoresAfterDeactivation = Math.max(1, updatedStoresList.filter((s: any) => s?.active !== false).length);
+        let activeStoresAfterDeactivation = Math.max(1, storesList.filter((s: any) => (
+            Number(s?.storeId) !== Number(outletStoreId) && s?.active !== false
+        )).length);
         await db.runTransaction(async (tx) => {
-            tx.update(db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreId}`), {
+            const [freshTenantSnap, freshTargetSnap] = await Promise.all([
+                tx.get(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`)),
+                tx.get(targetStoreRef),
+            ]);
+            const freshTarget = freshTargetSnap.data();
+            if (
+                !freshTargetSnap.exists
+                || Number(freshTarget?.tenantId) !== Number(tenantId)
+                || freshTarget?.isMaster === true
+            ) {
+                throw new Error("INVALID_OUTLET_TARGET");
+            }
+            const freshStoresList = freshTenantSnap.data()?.storesList || [];
+            const updatedStoresList = freshStoresList.map((s: any) =>
+                Number(s.storeId) === Number(outletStoreId) ? { ...s, active: false } : s
+            );
+            activeStoresAfterDeactivation = Math.max(
+                1,
+                updatedStoresList.filter((s: any) => s?.active !== false).length,
+            );
+
+            tx.update(targetStoreRef, {
                 active: false,
                 deactivatedAt: now,
             });
@@ -137,6 +173,9 @@ export const POST = withAuth(async (request, session) => {
 
         return NextResponse.json({ success: true, outletStoreId, deactivatedAt: now, billingReduced });
     } catch (error) {
+        if ((error as Error).message === "INVALID_OUTLET_TARGET") {
+            return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
+        }
         secureError("[Outlets] Deactivate failed", error as Error, { tenantId, storeId });
         return NextResponse.json({ error: "Deactivation failed" }, { status: 500 });
     }

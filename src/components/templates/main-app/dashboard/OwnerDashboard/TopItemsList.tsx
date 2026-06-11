@@ -7,6 +7,7 @@
 
 import { TopItem } from '@template/main-app/projects/types';
 import { Card, Empty, List, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuFlame } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
@@ -21,18 +22,20 @@ interface TopItemsListProps {
 
 const TopItemsList: React.FC<TopItemsListProps> = ({
     items,
-    title = 'Top Items',
+    title,
     maxItems = 5,
 }) => {
+    const t = useTranslations('Dashboard.owner');
     const displayItems = items.slice(0, maxItems);
+    const cardTitle = title || t('details.sections.topItems');
 
     if (displayItems.length === 0) {
         return (
             <Card className={styles.topItemsCard} variant="borderless">
-                <Title level={5}>{title}</Title>
+                <Title level={5}>{cardTitle}</Title>
                 <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="No item clicks yet"
+                    description={t('empty.noItemClicksYet')}
                 />
             </Card>
         );
@@ -40,7 +43,7 @@ const TopItemsList: React.FC<TopItemsListProps> = ({
 
     return (
         <Card className={styles.topItemsCard} variant="borderless">
-            <Title level={5}>{title}</Title>
+            <Title level={5}>{cardTitle}</Title>
             <List
                 className={styles.topItemsList}
                 dataSource={displayItems}
@@ -59,7 +62,7 @@ const TopItemsList: React.FC<TopItemsListProps> = ({
                             </Text>
                         </div>
                         <div className={styles.topItemClicks}>
-                            <Text type="secondary">{item.clicks} clicks</Text>
+                            <Text type="secondary">{t('units.clicks', { count: item.clicks })}</Text>
                         </div>
                     </List.Item>
                 )}

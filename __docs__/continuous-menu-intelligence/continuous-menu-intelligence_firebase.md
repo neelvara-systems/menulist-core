@@ -1,20 +1,21 @@
 # Continuous Menu Intelligence — Firebase Cost Tracking
 
-**Feature:** Menu Behavioral Observation Layer (Two-Layer Architecture)  
-**Status:** ✅ Production Ready (Observation Active, Optimization GrowthOS-Deferred)  
-**Last Updated:** March 15, 2026  
-**Priority:** HIGH — Nightly Cloud Functions reading analytics + writing scores. Scales with project count.
+**Feature:** Menu Behavioral Observation Layer (Two-Layer Architecture)
+**Status:** Controlled owner testing ready in audited slice; full MenuList certification pending
+**Last Updated:** June 11, 2026
+**Priority:** HIGH — Unified scheduler reads project data and compact analytics snapshots, then writes Decision Blocks and Menu Intelligence.
 
-> **Note:** Autonomous actions (AUTO_HIDE, AUTO_PROMOTE, etc.) are computed and logged but architecturally belong to GrowthOS. Firebase cost covers the full computation including deferred actions.
+> Autonomous action observations are computed and logged, but MenuList uses CMI as an observation and priority layer. Optimization actions remain GrowthOS-deferred.
 
 ---
 
 ## Summary
 
-- **Collections Used:** `analytics`, `projects/{tId}/{sId}`, `decisionBlocks`, `menuIntelligence/{tId}_{sId}_{projectId}`, `stores`
+- **Collections Used:** `analytics`, `projects/{tId}/{sId}/{projectId}`, `menuIntelligence`, `platformSummary`, `schedulerRunLogs`
 - **Storage Buckets:** None
-- **Cloud Functions:** `computeDecisionBlocksScores` (scheduled nightly 02:30 UTC — CMI runs as Step 2 inside this function)
-- **Estimated Monthly Cost:** **Medium** — Analytics reads dominate. Scales linearly with active projects.
+- **Cloud Functions:** `computeDecisionBlocksScores` (hourly trigger; processes only stores whose local settlement window is due)
+- **Manual Recovery:** `triggerDecisionBlocksScoring` (platform-only callable)
+- **Estimated Monthly Cost:** Medium, linear in active project count.
 
 ---
 
@@ -22,69 +23,78 @@
 
 ### Reads
 
-| Operation                  | Collection                                 | Trigger     | Frequency               | Docs Read        | Indexed?              | Notes                                      |
-| -------------------------- | ------------------------------------------ | ----------- | ----------------------- | ---------------- | --------------------- | ------------------------------------------ |
-| Read analytics (scoring)   | `analytics`                                | Nightly job | Per project × 7-30 days | 7-30 per project | Yes (date, projectId) | Daily analytics docs for scoring period.   |
-| Read project data          | `projects/{tId}/{sId}/{projectId}`         | Nightly job | Per active project      | 1                | Direct doc            | Full project for item analysis.            |
-| Read store config          | `stores/{storeId}`                         | Nightly job | Per store               | 1                | Direct doc            | Business type, calibration settings.       |
-| Read existing intelligence | `menuIntelligence/{tId}/{sId}/{projectId}` | Nightly job | Per project             | 1                | Direct doc            | Previous confidence scores for comparison. |
+| Operation | Collection | Trigger | Frequency | Docs Read | Notes |
+| --------- | ---------- | ------- | --------- | --------- | ----- |
+| Read store summary | `platformSummary/storesSummary` | Scheduler invocation | 1 per invocation | 1 | Filters stores by local settlement window and active status. |
+| Read active project summary | `platformSummary/projects_{sId}` | Per due store | 1 per store | 1 | Resolves active project IDs without scanning the full nested project collection. |
+| Read project data | `projects/{tId}/{sId}/{projectId}` | Per active project | 1 per active project | 1 | Required for item extraction and public Decision Blocks projection. |
+| Read compact analytics snapshot | `analytics/{tId}_{sId}_{projectId}_intelligence_7d` | Per active project | 1 per active project | 1 | Missing/stale snapshots return empty analytics instead of a daily-doc range query. |
+| Read existing intelligence | `menuIntelligence/{tId}_{sId}_{projectId}` | Per active project with items | 1 per active project | 1 | Used for run count, dampening, calibration, and comparison. |
+| Owner/client read intelligence | `menuIntelligence/{tId}_{sId}_{projectId}` | DAL consumers | On demand | 1 | `getMenuIntelligence()` reads one document; downstream use remains queued for separate feature certification. |
 
 ### Writes
 
-| Operation                  | Collection                                       | Trigger               | Frequency        | Docs Written | Fields                                                         | Notes                                          |
-| -------------------------- | ------------------------------------------------ | --------------------- | ---------------- | ------------ | -------------------------------------------------------------- | ---------------------------------------------- |
-| Write intelligence results | `menuIntelligence/{tId}/{sId}/{projectId}`       | After nightly scoring | Per project      | 1            | Item confidence scores, suppression windows, calibration state | Full scoring results.                          |
-| Update decision blocks     | `decisionBlocks/{tId}_{sId}_{projectId}`         | After scoring         | Per project      | 1            | popular, quickPick, bestValue candidates                       | Refreshed recommendations based on new scores. |
-| Write audit log            | `menuIntelligence/{tId}/{sId}/{projectId}/audit` | Per autonomous action | Per action taken | 1            | Action type, reason, reversible flag                           | Internal audit trail for autonomous decisions. |
+| Operation | Collection | Trigger | Frequency | Docs Written | Notes |
+| --------- | ---------- | ------- | --------- | ------------ | ----- |
+| Write Decision Blocks projection | `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks` | After scoring | Per active project with scored items | 1 project merge | Customer-safe projection embedded in the already-loaded project doc; no active `decisionBlocks` collection dependency. |
+| Write intelligence results | `menuIntelligence/{tId}_{sId}_{projectId}` | After CMI computation | Per active project with items | 1 | Stores confidence, priority, observation state, calibration, and recent audit context. |
+| Write scheduler run log | `schedulerRunLogs/{autoId}` | Scheduler complete | 1 per run | 1 | Platform-only read model for scheduler monitoring. |
 
 ### Deletes
 
-None — intelligence data is overwritten, never deleted.
+None in the current runtime. Intelligence and projections are overwritten.
 
 ---
 
 ## Cloud Functions
 
-| Function                      | Trigger               | Frequency | Duration           | Memory | Notes                                                                                                    |
-| ----------------------------- | --------------------- | --------- | ------------------ | ------ | -------------------------------------------------------------------------------------------------------- |
-| `computeDecisionBlocksScores` | Scheduled (02:30 UTC) | 1x/day    | 10-30s per project | 256MB  | Step 1: Decision Blocks scoring. Step 2: CMI computation. File: `functions/src/decisionBlocksScoring.ts` |
+| Function | Trigger | Frequency | Notes |
+| -------- | ------- | --------- | ----- |
+| `computeDecisionBlocksScores` | Scheduled (`30 * * * *`, UTC) | Hourly trigger; only due stores are processed | Uses `storesSummary`, project summaries, compact analytics snapshots, and writes project-embedded Decision Blocks plus `menuIntelligence`. |
+| `triggerDecisionBlocksScoring` | Callable | Platform-owner action only | Reuses the compact analytics snapshot path; does not run daily analytics range scans after the June 11, 2026 audit fix. |
 
 ---
 
 ## Cost Optimization Notes
 
-### Current Optimizations
+- **Single scheduler:** Decision Blocks and CMI share store/project iteration and analytics input.
+- **Compact input:** CMI consumes `*_intelligence_7d`; stale/missing snapshots result in empty analytics rather than broad reads.
+- **Project summary first:** Active projects are resolved from `platformSummary/projects_{sId}` before nested project doc reads.
+- **No public CMI read:** Public menu rendering uses `project.publicDecisionBlocks` from the project document already loaded by the public route.
+- **Client DAL is direct-doc only:** `getMenuIntelligence()` is one document read when a server/client consumer explicitly needs it.
 
-- **Nightly batch**: Single scheduled run, not real-time — predictable cost
-- **Feature flag gating**: Intelligence state is used when `MENU_INTELLIGENCE_ENABLED` is true (`src/config/features.ts`)
-- **Suppression windows**: Prevents redundant scoring of recently-scored items
-- **21-day calibration lock**: Store-specific learning locks after 21 days, reducing computation
+### Cost Warnings
 
-### Warnings: Expensive Patterns
-
-- **Analytics reads**: 30 daily docs × 1000 projects = 30,000 reads/night
-- **Linear scaling**: Every new active project adds ~32 reads + 2 writes per night
+- Cost scales with active stores and active projects.
+- `menuIntelligence` client/DAL reads should not be added to public menu page loads without a separate cost review.
+- Downstream GrowthOS/screen consumers need their own certification before they are treated as production-ready CMI outputs.
 
 ---
 
 ## Cost Estimate (per 1000 active projects)
 
-| Resource                            | Operations/month          | Unit Cost         | Monthly Cost     |
-| ----------------------------------- | ------------------------- | ----------------- | ---------------- |
-| Firestore Reads (analytics)         | 30 × 1,000 × 30 = 900,000 | $0.06/100K        | $0.54            |
-| Firestore Reads (projects + stores) | 60,000                    | $0.06/100K        | $0.04            |
-| Firestore Writes (results)          | 60,000                    | $0.18/100K        | $0.11            |
-| Cloud Functions                     | 30,000                    | $0.40/M + compute | $0.05            |
-| **Total**                           |                           |                   | **~$0.74/month** |
+| Resource | Operations/month | Unit Cost | Monthly Cost |
+| -------- | ---------------- | --------- | ------------ |
+| Project reads | 30,000 | $0.06/100K | ~$0.02 |
+| Analytics snapshot reads | 30,000 | $0.06/100K | ~$0.02 |
+| Existing intelligence reads | up to 30,000 | $0.06/100K | ~$0.02 |
+| Decision Blocks project merges | 30,000 | $0.18/100K | ~$0.05 |
+| Intelligence writes | 30,000 | $0.18/100K | ~$0.05 |
+| Scheduler run logs | ~720/month | $0.18/100K | <$0.01 |
+| **Total** | | | **~$0.16/month plus Cloud Functions compute** |
+
+Store summary and active-project summary reads add a small fixed/linear overhead by store count and are intentionally used to avoid broad scans.
 
 ---
 
 ## DAL Functions Used
 
-| Function                   | File                                             | Operation Type                |
-| -------------------------- | ------------------------------------------------ | ----------------------------- |
-| `computeIntelligenceState` | `functions/src/intelligence/menuIntelligence.ts` | Compute (called by scheduler) |
-| `fetchCurrentIntelligence` | `functions/src/intelligence/menuIntelligence.ts` | Read (admin SDK)              |
-| `getMenuIntelligence`      | `src/lib/intelligence/dal.ts`                    | Read (client SDK)             |
-| `shouldShowItem`           | `src/lib/intelligence/dal.ts`                    | Read (client SDK)             |
-| `getHighConfidenceItems`   | `src/lib/intelligence/dal.ts`                    | Read (client SDK)             |
+| Function | File | Operation Type |
+| -------- | ---- | -------------- |
+| `fetch7DayAnalytics` | `functions/src/intelligence/shared/analyticsAggregator.ts` | Admin SDK direct-doc read |
+| `extractActiveItems` | `functions/src/intelligence/shared/itemExtractor.ts` | Pure computation |
+| `computeIntelligenceState` | `functions/src/intelligence/menuIntelligence.ts` | Pure computation |
+| `fetchCurrentIntelligence` | `functions/src/intelligence/menuIntelligence.ts` | Admin SDK direct-doc read |
+| `getMenuIntelligence` | `src/lib/intelligence/dal.ts` | Client SDK direct-doc read |
+| `getItemPresentation` | `src/lib/intelligence/dal.ts` | Reads intelligence and returns `visible: true` priority metadata |
+| `getItemsByPriority` | `src/lib/intelligence/dal.ts` | Reads intelligence and sorts items by priority without hiding |

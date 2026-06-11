@@ -17,7 +17,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { DailyViewData, EMPTY_STATE_MESSAGES } from '@template/main-app/projects/types';
 import { formatDateKey } from '@util/dateTime';
 import { Alert, Card, Col, Empty, Row, Typography } from 'antd';
-import { useFormatter } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import React from 'react';
 import { LuInfo } from 'react-icons/lu';
 import AISummaryCard from './AISummaryCard';
@@ -34,6 +34,7 @@ interface DailyViewProps {
 const DailyView: React.FC<DailyViewProps> = ({ data }) => {
     const labels = useOfferingLabels();
     const formatter = useFormatter();
+    const t = useTranslations('Dashboard.owner');
 
     if (!data) {
         return (
@@ -41,7 +42,7 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                 <Empty
                     description={
                         <Text type="secondary">
-                            No activity recorded yesterday
+                            {t('empty.noActivityYesterday')}
                         </Text>
                     }
                 />
@@ -85,21 +86,21 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                 </Col>
                 <Col xs={24} sm={12}>
                     <MetricCard
-                        title="Item Clicks"
+                        title={t('metrics.itemClicks')}
                         value={metrics.itemClicks}
                         size="small"
                     />
                 </Col>
                 <Col xs={24} sm={12}>
                     <MetricCard
-                        title="Engaged Sessions"
+                        title={t('metrics.engagedSessions')}
                         value={`${metrics.engagedSessionRate || 0}%`}
                         size="small"
                     />
                 </Col>
                 <Col xs={24} sm={12}>
                     <MetricCard
-                        title="Action Rate"
+                        title={t('metrics.actionRate')}
                         value={`${metrics.actionRate || 0}%`}
                         size="small"
                     />
@@ -108,14 +109,14 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                     <>
                         <Col xs={24} sm={12}>
                             <MetricCard
-                                title="Smart Picks Shown"
+                                title={t('metrics.smartPicksShown')}
                                 value={metrics.smartPicksRendered}
                                 size="small"
                             />
                         </Col>
                         <Col xs={24} sm={12}>
                             <MetricCard
-                                title="Smart Picks Clicks"
+                                title={t('metrics.smartPicksClicks')}
                                 value={metrics.smartPicksClicks}
                                 size="small"
                             />
@@ -124,28 +125,28 @@ const DailyView: React.FC<DailyViewProps> = ({ data }) => {
                 )}
                 <Col xs={24} sm={12}>
                     <MetricCard
-                        title="Customer Actions"
+                        title={t('metrics.customerActions')}
                         value={metrics.menuActionClicks || 0}
                         size="small"
                     />
                 </Col>
                 <Col xs={24} sm={12}>
                     <MetricCard
-                        title="Searches"
+                        title={t('metrics.searches')}
                         value={metrics.searches || 0}
                         size="small"
                     />
                 </Col>
                 <Col xs={24} sm={12}>
                     <MetricCard
-                        title="No-result Searches"
+                        title={t('metrics.noResultSearches')}
                         value={metrics.zeroResultSearches || 0}
                         size="small"
                     />
                 </Col>
                 <Col xs={24} sm={12}>
                     <MetricCard
-                        title="Unavailable Interest"
+                        title={t('metrics.unavailableInterest')}
                         value={metrics.unavailableItemTaps || 0}
                         size="small"
                     />

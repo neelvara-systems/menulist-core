@@ -23,41 +23,89 @@ export const dynamic = 'force-dynamic';
  * - authenticated app callers may use their normal NextAuth session
  */
 
-import { authOptions } from "@lib/auth";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
+import { secureError } from "@lib/security/secureLogger";
 import { revalidateTag } from "next/cache";
-import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { withAuth } from "../../../../middleware/auth";
 
 // Valid tags for customer-facing invalidation.
 const VALID_TAG_PREFIXES = ['menu-store-', 'store-'];
 const VALID_EXACT_TAGS = ['client-stores', 'screen-data'];
 
+const StoreIdSchema = z.union([
+    z.string().trim().min(1).max(128),
+    z.number().finite(),
+]);
+
+const RevalidateMenuRequestSchema = z.object({
+    storeId: StoreIdSchema.optional(),
+    tags: z.array(z.string().trim().min(1).max(128)).max(10).optional(),
+}).refine(
+    (value) => value.storeId !== undefined || (Array.isArray(value.tags) && value.tags.length > 0),
+    { message: "Provide storeId or tags" },
+);
+
 function isValidTag(tag: string): boolean {
     return VALID_EXACT_TAGS.includes(tag) || VALID_TAG_PREFIXES.some(prefix => tag.startsWith(prefix));
 }
 
-export async function POST(request: NextRequest) {
-    try {
-        const secret = request.headers.get("x-revalidate-secret");
-        const hasValidSecret = secret === process.env.REVALIDATION_SECRET;
-        const session = hasValidSecret ? null : await getServerSession(authOptions);
+function isPlatformSession(session: any | null): boolean {
+    return session?.user?.platformRole === 'PLATFORM' || session?.platformRole === 'PLATFORM';
+}
 
-        if (!hasValidSecret && !session?.user) {
+function getSessionStoreIds(session: any | null): Set<string> {
+    const ids = new Set<string>();
+    const add = (value: unknown) => {
+        const normalized = String(value ?? '').trim();
+        if (normalized) ids.add(normalized);
+    };
+
+    add(session?.sId);
+    add(session?.storeId);
+    add(session?.user?.storeId);
+    if (Array.isArray(session?.user?.storeIds)) {
+        session.user.storeIds.forEach(add);
+    }
+    if (Array.isArray(session?.user?.stores)) {
+        session.user.stores.forEach((store: any) => add(store?.storeId));
+    }
+
+    return ids;
+}
+
+function canRevalidateStore(session: any | null, storeId: string): boolean {
+    if (!session) return true;
+    if (isPlatformSession(session)) return true;
+    return getSessionStoreIds(session).has(storeId);
+}
+
+async function handleRevalidateMenuCache(request: NextRequest, session: any | null) {
+    try {
+        const json = await request.json().catch(() => ({}));
+        const parsed = RevalidateMenuRequestSchema.safeParse(json);
+        if (!parsed.success) {
             return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 }
+                { error: "Invalid revalidation request" },
+                { status: 400 },
             );
         }
 
-        const body = await request.json();
-
         // Build tags — support storeId shorthand or explicit tags array
         let tags: string[] = [];
-        if (body.storeId) {
-            tags = [`menu-store-${body.storeId}`, `store-${body.storeId}`, 'client-stores', 'screen-data'];
-        } else if (body.tags && Array.isArray(body.tags)) {
-            tags = body.tags.filter(isValidTag);
+        const body = parsed.data;
+        if (body.storeId !== undefined) {
+            const storeId = String(body.storeId).trim();
+            if (!canRevalidateStore(session, storeId)) {
+                return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
+            tags = [`menu-store-${storeId}`, `store-${storeId}`, 'client-stores', 'screen-data'];
+        } else if (body.tags) {
+            if (session && !isPlatformSession(session)) {
+                return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            }
+            tags = body.tags.map((tag) => tag.trim()).filter(isValidTag);
         }
 
         if (tags.length === 0) {
@@ -75,7 +123,7 @@ export async function POST(request: NextRequest) {
         const ownerBusinessAssistant = body.storeId
             ? await invalidateOwnerBusinessAssistantPacketCache({
                 tId: (session as any)?.tId || (session as any)?.user?.tenantId,
-                sId: body.storeId,
+                sId: String(body.storeId).trim(),
             })
             : { attempted: false, keysDeleted: 0, patterns: [] };
 
@@ -86,9 +134,27 @@ export async function POST(request: NextRequest) {
             timestamp: Date.now(),
         });
     } catch (error) {
+        secureError('[Menu Cache] Revalidation failed', error as Error, {
+            endpoint: request.nextUrl.pathname,
+        });
         return NextResponse.json(
             { error: "Revalidation failed" },
             { status: 500 }
         );
     }
+}
+
+const authenticatedRevalidateMenuCache = withAuth(async (request: NextRequest, session) => {
+    return handleRevalidateMenuCache(request, session);
+});
+
+export async function POST(request: NextRequest) {
+    const secret = request.headers.get("x-revalidate-secret");
+    const hasValidSecret = Boolean(process.env.REVALIDATION_SECRET) && secret === process.env.REVALIDATION_SECRET;
+
+    if (hasValidSecret) {
+        return handleRevalidateMenuCache(request, null);
+    }
+
+    return authenticatedRevalidateMenuCache(request);
 }

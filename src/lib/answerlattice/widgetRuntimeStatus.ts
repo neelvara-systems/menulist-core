@@ -73,18 +73,12 @@ export function getWidgetRuntimeStatusFromStoreData(storeData: Record<string, an
 
 export function shouldUpdateWidgetRuntimeStatus(
     existing: AnswerlatticeWidgetRuntimeStatus | null,
-    next: Omit<AnswerlatticeWidgetRuntimeStatus, 'lastSeenAt' | 'seenCount'>,
+    _next: Omit<AnswerlatticeWidgetRuntimeStatus, 'lastSeenAt' | 'seenCount'>,
 ): boolean {
     if (!existing?.lastSeenAt) return true;
 
     const lastSeen = getTimestampMillis(existing.lastSeenAt);
-    if (!lastSeen || Date.now() - lastSeen >= TELEMETRY_WRITE_INTERVAL_MS) return true;
-
-    return existing.lastOrigin !== next.lastOrigin
-        || existing.lastPath !== next.lastPath
-        || existing.lastContextKey !== next.lastContextKey
-        || existing.lastFeature !== next.lastFeature
-        || existing.lastPage !== next.lastPage;
+    return !lastSeen || Date.now() - lastSeen >= TELEMETRY_WRITE_INTERVAL_MS;
 }
 
 export function buildWidgetRuntimeStatusWrite(

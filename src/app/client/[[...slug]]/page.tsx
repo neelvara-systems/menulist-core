@@ -535,6 +535,21 @@ function resolveSafeStoreCanonicalUrl(
     return allowedHosts.has(storedHost) ? trimmed : fallbackUrl;
 }
 
+const COMPLIANCE_METADATA_BY_SLUG: Record<string, { label: string; description: (storeName: string) => string }> = {
+    privacy: {
+        label: 'Privacy Policy',
+        description: (storeName) => `Privacy policy for ${storeName}.`,
+    },
+    terms: {
+        label: 'Terms & Conditions',
+        description: (storeName) => `Terms and conditions for ${storeName}.`,
+    },
+    refund: {
+        label: 'Refund & Cancellation Policy',
+        description: (storeName) => `Refund and cancellation policy for ${storeName}.`,
+    },
+};
+
 // Generate metadata for SEO
 export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
     const { subdomain, customDomain, tenantType, origin } = await getTenantFromHeaders();
@@ -661,6 +676,62 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         : '/';
     const manifestUrl = '/manifest.webmanifest';
     const currentUrl = `${canonicalBase}${currentPath === '/' ? '' : currentPath}`;
+    const complianceMetadata = FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && slugLen === 1
+        ? COMPLIANCE_METADATA_BY_SLUG[firstSlug || '']
+        : undefined;
+
+    if (complianceMetadata) {
+        const complianceTitle = `${complianceMetadata.label} | ${storeName}`;
+        const complianceDescription = complianceMetadata.description(storeName);
+        const complianceIndexDecision = evaluatePublicTruthIndexability(storeData, {
+            surface: 'obp',
+            hasPublishedMenu: Boolean(storeData?.lastPublishedAt || storeData?.primaryProjectId),
+        });
+
+        return {
+            title: complianceTitle,
+            description: complianceDescription,
+            keywords: getResolvedStoreKeywords(
+                storeData?.keywords,
+                contentLanguage,
+                [],
+            ).join(", "),
+            manifest: manifestUrl,
+            alternates: {
+                canonical: currentUrl,
+            },
+            openGraph: {
+                title: complianceTitle,
+                description: complianceDescription,
+                type: "website",
+                siteName: storeName,
+                url: currentUrl,
+                images: imageUrl ? [{ url: imageUrl }] : undefined,
+            },
+            twitter: {
+                card: "summary_large_image",
+                title: complianceTitle,
+                description: complianceDescription,
+                images: imageUrl ? [imageUrl] : undefined,
+            },
+            robots: buildPublicTruthRobots(complianceIndexDecision),
+            ...(appleTouchIconUrl
+                ? {
+                    appleWebApp: {
+                        capable: true,
+                        startupImage: getStaticCustomerAppleStartupImages(),
+                        statusBarStyle: "default",
+                        title: appleWebAppTitle,
+                    },
+                    icons: {
+                        apple: [
+                            { url: appleTouchIconUrl, sizes: "180x180" },
+                        ],
+                    },
+                }
+                : {}),
+        };
+    }
 
     let metadataStore = storeData;
     let metadataProject: any = null;

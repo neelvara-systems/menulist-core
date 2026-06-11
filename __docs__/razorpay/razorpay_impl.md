@@ -1,11 +1,20 @@
 # Razorpay Payment System — Complete Technical Reference
 
 **For:** Developers, Founder, CEO, Co-Founder
-**Last Updated:** May 20, 2026 (production audit hardening added)
-**Status:** Production Ready — Razorpay is the ONLY payment provider (Stripe fully removed)
+**Last Updated:** June 11, 2026
+**Status:** Implemented and billing-slice audited — full MenuList production certification still pending
 **Codebase:** Single source of truth. Every claim links to exact file:line.
 
-This document covers the **entire** Razorpay payment flow end-to-end: from user onboarding → subscription creation → payment processing → webhook handling → credit management → owner-side billing UI → cancellation/upgrade flows. Nothing is proposed — everything described is built and working.
+This document covers the **entire** Razorpay payment flow end-to-end: from user onboarding → subscription creation → payment processing → webhook handling → credit management → owner-side billing UI → cancellation/upgrade flows. Runtime code remains the source of truth.
+
+June 11, 2026 audit corrections:
+
+- `/api/razorpay/verify-subscription` requires the Razorpay checkout signature, verifies payment status is `captured`, and verifies the payment belongs to the submitted subscription before activating local billing state.
+- `/api/razorpay/create-subscription` no longer accepts browser-supplied carry-forward credit. New subscriptions start with `topUpCredits: 0`.
+- `/api/razorpay/upgrade-subscription` verifies both old and new subscription ownership, computes remaining credits from the old subscription server-side, writes `carryForwardFromSubscriptionId`, and applies carry-forward idempotently.
+- `/api/razorpay/create-topup-order` verifies an active subscription exists before opening paid top-up checkout.
+- Browser subscription reads no longer attempt forbidden subscription writes when grace period has ended; server-owned paths perform expiry writes and entitlement/cache sync.
+- Owner billing history is capped to the latest 50 successful payment events.
 
 ---
 

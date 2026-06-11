@@ -15,6 +15,7 @@ import {
     resolveProductSiteByHostname,
     type ProductDomainConfig,
 } from "@constant/productDomains";
+import { CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX } from "@constant/campaigncue/domains";
 import {
     PLATFORM_DOMAIN,
     PLATFORM_DOMAIN_ALIASES,
@@ -178,6 +179,7 @@ export function shouldBypassDomainRouting(pathname: string): boolean {
         '/_next/',
         '/sites/',
         '/__answerlattice',
+        CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX,
         '/__mycodex',
         '/__surfaceos',
         '/__growthos',

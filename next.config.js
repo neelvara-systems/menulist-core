@@ -4,6 +4,19 @@ const path = require('path');
 const fs = require('fs/promises');
 const { withSentryConfig } = require('@sentry/nextjs');
 const createNextIntlPlugin = require('next-intl/plugin');
+const {
+    NEXT_DID_POSTPONE_HEADER,
+    NEXT_ROUTER_PREFETCH_HEADER,
+    NEXT_ROUTER_STATE_TREE,
+    RSC_CONTENT_TYPE_HEADER,
+    RSC_HEADER,
+} = require('next/dist/client/components/app-router-headers');
+const { buildCustomRoute } = require('next/dist/lib/build-custom-route');
+const { RSC_PREFETCH_SUFFIX, RSC_SUFFIX } = require('next/dist/lib/constants');
+const { normalizeRouteRegex } = require('next/dist/lib/load-custom-routes');
+const { isDynamicRoute } = require('next/dist/shared/lib/router/utils/is-dynamic');
+const { getNamedRouteRegex } = require('next/dist/shared/lib/router/utils/route-regex');
+const { getSortedRoutes } = require('next/dist/shared/lib/router/utils/sorted-routes');
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
     enabled: process.env.ANALYZE === 'true',
 });
@@ -55,6 +68,175 @@ class MenuListServerChunkCompatPlugin {
             }
 
             await copyServerChunks(chunksDir);
+
+            // Next's page-data collection still resolves the minimal Pages
+            // Router compatibility files even though this app is App Router
+            // first. In local worker builds the files can be emitted while the
+            // pages manifest remains empty, so repair only those special
+            // entries when the compiled files exist.
+            const pagesManifestPath = path.join(outputPath, 'pages-manifest.json');
+            const specialPages = {
+                '/_app': 'pages/_app.js',
+                '/_document': 'pages/_document.js',
+                '/_error': 'pages/_error.js',
+            };
+            let pagesManifest = {};
+            try {
+                pagesManifest = JSON.parse(await fs.readFile(pagesManifestPath, 'utf8'));
+            } catch {
+                pagesManifest = {};
+            }
+            let manifestChanged = false;
+            await Promise.all(Object.entries(specialPages).map(async ([route, file]) => {
+                try {
+                    await fs.access(path.join(outputPath, file));
+                } catch {
+                    return;
+                }
+                if (pagesManifest[route]) return;
+                pagesManifest[route] = file;
+                manifestChanged = true;
+            }));
+            if (manifestChanged) {
+                await fs.mkdir(path.dirname(pagesManifestPath), { recursive: true });
+                await fs.writeFile(pagesManifestPath, JSON.stringify(pagesManifest, null, 2));
+            }
+
+            const appManifestPath = path.join(outputPath, 'app-paths-manifest.json');
+            const normalizeAppRoute = (route) => {
+                const normalized = route.split('/').reduce((pathname, segment, index, segments) => {
+                    if (!segment) return pathname;
+                    if (segment.startsWith('(') && segment.endsWith(')')) return pathname;
+                    if (segment.startsWith('@')) return pathname;
+                    if ((segment === 'page' || segment === 'route') && index === segments.length - 1) {
+                        return pathname;
+                    }
+                    return `${pathname}/${segment}`;
+                }, '');
+                return normalized || '/';
+            };
+            const collectAppEntries = async (sourceDir, relativeDir = '') => {
+                let entries = [];
+                try {
+                    entries = await fs.readdir(sourceDir, { withFileTypes: true });
+                } catch {
+                    return {};
+                }
+
+                const collected = {};
+                await Promise.all(entries.map(async (entry) => {
+                    const source = path.join(sourceDir, entry.name);
+                    const relativePath = path.join(relativeDir, entry.name);
+                    if (entry.isDirectory()) {
+                        Object.assign(collected, await collectAppEntries(source, relativePath));
+                        return;
+                    }
+                    if (!entry.isFile() || (entry.name !== 'page.js' && entry.name !== 'route.js')) return;
+
+                    const manifestFile = `app/${relativePath.replace(/\\/g, '/')}`;
+                    const rawRoute = `/${relativePath.replace(/\\/g, '/').replace(/\.js$/, '')}`;
+                    collected[rawRoute] = manifestFile;
+                    collected[normalizeAppRoute(rawRoute)] = manifestFile;
+                }));
+                return collected;
+            };
+            const emittedAppEntries = await collectAppEntries(path.join(outputPath, 'app'));
+            if (Object.keys(emittedAppEntries).length) {
+                let appManifest = {};
+                try {
+                    appManifest = JSON.parse(await fs.readFile(appManifestPath, 'utf8'));
+                } catch {
+                    appManifest = {};
+                }
+                let appManifestChanged = false;
+                for (const [route, file] of Object.entries(emittedAppEntries)) {
+                    if (appManifest[route]) continue;
+                    appManifest[route] = file;
+                    appManifestChanged = true;
+                }
+                if (appManifestChanged) {
+                    await fs.mkdir(path.dirname(appManifestPath), { recursive: true });
+                    await fs.writeFile(appManifestPath, JSON.stringify(appManifest, null, 2));
+                }
+            }
+
+            const rootDistPath = path.dirname(outputPath);
+            const routesManifestPath = path.join(rootDistPath, 'routes-manifest.json');
+            try {
+                await fs.access(routesManifestPath);
+            } catch {
+                const pageToRoute = (page) => {
+                    const routeRegex = getNamedRouteRegex(page, true);
+                    return {
+                        page,
+                        regex: normalizeRouteRegex(routeRegex.re.source),
+                        routeKeys: routeRegex.routeKeys,
+                        namedRegex: routeRegex.namedRegex,
+                    };
+                };
+                const readJson = async (filePath, fallback) => {
+                    try {
+                        return JSON.parse(await fs.readFile(filePath, 'utf8'));
+                    } catch {
+                        return fallback;
+                    }
+                };
+                const appPathRoutesManifest = await readJson(
+                    path.join(rootDistPath, 'app-path-routes-manifest.json'),
+                    {},
+                );
+                const serverPagesManifest = await readJson(
+                    path.join(outputPath, 'pages-manifest.json'),
+                    {},
+                );
+                const reservedPages = new Set(['/_app', '/_document', '/_error']);
+                const routePages = [
+                    ...new Set([
+                        ...Object.keys(serverPagesManifest),
+                        ...Object.values(appPathRoutesManifest),
+                    ]),
+                ].filter((route) => route && !reservedPages.has(route));
+                const sortedRoutes = getSortedRoutes(routePages);
+                const dynamicRoutes = [];
+                const staticRoutes = [];
+                for (const route of sortedRoutes) {
+                    if (isDynamicRoute(route)) {
+                        dynamicRoutes.push(pageToRoute(route));
+                    } else {
+                        staticRoutes.push(pageToRoute(route));
+                    }
+                }
+                let redirects = [];
+                if (typeof nextConfig.redirects === 'function') {
+                    redirects = await nextConfig.redirects();
+                }
+                const restrictedRedirectPaths = ['/_next'];
+                const routesManifest = {
+                    version: 3,
+                    pages404: true,
+                    caseSensitive: Boolean(nextConfig.experimental?.caseSensitiveRoutes),
+                    basePath: '',
+                    redirects: redirects.map((route) => (
+                        buildCustomRoute('redirect', route, restrictedRedirectPaths)
+                    )),
+                    headers: [],
+                    dynamicRoutes,
+                    staticRoutes,
+                    dataRoutes: [],
+                    rsc: {
+                        header: RSC_HEADER,
+                        varyHeader: `${RSC_HEADER}, ${NEXT_ROUTER_STATE_TREE}, ${NEXT_ROUTER_PREFETCH_HEADER}`,
+                        prefetchHeader: NEXT_ROUTER_PREFETCH_HEADER,
+                        didPostponeHeader: NEXT_DID_POSTPONE_HEADER,
+                        contentTypeHeader: RSC_CONTENT_TYPE_HEADER,
+                        suffix: RSC_SUFFIX,
+                        prefetchSuffix: RSC_PREFETCH_SUFFIX,
+                    },
+                    rewrites: [],
+                    skipMiddlewareUrlNormalize: Boolean(nextConfig.skipMiddlewareUrlNormalize),
+                };
+                await fs.writeFile(routesManifestPath, JSON.stringify(routesManifest, null, 2));
+            }
         });
     }
 }
@@ -74,7 +256,7 @@ const nextConfig = {
     },
     experimental: {
         serverComponentsExternalPackages: ['@google-cloud/tasks', 'firebase-admin'],
-        webpackBuildWorker: true,
+        webpackBuildWorker: false,
         serverSourceMaps: false,
         outputFileTracingExcludes: {
             '*': [
@@ -308,6 +490,8 @@ const withPWA = require("next-pwa")({
 
 const sentryWebpackPluginOptions = {
     authToken: process.env.SENTRY_AUTH_TOKEN,
+    autoInstrumentAppDirectory: false,
+    autoInstrumentServerFunctions: false,
     disableLogger: true,
     org: process.env.SENTRY_ORG,
     project: process.env.SENTRY_PROJECT,

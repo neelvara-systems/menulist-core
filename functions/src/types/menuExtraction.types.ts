@@ -159,6 +159,17 @@ export interface ProcessMenuImagesResponse {
         candidatesTokenCount: number;
         totalTokenCount: number;
     };
+    timings?: {
+        requestStartedAt?: number;
+        uploadStartedAt?: number;
+        uploadCompletedAt?: number;
+        batchProcessingStartedAt?: number;
+        batchProcessingCompletedAt?: number;
+        operationLoggedAt?: number;
+        uploadMs?: number;
+        batchProcessingMs?: number;
+        totalProcessingMs?: number;
+    };
     /** Extraction provenance — raw AI responses + version tracking (P0 hardening) */
     provenance?: {
         rawBatchResponses: {

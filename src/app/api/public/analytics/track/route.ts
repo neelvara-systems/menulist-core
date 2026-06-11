@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
-import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
+import { getBusinessAnalyticsDateKey, resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { addDaysToAnalyticsDateKey } from '@lib/analytics/dateKey';
+import { getResolvedAnalyticsPreferences, type ResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { writePublicAnalyticsEventAdmin } from '@lib/analytics/serverWrite';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
@@ -37,30 +38,48 @@ const AnalyticsTrackSchema = z.object({
 
 const RESERVED_PROJECT_IDS = new Set(['obp', 'customerApp']);
 
+type ValidatedAnalyticsTarget = {
+    analyticsPreferences: ResolvedAnalyticsPreferences;
+    businessDayEndTime?: string;
+    storeTimeZone?: string;
+};
+
 async function validateAnalyticsTargetUncached(
     tenantId: string,
     storeId: string,
     projectId: string,
-): Promise<boolean> {
+): Promise<ValidatedAnalyticsTarget | null> {
     const storeSnap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
-    if (!storeSnap.exists) return false;
+    if (!storeSnap.exists) return null;
 
     const store = storeSnap.data() || {};
     const storeTenantId = String(store.tenantId ?? store.tId ?? '');
-    if (storeTenantId !== tenantId) return false;
-    if (store.active === false || store.deleted === true || isPlatformEntityBlocked(store)) return false;
+    if (storeTenantId !== tenantId) return null;
+    if (store.active === false || store.deleted === true || isPlatformEntityBlocked(store)) return null;
 
-    if (RESERVED_PROJECT_IDS.has(projectId)) return true;
+    const target: ValidatedAnalyticsTarget = {
+        analyticsPreferences: getResolvedAnalyticsPreferences(store.analytics || null),
+        businessDayEndTime: resolveBusinessDayEndTime(
+            store.businessType,
+            store.businessDayEndTime,
+            store.businessCategory,
+        ),
+        storeTimeZone: typeof store.timeZone === 'string' && store.timeZone.trim()
+            ? store.timeZone.trim()
+            : undefined,
+    };
+
+    if (RESERVED_PROJECT_IDS.has(projectId)) return target;
 
     const summarySnap = await firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(`projects_${storeId}`)
         .get();
-    if (!summarySnap.exists) return false;
+    if (!summarySnap.exists) return null;
 
     const projects = parseSummaryProjects(summarySnap.data());
     const project = projects[projectId];
-    return Boolean(project && project.active !== false && project.deleted !== true);
+    return project && project.active !== false && project.deleted !== true ? target : null;
 }
 
 const validateAnalyticsTarget = unstable_cache(
@@ -68,6 +87,38 @@ const validateAnalyticsTarget = unstable_cache(
     ['public-analytics-target'],
     { revalidate: 300, tags: ['client-stores'] },
 );
+
+const DECISION_ANALYTICS_KEY_PREFIXES = [
+    'decisionBlocksRendered',
+    'hourlyDecisionBlocksRendered',
+    'hourlyRecommendationClicks',
+    'recommendationClicks',
+    'recommendationClicksByItem',
+    'totalDecisionBlocksRendered',
+    'totalRecommendationClicks',
+];
+
+function isAnalyticsSurfaceEnabled(
+    projectId: string,
+    preferences: ResolvedAnalyticsPreferences,
+): boolean {
+    if (projectId === 'obp') return preferences.trackOfficialBusinessPage;
+    if (projectId === 'customerApp') return preferences.trackCustomerApp;
+    return preferences.trackMenuViews;
+}
+
+function filterAnalyticsFieldsForPreferences(
+    updateData: Record<string, string | number | boolean | null>,
+    preferences: ResolvedAnalyticsPreferences,
+): Record<string, string | number | boolean | null> {
+    if (preferences.trackDecisionBlocks) return updateData;
+
+    return Object.fromEntries(
+        Object.entries(updateData).filter(([key]) => !DECISION_ANALYTICS_KEY_PREFIXES.some(
+            (prefix) => key === prefix || key.startsWith(`${prefix}.`),
+        )),
+    );
+}
 
 function resolveAcceptedDate(
     requestedDate: string | undefined,
@@ -105,11 +156,6 @@ export async function POST(req: NextRequest) {
     const data = validation.data;
     const tenantId = String(data.tenantId);
     const storeId = String(data.storeId);
-    const dateString = resolveAcceptedDate(data.dateString, data.storeTimeZone, data.businessDayEndTime);
-
-    if (!dateString) {
-        return NextResponse.json({ success: false, error: 'Invalid analytics date.' }, { status: 400 });
-    }
 
     try {
         const validTarget = await validateAnalyticsTarget(tenantId, storeId, data.projectId);
@@ -117,14 +163,35 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Invalid analytics target.' }, { status: 400 });
         }
 
+        if (!isAnalyticsSurfaceEnabled(data.projectId, validTarget.analyticsPreferences)) {
+            return NextResponse.json({ success: true, skipped: true });
+        }
+
+        const filteredUpdateData = filterAnalyticsFieldsForPreferences(
+            data.updateData,
+            validTarget.analyticsPreferences,
+        );
+        if (Object.keys(filteredUpdateData).length === 0) {
+            return NextResponse.json({ success: true, skipped: true });
+        }
+
+        const trustedDateString = resolveAcceptedDate(
+            data.dateString,
+            validTarget.storeTimeZone,
+            validTarget.businessDayEndTime,
+        );
+        if (!trustedDateString) {
+            return NextResponse.json({ success: false, error: 'Invalid analytics date.' }, { status: 400 });
+        }
+
         await writePublicAnalyticsEventAdmin({
-            updateData: data.updateData,
+            updateData: filteredUpdateData,
             tenantId,
             storeId,
             projectId: data.projectId,
-            dateString,
-            storeTimeZone: data.storeTimeZone,
-            businessDayEndTime: data.businessDayEndTime,
+            dateString: trustedDateString,
+            storeTimeZone: validTarget.storeTimeZone,
+            businessDayEndTime: validTarget.businessDayEndTime,
         });
 
         return NextResponse.json({ success: true });

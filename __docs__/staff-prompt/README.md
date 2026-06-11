@@ -31,8 +31,8 @@ The unused standalone helper files under `src/lib/staff-prompt/` were deleted wh
 
 ## One-Liner
 
-Auto-generate staff training prompts from menu data — new hires learn the menu in minutes, not days.
+Show one read-only staff line in Today when the daily summary says it is eligible.
 
 ## Problem Solved
 
-Staff onboarding for menu knowledge is slow and inconsistent. Staff Prompt uses AI to generate training materials directly from the live menu, ensuring staff always know current offerings, allergens, and upsell opportunities.
+Owners sometimes need a simple, safe line their staff can repeat during service. The active runtime does not create a separate staff portal or training assistant; it only renders the `staffPrompt` field already present in the Today summary.

@@ -171,13 +171,19 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const [claiming, setClaiming] = useState(false);
     const [claimError, setClaimError] = useState<string | null>(null);
 
-    const fetchDraft = useCallback(async () => {
+    const fetchDraft = useCallback(async (statusOnly = true) => {
         if (sessionStatus !== 'authenticated') {
             return 'waiting_for_auth';
         }
 
         try {
-            const res = await fetch(`/api/public/create-menu?draftId=${draftId}`);
+            const requestDraft = async (statusOnlyRequest: boolean) => {
+                const params = new URLSearchParams({ draftId });
+                if (statusOnlyRequest) params.set('statusOnly', '1');
+                return fetch(`/api/public/create-menu?${params.toString()}`);
+            };
+
+            let res = await requestDraft(statusOnly);
 
             if (res.status === 401) {
                 router.replace(signInUrl);
@@ -202,8 +208,21 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 return 'error';
             }
 
-            const data = await res.json();
-            setDraft(data);
+            let data = await res.json();
+            if (data.status === 'completed' && !data.extractedData && statusOnly) {
+                res = await requestDraft(false);
+                if (!res.ok) {
+                    setDraft({ status: 'failed', extractedData: null, detectedBusinessName: null, detectedBusinessType: null, detectedBusinessCategory: null, imageUrl: null, sourceType: undefined, error: t('CreateMenu.previewErrorLoadFailed') });
+                    setLoading(false);
+                    return 'error';
+                }
+                data = await res.json();
+            }
+            setDraft((previous) => ({
+                ...previous,
+                ...data,
+                extractedData: data.extractedData ?? previous?.extractedData ?? null,
+            }));
             setLoading(false);
             return data.status;
         } catch {

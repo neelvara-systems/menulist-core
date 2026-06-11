@@ -34,7 +34,8 @@
 
 Core URL routing infrastructure for MenuList's public pages:
 
-- **Product-domain separation** (`menulist.ai` = MenuList, `answerlattice.com` = Answerlattice, `menulist.digital` = MyCodex)
+- **Product-domain separation** (`menulist.ai` = MenuList, `answerlattice.com` = Answerlattice, `campaigncue.ai` = CampaignCue, `menulist.digital` = MyCodex)
+- **Product site vs product app separation** (`src/app/sites/[productId]` is public website only; owner/product dashboards live in product route groups such as `src/app/(answerlattice)/answerlattice` or `src/app/(campaigncue)/campaigncue`)
 - **Brand-level subdomain ownership** (subdomain = brand, not individual location)
 - **Multi-store location routing** (`brand.menulist.ai/pune/menu`)
 - **Permanent project slugs** (stored, not derived from names)
@@ -81,7 +82,7 @@ Tenant (account container — billing, stores list)
 
 Requests are classified before tenant routing:
 
-1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, Answerlattice, and MyCodex by deployment stage.
+1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, Answerlattice, CampaignCue, and MyCodex by deployment stage.
 2. `src/constants/productDomains.ts` registers enabled product sites and maps product hosts to `/sites/{productId}` route groups.
 3. `src/lib/multiTenant/domainResolver.ts` checks `resolveProductSiteByHostname()` before treating a host as a platform, subdomain, or custom tenant domain.
 4. `src/middleware.ts` rewrites product domains directly to their product route group and never sends them through `/client`.
@@ -89,11 +90,12 @@ Requests are classified before tenant routing:
 
 | Host                                    | Classification | Rewrite / Behavior                 |
 | --------------------------------------- | -------------- | ---------------------------------- |
-| `menulist.ai` / `www.menulist.ai`       | Platform       | MenuList website / platform routes |
-| `answerlattice.com` / `www.answerlattice.com`     | Product        | `/sites/answerlattice`                  |
-| `menulist.digital` / `www.menulist.digital` | Product    | `/sites/mycodex`                   |
-| `brand.menulist.ai`                    | Tenant         | `/client`                          |
-| Verified restaurant custom domain       | Tenant         | `/client`                          |
+| `menulist.ai` / `www.menulist.ai` | Platform | MenuList website / platform routes |
+| `answerlattice.com` / `www.answerlattice.com` | Product | Public site: `/sites/answerlattice`; app routes: `/answerlattice/*` |
+| `campaigncue.ai` / `www.campaigncue.ai` | Product | Public site: `/sites/campaigncue`; owner app: `/campaigncue/app` |
+| `menulist.digital` / `www.menulist.digital` | Product | `/sites/mycodex` |
+| `brand.menulist.ai` | Tenant | `/client` |
+| Verified restaurant custom domain | Tenant | `/client` |
 
 `menulist.digital` is reserved for the internal MyCodex documentation reader. It must stay in the product-domain registry so it is not mistaken for a restaurant custom domain.
 
@@ -111,6 +113,19 @@ MyCodex PWA install identity is also product-scoped. `src/app/sites/mycodex/layo
 Because MyCodex reads markdown from `__docs__` at runtime, `next.config.js` must include `./__docs__/**/*` in `experimental.outputFileTracingIncludes` for `/sites/mycodex` routes. This keeps Vercel serverless packaging aligned with local filesystem behavior without exposing docs through MenuList or Answerlattice routing.
 
 Localhost `/__mycodex` remains open for development.
+
+#### Product Site Vs Product App Routes
+
+`src/app/sites/[productId]` is public website only. It is the place for unauthenticated product marketing pages, public resources, robots output, sitemap output, legal pages, and other discovery surfaces.
+
+Authenticated owner dashboards, product workspaces, admin tools, and paid/runtime app screens must live in their product route group outside `sites/`. Current route-group examples:
+
+| Product | Public site folder | Owner/product app folder | Product-domain mapping |
+| --- | --- | --- | --- |
+| Answerlattice | `src/app/sites/answerlattice` | `src/app/(answerlattice)/answerlattice` | Dashboard roots rewrite to `/answerlattice/*`. |
+| CampaignCue | `src/app/sites/campaigncue` | `src/app/(campaigncue)/campaigncue` | `/app` rewrites to `/campaigncue/app`; local `/__campaigncue/app` also rewrites to `/campaigncue/app`. |
+
+This separation keeps public SEO/discovery surfaces away from authenticated owner runtime code, keeps product files easy to inventory, and prevents future products from hiding dashboards below `sites/`.
 
 #### Tenant Route Flow
 
@@ -173,6 +188,8 @@ Customer opens: storypizza.menulist.ai/pune/menu
 | React `cache()`         | Within-request deduplication              | Per-request |
 | Vercel `unstable_cache` | Cross-request Data Cache                  | 60 seconds  |
 | `revalidateTag()`       | Instant invalidation on store/menu update | On-demand   |
+
+Admin subdomain renames also update `platformSummary/storesSummary` and revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores` after the transaction. This keeps old-subdomain redirect lookup, current-subdomain lookup, OBP/menu rendering, and internal store selectors aligned without owner-facing rename controls.
 
 ### What's Already Well-Built
 

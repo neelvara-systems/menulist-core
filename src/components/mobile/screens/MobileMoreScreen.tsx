@@ -887,8 +887,8 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
             {filteredSections.length === 0 ? (
                 <Card>
                     <Flex gap={4} vertical>
-                        <Text strong>No matching settings</Text>
-                        <Text type="secondary">Try words like logo, hours, domain, reviews, staff, analytics, or colors.</Text>
+                        <Text strong>{t('noMatchingSettings')}</Text>
+                        <Text type="secondary">{t('settingsSearchHint')}</Text>
                     </Flex>
                 </Card>
             ) : (
@@ -920,10 +920,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                         title={<Text strong>{t('appSettings')}</Text>}
                     />
                     <List.Item
-                        description={<Text type="secondary">Load the latest MenuList version on this device.</Text>}
+                        description={<Text type="secondary">{t('refreshAppDesc')}</Text>}
                         onClick={handleRefreshApp}
                         prefix={<LuRefreshCw color={token.colorPrimary} size={20} />}
-                        title={<Text strong>Refresh app</Text>}
+                        title={<Text strong>{t('refreshApp')}</Text>}
                     />
                     <div
                         onMouseDown={startLogoutLongPress}

@@ -349,6 +349,8 @@ export interface Project {
     active?: boolean; // Default: true - set to false to disable project
     deleted?: boolean; // Soft delete flag
     deletedAt?: Timestamp; // When the project was deleted
+    /** Snapshot of platformSummary data kept while soft-deleted for lossless restore. */
+    deletedSummary?: Partial<ProjectSummaryData>;
 
     // ══════════════════════════════════════════════════════════
     // MULTI-STORE FIELDS (Feature #4) - All OPTIONAL

@@ -30,7 +30,7 @@ The frozen public contract is the v1 browser contract: `https://answerlattice.co
 
 ## Key Handling
 
-Workspace-specific packets and ZIPs include widget key prefix, dashboard-owned allowed origins, dashboard-owned blocked routes, public script URL, framework hints, install checklist, and env placeholders by default. They must not include the raw widget key unless the user explicitly reveals or copies the key through the existing key flow.
+Workspace-specific packets and ZIPs include an explicit full-key placeholder, a saved-key identifier for dashboard lookup, dashboard-owned allowed origins, dashboard-owned blocked routes, public script URL, framework hints, install checklist, and env placeholders by default. They must not include the raw widget key unless the user explicitly reveals or copies the key through the existing key flow. The saved-key identifier is not installable.
 
 Allowed origins and blocked routes are configured in Answerlattice dashboard UI. Generated prompts must not ask owners to maintain separate `ALLOWED_ORIGINS` or `BLOCKED_ROUTES` variables in the client product.
 

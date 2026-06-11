@@ -18,6 +18,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { Card, Flex, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { LuHeart, LuShield, LuTrendingDown } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
@@ -92,7 +93,9 @@ const resolveSignalColor = (token: ReturnType<typeof useToken>['token'], tone: S
 // INDIVIDUAL CARDS
 // ================================================================
 
-function TrustHealthCard({ trust }: { trust: HealthSignals['trust'] }) {
+type DashboardTranslator = (key: string, values?: Record<string, string | number>) => string;
+
+function TrustHealthCard({ trust, t }: { trust: HealthSignals['trust']; t: DashboardTranslator }) {
     const { token } = useToken();
     if (!FEATURE_FLAGS.ENABLE_TRUST_HEALTH_SIGNAL) return null;
     if (!trust?.visible) return null;
@@ -104,17 +107,17 @@ function TrustHealthCard({ trust }: { trust: HealthSignals['trust'] }) {
         <Card size="small" style={{ flex: 1, minWidth: 160 }}>
             <Flex align="center" gap={8} style={{ marginBottom: 4 }}>
                 <LuShield size={14} style={{ color: signalColor }} />
-                <Text type="secondary" style={{ fontSize: 12 }}>Customer Trust</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>{t('health.customerTrust')}</Text>
             </Flex>
             <Title level={4} style={{ color: signalColor, margin: 0, fontSize: 18 }}>
-                {config.label}
+                {t(`health.states.${trust.state}`)}
             </Title>
-            <Text type="secondary" style={{ fontSize: 11 }}>Based on visitor trends</Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>{t('health.visitorTrends')}</Text>
         </Card>
     );
 }
 
-function LoyaltyHealthCard({ loyalty }: { loyalty: HealthSignals['loyalty'] }) {
+function LoyaltyHealthCard({ loyalty, t }: { loyalty: HealthSignals['loyalty']; t: DashboardTranslator }) {
     const { token } = useToken();
     if (!FEATURE_FLAGS.ENABLE_LOYALTY_HEALTH_SIGNAL) return null;
     if (!loyalty?.visible) return null;
@@ -126,17 +129,17 @@ function LoyaltyHealthCard({ loyalty }: { loyalty: HealthSignals['loyalty'] }) {
         <Card size="small" style={{ flex: 1, minWidth: 160 }}>
             <Flex align="center" gap={8} style={{ marginBottom: 4 }}>
                 <LuHeart size={14} style={{ color: signalColor }} />
-                <Text type="secondary" style={{ fontSize: 12 }}>Customer Loyalty</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>{t('health.customerLoyalty')}</Text>
             </Flex>
             <Title level={4} style={{ color: signalColor, margin: 0, fontSize: 18 }}>
-                {config.label}
+                {t(`health.states.${loyalty.state}`)}
             </Title>
-            <Text type="secondary" style={{ fontSize: 11 }}>Based on return patterns</Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>{t('health.returnPatterns')}</Text>
         </Card>
     );
 }
 
-function BusinessHealthCard({ risk }: { risk: HealthSignals['risk'] }) {
+function BusinessHealthCard({ risk, t }: { risk: HealthSignals['risk']; t: DashboardTranslator }) {
     const { token } = useToken();
     if (!FEATURE_FLAGS.ENABLE_RISK_DECLINE_DETECTION) return null;
     if (!risk?.visible) return null;
@@ -148,12 +151,12 @@ function BusinessHealthCard({ risk }: { risk: HealthSignals['risk'] }) {
         <Card size="small" style={{ flex: 1, minWidth: 160 }}>
             <Flex align="center" gap={8} style={{ marginBottom: 4 }}>
                 <LuTrendingDown size={14} style={{ color: signalColor }} />
-                <Text type="secondary" style={{ fontSize: 12 }}>Business Health</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>{t('health.businessHealth')}</Text>
             </Flex>
             <Title level={4} style={{ color: signalColor, margin: 0, fontSize: 18 }}>
-                {config.label}
+                {t(`health.states.${risk.state}`)}
             </Title>
-            <Text type="secondary" style={{ fontSize: 11 }}>Based on overall trends</Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>{t('health.overallTrends')}</Text>
         </Card>
     );
 }
@@ -167,6 +170,7 @@ function BusinessHealthCard({ risk }: { risk: HealthSignals['risk'] }) {
  * Returns null if no signals are visible.
  */
 export default function HealthSignalCards({ healthSignals }: HealthSignalCardsProps) {
+    const t = useTranslations('Dashboard.owner');
     if (!healthSignals) return null;
 
     const { trust, loyalty, risk } = healthSignals;
@@ -179,9 +183,9 @@ export default function HealthSignalCards({ healthSignals }: HealthSignalCardsPr
 
     return (
         <Flex gap={12} wrap="wrap">
-            <TrustHealthCard trust={trust} />
-            <LoyaltyHealthCard loyalty={loyalty} />
-            <BusinessHealthCard risk={risk} />
+            <TrustHealthCard trust={trust} t={t} />
+            <LoyaltyHealthCard loyalty={loyalty} t={t} />
+            <BusinessHealthCard risk={risk} t={t} />
         </Flex>
     );
 }

@@ -137,10 +137,10 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // 2. Extract validated data
-        const { planId, interval, currency, userType, quantity: requestedQuantity = 1, rc = 0 } = validation.data;
+        const { planId, interval, currency, userType, quantity: requestedQuantity = 1 } = validation.data;
         const name = session?.user?.name || body.name;
         const email = session?.user?.email || body.email;
-        const remainingCredits = rc;
+        const remainingCredits = 0;
         const quantity = Math.max(1, requestedQuantity);
 
         // 3. Find Plan Details from Local Constants
@@ -187,7 +187,7 @@ export const POST = withAuth(async (request, session) => {
             name,
             email,
             price: unitAmount,
-            remainingCredits,//Credits Carry Forward from previous subscription
+            remainingCredits,
         };
 
         // Step B: Create Provider Subscription
@@ -257,7 +257,7 @@ export const POST = withAuth(async (request, session) => {
             renewsOn: null,
             monthlyCreditsAllowance: monthlyCredits,
             monthlyCredits: monthlyCredits,
-            topUpCredits: remainingCredits || 0,//Credits Carry Forward from previous subscription are added as a topup credits
+            topUpCredits: 0,
             creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
             shortUrl: razorpaySubscription.short_url,
             paymentMethod: {
@@ -273,9 +273,7 @@ export const POST = withAuth(async (request, session) => {
                     timestamp: Timestamp.now(),
                     amount: unitAmount * quantity,
                     currency: currency,
-                    remark: Boolean(remainingCredits)
-                        ? `Subscription Upgrade Initiated with Credits Carry Forward: ${remainingCredits}; quantity ${quantity}`
-                        : `Subscription Initiated; quantity ${quantity}`,
+                    remark: `Subscription Initiated; quantity ${quantity}`,
                 },
             ],
             billingHistory: [],

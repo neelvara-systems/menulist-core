@@ -2,7 +2,7 @@
 
 **Feature:** Staff-Level RBAC (Layer 1)  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 19, 2026
+**Last Updated:** June 11, 2026
 **Priority:** LOW — Role checks use cached session data. Only role CRUD triggers writes.
 
 > **Scope:** This doc covers Firebase ops for role definitions and user role assignments. For OutletPolicy (Layer 2) ops, see [Multi-Chain Permissions Firebase](../multi-chain-permissions/multi-chain-permissions_firebase.md).
@@ -36,9 +36,9 @@
 | ------------------------------- | ---------- | ------------------------ | ----------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Resolve user role + permissions | — | Session load | Per login/refresh | 0 incremental | `sessionProvider` uses loaded store/session data. |
 | Permission check in UI | — | Any gated feature access | Per feature | 0 | `userPermissions` context set once at session load. |
-| Staff list | `users`, `stores` | Staff screen open | Rare | Tenant users + store docs | Server API reads tenant users and relevant store role definitions because `users` is server-only for cross-user reads. |
+| Staff list | `users`, `stores` | Staff screen open | Rare | Current-store users + store docs | Server API queries current `users.storeIds array-contains {storeId}` plus legacy `users.storeId == {storeId}` numeric/string variants, filters by tenant, and returns only current-store mappings to non-master managers. Master users also receive all tenant store options for assignment. |
 | Legacy default-role repair | `stores/{storeId}` | Staff screen open/create on an old store missing default roles or missing permission keys on existing default roles | One time per legacy store | 1 store | Appends missing `owner` / `manager` / `staff` role definitions and normalizes missing default-role permission keys before staff role validation. |
-| Role save validation | `stores`, `users` | Role create/update/deactivate | Rare | 1 store + tenant users when deactivating | Used to validate role and prevent deactivating a role assigned to active staff. |
+| Role save validation | `stores`, `users` | Role create/update/deactivate | Rare | 1 store + current-store users when deactivating | Used to validate role and prevent deactivating a role assigned to active staff in the affected store. |
 | Copy/share login details | — | Owner copies, native-shares, or opens WhatsApp Web from the one-time login details popup | Rare | 0 | Uses the passcode already returned by create/reset and the selected staff phone number already loaded in the UI. No extra Firestore read. |
 
 ### Writes
@@ -58,6 +58,10 @@
 | Remove staff from store          | `users/{userId}`   | Owner removes staff                            | Rare          | 1            | `stores[]`, `storeIds[]`, `active`, `deleted`, `deletedAt`, `sessionRevokedAt`, `authDisabled` | If no store mappings remain, the user is deactivated, soft-deleted, signed out, and disabled in Firebase Auth. |
 | Session access check             | `users`, `tenants`, `stores` | Authenticated dashboard focus/interval check | While dashboard is open | 1 user + tenant/store docs when present | None | `GET /api/auth/access-status` is no-store. It catches revoked sessions, deleted/inactive users, direct user blocks, tenant blocks, and store blocks. |
 
+### Firestore Rules Boundary
+
+`users/{userId}` direct writes are not part of the owner/staff runtime. Firestore rules allow platform-admin writes only; owner/staff profile updates, password/passcode changes, staff CRUD, role assignment, removal, and session revocation go through authenticated API routes with Admin SDK writes. This prevents direct client edits to `stores[]`, `storeIds[]`, `role`, `active`, or revocation fields.
+
 ### Deletes
 
 None — roles are deactivated (`active: false`), never hard-deleted. Staff users are soft-deleted only when the last store mapping is removed; Firebase Auth accounts are disabled and refresh tokens are revoked for blocked/deactivated access but not hard-deleted by the owner UI.
@@ -66,7 +70,7 @@ None — roles are deactivated (`active: false`), never hard-deleted. Staff user
 
 ## Cost Estimate
 
-Typical SMB estimate: **₹0.00 to ₹10/month**. Permission checks remain in-memory. Staff list reads happen only when an owner opens Team/Staff management, writes happen only on rare staff or role changes, and the access-status check is a small authenticated-dashboard safety read while the app is visible. The upper end assumes multiple staff dashboards stay open for long shifts; inactive browser tabs do not run the interval check.
+Typical SMB estimate: **₹0.00 to ₹10/month**. Permission checks remain in-memory. Staff list reads happen only when an owner opens Team/Staff management and are bounded to users assigned to the current store, including legacy `storeId`-only records; writes happen only on rare staff or role changes. The access-status check is a small authenticated-dashboard safety read while the app is visible. The upper end assumes multiple staff dashboards stay open for long shifts; inactive browser tabs do not run the interval check.
 
 ---
 

@@ -4,8 +4,8 @@ export const dynamic = 'force-dynamic';
  * Answerlattice Widget Key API
  *
  * Manages bounded, store-doc widget keys for the authenticated Answerlattice
- * workspace. Runtime validation remains hash-based; recoverable widget keys are
- * stored only as encrypted server-side material when the encryption secret is configured.
+ * workspace. Runtime validation remains hash-based; raw widget keys are only
+ * returned once at creation time and are never stored for later recovery.
  */
 
 import { FEATURE_FLAGS } from '@config/features';
@@ -17,10 +17,7 @@ import {
     ANSWERLATTICE_WIDGET_KEY_LIMIT,
     buildAnswerlatticeWidgetApiStateWithNewKey,
     buildAnswerlatticeWidgetKeySummaries,
-    decryptAnswerlatticeWidgetKey,
     deleteAnswerlatticeWidgetKey,
-    getAnswerlatticeWidgetKeyEncryptionReadiness,
-    getAnswerlatticeWidgetKeyRecordById,
     normalizeAnswerlatticeWidgetApiState,
     renameAnswerlatticeWidgetKey,
 } from '@lib/answerlattice/widgetKeyManager';
@@ -68,7 +65,7 @@ const toKeyResponse = (state: unknown) => {
         keys: buildAnswerlatticeWidgetKeySummaries(normalizedState),
         keyPrefix: normalizedState.keyPrefix || null,
         hasWidgetKey: normalizedState.keyHashes.length > 0,
-        encryptionConfigured: getAnswerlatticeWidgetKeyEncryptionReadiness().configured,
+        encryptionConfigured: false,
         keyLimit: ANSWERLATTICE_WIDGET_KEY_LIMIT,
     };
 };
@@ -160,24 +157,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         if (validation.data.action === 'copy') {
-            const match = getAnswerlatticeWidgetKeyRecordById(storeData.answerlatticeWidgetApi, validation.data.keyId);
-            if (!match) {
-                return NextResponse.json({ error: 'Widget key not found' }, { status: 404 });
-            }
-
-            const apiKey = decryptAnswerlatticeWidgetKey(match.record.encryptedKey);
-            if (!apiKey) {
-                return NextResponse.json({
-                    error: 'This key cannot be copied. Rotate it to create a copyable key.',
-                    encryptionConfigured: getAnswerlatticeWidgetKeyEncryptionReadiness().configured,
-                }, { status: 409 });
-            }
-
-            secureLog('[Answerlattice Widget] Key copied', {
-                storeId,
-                keyId: match.record.id,
-            });
-            return NextResponse.json({ apiKey });
+            return NextResponse.json({
+                error: 'Widget keys are only shown once when created. Create a new key if the raw value was lost.',
+            }, { status: 409 });
         }
 
         if (validation.data.action === 'rename') {

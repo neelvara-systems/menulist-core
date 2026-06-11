@@ -85,9 +85,9 @@ Owner Edits Menu (Dashboard Editor)
 
 | Flag         | Default | Purpose                        |
 | ------------ | ------- | ------------------------------ |
-| `ENABLE_MCE` | `false` | Enable Menu Correctness Engine |
+| `ENABLE_MCE` | `true` | Enable Menu Correctness Engine |
 
-When disabled, the existing direct-write flow continues unchanged. When enabled, all saves pass through CSR validation and `_mce` metadata is stamped on the project document.
+The current runtime has MCE enabled in `src/config/features.ts`. All audited `updateProject()` saves pass through CSR validation and `_mce` metadata is stamped on the project document as part of the same write. If the flag is disabled in a future rollback, the existing direct-write flow continues without stamping `_mce`.
 
 ---
 
@@ -162,4 +162,4 @@ During stress testing, we evaluated 10 hardening requirements. **8 of 10 are alr
 
 ---
 
-_Last Updated: February 14, 2026_
+_Last Updated: June 11, 2026_

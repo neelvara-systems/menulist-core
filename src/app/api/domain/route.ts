@@ -21,9 +21,8 @@ import {
     isVercelDomainConfigured,
     removeDomainFromVercelProject,
 } from "@lib/domains/vercelDomains";
-import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
+import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
 import { requireAnyStorePermission } from "@lib/permissions/server";
-import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "../../../middleware/auth";
@@ -105,12 +104,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             domainAddedAt: admin.firestore.Timestamp.now(),
         });
 
-        // Invalidate store cache so public pages pick up the new domain info
-        revalidateTag('client-stores');
-        await invalidateOwnerBusinessAssistantPacketCache({
-            tId: tenantId,
-            sId: storeId,
-        });
+        // Invalidate all public truth packets that depend on store routing.
+        await revalidateMenuCache(storeId, { tId: tenantId });
 
         return NextResponse.json({
             success: true,
@@ -164,12 +159,8 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 domainVerified: true,
                 domainVerifiedAt: admin.firestore.Timestamp.now(),
             });
-            // Invalidate so subdomain→custom domain redirect activates immediately
-            revalidateTag('client-stores');
-            await invalidateOwnerBusinessAssistantPacketCache({
-                tId: tenantId,
-                sId: storeId,
-            });
+            // Invalidate so canonical metadata and subdomain→custom-domain redirect activate immediately.
+            await revalidateMenuCache(storeId, { tId: tenantId });
         }
 
         return NextResponse.json({
@@ -226,12 +217,8 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
         domainVerifiedAt: admin.firestore.FieldValue.delete(),
     });
 
-    // Invalidate store cache so subdomain stops redirecting to removed domain
-    revalidateTag('client-stores');
-    await invalidateOwnerBusinessAssistantPacketCache({
-        tId: tenantId,
-        sId: storeId,
-    });
+    // Invalidate all public truth packets so canonical links and redirects drop the removed domain.
+    await revalidateMenuCache(storeId, { tId: tenantId });
 
     return NextResponse.json({
         success: true,

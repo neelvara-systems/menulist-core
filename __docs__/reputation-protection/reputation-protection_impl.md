@@ -1,8 +1,9 @@
 # Reputation Protection — Implementation Plan
 
-**Status:** ✅ INFRASTRUCTURE BUILT (GBP API blocked — flip flag when granted)  
+**Status:** ✅ INFRASTRUCTURE BUILT / PRODUCT DISABLED (GBP API blocked — flip flags only when granted)
 **Author:** Cascade (Lead Architect)  
 **Date:** February 19, 2026  
+**Last Runtime Audit:** June 11, 2026
 **Audience:** Developers  
 **Pillar:** 3 of 6
 
@@ -100,7 +101,7 @@ Detailed in `__docs__/reviews-reputation/reviews-reputation_impl.md`. Additional
 
 | Dependency          | Status       | Notes                              |
 | ------------------- | ------------ | ---------------------------------- |
-| GBP API Access      | � BLOCKED    | Ingestion CF needs this to run     |
+| GBP API Access      | BLOCKED      | Ingestion CF needs this to run     |
 | Gemini API          | ✅ Available | Already used for menu intelligence |
 | GBP OAuth           | ✅ Built     | `ENABLE_GBP_SYNC: false`           |
 | withAuth middleware | ✅ Built     | For API route protection           |
@@ -115,9 +116,9 @@ Detailed in `__docs__/reviews-reputation/reviews-reputation_impl.md`. Additional
 | `functions/src/constants/database.ts`            | Same for Cloud Functions                                | ✅ MODIFIED |
 | `src/config/features.ts`                         | ENABLE_REVIEWS_REPUTATION, ENABLE_AI_REPLY_ASSIST flags | ✅ MODIFIED |
 | `functions/src/reviews/classificationRules.ts`   | Rule-based classification engine                        | ✅ NEW      |
-| `src/app/api/reviews/states/route.ts`            | GET review states (boolean flags)                       | ✅ NEW      |
-| `src/components/.../reviews/ReputationGuard.tsx` | Passive warning notice                                  | ✅ NEW      |
-| `src/components/.../OwnerDashboard/index.tsx`    | ReputationGuard wired in                                | ✅ MODIFIED |
+| `src/app/api/reviews/states/route.ts`            | GET review states (boolean flags, parent-flag gated, rate-limited) | ✅ BUILT / DISABLED |
+| `src/components/.../reviews/ReputationGuard.tsx` | Passive warning notice                                  | ✅ BUILT / NOT MOUNTED |
+| `src/components/.../reviews/ReviewReplyTool.tsx` | Owner-pasted review reply suggestion component           | ✅ BUILT / NOT MOUNTED |
 
 ---
 
@@ -125,12 +126,21 @@ Detailed in `__docs__/reviews-reputation/reviews-reputation_impl.md`. Additional
 
 - [x] All API routes protected with `withAuth`
 - [x] Tenant isolation on all review queries
-- [ ] Rate limiting on AI suggestion endpoint (deferred — needs GBP API)
+- [x] Rate limiting on AI suggestion endpoint
+- [x] SAFE_MODE on AI suggestion endpoint
 - [ ] Reply text sanitized before posting to Google (deferred — needs GBP API)
 - [x] No PII in reply suggestions
 - [x] RBAC: only store owner/admin can reply
-- [x] Feature flag gated (ENABLE_REVIEWS_REPUTATION)
+- [x] Feature flag gated (`ENABLE_REVIEWS_REPUTATION` parent flag + `ENABLE_AI_REPLY_ASSIST`)
+
+## June 11, 2026 Runtime Notes
+
+- `ENABLE_REVIEWS_REPUTATION` and `ENABLE_AI_REPLY_ASSIST` are disabled by default in `src/config/features.ts`.
+- `/api/reviews/states` now returns 404 while the parent flag is off, rate-limits authenticated reads, and checks `autoExpiresAt > now` in the query.
+- `/api/reviews/suggest` now requires both flags and SAFE_MODE before Gemini or accounting work.
+- No owner dashboard mount point is active for `ReputationGuard` or `ReviewReplyTool` in the current runtime.
+- This route/component scaffolding should not be marketed as a live reviews product until GBP ingestion exists and the owner UI is intentionally mounted.
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** June 11, 2026

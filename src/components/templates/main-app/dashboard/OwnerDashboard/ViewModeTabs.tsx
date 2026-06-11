@@ -6,8 +6,9 @@
  * Daily, Weekly, Monthly are SECONDARY.
  */
 
-import { OwnerDashboardViewMode, VIEW_MODE_CONFIG } from '@template/main-app/projects/types';
+import { OwnerDashboardViewMode } from '@template/main-app/projects/types';
 import { Segmented } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuBarChart3, LuCalendar, LuClock, LuLayoutDashboard, LuLineChart, LuTrophy } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
@@ -33,11 +34,12 @@ const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
     hasMonthly = true,
     hasOverall = true,
 }) => {
+    const t = useTranslations('Dashboard.owner.viewModes');
     const options = [
         {
             label: (
                 <span className={activeMode === 'today' ? styles.activeTab : styles.primaryTab}>
-                    <LuClock size={15} /> {VIEW_MODE_CONFIG.today.label}
+                    <LuClock size={15} /> {t('today')}
                 </span>
             ),
             value: 'today',
@@ -46,7 +48,7 @@ const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
         {
             label: (
                 <span className={activeMode === 'overview' ? styles.activeTab : styles.secondaryTab}>
-                    <LuLayoutDashboard size={15} /> {VIEW_MODE_CONFIG.overview.label}
+                    <LuLayoutDashboard size={15} /> {t('overview')}
                 </span>
             ),
             value: 'overview',
@@ -55,7 +57,7 @@ const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
         {
             label: (
                 <span className={activeMode === 'daily' ? styles.activeTab : styles.secondaryTab}>
-                    <LuCalendar size={15} /> {VIEW_MODE_CONFIG.daily.label}
+                    <LuCalendar size={15} /> {t('daily')}
                 </span>
             ),
             value: 'daily',
@@ -64,7 +66,7 @@ const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
         {
             label: (
                 <span className={activeMode === 'weekly' ? styles.activeTab : styles.secondaryTab}>
-                    <LuBarChart3 size={15} /> {VIEW_MODE_CONFIG.weekly.label}
+                    <LuBarChart3 size={15} /> {t('weekly')}
                 </span>
             ),
             value: 'weekly',
@@ -73,7 +75,7 @@ const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
         {
             label: (
                 <span className={activeMode === 'monthly' ? styles.activeTab : styles.secondaryTab}>
-                    <LuLineChart size={15} /> {VIEW_MODE_CONFIG.monthly.label}
+                    <LuLineChart size={15} /> {t('monthly')}
                 </span>
             ),
             value: 'monthly',
@@ -82,7 +84,7 @@ const ViewModeTabs: React.FC<ViewModeTabsProps> = ({
         {
             label: (
                 <span className={activeMode === 'overall' ? styles.activeTab : styles.secondaryTab}>
-                    <LuTrophy size={15} /> {VIEW_MODE_CONFIG.overall.label}
+                    <LuTrophy size={15} /> {t('overall')}
                 </span>
             ),
             value: 'overall',

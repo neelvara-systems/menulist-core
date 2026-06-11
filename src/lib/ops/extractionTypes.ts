@@ -48,9 +48,15 @@ export interface ExtractionJobDetails extends ExtractionJobSummary {
     targetLanguages: Array<{ code: string; name: string }>;
     skipProjectSave: boolean;
     source: string | null;
+    sourceFingerprint?: string | null;
+    sourceFingerprintVersion?: number | null;
     sourceMetadata: Record<string, unknown> | null;
+    timings?: Record<string, unknown> | null;
     result: {
-        combinedData: any;
+        combinedData?: any;
+        summary?: Record<string, unknown>;
+        dataPrunedAt?: any;
+        dataPrunedReason?: string;
         qualityScore: number;
         qualityDetails: {
             categoryQuality: number;

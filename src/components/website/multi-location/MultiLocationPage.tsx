@@ -139,7 +139,7 @@ export default function MultiLocationPage() {
 
       {/* ── Step 01 — Master menu ────────────── */}
       <SectionWrapper>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--ws-space-16)', alignItems: 'center', maxWidth: '960px', margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 'var(--ws-space-16)', alignItems: 'center', maxWidth: '960px', margin: '0 auto' }}>
           <AnimateOnScroll>
             <div>
               <span style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--ws-border-default)', lineHeight: 1, display: 'block', marginBottom: 'var(--ws-space-4)' }}>01</span>
@@ -186,7 +186,7 @@ export default function MultiLocationPage() {
 
       {/* ── Step 02 — Local control ──────────── */}
       <SectionWrapper variant="subtle">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--ws-space-16)', alignItems: 'center', maxWidth: '960px', margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 'var(--ws-space-16)', alignItems: 'center', maxWidth: '960px', margin: '0 auto' }}>
           <AnimateOnScroll>
             {/* Local price override visual */}
             <div style={{ backgroundColor: 'var(--ws-bg-primary)', border: '1px solid var(--ws-border-default)', borderRadius: 'var(--ws-radius-lg)', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
@@ -236,7 +236,7 @@ export default function MultiLocationPage() {
 
       {/* ── Step 03 — One dashboard ──────────── */}
       <SectionWrapper>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--ws-space-16)', alignItems: 'center', maxWidth: '960px', margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 'var(--ws-space-16)', alignItems: 'center', maxWidth: '960px', margin: '0 auto' }}>
           <AnimateOnScroll>
             <div>
               <span style={{ fontSize: '5rem', fontWeight: 800, color: 'var(--ws-border-default)', lineHeight: 1, display: 'block', marginBottom: 'var(--ws-space-4)' }}>03</span>

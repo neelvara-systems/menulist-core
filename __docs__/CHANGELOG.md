@@ -6,6 +6,291 @@
 
 ---
 
+## June 11, 2026 - CampaignCue Route Boundary Alignment
+
+### Fixed
+
+- **CampaignCue owner workspace moved out of the public site tree** - The CampaignCue owner app now lives under `src/app/(campaigncue)/campaigncue/app`, matching the Answerlattice route-group pattern. `src/app/sites/campaigncue` is public website only.
+- **CampaignCue product-domain app routing is explicit** - CampaignCue `/app` on the product domain and local `/__campaigncue/app` now rewrite to `/campaigncue/app` instead of `/sites/campaigncue/app`.
+- **CampaignCue route boundary is documented and verified** - Added the CampaignCue route-boundary doc, updated the global URL routing architecture doc, and extended `npm run verify:campaigncue` so it fails if owner app pages return under `src/app/sites/campaigncue`.
+
+### Cost
+
+- **No Firebase cost change** - This is route structure, middleware rewrite, verifier, and documentation alignment only. It adds no Firestore reads, writes, listeners, indexes, Cloud Functions, Storage paths, provider calls, billing behavior, scheduler work, or Firebase deploy target changes.
+
+### Validation
+
+- **CampaignCue route-boundary checks passed** - `npm run verify:campaigncue` passed with 222 checks, including the public-site vs owner-route-group split.
+- **Build and route smoke passed** - `npx tsc --noEmit --incremental false`, `npm run lint`, `git diff --check`, and `npm run build` passed. Built-server smoke confirmed `/__campaigncue/app`, `/campaigncue/app`, `campaigncue.ai/app`, and `campaigncue.menulist.online/app` serve the owner route group, while `/sites/campaigncue/app` is absent or blocked.
+
+## June 11, 2026 - CampaignCue Owner Usability Hardening
+
+### Improved
+
+- **CampaignCue now opens with an owner-first checklist** - The Home screen guides owners through confirming business details, adding today's input, creating a pack, and using it manually.
+- **CampaignCue navigation is easier to scan** - Workspace sections are grouped as Start, Campaigns, Channels, and Operations, with owner-readable labels such as Business, Inputs, Connections, Ideas, Packs, Checks, Results, and Plan.
+- **CampaignCue setup and posting states are clearer** - The setup-not-ready state no longer exposes Firebase instructions to owners, and connected posting now appears as off unless it is actually enabled.
+- **CampaignCue forms and empty states are more practical** - Business details and input screens now include examples, clearer labels, and empty-state guidance for offers, events, service notes, menu links, booking links, and asset records.
+
+### Cost
+
+- **No Firebase cost change** - This is workspace UI, constants, verifier, and docs alignment only. It adds no Firestore reads, writes, listeners, indexes, Cloud Functions, provider calls, billing behavior, direct publishing, Storage uploads, scheduler work, or Firebase deploy target changes.
+
+### Validation
+
+- **CampaignCue static checks passed** - `npm run verify:campaigncue` passed with 196 checks, and `npx tsc --noEmit --incremental false`, `npm run lint`, `git diff --check`, and `npm run build` completed successfully.
+- **CampaignCue built-route smoke passed** - Built-server HTTP smoke with `X-Forwarded-Proto: https` returned `200` for `/__campaigncue` and `/__campaigncue/app`, loaded the workspace bundle with `noindex`, and returned `401` for unauthenticated `/api/campaigncue/workspace`. The in-app browser blocked local routes before load, so this pass used HTTP route evidence instead of a fresh visual screenshot.
+
+## June 11, 2026 - Answerlattice Owner Usability Hardening
+
+### Improved
+
+- **Answerlattice dashboard metadata is product-scoped** - Authenticated Answerlattice routes now publish Answerlattice Open Graph, Twitter, author, keyword, and app metadata instead of inheriting MenuList social preview values.
+- **Launch and review screens are clearer for founders** - Activation no longer promises a fixed setup time, setup-state messages avoid backend implementation terms, Weekly Digest describes the prepared summary in owner terms, Knowledge Intake has clearer first-run and no-draft next actions, and Governance queues explain what happens when there is nothing to review.
+- **Setup docs no longer promise a fixed install time** - Strategy, founder onboarding, and Knowledge Intake docs now describe guided setup and human review instead of using unsupported 10-minute launch claims.
+- **Widget install handoff is safer** - Dashboard snippets, install docs, and agent packet source now use an explicit full-key placeholder when the raw one-time widget key is not visible. Saved key identifiers are described as lookup labels only.
+- **Agent install packets no longer use saved prefixes as keys** - Workspace packets now keep the saved prefix as a dashboard identifier and use `al_full_widget_key_shown_once` for the install value unless the raw one-time key is intentionally included.
+- **Mobile file intake is easier to use** - Knowledge Intake now exposes file selection through a visible 44px `Choose files` button instead of relying on the native unstyled browser file input.
+- **Support Board proposal gating is understandable** - The answer-proposal action now explains when a card needs a related product entity, Governance access, or an existing proposal review instead of silently failing later.
+
+### Cost
+
+- **No Firebase cost change** - These are metadata, copy, empty-state, and local UI-control changes only. They add no Firestore reads, writes, listeners, indexes, Cloud Functions, scheduler work, AI calls, cache invalidation paths, or Vercel deployment behavior.
+
+### Validation
+
+- **Static checks passed** - TypeScript, targeted lint, scoped whitespace checks, and Answerlattice PWA verification passed for the touched surfaces.
+- **Local route smoke passed** - `/__answerlattice`, `/answerlattice/dashboard`, `/answerlattice/widget/install`, `/answerlattice/knowledge-intake`, and `/answerlattice/weekly-digest` returned `200` after dev-server warm-up. Dashboard HTML no longer includes MenuList social preview markers and includes Answerlattice OG metadata.
+
+## June 11, 2026 - Website Regional Workspace Settings Proof
+
+### Improved
+
+- **Features page now mentions regional workspace settings** - The Operations group now includes a compact card for owner workspace language preference, timezone, date format, and time format, while keeping customer-facing menu languages tied to the approved source.
+- **Public website language boundary stays unchanged** - The main website still exposes only reviewed website/resource languages in the language switcher, sitemap, hreflang, and LLM discovery surfaces.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website locale/docs/component copy only. It adds no Firestore reads, writes, listeners, indexes, Cloud Functions, cache invalidation paths, owner dashboard runtime, customer menu runtime, billing, auth, extraction, or Vercel deployment behavior.
+
+## June 11, 2026 - Menu Extraction Pipeline Latency And Payload Hardening
+
+### Improved
+
+- **Public create-menu preview polling is lighter** - The preview client now polls `GET /api/public/create-menu` with `statusOnly=1` until extraction is completed, then fetches the full extracted menu once for review/claim.
+- **Owner repeat uploads can reuse a completed extraction** - Normal owner uploads now compute a trusted server-side source fingerprint from Firebase Storage metadata and can return a recent completed job for the same project/user instead of starting another AI extraction.
+- **Extraction jobs now include timing telemetry** - Worker jobs record queue wait, provider time, post-processing time, save time, total worker time, and provider upload/batch timing for platform debugging.
+- **Completed project job payloads are pruned safely** - Auto-saved first-extraction project jobs keep `result.summary` and can drop heavy `result.combinedData` after the saved project has had time to consume it. Public draft, messaging onboarding, and review jobs keep full payloads while their downstream flows need them.
+- **Extraction monitor handles pruned jobs** - Platform job details now show timing fields and falls back to summary data when a completed project job no longer retains full normalized output.
+
+### Cost
+
+- **No new collection, index, scheduler, or owner charge** - Owner upload reuse adds bounded Storage metadata reads and can avoid a new job write/provider call for repeat uploads. The cleanup runs inside the existing `menu_old_cleanup` maintenance task. Initial extraction remains a zero-unit owner operation; provider costs and token usage stay in platform telemetry.
+
+### Validation
+
+- **Extraction pipeline verifiers passed** - `npm run verify:menu-extraction-pipeline` passed 27 checks and `npm run verify:menu-extraction-pipeline:dry-run` passed 48 checks.
+- **Type checks passed** - `npx tsc --noEmit --incremental false --pretty false` and `npm --prefix functions run build -- --pretty false` completed successfully.
+- **Scoped Firebase deploy is blocked by project billing** - `firebase deploy --only functions:processMenuImagesJob,functions:menulistMaintenanceScheduler --project ecomsai` completed predeploy lint/build but failed Secret Manager validation because billing is disabled on `ecomsai`.
+
+## June 11, 2026 - MenuList Feature Visual Tag De-Duplication
+
+### Fixed
+
+- **Dedicated feature-page hero tags no longer repeat three times on mobile** - The shared feature visual component no longer renders a generic trailing proof-chip row after every feature visual. Feature-specific chips remain only inside the visual where they explain the asset, and the separate page signal strip remains the page-level proof row.
+- **Dead feature-visual pill CSS removed** - Website CSS no longer carries the unused `.ws-feature-visual__pills` rules or Official Business Page override.
+
+### Validation
+
+- **Feature visual source scan passed** - No `.ws-feature-visual__pills` references remain after the shared component and CSS cleanup.
+- **Dedicated feature routes passed local smoke** - All ten generic feature pages returned `200`, rendered no `.ws-feature-visual__pills` nodes, and showed no missing-message markers on localhost.
+- **Static checks passed** - `git diff --check`, `npm run lint`, and `npx tsc --noEmit --incremental false` completed successfully.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website component/CSS/docs cleanup only. It adds no Firestore reads, writes, listeners, indexes, Cloud Functions, cache invalidation paths, auth behavior, pricing, payment, upload, extraction, customer menu runtime, owner dashboard runtime, or Vercel deployment behavior.
+
+## June 11, 2026 - Owner App Locale Expansion
+
+### Improved
+
+- **Owner app language support now includes the regional India expansion, the first international batch, and the final practical global pass** - `APP_LANGUAGES` now exposes `gu-IN`, `kn-IN`, `ml-IN`, `pa-IN`, `ur-IN`, `or-IN`, `as-IN`, `ne-NP`, `mai-IN`, `kok-IN`, `sd-IN`, `ks-IN`, `doi-IN`, `mni-IN`, `sat-IN`, `brx-IN`, `fr-FR`, `pt-BR`, `de-DE`, `it-IT`, `ja-JP`, `zh-CN`, `id-ID`, `vi-VN`, `th-TH`, `ko-KR`, `tr-TR`, `ms-MY`, `nl-NL`, `pl-PL`, `uk-UA`, `cs-CZ`, `ro-RO`, `el-GR`, `hu-HU`, `sv-SE`, `da-DK`, `fi-FI`, `fil-PH`, `zh-TW`, `he-IL`, `fa-IR`, and `sw-KE` alongside the existing supported app locales.
+- **Dashboard and mobile dashboard strings now cover the added languages** - The added owner-app locales now include the full `Dashboard` and `MobileDashboard` key sets, with placeholders and ICU plural strings preserved. Native-market copy review remains separate from runtime coverage.
+- **Kashmiri and Bodo are fallback-safe pending native copy** - `ks-IN` and `brx-IN` are selectable owner-app locales with English runtime fallback coverage because no reliable machine-translation source was used for those languages in this pass.
+- **The first international owner-app batch has compact runtime coverage** - French, Brazilian Portuguese, German, Italian, Japanese, Simplified Chinese, Indonesian, Vietnamese, Thai, Korean, Turkish, and Malay now have owner-app locale files, mobile shell labels, OBP fallback mapping, Ant Design component locale mapping, and public render-language mapping.
+- **The final practical global owner-app batch has compact runtime coverage** - Dutch, Polish, Ukrainian, Czech, Romanian, Greek, Hungarian, Swedish, Danish, Finnish, Filipino, Traditional Chinese, Hebrew, Persian, and Swahili now have owner-app locale files, mobile shell labels, OBP fallback mapping, and public render-language mapping. Ant Design component locale mapping is native where the library ships a locale pack; Filipino and Swahili use English Ant Design component chrome.
+- **Russian remains excluded from owner app UI locales** - Russian remains in the broader menu-content language list, but it was not added to `APP_LANGUAGES` in this global UI pass pending business/compliance review.
+- **Mobile locale shell text covers the added languages** - Mobile confirmation, selection, close, cancel, and fullscreen messages now have localized text for the added owner-app locales.
+- **Official Business Page locale fallback recognizes the added language codes** - Public OBP interface labels can resolve the new app locale files while still falling back to English for untranslated keys.
+- **Public website resource discovery remains reviewed-only** - The added app locales were not added to the public website language switcher, sitemap, `hreflang`, resource static params, or LLM discovery files because full reviewed resource packs do not exist yet.
+
+### Validation
+
+- **Locale JSON integrity checked** - Added locale files parse correctly and are wired into the app locale resolver.
+- **Dashboard/mobile placeholder validation passed** - A focused check confirmed all added locales include every `Dashboard` and `MobileDashboard` key from `en-US`, with matching placeholders and valid plural strings.
+- **TypeScript, lint, and resource discovery checks passed** - `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, `npm run verify:website-resource-locales`, `npm run verify:agent-readiness`, and `git diff --check` completed successfully.
+- **Localhost dev smoke passed** - `npm run dev` served `/`, `/signin`, and `/resources/menu-source-audit` with the added locale cookies and no missing-message markers. Unreviewed `/{locale}/resources` paths render the noindex resource-not-found state instead of localized resource content.
+- **Chrome visual spot-check passed** - Chrome loaded the sign-in surface on `127.0.0.1:3000` with visible controls and no missing-message markers. Chrome also loaded `/nl-NL/resources` as the noindex resource-not-found boundary. Direct `localhost` navigation was blocked by the Chrome profile, so HTTP smoke remains the broader per-locale proof.
+
+### Cost
+
+- **No Firebase cost change** - This is static locale/config work only. It adds no Firestore reads, writes, listeners, indexes, Cloud Functions, cache invalidation paths, routes, or billing behavior.
+
+## June 11, 2026 - CampaignCue Runtime Alignment And Build Manifest Repair
+
+### Fixed
+
+- **CampaignCue owner URL clearing now works** - Blank website, booking, public menu, and logo URL fields are normalized as unset values and PATCH now clears the stored optional URL instead of preserving the previous value.
+- **CampaignCue campaign-create cost accounting now matches the owner UI path** - The runtime and docs now count idempotency placeholder/completion writes in addition to campaign, trust report, event, and dashboard summary writes.
+- **CampaignCue idempotency is atomic** - Campaign create/action requests now claim idempotency keys with Firestore `create`, return `CAMPAIGNCUE_IDEMPOTENCY_CONFLICT` for in-flight or reused keys, and avoid duplicate writes under concurrent retries.
+- **CampaignCue blocked action retries are safe** - Direct publish/send fallback responses now complete the idempotency key with a replayable error state instead of leaving an in-progress record.
+- **CampaignCue analytics counters use atomic increments** - Dashboard summary updates no longer read-modify-write counters, reducing one mutation read and preventing lost increments when owner actions happen concurrently.
+- **CampaignCue API reads are narrower** - Standalone campaign, asset, source, integration, location, and analytics endpoints now use workspace-only direct reads instead of loading the full overview; successful owner mutations merge response data locally instead of reloading the workspace after every save/action.
+- **CampaignCue initial ChatGPT alignment clarified** - The coverage audit now distinguishes the original rendered banner/video, credit, provider, agency, and multi-location ideas from the active manual/export-first runtime so docs do not imply rendered media, billing, or provider automation is live.
+- **CampaignCue constants are product-scoped** - The old flat `src/constants/campaigncue.ts` file was replaced with `src/constants/campaigncue/` submodules for product identity, database, channels, domains, routes, Firebase env/app names, errors, website metadata, workspace defaults, and navigation. Shared loader, routing, env validation, reserved namespace, API, Firebase, and workspace surfaces now consume those constants where safe.
+- **Production build manifest repair added** - `next.config.js` now repairs emitted special Pages Router and App Router manifest entries when Next's worker build emits route files but leaves generated manifests incomplete.
+
+### Aligned
+
+- **CampaignCue docs now separate live runtime from provider contracts** - Product, Source Integrations, Opportunity Engine, WhatsApp, Google Local, Analytics, API Boundaries, Permissions/Billing, Campaign Studio, and validation docs now state that the active runtime is manual/export-first and that direct publish, direct send, provider sync, provider metrics, billing checkout, rendered video, paid generation, and MenuList write-back remain disabled.
+
+### Validation
+
+- **CampaignCue verifier passed** - `npm run verify:campaigncue` completed with 178 checks.
+- **TypeScript, lint, and production build passed** - `npx tsc --noEmit --incremental false`, `npm run lint`, and `npm run build` completed successfully. The build generated 357 static pages after the manifest repair.
+
+### Cost
+
+- **No provider or Cloud Function cost added** - The changes add no realtime listeners, Cloud Functions, provider calls, direct publishing, billing checkout, paid generation, or Firebase deploy target changes. Campaign creation cost documentation now reflects six owner-path writes when idempotency is used, summary counter updates avoid one read per mutation, action responses avoid a post-write campaign reread, blocked direct-action fallbacks complete idempotency without provider calls, analytics GET reads only workspace plus summary, and successful mutations avoid full overview reloads.
+
+## June 11, 2026 - Dashboard Supported-Language Translation Pass
+
+### Improved
+
+- **Dashboard and mobile dashboard strings are translated across supported MenuList locales** - `Dashboard.owner` and `MobileDashboard` now have translated values for `ar-SA`, `bn-IN`, `es-ES`, `gu-IN`, `hi-IN`, `mr-IN`, `ta-IN`, `te-IN`, and `zh-CN`, with `en-GB` using British-English wording where it differs.
+- **Placeholder and plural strings were preserved** - Dynamic strings such as `{count}`, `{rate}`, `{month}`, and dashboard plural messages keep their interpolation and ICU plural syntax across every supported locale.
+- **Brand and platform terms stay stable** - Product/platform tokens such as WhatsApp, Instagram, Facebook, iOS, and Android remain unchanged where that is the expected local display name.
+
+### Validation
+
+- **Locale integrity checks passed** - All MenuList locale JSON files parse, every supported locale has the full `Dashboard.owner` and `MobileDashboard` key set, and placeholder/plural validation passed with no leftover translation placeholder tokens.
+- **Whitespace check passed** - `git diff --check` completed successfully.
+
+### Cost
+
+- **No Firebase cost change** - This is locale content only. It adds no Firestore reads, writes, listeners, indexes, Cloud Functions, cache invalidation paths, routes, or billing behavior.
+
+## June 11, 2026 - MenuList Route Inventory Smoke
+
+### Validated
+
+- **MenuList page-route inventory was separated from other products** - `src/app` contains 103 MenuList page routes, 103 Answerlattice page routes, 2 CampaignCue page routes, and 5 MyCodex page routes. Answerlattice, CampaignCue, and MyCodex routes were intentionally excluded from MenuList QA.
+- **MenuList page routes passed localhost dev smoke** - 101 non-Sentry MenuList page routes were fetched on `npm run dev` with an authenticated platform-owner session and `?e-locale=hi-IN`; 100 returned `200`, the explicit `/404` route returned `404`, and no tested page returned `5xx`, timed out, or rendered missing-message markers.
+- **Intentional error routes were skipped** - `/test-sentry` and `/platform/test-sentry` were not smoke-tested because they intentionally trigger monitoring errors.
+- **MenuList API routes were inventoried without destructive calls** - 115 MenuList API handlers were classified statically. Mutating POST/PATCH/DELETE handlers were not bulk-called because they can write data, trigger billing/provider operations, or invalidate public truth.
+
+### Notes
+
+- **Tenant-only PWA manifest remains tenant-host proof pending** - `/manifest.webmanifest` correctly returns `{}` with `404` on the platform host. The active platform-owner test store had no configured domain, so tenant-host manifest proof remains pending until a real test subdomain/custom domain is selected.
+- **Full mobile visual route certification remains pending** - Dashboard and Transactions mobile routes were checked, and the mobile shell route map was inspected, but every `MobileMoreScreen` sub-screen was not interactively opened in browser during this pass.
+
+### Cost
+
+- **No Firebase cost change** - This is audit/runtime smoke documentation only. It adds no reads, writes, listeners, indexes, Cloud Functions, cache invalidation paths, or billing behavior.
+
+## June 11, 2026 - Dashboard And Transactions Route Language Pass
+
+### Improved
+
+- **Transactions language coverage now spans desktop and mobile** - Desktop Transactions, the transaction details modal, mobile Transactions, the mobile detail sheet, and shared AI-operation labels now use the `Transactions` locale namespace with safe English fallbacks.
+- **Dashboard language coverage now spans desktop and mobile sections** - Desktop dashboard tabs, view headings, Today/Daily/Weekly/Monthly/Overview/Overall cards, OBP metrics, customer-app metrics, AI summary, top-items, health signals, owner action plan, quality signals, and mobile dashboard section cards now use dashboard locale keys with safe English fallbacks.
+- **Dashboard activity copy now pluralizes correctly** - The monthly activity-days label now uses plural rules so one active day does not render as `1 days`.
+- **Supported MenuList locale payloads have the dashboard key structure** - All `public/locales/menulist.ai/*.json` files now include the `Dashboard.owner` and `MobileDashboard` key trees needed to avoid runtime missing-key output. Full native translation review remains separate from this runtime-safety pass.
+
+### Validation
+
+- **TypeScript, lint, and whitespace checks passed** - `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, and `git diff --check` completed successfully.
+- **Locale key coverage passed** - A script confirmed every MenuList locale file includes the `Dashboard.owner` and `MobileDashboard` keys present in `en-US`.
+- **Localhost dev route checks passed** - `npm run dev` served `/dashboard`, `/transactions`, `/dashboard?mobileAudit=1`, and `/transactions?mobileAudit=1` with `200 OK` under a non-English locale cookie.
+- **Visual QA covered desktop and mobile routes** - Chrome verified the desktop dashboard route and mode tabs plus desktop Transactions before the native pipe dropped. In-app Browser fallback verified desktop dashboard, forced mobile dashboard, desktop Transactions, and forced mobile Transactions after a clean dev-cache restart. No covered route rendered missing translation-key text.
+- **Production build was intentionally skipped** - This pass used `npm run dev` on localhost per owner instruction.
+
+### Cost
+
+- **No Firebase cost change** - This is presentation/localization work only. It adds no Firestore reads, writes, listeners, indexes, Cloud Functions, cache invalidation paths, public route changes, or billing behavior.
+
+## June 11, 2026 - MenuList Ops Audit Hardening
+
+### Fixed
+
+- **Desktop QR routes open the active sharing surface** - `/qr-code` and the legacy `/qrCode` alias now render the Use MenuList sharing surface instead of a placeholder page.
+- **Tenant compliance pages use compliance-specific metadata** - Public `/privacy`, `/terms`, and `/refund` pages now use their own title and description instead of inheriting default menu metadata.
+- **Messaging onboarding ops health reads are bounded** - `/api/ops/messaging-onboarding` now reads the latest health snapshot through `systemHealth/messaging_onboarding_control.lastSnapshotId` and one direct snapshot read instead of a document-id prefix query that required a missing `__name__` index.
+- **Ops Control Room actions wrap correctly** - Platform monitor action links now wrap inside the content column instead of creating horizontal page overflow.
+- **Platform notification messages stay readable** - The alert table now gives the Message column a fixed readable width and uses table-level horizontal scroll instead of collapsing long alert metadata into a narrow column.
+
+### Validation
+
+- **Authenticated platform-owner HTTP smoke passed** - A local built-server NextAuth credentials smoke established a `PLATFORM` session and verified platform ops pages plus `/api/ops/platform-notifications`, `/api/ops/owner-notifications`, and `/api/ops/messaging-onboarding` returned `200`.
+- **TypeScript, lint, and localhost dev validation passed** - `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, and authenticated `npm run dev` localhost route checks completed after the route fix.
+- **Chrome visual QA ran for platform routes** - Chrome visual testing found and verified the platform notification table fix. A source-level Ops Control Room recheck confirmed no page-level overflow, but the final loaded-state production visual recheck is blocked by unrelated CampaignCue TypeScript drift and the synthetic local proxy origin's auth/App Check limits.
+- **Whole-app Chrome visual QA covered owner, public, and customer routes** - The follow-up pass covered public website/sign-in, owner desktop, platform/internal, reseller, forced mobile shell, public tenant OBP/menu/compliance/feedback, and public pull API missing-key guards.
+- **Production build was not used for this follow-up** - Final route validation used `npm run dev` on localhost per owner instruction.
+
+### Cost
+
+- **No new Firestore index or listener** - The route change replaces an indexed prefix query with one or two direct document reads on a platform-only manual monitor.
+- **No Firebase cost change for visual fixes** - The UI changes are layout-only and add no reads, writes, listeners, routes, indexes, or Cloud Functions.
+- **QR and compliance metadata fixes do not increase Firebase cost** - QR route reuse does not add Firebase operations, and compliance metadata reuses the existing store lookup while avoiding project metadata fallback for legal/compliance slugs.
+
+## June 11, 2026 - CampaignCue Manual Runtime Implementation
+
+### New
+
+- **CampaignCue protected workspace added** - Added `/__campaigncue/app` locally and `/app` on the CampaignCue product domain for the authenticated CampaignCue workspace.
+- **CampaignCue server APIs added** - Added protected `/api/campaigncue/workspace`, `/api/campaigncue/campaigns`, `/api/campaigncue/campaigns/[campaignId]/actions`, `/api/campaigncue/assets`, and `/api/campaigncue/analytics` routes.
+- **CampaignCue manual campaign packs added** - CampaignCue can now create deterministic source-backed campaign packs with WhatsApp, Google local, creative, video brief, UGC script, ads handoff, and calendar outputs.
+- **CampaignCue trust and manual fallback added** - Outputs now carry deterministic trust gates, and direct publish/direct send actions are blocked with manual fallback posture.
+- **CampaignCue Firebase boundary added** - Added dedicated CampaignCue Firebase config/Admin client, `firebase-campaigncue.json`, Firestore rules, Firestore indexes, and Storage rules.
+- **CampaignCue implementation audit added** - Added `__docs__/campaigncue/campaigncue-production-implementation-audit.md` with feature-by-feature status, security, cost, UX, docs, and validation notes.
+- **CampaignCue setup-blocked state added** - Protected APIs now return safe `503` code `CAMPAIGNCUE_FIREBASE_UNAVAILABLE` when the dedicated CampaignCue Firebase project is unreachable, and the workspace app renders a setup-blocked state instead of a generic failure.
+- **CampaignCue source boundary clarified** - Workspace bootstrap reads the signed-in MenuList store profile as a source, while CampaignCue workspace/campaign/trust/asset/schedule/analytics writes stay in the dedicated CampaignCue Firebase project.
+- **CampaignCue owner workspace screens added** - Added Basic Details, Source Inputs, Integration Connections, Settings, Creative, Video/Reel, UGC, WhatsApp, Google Local, Ads, Agency, Locations, and Billing/Permissions posture screens with matching protected APIs for owner inputs, integration setup records, and location records.
+
+### Validation
+
+- **TypeScript passed** - `npx tsc --noEmit --incremental false` completed successfully after the runtime implementation.
+- **CampaignCue verifier passed** - `npm run verify:campaigncue` checks the CampaignCue route/API/security/Firebase/docs contracts without initializing Firebase Admin, including the owner workspace screens and cost/input-validation guards.
+- **Lint and production build passed** - `npm run lint` and `npm run build` completed successfully.
+- **Docs aligned to runtime** - Product, API boundary, Business Brain, Source Integrations, Opportunity Engine, Campaign Studio, Asset Library, Calendar Scheduler, Creative Trust Center, Analytics Learning, Firebase, validation, and hub docs were updated to match the implemented runtime.
+- **Firebase deploy is blocked externally** - `firebase deploy --config firebase-campaigncue.json --project campaigncue-qa --only firestore:rules,firestore:indexes,storage` failed with HTTP 403 because `campaigncue-qa` is not found or the current account lacks permission.
+
+### Cost
+
+- **Firebase cost is bounded and server-owned** - Workspace load uses bounded server reads, no realtime listeners, and only reads the MenuList source profile during CampaignCue bootstrap. Owner campaign creation writes the idempotency placeholder/completion, campaign, trust report, event, and dashboard summary. Provider publishing, paid AI generation, direct WhatsApp send, rendered video, ad spend mutation, and billing remain disabled.
+
+## June 11, 2026 - CampaignCue Documentation Package
+
+### New
+
+- **CampaignCue docs now exist as a separate product package** - Added the CampaignCue documentation hub, naming decision, ChatGPT coverage audit, product-level doc set, and feature-by-feature documentation under `__docs__/campaigncue/`.
+- **Each CampaignCue feature has a standard documentation set** - Business Brain, Source Integrations, Opportunity Engine, Campaign Studio, Creative Studio, Video Reel Studio, UGC Script Studio, WhatsApp Sales Studio, Google Local Studio, Ads Studio, Calendar Scheduler, Asset Library, Creative Trust Center, Analytics Learning, Agency Workspace, Multi-Location Center, Permissions Billing, and API Boundaries now each have README, spec, implementation, marketing, website, helpdoc, Firebase, and mobile-support docs.
+- **CampaignCue foundation shell started** - Added the `campaigncue` product id, local `/__campaigncue` route, preview `campaigncue.menulist.online` target, production `campaigncue.ai` target, product-domain registry entry, static public shell, robots output, sitemap output, and reserved namespace protection.
+- **CampaignCue runtime modules are feature-gated** - The public shell is enabled, while CampaignCue app shell, source integrations, generation, publishing, billing, and analytics remain disabled until their security, cost, trust, and Firebase boundaries are implemented.
+- **CampaignCue branding boundary added** - Added CampaignCue-specific manifest, icon, server loader branding, and client global loader branding so the new product shell does not inherit MenuList loading or PWA metadata.
+
+### Validation
+
+- **ChatGPT conversation coverage checked** - The visible conversation concepts and detailed Points 26-29 were mapped into the CampaignCue coverage audit, with explicit notes for product separation, source-aware campaign packs, trust checks, manual fallback, credits, agency/multi-location boundaries, success metrics, and guardrails.
+- **Explicit 29-point alignment checklist added** - The CampaignCue coverage audit now maps Product Definition through Risks and Guardrails point-by-point, including the cross-cutting data model, UX-flow, integration, and success-metric coverage.
+- **Founder research addendum added** - CampaignCue now has a current market/platform/policy research addendum covering the product wedge, competitor pressure, WhatsApp, Google Business Profile, ads policy, reviews/testimonials, contact marketing, API posture, analytics confidence, agency/multi-location risk, and domain signal.
+- **Current platform constraints were checked before channel docs** - WhatsApp consent/opt-out posture, Google Business Profile post/API limitations, and Google/Meta ads policy/API boundaries were reflected in the relevant feature docs.
+- **Foundation runtime smoke passed** - Local `/__campaigncue`, preview-host `campaigncue.menulist.online`, CampaignCue robots output, CampaignCue sitemap output, desktop layout metrics, and 390px mobile layout metrics were checked locally.
+
+### Cost
+
+- **No Firebase cost change** - The CampaignCue foundation adds static product routing and static website files only. It changes no Firestore reads/writes, Storage paths, Cloud Functions, Firebase rules, auth behavior, billing behavior, schedulers, provider calls, public menu runtime, owner dashboard runtime, or MenuList write-back behavior.
+
 ## June 10, 2026 — MenuList Feature Visual Launch Polish
 
 ### Fixed
@@ -4190,7 +4475,7 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 
 2. **Reseller Profile Expanded** — Full profile fields: name, phone, email, username, password, address, notes. Revenue stats (totalRevenueCollectedPaise, totalTransactions) and onboarding breakdown (totalOnlineStores, totalOfflineStores) stored directly on profile doc. New DAL functions: `createResellerProfile`, `updateResellerProfile`, `getResellerProfileById`, `getAllResellerProfiles`, `updateResellerStatsOnOnboarding`.
 
-3. **Reseller Management Screen** (`/reseller/manage`) — Platform-admin-only screen with password gate. Create/edit reseller profiles. View all resellers with stats table (stores, revenue, offline cap usage). Protected by `PLATFORM` role + `ECOMSAI_PLATFORM_PASSWORD` gate.
+3. **Reseller Management Screen** (`/reseller/manage`) — Platform-admin-only screen. Create/edit reseller profiles. View all resellers with stats table (stores, revenue, offline cap usage). Protected by `PLATFORM` role on the page and backing APIs; no client-bundled platform password is used.
 
 4. **Reseller Onboarding Tracking** — `resellerId` + `onboardingSource: 'RESELLER_ONBOARDING'` now written to tenant doc, store doc, AND subscription doc during reseller onboarding.
 

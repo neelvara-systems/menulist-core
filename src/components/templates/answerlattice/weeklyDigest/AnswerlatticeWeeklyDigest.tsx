@@ -106,8 +106,8 @@ export default function AnswerlatticeWeeklyDigest() {
             <Alert
                 type="info"
                 showIcon
-                message="Cost-safe digest"
-                description="This digest is built from compact activation, context, coverage, and trust summaries. It does not scan tickets, chats, KB articles, changelog pages, or signal collections on load."
+                message="Prepared weekly summary"
+                description="This page opens quickly because Answerlattice prepares the launch, support, coverage, and trust summary before you review it."
             />
 
             <Row gutter={[12, 12]}>

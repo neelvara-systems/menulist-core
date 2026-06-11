@@ -14,6 +14,7 @@
 
 import useCustomerAppDashboard from '@hook/useCustomerAppDashboard';
 import { Alert, Card, Col, Empty, Row, Spin, Statistic, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuDownload, LuEye, LuRocket, LuSmartphone, LuStar } from 'react-icons/lu';
 
@@ -49,7 +50,9 @@ interface CustomerAppDailyShape {
     shortcutClicks?: Record<string, number>;
 }
 
-function topShortcut(clicks?: Record<string, number>): { key: string; count: number } {
+type DashboardTranslator = (key: string, values?: Record<string, string | number>) => string;
+
+function topShortcut(clicks: Record<string, number> | undefined, t: DashboardTranslator): { key: string; count: number } {
     if (!clicks) return { key: '—', count: 0 };
     let bestKey = '';
     let bestCount = -1;
@@ -60,30 +63,30 @@ function topShortcut(clicks?: Record<string, number>): { key: string; count: num
         }
     }
     if (bestCount <= 0) return { key: '—', count: 0 };
-    const label = shortcutLabel(bestKey) || bestKey;
+    const label = shortcutLabel(bestKey, t) || bestKey;
     return { key: label, count: bestCount };
 }
 
 // Central label map — covers the 6 shortcut surfaces we ship with.
-function shortcutLabel(key: string): string | null {
+function shortcutLabel(key: string, t: DashboardTranslator): string | null {
     switch (key) {
-        case 'menu': return 'View Menu';
-        case 'call': return 'Call';
-        case 'directions': return 'Directions';
-        case 'whatsapp': return 'WhatsApp';
-        case 'reservation': return 'Reservation';
-        case 'order': return 'Order Online';
+        case 'menu': return t('customerApp.shortcuts.menu');
+        case 'call': return t('actions.call');
+        case 'directions': return t('actions.directions');
+        case 'whatsapp': return t('actions.whatsapp');
+        case 'reservation': return t('customerApp.shortcuts.reservation');
+        case 'order': return t('customerApp.shortcuts.order');
         default: return null;
     }
 }
 
 // Human-readable label for the platform breakdown rows.
-function platformLabel(key: string): string {
+function platformLabel(key: string, t: DashboardTranslator): string {
     switch (key) {
-        case 'ios': return 'iOS (iPhone / iPad)';
-        case 'android': return 'Android';
-        case 'desktop': return 'Desktop';
-        case 'other': return 'Other';
+        case 'ios': return t('customerApp.platforms.iosLong');
+        case 'android': return t('customerApp.platforms.android');
+        case 'desktop': return t('customerApp.platforms.desktop');
+        case 'other': return t('customerApp.platforms.other');
         default: return key;
     }
 }
@@ -95,13 +98,14 @@ interface Props {
 
 const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
     const { token } = useToken();
+    const t = useTranslations('Dashboard.owner');
     const { data, loading, error } = useCustomerAppDashboard();
     void dateRange;
 
     if (loading) {
         return (
             <Card>
-                <Title level={5} style={{ marginBottom: 8 }}>Customer App</Title>
+                <Title level={5} style={{ marginBottom: 8 }}>{t('customerApp.title')}</Title>
                 <div style={{ textAlign: 'center', padding: '24px' }}>
                     <Spin />
                 </div>
@@ -112,11 +116,11 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
     if (error) {
         return (
             <Card>
-                <Title level={5} style={{ marginBottom: 8 }}>Customer App</Title>
+                <Title level={5} style={{ marginBottom: 8 }}>{t('customerApp.title')}</Title>
                 <Alert
                     type="warning"
                     showIcon
-                    message="Could not load Customer App analytics"
+                    message={t('customerApp.couldNotLoad')}
                     description={error.message}
                 />
             </Card>
@@ -135,14 +139,14 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
     if (!hasAnyData) {
         return (
             <Card>
-                <Title level={5} style={{ marginBottom: 8 }}>Customer App</Title>
+                <Title level={5} style={{ marginBottom: 8 }}>{t('customerApp.title')}</Title>
                 <Empty
                     description={
                         <div>
-                            <Text>No installs yet.</Text>
+                            <Text>{t('customerApp.noInstallsYet')}</Text>
                             <br />
                             <Text type="secondary">
-                                Numbers appear here after customers start installing your menu app.
+                                {t('customerApp.noInstallsDescription')}
                             </Text>
                         </div>
                     }
@@ -173,40 +177,40 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
             ? Math.round((promptedInstalls / totalPromptShown) * 100)
             : 0;
 
-    const topShortcutResult = topShortcut(summary?.shortcutClicks);
+    const topShortcutResult = topShortcut(summary?.shortcutClicks, t);
 
     return (
         <Card>
             <Title level={5} style={{ marginBottom: 16 }}>
                 <LuSmartphone style={{ marginRight: 8 }} />
-                Customer App
+                {t('customerApp.title')}
             </Title>
 
             <Row gutter={[16, 16]}>
                 <Col xs={12} sm={6}>
                     <Statistic
-                        title="Installed Customers"
+                        title={t('customerApp.installedCustomers')}
                         value={installedCustomers}
                         prefix={<LuDownload />}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
-                        title="App Opens (30d)"
+                        title={t('customerApp.appOpens30d')}
                         value={appOpens30d}
                         prefix={<LuEye />}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
-                        title="Installs (30d)"
+                        title={t('customerApp.installs30d')}
                         value={installs30d}
                         prefix={<LuRocket />}
                     />
                 </Col>
                 <Col xs={12} sm={6}>
                     <Statistic
-                        title="Install Conversion"
+                        title={t('customerApp.installConversion')}
                         value={`${conversionPct}%`}
                         prefix={<LuRocket />}
                         valueStyle={{
@@ -219,14 +223,14 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
             <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
                 <Col xs={24} sm={12}>
                     <Statistic
-                        title="Top Shortcut"
+                        title={t('customerApp.topShortcut')}
                         value={topShortcutResult.key}
                         prefix={<LuStar />}
                     />
                 </Col>
                 <Col xs={24} sm={12}>
                     <Statistic
-                        title="Total Shortcut Uses"
+                        title={t('customerApp.totalShortcutUses')}
                         value={Object.values(summary?.shortcutClicks || {}).reduce(
                             (sum, v) => sum + (typeof v === 'number' ? v : 0),
                             0,
@@ -239,11 +243,11 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                 style={{ marginTop: 16 }}
                 type="info"
                 showIcon
-                message="iOS Safari installs may be inferred"
+                message={t('customerApp.iosInferredTitle')}
                 description={
                     iosManualInstalls > 0
-                        ? `Safari does not provide a standard install event. ${iosManualInstalls.toLocaleString()} iOS installs in this view were inferred from standalone launches or Add to Home Screen behavior, so iOS install counts can be estimated rather than fully confirmed and may appear after the first standalone app open. Installed customer counts are device and browser-based, not exact people.`
-                        : 'Safari does not provide a standard install event. iOS install counts can be inferred from standalone launches or Add to Home Screen behavior, so they may be estimated rather than fully confirmed and can appear after the first standalone app open. Installed customer counts are device and browser-based, not exact people.'
+                        ? t('customerApp.iosInferredWithCount', { count: iosManualInstalls.toLocaleString() })
+                        : t('customerApp.iosInferredNoCount')
                 }
             />
 
@@ -252,7 +256,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                 <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
                     <Col span={24}>
                         <Text type="secondary" style={{ fontSize: 13 }}>
-                            Shortcut breakdown
+                            {t('customerApp.shortcutBreakdown')}
                         </Text>
                     </Col>
                     {(['menu', 'call', 'directions', 'whatsapp', 'reservation', 'order'] as const).map((key) => {
@@ -262,7 +266,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                         if (count === 0) return null;
                         return (
                             <Col key={key} xs={12} sm={6}>
-                                <Statistic title={shortcutLabel(key) || key} value={count} />
+                                <Statistic title={shortcutLabel(key, t) || key} value={count} />
                             </Col>
                         );
                     })}
@@ -274,7 +278,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                 <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
                     <Col span={24}>
                         <Text type="secondary" style={{ fontSize: 13 }}>
-                            Installs by platform
+                            {t('customerApp.installsByPlatform')}
                         </Text>
                     </Col>
                     {(['ios', 'android', 'desktop', 'other'] as const).map((key) => {
@@ -282,7 +286,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                         if (count === 0) return null;
                         return (
                             <Col key={key} xs={12} sm={6}>
-                                <Statistic title={platformLabel(key)} value={count} />
+                                <Statistic title={platformLabel(key, t)} value={count} />
                             </Col>
                         );
                     })}
@@ -296,18 +300,18 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                 <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
                     <Col span={24}>
                         <Text type="secondary" style={{ fontSize: 13 }}>
-                            App stickiness
+                            {t('customerApp.appStickiness')}
                         </Text>
                     </Col>
                     <Col xs={12} sm={8}>
                         <Statistic
-                            title="Returning opens (30d)"
+                            title={t('customerApp.returningOpens30d')}
                             value={appOpens30d}
                         />
                     </Col>
                     <Col xs={12} sm={8}>
                         <Statistic
-                            title="Avg opens per install"
+                            title={t('customerApp.avgOpensPerInstall')}
                             value={
                                 (summary?.lifetimeTotalAppOpens ?? 0) > 0 && installedCustomers > 0
                                     ? ((summary?.lifetimeTotalAppOpens ?? 0) / installedCustomers).toFixed(1)
@@ -318,7 +322,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                     {iosManualInstalls > 0 ? (
                         <Col xs={24} sm={8}>
                             <Statistic
-                                title="iOS manual installs"
+                                title={t('customerApp.iosManualInstalls')}
                                 value={iosManualInstalls}
                             />
                         </Col>

@@ -41,6 +41,7 @@ import {
     PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
 } from "../sharedData/menuExtractionJob";
 import { ConfidenceSummary, MENU_IMAGE_PROCESSING_JOBS_COLLECTION, MENU_PROCESSING_STATUS, MenuImageProcessingJob, MenuItem, ProcessMenuImagesRequest } from "../types";
+import { buildExtractionResultSummary } from "../utils/menuExtractionResultSummary";
 import { hardenExtractedData } from "./extractionHardening";
 import { tryExtractMenuLinkTextFromJob } from "./menuLinkTextExtraction";
 import { processMenuImagesLogic } from "./processMenuImages";
@@ -69,6 +70,75 @@ const PROFILE_CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number
     medium: 2,
     low: 1,
 };
+
+function timestampMillis(value: unknown): number | null {
+    if (!value) return null;
+    if (typeof (value as any).toMillis === "function") {
+        return (value as any).toMillis();
+    }
+    if (typeof (value as any).seconds === "number") {
+        return (value as any).seconds * 1000;
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+    return null;
+}
+
+function addTimestamp(target: Record<string, unknown>, key: string, millis?: number | null): void {
+    if (typeof millis === "number" && Number.isFinite(millis)) {
+        target[key] = Timestamp.fromMillis(millis);
+    }
+}
+
+function addDuration(target: Record<string, unknown>, key: string, value?: number | null): void {
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+        target[key] = Math.round(value);
+    }
+}
+
+function buildExtractionTimings(params: {
+    aiCompletedAtMillis?: number | null;
+    aiStartedAtMillis?: number | null;
+    completedAtMillis?: number | null;
+    failedAtMillis?: number | null;
+    jobCreatedAt?: unknown;
+    postProcessingCompletedAtMillis?: number | null;
+    previewReadyAtMillis?: number | null;
+    providerTimings?: unknown;
+    saveCompletedAtMillis?: number | null;
+    saveStartedAtMillis?: number | null;
+    workerStartedAtMillis: number;
+}): Record<string, unknown> {
+    const createdAtMillis = timestampMillis(params.jobCreatedAt);
+    const timings: Record<string, unknown> = {};
+
+    addTimestamp(timings, "workerStartedAt", params.workerStartedAtMillis);
+    addTimestamp(timings, "aiStartedAt", params.aiStartedAtMillis);
+    addTimestamp(timings, "aiCompletedAt", params.aiCompletedAtMillis);
+    addTimestamp(timings, "postProcessingCompletedAt", params.postProcessingCompletedAtMillis);
+    addTimestamp(timings, "saveStartedAt", params.saveStartedAtMillis);
+    addTimestamp(timings, "saveCompletedAt", params.saveCompletedAtMillis);
+    addTimestamp(timings, "previewReadyAt", params.previewReadyAtMillis);
+    addTimestamp(timings, "completedAt", params.completedAtMillis);
+    addTimestamp(timings, "failedAt", params.failedAtMillis);
+
+    addDuration(timings, "queueWaitMs", createdAtMillis !== null ? params.workerStartedAtMillis - createdAtMillis : null);
+    addDuration(timings, "aiProcessingMs", params.aiStartedAtMillis && params.aiCompletedAtMillis ? params.aiCompletedAtMillis - params.aiStartedAtMillis : null);
+    addDuration(timings, "postProcessingMs", params.aiCompletedAtMillis && params.postProcessingCompletedAtMillis ? params.postProcessingCompletedAtMillis - params.aiCompletedAtMillis : null);
+    addDuration(timings, "saveMs", params.saveStartedAtMillis && params.saveCompletedAtMillis ? params.saveCompletedAtMillis - params.saveStartedAtMillis : null);
+    addDuration(timings, "workerTotalMs", (params.completedAtMillis || params.failedAtMillis || params.previewReadyAtMillis) ? (params.completedAtMillis || params.failedAtMillis || params.previewReadyAtMillis)! - params.workerStartedAtMillis : null);
+
+    if (
+        params.providerTimings &&
+        typeof params.providerTimings === "object" &&
+        Object.keys(params.providerTimings).length > 0
+    ) {
+        timings.provider = params.providerTimings;
+    }
+
+    return timings;
+}
 
 function resolveJobBusinessCategory(businessType?: string, businessCategory?: string): string | undefined {
     return resolveStoreBusinessCategory(businessType, businessCategory || normalizeBusinessCategory(businessType));
@@ -567,6 +637,12 @@ export async function processMenuImagesJobLogic(
         .doc(jobId);
     const skipProjectSave = shouldSkipProjectSave(job);
     let existingProjectCache: any | null | undefined;
+    const workerStartedAtMillis = Date.now();
+    let aiStartedAtMillis: number | null = null;
+    let aiCompletedAtMillis: number | null = null;
+    let postProcessingCompletedAtMillis: number | null = null;
+    let saveStartedAtMillis: number | null = null;
+    let saveCompletedAtMillis: number | null = null;
     const loadExistingProject = async () => {
         if (skipProjectSave) return null;
         if (existingProjectCache === undefined) {
@@ -658,14 +734,20 @@ export async function processMenuImagesJobLogic(
 
             // Set timeoutAt to 10 minutes from now (spec Section 8.2)
             const timeoutMs = 10 * 60 * 1000; // 10 minutes
-            transaction.update(jobRef, {
+            const processingUpdate: Record<string, unknown> = {
                 status: MENU_PROCESSING_STATUS.PROCESSING,
                 startedAt: Timestamp.now(),
                 updatedAt: Timestamp.now(),
                 timeoutAt: Timestamp.fromMillis(Date.now() + timeoutMs),
                 currentStep: "Starting...",
                 progress: 0,
-            });
+                "timings.workerStartedAt": Timestamp.fromMillis(workerStartedAtMillis),
+            };
+            const createdAtMillis = timestampMillis(jobData?.createdAt || job.createdAt);
+            if (createdAtMillis !== null) {
+                processingUpdate["timings.queueWaitMs"] = Math.max(0, workerStartedAtMillis - createdAtMillis);
+            }
+            transaction.update(jobRef, processingUpdate);
             return true;
         });
 
@@ -765,8 +847,10 @@ export async function processMenuImagesJobLogic(
             timestamp: Date.now()
         });
 
+        aiStartedAtMillis = Date.now();
         const deterministicLinkResult = await tryExtractMenuLinkTextFromJob(jobId, job);
         const result = deterministicLinkResult || await processMenuImagesLogic(request);
+        aiCompletedAtMillis = Date.now();
 
         logger.info(`[processMenuImagesJob] === STEP 2 AI PROCESSING COMPLETE ===`, {
             jobId,
@@ -821,6 +905,7 @@ export async function processMenuImagesJobLogic(
             throw new Error(extractionShapeError);
         }
         const extractedBusinessProfile = result.data.data?.extractedBusinessProfile;
+        postProcessingCompletedAtMillis = Date.now();
 
         // ─────────────────────────────────────────────────────────────
         // Step 3: Check for cancellation after AI processing
@@ -828,10 +913,11 @@ export async function processMenuImagesJobLogic(
         // ─────────────────────────────────────────────────────────────
         const postProcessJob = await jobRef.get();
         if (postProcessJob.data()?.status === MENU_PROCESSING_STATUS.CANCELLING) {
+            const cancelledAtMillis = Date.now();
             await jobRef.update({
                 status: MENU_PROCESSING_STATUS.CANCELLED,
-                completedAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
+                completedAt: Timestamp.fromMillis(cancelledAtMillis),
+                updatedAt: Timestamp.fromMillis(cancelledAtMillis),
                 currentStep: "Cancelled after AI processing",
                 // Save partial results
                 result: {
@@ -840,7 +926,17 @@ export async function processMenuImagesJobLogic(
                     qualityScore: result.data.qualityScore,
                     qualityDetails: result.data.qualityDetails,
                     processingTime: result.transaction.processingTime,
+                    summary: buildExtractionResultSummary(result.data.data, null, extractedBusinessProfile),
                 },
+                timings: buildExtractionTimings({
+                    aiCompletedAtMillis,
+                    aiStartedAtMillis,
+                    completedAtMillis: cancelledAtMillis,
+                    jobCreatedAt: job.createdAt,
+                    postProcessingCompletedAtMillis,
+                    providerTimings: result.timings,
+                    workerStartedAtMillis,
+                }),
             });
             logger.info(`[processMenuImagesJob] Job ${jobId} cancelled after AI processing`);
             return;
@@ -854,6 +950,14 @@ export async function processMenuImagesJobLogic(
             currentStep: "Processing complete, saving to project...",
             progress: 50,
             updatedAt: Timestamp.now(),
+            timings: buildExtractionTimings({
+                aiCompletedAtMillis,
+                aiStartedAtMillis,
+                jobCreatedAt: job.createdAt,
+                postProcessingCompletedAtMillis,
+                providerTimings: result.timings,
+                workerStartedAtMillis,
+            }),
         });
 
         // ─────────────────────────────────────────────────────────────
@@ -991,6 +1095,7 @@ export async function processMenuImagesJobLogic(
             });
             const redistributedFiles = Object.fromEntries([...redistributedData.entries()]);
 
+            saveStartedAtMillis = Date.now();
             if (!skipProjectSave) {
                 // Save files to project directly
                 logger.info(`[processMenuImagesJob] === STEP 6 SAVING TO PROJECT ===`, {
@@ -1057,18 +1162,20 @@ export async function processMenuImagesJobLogic(
                 });
                 await updatePublicDraftFromExtraction(jobId, job, result.data.data, redistributedFiles);
             }
+            saveCompletedAtMillis = Date.now();
 
             // Compute confidence summary (Infrastructure Compounding 10.1)
             const confidenceSummary = computeConfidenceSummary(
                 (result.data.data?.items as MenuItem[]) || []
             );
+            const completedAtMillis = Date.now();
 
             // Update job as completed
             logger.info(`[processMenuImagesJob] Updating job status to COMPLETED`, { jobId });
             await jobRef.update({
                 status: MENU_PROCESSING_STATUS.COMPLETED,
-                completedAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
+                completedAt: Timestamp.fromMillis(completedAtMillis),
+                updatedAt: Timestamp.fromMillis(completedAtMillis),
                 progress: 100,
                 currentStep: "Completed",
                 isFirstExtraction: true,
@@ -1078,6 +1185,7 @@ export async function processMenuImagesJobLogic(
                     qualityScore: result.data.qualityScore,
                     qualityDetails: result.data.qualityDetails,
                     processingTime: result.transaction.processingTime,
+                    summary: buildExtractionResultSummary(result.data.data, confidenceSummary, extractedBusinessProfile),
                     batchResults: (result as any).batchResults,
                     // Infrastructure Compounding 10.1 — piggybacked on existing write
                     ...(confidenceSummary ? { confidenceSummary } : {}),
@@ -1089,6 +1197,17 @@ export async function processMenuImagesJobLogic(
                         model: result.provenance.model,
                     } : {}),
                 },
+                timings: buildExtractionTimings({
+                    aiCompletedAtMillis,
+                    aiStartedAtMillis,
+                    completedAtMillis,
+                    jobCreatedAt: job.createdAt,
+                    postProcessingCompletedAtMillis,
+                    providerTimings: result.timings,
+                    saveCompletedAtMillis,
+                    saveStartedAtMillis,
+                    workerStartedAtMillis,
+                }),
                 fileResults,
                 transaction: {
                     transactionId: result.transaction.transactionId,
@@ -1128,9 +1247,10 @@ export async function processMenuImagesJobLogic(
                 (result.data.data?.items as MenuItem[]) || []
             );
 
+            const previewReadyAtMillis = Date.now();
             await jobRef.update({
                 status: MENU_PROCESSING_STATUS.PREVIEW_READY,
-                updatedAt: Timestamp.now(),
+                updatedAt: Timestamp.fromMillis(previewReadyAtMillis),
                 progress: 100,
                 currentStep: "Preview ready - awaiting review",
                 isFirstExtraction: false,
@@ -1141,6 +1261,7 @@ export async function processMenuImagesJobLogic(
                     qualityScore: result.data.qualityScore,
                     qualityDetails: result.data.qualityDetails,
                     processingTime: result.transaction.processingTime,
+                    summary: buildExtractionResultSummary(result.data.data, reExtractConfidence, extractedBusinessProfile),
                     batchResults: (result as any).batchResults,
                     // Infrastructure Compounding 10.1 — piggybacked on existing write
                     ...(reExtractConfidence ? { confidenceSummary: reExtractConfidence } : {}),
@@ -1151,6 +1272,15 @@ export async function processMenuImagesJobLogic(
                         model: result.provenance.model,
                     } : {}),
                 },
+                timings: buildExtractionTimings({
+                    aiCompletedAtMillis,
+                    aiStartedAtMillis,
+                    jobCreatedAt: job.createdAt,
+                    postProcessingCompletedAtMillis,
+                    previewReadyAtMillis,
+                    providerTimings: result.timings,
+                    workerStartedAtMillis,
+                }),
                 transaction: {
                     transactionId: result.transaction.transactionId,
                     totalCredits: result.transaction.totalCredits,
@@ -1195,12 +1325,23 @@ export async function processMenuImagesJobLogic(
                     ? "We could not read this menu link. Upload a photo or try another public menu link."
                     : "Extraction failed. Please try again with a clearer photo.",
             );
+            const failedAtMillis = Date.now();
             await jobRef.update({
                 status: MENU_PROCESSING_STATUS.FAILED,
-                completedAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
+                completedAt: Timestamp.fromMillis(failedAtMillis),
+                updatedAt: Timestamp.fromMillis(failedAtMillis),
                 progress: 0,
                 currentStep: "Failed",
+                timings: buildExtractionTimings({
+                    aiCompletedAtMillis,
+                    aiStartedAtMillis,
+                    failedAtMillis,
+                    jobCreatedAt: job.createdAt,
+                    postProcessingCompletedAtMillis,
+                    saveCompletedAtMillis,
+                    saveStartedAtMillis,
+                    workerStartedAtMillis,
+                }),
                 error: {
                     code: getErrorCode(error),
                     message: error.message || "Unknown error",

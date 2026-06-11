@@ -266,7 +266,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                         <Flex gap={12} vertical>
                             <Flex align="center" gap={8}>
                                 <LuGlobe size={16} />
-                                <Text strong>{`Language (${selectedLanguageOption?.preview || selectedLanguageLabel})`}</Text>
+                                <Text strong>{`${t('language')} (${selectedLanguageOption?.preview || selectedLanguageLabel})`}</Text>
                             </Flex>
                             <Select
                                 onChange={(value) => handleLocaleChange([value])}

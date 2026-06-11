@@ -127,17 +127,17 @@ const TodayScreen = () => {
             return;
         }
 
-        if (!todayCampaigns || todayCampaigns.isEmpty) {
+        if (!todayCampaigns || (todayCampaigns.isEmpty && !hasMaintenanceCards)) {
             setScreenState("empty");
             return;
         }
 
-        if (todayCampaigns.primary || sortedOperationalCampaigns.length > 0) {
+        if (todayCampaigns.primary || sortedOperationalCampaigns.length > 0 || hasMaintenanceCards) {
             setScreenState("action");
         } else {
             setScreenState("empty");
         }
-    }, [todayCampaigns, isLoading, sortedOperationalCampaigns.length]);
+    }, [hasMaintenanceCards, todayCampaigns, isLoading, sortedOperationalCampaigns.length]);
 
     useEffect(() => {
         const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
@@ -181,7 +181,7 @@ const TodayScreen = () => {
             operationalCampaigns: sortedOperationalCampaigns,
             primaryCampaign: todayCampaigns?.primary,
             projectName: selectedProjectDisplayName || 'your menu',
-            staffPromptText: staffPrompt?.text,
+            staffPromptText: staffPrompt?.eligible ? staffPrompt.text : undefined,
             tempStatusMessage: activeTempStatus?.message,
         });
     }, [
@@ -190,6 +190,7 @@ const TodayScreen = () => {
         inactiveItemsReminder,
         selectedProjectDisplayName,
         sortedOperationalCampaigns,
+        staffPrompt?.eligible,
         staffPrompt?.text,
         storeDetails,
         todayCampaigns?.primary,

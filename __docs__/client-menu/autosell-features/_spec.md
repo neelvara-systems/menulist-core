@@ -148,6 +148,8 @@ Store (timeSlotPresets)          Category (timeSlots)
 └── Dinner (18:00-22:00)     ←── [{ presetId: "1GHI15", ... }]
 ```
 
+Categories keep copied start/end times for public rendering, so editing a store-level preset cascades the changed times into assigned categories before public cache is revalidated. Deleting a preset removes its assigned category windows.
+
 ### Default Presets by Business Type
 
 | Business Type | Presets                              |

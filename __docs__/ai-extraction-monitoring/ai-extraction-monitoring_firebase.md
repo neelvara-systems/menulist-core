@@ -71,12 +71,16 @@ Already exists. Dashboard reads these fields:
 | `result.qualityDetails`    | Quality breakdown                                 |
 | `result.confidenceSummary` | Confidence distribution                           |
 | `result.processingTime`    | Processing time display                           |
-| `result.combinedData`      | Job inspector AI response viewer                  |
+| `result.combinedData`      | Job inspector AI response viewer when retained    |
+| `result.summary`           | Counts/confidence fallback after project payload pruning |
+| `result.dataPrunedAt`      | Explains why full normalized data is no longer present |
+| `timings`                  | Queue wait, AI time, save time, worker total      |
 | `error`                    | Failed job details                                |
 | `fileResults`              | Per-file breakdown                                |
 | `files`                    | File count display                                |
 | `projectId`                | Job identification                                |
 | `isFirstExtraction`        | Extraction type badge                             |
+| `sourceFingerprint`        | Owner-upload completed-job reuse diagnostics      |
 
 ### `MENULIST_AI_OPERATIONS`
 

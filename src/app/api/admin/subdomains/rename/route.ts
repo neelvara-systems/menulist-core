@@ -41,9 +41,11 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
+import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { validateAPIInput } from '@lib/security/inputValidation';
 import { secureError } from '@lib/security/secureLogger';
 import { slugify } from '@lib/utils/slugify';
+import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
@@ -63,7 +65,7 @@ const schema = z.object({
 export const POST = withAuth(
     async (request, session) => {
         try {
-            const body = await request.json();
+            const body = await request.json().catch(() => ({}));
             const v = validateAPIInput(schema, body);
             if (!v.success) {
                 return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
@@ -181,6 +183,7 @@ export const POST = withAuth(
             // Transaction: update the store and write the audit record in
             // one atomic batch so the two documents never drift.
             const auditRef = db.collection(DB_COLLECTIONS.SUBDOMAIN_RENAME_LOG).doc();
+            const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
             await db.runTransaction(async (tx) => {
                 tx.update(storeRef, {
                     subdomain: proposed,
@@ -188,6 +191,15 @@ export const POST = withAuth(
                     previousSubdomainSlugs: nextHistorySlugs,
                     modifiedOn: now,
                 });
+                tx.set(summaryRef, {
+                    lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+                    stores: {
+                        [storeIdStr]: {
+                            modifiedOn: now,
+                            subdomain: proposed,
+                        },
+                    },
+                }, { merge: true });
                 tx.set(auditRef, {
                     storeId: storeIdStr,
                     tenantId,
@@ -200,6 +212,14 @@ export const POST = withAuth(
                     operatorEmail: session?.user?.email || 'unknown',
                     operatorUserId: session?.user?.id || null,
                 });
+            });
+
+            revalidateTag(`menu-store-${storeIdStr}`);
+            revalidateTag(`store-${storeIdStr}`);
+            revalidateTag('client-stores');
+            await invalidateOwnerBusinessAssistantPacketCache({
+                tId: tenantId,
+                sId: storeIdStr,
             });
 
             logger.security(

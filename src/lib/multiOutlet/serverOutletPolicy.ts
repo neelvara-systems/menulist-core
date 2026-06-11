@@ -1,8 +1,13 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
-import { DEFAULT_OUTLET_POLICY, LOCAL_ITEM_PREFIX, type OutletPolicy } from "@type/multiOutlet.types";
+import {
+    DEFAULT_OUTLET_POLICY,
+    LOCAL_CATEGORY_PREFIX,
+    LOCAL_ITEM_PREFIX,
+    type OutletPolicy,
+} from "@type/multiOutlet.types";
 
-type OutletPolicyAction = "description" | "image";
+type OutletPolicyAction = "description" | "image" | "translation";
 
 type SessionLike = {
     tId?: number | string;
@@ -34,10 +39,19 @@ const hasInheritedTargets = (itemIds: string[]) => {
     return itemIds.some((itemId) => itemId && !itemId.startsWith(LOCAL_ITEM_PREFIX));
 };
 
+const hasInheritedCategoryTargets = (categoryIds: string[]) => (
+    categoryIds.some((categoryId) => categoryId && !categoryId.startsWith(LOCAL_CATEGORY_PREFIX))
+);
+
+const hasInheritedTranslationItemTargets = (itemIds: string[]) => (
+    itemIds.some((itemId) => itemId && !itemId.startsWith(LOCAL_ITEM_PREFIX))
+);
+
 const getPolicyBlockReason = (
     policy: OutletPolicy,
     action: OutletPolicyAction,
     itemIds: string[],
+    categoryIds: string[] = [],
 ) => {
     if (action === "description") {
         if (policy.canGenerateDescriptions === false) {
@@ -45,6 +59,13 @@ const getPolicyBlockReason = (
         }
         if (policy.descriptionOverride !== true && hasInheritedTargets(itemIds)) {
             return "Description changes for inherited items are disabled for this outlet";
+        }
+        return null;
+    }
+
+    if (action === "translation") {
+        if (hasInheritedTranslationItemTargets(itemIds) || hasInheritedCategoryTargets(categoryIds)) {
+            return "Translations for inherited menu content stay connected to the master menu";
         }
         return null;
     }
@@ -60,11 +81,13 @@ const getPolicyBlockReason = (
 
 export async function getLinkedOutletPolicyBlockReason({
     action,
+    categoryIds = [],
     itemIds = [],
     projectId,
     session,
 }: {
     action: OutletPolicyAction;
+    categoryIds?: string[];
     itemIds?: string[];
     projectId?: string | null;
     session: SessionLike;
@@ -98,5 +121,5 @@ export async function getLinkedOutletPolicyBlockReason({
         ...(masterStoreSnap.data()?.outletPolicy || {}),
     };
 
-    return getPolicyBlockReason(policy, action, itemIds.filter(Boolean));
+    return getPolicyBlockReason(policy, action, itemIds.filter(Boolean), categoryIds.filter(Boolean));
 }

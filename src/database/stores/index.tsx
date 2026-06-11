@@ -23,7 +23,7 @@ import type { StarterActivationSignal } from "@lib/onboarding/starterActivation"
 import { generateOwnCustomUid } from "@lib/utils/generateOwnCustomUid";
 import { computeSchedulerHour } from "@lib/utils/schedulerHour";
 import { TimeSlotPreset } from "@type/platform/store";
-import { deleteField, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { deleteField, doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.STORES;
 
@@ -442,7 +442,7 @@ export const updateTimeSlotPresets = async (storeId: number, timeSlotPresets: Ti
     return await apiCallComposer(
         async () => {
             const docRef = getDocRef(`${storeId}`);
-            await setDoc(docRef, { timeSlotPresets }, { merge: true });
+            await setDoc(docRef, { modifiedOn: serverTimestamp(), timeSlotPresets }, { merge: true });
             return timeSlotPresets;
         },
         { storeId, timeSlotPresets },

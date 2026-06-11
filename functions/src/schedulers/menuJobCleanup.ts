@@ -8,7 +8,7 @@
  * 2. cleanupOldJobs - Runs daily, deletes old completed/failed jobs
  */
 
-import { Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin } from "../firebaseAdmin";
@@ -18,6 +18,7 @@ import {
     MENU_IMAGE_PROCESSING_JOBS_COLLECTION,
     MENU_PROCESSING_STATUS,
 } from "../types";
+import { buildExtractionResultSummary } from "../utils/menuExtractionResultSummary";
 
 const EXTRACTION_ALERT_SCOPE = {
     tId: 'system',
@@ -252,6 +253,64 @@ export async function cleanupOldJobsLogic(): Promise<{ deleted: number }> {
     logger.info(`[cleanupOldJobs] Deleted ${oldJobs.size} old jobs`);
 
     return { deleted: oldJobs.size };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PRUNE HEAVY COMPLETED PROJECT JOB PAYLOADS
+// Runs daily before old terminal-job deletion.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function pruneCompletedProjectJobPayloadsLogic(): Promise<{ pruned: number }> {
+    const logger = functions.logger;
+    const now = Timestamp.now();
+    const cutoff = Timestamp.fromMillis(Date.now() - 2 * 60 * 60 * 1000);
+
+    const snapshot = await firestoreAdmin
+        .collection(MENU_IMAGE_PROCESSING_JOBS_COLLECTION)
+        .where('status', '==', MENU_PROCESSING_STATUS.COMPLETED)
+        .where('completedAt', '<', cutoff)
+        .limit(500)
+        .get();
+
+    if (snapshot.empty) {
+        return { pruned: 0 };
+    }
+
+    const batch = firestoreAdmin.batch();
+    let pruned = 0;
+
+    snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        const destinationType = data.destinationType || data.destination?.type;
+        const result = data.result || {};
+
+        if (!result.combinedData) return;
+        if (data.skipProjectSave === true) return;
+        if (destinationType && destinationType !== 'project') return;
+        if (data.isFirstExtraction !== true) return;
+
+        batch.update(doc.ref, {
+            'result.combinedData': FieldValue.delete(),
+            'result.redistributedFiles': FieldValue.delete(),
+            'result.summary': result.summary || buildExtractionResultSummary(
+                result.combinedData,
+                result.confidenceSummary,
+                result.extractedBusinessProfile,
+            ),
+            'result.dataPrunedAt': now,
+            'result.dataPrunedReason': 'project_auto_saved',
+            updatedAt: now,
+        });
+        pruned += 1;
+    });
+
+    if (pruned === 0) {
+        return { pruned: 0 };
+    }
+
+    await batch.commit();
+    logger.info('[pruneCompletedProjectJobPayloads] Pruned completed project job payloads', { pruned });
+    return { pruned };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

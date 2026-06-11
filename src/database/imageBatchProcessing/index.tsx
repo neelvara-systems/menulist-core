@@ -9,6 +9,7 @@ import { BatchImageGenerationJobType } from "@template/main-app/projects/types";
 import { addDoc, doc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS;
+const ACTIVE_BATCH_JOB_QUERY_LIMIT = 5;
 
 const getCollectionRef = async () => {
     const session = await getActiveSession();
@@ -18,12 +19,13 @@ const getCollectionRef = async () => {
 export const getBatchImageJobCollectionRef = (session: any, projectId: string) => {
     const collectionRef = collection(firebaseClient, `${COLLECTION}/${session.tId}/${session.sId}`);
 
-    // Filter by projectId and status (queued, processing, completed)
+    // Keep this listener bounded. The hook selects the newest visible job client-side
+    // to avoid a new composite index for this tenant/store subcollection path.
     return query(
         collectionRef,
         where("projectId", "==", projectId),
         where("status", "in", [BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED, BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING, BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED, BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED]),
-        limit(1)
+        limit(ACTIVE_BATCH_JOB_QUERY_LIMIT)
     );
 }
 

@@ -18,7 +18,13 @@ export function formatMenuPrice(
 ): string {
     if (typeof price === 'string') {
         const rawPrice = price.trim();
-        if (rawPrice && rawPrice.replace(/[^0-9.-]/g, '') === '') {
+        const normalizedSingleValue = rawPrice.replace(/[₹$€£¥,\s]/g, '');
+        const isSingleNumericPrice = /^-?\d+(\.\d+)?$/.test(normalizedSingleValue);
+        if (rawPrice && !isSingleNumericPrice) {
+            const rangeCandidate = rawPrice.replace(/[₹$€£¥,]/g, '').trim();
+            if (/^\d+(\.\d+)?\s*[-/]\s*\d+(\.\d+)?$/.test(rangeCandidate)) {
+                return `${currencySymbol || ''}${rangeCandidate.replace(/\s*([-\/])\s*/g, '$1')}`;
+            }
             return rawPrice;
         }
     }

@@ -1,0 +1,126 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /campaigncueWorkspaces/{workspaceId} {
+      allow read: if isCampaignCueWorkspaceMember(workspaceId, resource.data);
+      allow create, update, delete: if false;
+
+      match /businessBrains/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /sourceSnapshots/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /sourceInputs/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /opportunities/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /campaigns/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /assets/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /trustReports/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /schedules/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /events/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /analyticsSummaries/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /approvalRequests/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /usageLedger/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /providerConnections/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /locations/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /agencyClientLinks/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /idempotencyKeys/{docId} {
+        allow read, write: if false;
+      }
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isPlatformAdmin() {
+      return isAuthenticated()
+        && request.auth.token.platformRole == 'PLATFORM';
+    }
+
+    function currentCampaignCueWorkspaceId() {
+      return 'cc_' + string(request.auth.token.tenantId) + '_' + string(request.auth.token.storeId);
+    }
+
+    function isCampaignCueWorkspaceMember(workspaceId, data) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            workspaceId == currentCampaignCueWorkspaceId()
+            && string(data.tId) == string(request.auth.token.tenantId)
+            && string(data.sId) == string(request.auth.token.storeId)
+          )
+        );
+    }
+
+    function isCampaignCueWorkspaceMemberById(workspaceId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || workspaceId == currentCampaignCueWorkspaceId()
+        );
+    }
+  }
+}

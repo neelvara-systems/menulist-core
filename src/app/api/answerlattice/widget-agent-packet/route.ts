@@ -69,7 +69,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const widgetState = normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi);
         const config = normalizeWidgetConfig(storeData.widgetConfig);
         const input = {
-            widgetKeyPrefix: widgetState.keyPrefix || storeData.publicApi?.keyPrefix || null,
+            widgetKeyPrefix: widgetState.keyPrefix || null,
             allowedOrigins: normalizeWidgetAllowedOrigins(storeData.widgetAllowedOrigins),
             blockedRoutes: config.blockedRoutes,
         };

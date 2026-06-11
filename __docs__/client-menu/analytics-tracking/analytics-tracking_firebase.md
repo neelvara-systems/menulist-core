@@ -2,7 +2,7 @@
 
 **Feature:** Customer Menu Analytics (Internal + GA4 + Facebook Pixel)
 **Status:** ✅ Production Ready
-**Last Updated:** June 3, 2026
+**Last Updated:** June 11, 2026
 **Priority:** HIGH — Every customer interaction generates analytics writes. Scales with traffic.
 
 ---
@@ -54,7 +54,7 @@ None — analytics data is append-only / increment-only.
 
 ## Public Write Path
 
-Anonymous customer analytics no longer writes directly to Firestore from the browser. Public menu, OBP, and Customer App events still coalesce in the local queue, then flush to `POST /api/public/analytics/track`. The route is IP-rate-limited, validates the tenant/store/project target, and writes the same daily analytics document with Firebase Admin SDK. Firestore rules stay authenticated-only for `analytics/{docId}`.
+Anonymous customer analytics no longer writes directly to Firestore from the browser. Public menu, OBP, and Customer App events still coalesce in the local queue, then flush to `POST /api/public/analytics/track`. The route is IP-rate-limited, validates the tenant/store/project target, enforces the store-owned analytics preferences, resolves the business-day bucket from the stored store timezone/cutoff, strips Decision Blocks counters when that category is disabled, and writes the same daily analytics document with Firebase Admin SDK. Firestore rules stay authenticated-only for `analytics/{docId}`.
 
 ---
 
@@ -93,6 +93,7 @@ Anonymous customer analytics no longer writes directly to Firestore from the bro
 - **Dashboard read-model rule:** settled owner-facing Dashboard and recent deep analytics data must be read from `{tId}_{sId}_{projectId}_dashboard_summary`. Do not rebuild settled dashboard cards from daily docs on the owner client.
 - **Dashboard parity rule:** desktop and mobile owner Dashboard tabs must render the same menu analytics detail sections from the shared owner-dashboard detail builder. Layout may differ, but the section set and source data must not drift.
 - **Dashboard tab rule:** owner Dashboard uses `Today`, `Overview`, `Yesterday`, `This Week`, `This Month`, and `Overall` tabs. `Today` reads only current partial Menu + OBP daily docs; opening any settled tab triggers the cached Menu + OBP read-model reads for that scheduler cycle.
+- **External GA property rule:** server-side Google Analytics report routes may only query the GA property configured on the current store, except platform-admin sessions. This prevents one tenant from passing another tenant's property id into the shared GA service account.
 - **Custom range rule:** do not precompute every possible owner-selected range. Keep one compact rolling daily read model; older/custom ranges outside that window are not fetched from daily docs by default.
 - **Intelligence input rule:** Decision Blocks and Menu Intelligence must use `{tId}_{sId}_{projectId}_intelligence_7d`. Missing/stale snapshots return empty for that run; they must not trigger hidden daily-doc reads.
 - **Owner-visible rule:** Firestore tracking is reserved for metrics shown in owner dashboards or required by scheduler decisions. Generic ecommerce/auth/share/location/ops events stay GA4-only until they have a real owner-facing read model.

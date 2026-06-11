@@ -28,7 +28,7 @@ export default function CustomerBrowseSection() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
           gap: 'var(--ws-space-8)',
           alignItems: 'center',
           marginTop: 'var(--ws-space-12)',

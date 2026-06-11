@@ -311,11 +311,11 @@ export default function AnswerlatticeSettings() {
                 )}
             </Card>
 
-            <Card title="Workspace Access">
+            <Card title="Account Reference">
                 <Descriptions column={1} size="small">
                     <Descriptions.Item label="Signed in as">{session?.user?.email || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="Account ID">{session?.tId || session?.user?.tenantId || '-'}</Descriptions.Item>
-                    <Descriptions.Item label="Workspace ID">{session?.sId || session?.user?.storeId || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="Account reference">{session?.tId || session?.user?.tenantId || '-'}</Descriptions.Item>
+                    <Descriptions.Item label="Workspace reference">{session?.sId || session?.user?.storeId || '-'}</Descriptions.Item>
                     <Descriptions.Item label="Product"><Tag color="blue">Answerlattice</Tag></Descriptions.Item>
                 </Descriptions>
             </Card>

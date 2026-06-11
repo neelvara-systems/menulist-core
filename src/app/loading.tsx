@@ -6,7 +6,10 @@ export type ServerSidePageLoaderBrand = BrandedPageLoaderBrand;
 function getRequestLoaderBrand(): ServerSidePageLoaderBrand {
     try {
         const h = headers();
-        return h.get('x-product-id') === 'answerlattice' ? 'answerlattice' : 'menulist';
+        const productId = h.get('x-product-id');
+        if (productId === 'answerlattice') return 'answerlattice';
+        if (productId === 'campaigncue') return 'campaigncue';
+        return 'menulist';
     } catch {
         return 'menulist';
     }

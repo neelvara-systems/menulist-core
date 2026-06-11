@@ -14,6 +14,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { logPosSyncSecretRotationAudit } from "@lib/posSync/secretAudit";
 import { formatWebhookSecretPreview } from "@lib/posSync/secretDisplay";
+import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
 import { formatDateTime } from "@util/dateTime";
 import {
     Alert,
@@ -55,6 +56,7 @@ import {
 
 const { Title, Text } = Typography;
 const REGENERATE_SECRET_CONFIRMATION = 'REGENERATE';
+const PROVIDER_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface PosSyncTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
@@ -179,13 +181,13 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
 
     const handleSaveUrl = useCallback(() => {
         if (!webhookUrl.trim()) return;
-        try {
-            new URL(webhookUrl);
-        } catch {
-            message.error('Please enter a valid URL');
+        const validation = validatePosSyncWebhookUrl(webhookUrl);
+        if (!validation.valid || !validation.normalizedUrl) {
+            message.error(validation.error || 'Please enter a valid URL');
             return;
         }
-        onStoreUpdate?.({ 'posSync.webhookUrl': webhookUrl.trim() });
+        setWebhookUrl(validation.normalizedUrl);
+        onStoreUpdate?.({ 'posSync.webhookUrl': validation.normalizedUrl });
         message.success('Provider connection URL saved');
     }, [webhookUrl, onStoreUpdate]);
 
@@ -277,8 +279,32 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         message.success('Secret copied to clipboard');
     }, [webhookSecret]);
 
+    const buildTechnicalSummary = useCallback(() => [
+        'MenuList External Menu Sync — Setup Info',
+        '',
+        'Webhook URL: Your connected system HTTPS endpoint that accepts POST requests',
+        'Payload: Full menu snapshot (JSON)',
+        'Security: HMAC-SHA256 signed (header: X-MenuList-Signature)',
+        'Documentation: https://menulist.ai/pos-sync',
+        '',
+        'Headers sent with every delivery:',
+        '- X-MenuList-Signature: HMAC-SHA256 signature',
+        '- X-MenuList-Event: menu.full.sync',
+        '- X-MenuList-Version: Menu version number',
+        '- X-MenuList-Timestamp: Unix timestamp',
+        '- X-MenuList-Delivery-Id: Unique delivery ID',
+        '',
+        'The connected system must respond with HTTP 200 within 5 seconds.',
+    ].join('\n'), []);
+
     const handleSendInstructions = useCallback(async () => {
-        if (!providerEmail.trim()) return;
+        const recipient = providerEmail.trim();
+        if (!recipient) return;
+        if (!PROVIDER_EMAIL_PATTERN.test(recipient)) {
+            message.error('Enter a valid provider email');
+            return;
+        }
+
         setSendingInstructions(true);
         try {
             const MAX_SENDS_PER_DAY = 3;
@@ -296,36 +322,23 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                 'posSync.instructionsSentDate': today,
             });
 
-            message.success(`Instructions prepared (${MAX_SENDS_PER_DAY - sentCount - 1} sends remaining today)`);
+            const subject = encodeURIComponent('MenuList External Menu Sync setup');
+            const body = encodeURIComponent(buildTechnicalSummary());
+            window.location.href = `mailto:${encodeURIComponent(recipient)}?subject=${subject}&body=${body}`;
+
+            message.success(`Email draft prepared (${MAX_SENDS_PER_DAY - sentCount - 1} sends remaining today)`);
             setProviderEmail('');
         } catch {
             message.error('Failed to prepare instructions');
         } finally {
             setSendingInstructions(false);
         }
-    }, [providerEmail, posSync, onStoreUpdate]);
+    }, [buildTechnicalSummary, providerEmail, posSync, onStoreUpdate]);
 
     const handleCopyTechnicalSummary = useCallback(() => {
-        const summary = [
-            'MenuList External Menu Sync — Setup Info',
-            '',
-            'Webhook URL: Your connected system endpoint that accepts POST requests',
-            'Payload: Full menu snapshot (JSON)',
-            'Security: HMAC-SHA256 signed (header: X-MenuList-Signature)',
-            'Documentation: https://menulist.ai/pos-sync',
-            '',
-            'Headers sent with every delivery:',
-            '- X-MenuList-Signature: HMAC-SHA256 signature',
-            '- X-MenuList-Event: menu.full.sync',
-            '- X-MenuList-Version: Menu version number',
-            '- X-MenuList-Timestamp: Unix timestamp',
-            '- X-MenuList-Delivery-Id: Unique delivery ID',
-            '',
-            'The connected system must respond with HTTP 200 within 5 seconds.',
-        ].join('\n');
-        navigator.clipboard.writeText(summary);
+        navigator.clipboard.writeText(buildTechnicalSummary());
         message.success('Technical summary copied');
-    }, [storeDetails?.currencyCode]);
+    }, [buildTechnicalSummary]);
 
     const handleDownloadSample = useCallback(() => {
         const sample = {
@@ -695,7 +708,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                     <Input
                                         value={providerEmail}
                                         onChange={e => setProviderEmail(e.target.value)}
-                                    placeholder="provider@example.com"
+                                        placeholder="provider@example.com"
                                         type="email"
                                     />
                                     <Button

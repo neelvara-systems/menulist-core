@@ -1,8 +1,8 @@
 # B2C View (Customer Preview) — Firebase Cost Tracking
 
-**Feature:** Visual Menu Builder & Theme Customization (B2C Preview)  
-**Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
+**Feature:** Visual Menu Builder & Theme Customization (B2C Preview)
+**Status:** Controlled owner testing ready after June 2026 linked-outlet publish hardening
+**Last Updated:** June 11, 2026
 **Priority:** MEDIUM — Preview-only. Reads project data, writes theme config.
 
 ---
@@ -28,7 +28,7 @@
 
 | Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |
 |-----------|-----------|---------|-----------|-------------|--------|-------|
-| Save theme/design config | `projects/{tId}/{sId}/{projectId}` | User saves design changes | Per design save | 1 | config.design (home, menu, brand) | Merge update via `updateProject()`. Includes mood, layout, colors, background image. |
+| Save/publish theme/design config | `projects/{tId}/{sId}/{projectId}` | User saves design changes | Per design save | 1 | config.design (home, menu, brand), publish metadata | Desktop B2C and mobile design publish through `publishProject()`. Linked outlets route through `/api/projects/outlet-save` so master policy controls theme, brand, and layout overrides before cache invalidation. |
 | Upload brand assets | Storage | User uploads logo/background | Per asset upload | 0 Firestore | — | Direct to Storage, URL saved in project config. |
 
 ### Deletes
@@ -62,4 +62,6 @@ None.
 | Function | File | Operation Type |
 |----------|------|---------------|
 | `updateProject` | `src/database/projects/index.ts:382` | Write (setDoc merge) |
+| `publishProject` | `src/database/projects/index.ts` | Publish write + public cache invalidation |
+| `/api/projects/outlet-save` | `src/app/api/projects/outlet-save/route.ts` | Linked-outlet server validation/write |
 | `uploadBase64ToStorage` | `src/database/storage/uploadBase64ToStorage.ts` | Storage upload |

@@ -4,7 +4,7 @@ import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { AiSearchHistory } from '@type/aiSearchHistory';
 import LoginUserType from '@type/loginUser';
-import { addDoc, collection, doc, getDocs, limit, query, setDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, limit, orderBy, query, setDoc, where } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.AI_SEARCH_HISTORY;
 
@@ -48,6 +48,7 @@ export const findCachedSearchByCacheKey = async (
             where("cacheKey", "==", cacheKey),
             where("tId", "==", session.tId),
             where("sId", "==", session.sId),
+            orderBy("createdOn", "desc"),
             limit(1)
         );
         const snapshot = await getDocs(q);

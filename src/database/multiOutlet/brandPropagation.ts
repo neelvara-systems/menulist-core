@@ -117,7 +117,7 @@ export async function propagateMasterStoreChangesToOutlets(
 
         const storesList = tenantSnap.data()?.storesList || [];
         const outletStores = storesList.filter(
-            (s: any) => s.storeId !== masterStoreId && s.isMaster !== true,
+            (s: any) => s.storeId !== masterStoreId && s.isMaster !== true && s.active !== false,
         );
 
         if (outletStores.length === 0) return result;

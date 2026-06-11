@@ -11,6 +11,8 @@ import getActiveSession from '@lib/auth/getActiveSession';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -31,6 +33,27 @@ export async function POST(request: NextRequest) {
 
     const tId = String(session.tId);
     const sId = String(session.sId);
+
+    const rateLimitConfig = getRateLimitForFeature('BATCH_OPERATION');
+    const rateLimit = await checkRateLimit({
+      key: `weekly-narrative:${session.uId}:${tId}:${sId}`,
+      ...rateLimitConfig,
+    });
+    if (!rateLimit.allowed) {
+      const waitSeconds = Math.ceil((rateLimit.resetAt - Date.now()) / 1000);
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.', retryAfter: waitSeconds },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(waitSeconds),
+            'X-RateLimit-Limit': String(rateLimitConfig.limit),
+            'X-RateLimit-Remaining': String(rateLimit.remaining),
+            'X-RateLimit-Reset': String(rateLimit.resetAt),
+          },
+        },
+      );
+    }
 
     console.log(`[Weekly Narrative Local] Generating for tenant ${tId}, store ${sId}`);
 

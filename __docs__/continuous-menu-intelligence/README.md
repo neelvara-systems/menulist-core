@@ -8,7 +8,7 @@
 
 CMI is a **silent, always-on observation layer** that:
 
-- Runs nightly at 02:30 UTC
+- Runs inside the unified hourly scheduler and processes stores when their local settlement window is due
 - Evaluates every menu item's behavioral signals
 - Computes confidence scores based on customer interaction
 - Computes **priority scores** for ranking (never hiding)
@@ -33,7 +33,7 @@ CMI is a **silent, always-on observation layer** that:
 - **Added:** Lifecycle states (COLD/LEARNING/STABLE) — COLD shows nothing, LEARNING shows Popular only, STABLE enables all
 - **Added:** Block-level eligibility gates — Quick Pick requires 60% duration coverage + STABLE, Best Value requires 70% price coverage
 - **Added:** Minimum viability rule — require ≥2 valid blocks or show nothing
-- **Added:** Hard stale guard — if scheduler hasn't run in >72h, hide everything (even pinned)
+- **Added:** Hard stale guard — if scheduler hasn't run in >72h, suppress automatic recommendations; explicit owner pins can still render when the item remains active, available, in-slot, and safe
 
 ### Why
 
@@ -176,5 +176,5 @@ MenuList = truth infrastructure. A truth layer that hides items becomes a **cura
 
 ---
 
-_Last Updated: March 21, 2026_
-_Status: 🔒 LOCKED — V1.2 Hardened Decision Blocks + V1.1 Priority-Based Ranking (Observation Active, Optimization GrowthOS-Deferred)_
+_Last Updated: June 11, 2026_
+_Status: Controlled owner testing ready in audited slice; full MenuList certification pending_

@@ -4,6 +4,8 @@
 **Target Feature:** staff-prompt  
 **Status:** ✅ **DEPLOYABLE**
 
+> **Runtime note (June 11, 2026):** Standalone helper logic referenced below is historical. The active runtime reads `staffPrompt` from `platformSummary/campaigns_{sId}` and renders it read-only in Today/mobile Today only when `eligible` is true.
+
 ---
 
 ## 📊 EXECUTIVE SUMMARY

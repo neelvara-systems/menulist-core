@@ -1,53 +1,54 @@
-# Use MenuList — Firebase Cost Analysis
+# Use MenuList - Firebase Cost Analysis
 
-> **Version:** 1.2
-> **Last Updated:** June 3, 2026
+**Version:** 1.3
+**Last Updated:** June 11, 2026
 
 ## Cost Impact
 
-**₹0/month additional generation cost.**
+Use MenuList remains a UI aggregation layer with no hub-owned backend and no hub-owned collection. It is not zero-read: desktop currently performs bounded reads to existing read models.
 
-This feature is a UI aggregation layer. Desktop and mobile both read mostly existing dashboard data. Mobile Share uses already-loaded store/project summaries for links and Menu Kit generation; it reads screen state on Share tab load and may read the selected project document on tap for PDF or structured export if the full project is not already cached.
+Menu Card Export, Printable Asset Templates, Digital Screens, and Feedback own their own deeper persistence/cost contracts when the owner opens those workflows.
 
-Menu Card Export is a linked child workflow, not hub-owned cost. Its persisted export history, Storage artifacts, print-shop packets, and batch operations are tracked in `__docs__/menu-card-export/menu-card-export_firebase.md`.
-
-## Reads
+## Desktop Reads
 
 | Data | Source | Reads | Notes |
-|------|--------|-------|-------|
-| Store details | Redux session (already loaded) | 0 | Already in memory |
-| Screen state | `getScreenState()` from campaigns DAL | 1 read | platformSummary doc |
-| Project metadata | Already in Projects context | 0 | Already in memory |
-| Mobile selected project data | `MobileProjectsProvider.refreshCachedProject()` | 0-1 read on PDF/export tap | Only when full project data is not already cached |
+| --- | --- | ---: | --- |
+| Store details | Platform provider / already-loaded store context | 0 | No extra Firestore read by the hub. |
+| Project summaries | `platformSummary/projects_{sId}` via `getExistingProjectsListWithoutLoader(true)` | 1 | No auto-create write. Empty state stays empty. |
+| Screen state | `platformSummary/campaigns_{sId}` via `getScreenState()` | 1 | Used for Menu Board and Highlights links. |
+| Full selected project | `projects/{tId}/{sId}/{projectId}` | 0-1 on tap | Only for PDF fallback/export paths that need full item data. |
 
-**Total per desktop page load: ~1 Firestore read** (screen state only, if not already cached). **Total per mobile Share tab load: ~1 Firestore read** for screen state. Mobile PDF and XLSX/JSON export add no generation cost and at most one selected-project read on tap when the project is not already cached.
+Expected desktop page load: 2 Firestore reads when screen state is checked and project summaries are not already cached by the app layer.
+
+## Mobile Reads
+
+Mobile Share uses `MobileProjectsProvider` project state and the same screen-state DAL:
+
+| Data | Reads | Notes |
+| --- | ---: | --- |
+| Project summaries | Usually already loaded by the mobile shell | The mobile provider may intentionally auto-create the first project when entering menu management, not when using read-only output actions. |
+| Screen state | 1 | Same `getScreenState()` summary doc read. |
+| Full selected project | 0-1 on tap | Only when PDF/export generation needs uncached full data. |
 
 ## Writes
 
-Zero. This page does not write any data.
+| Action | Writes | Notes |
+| --- | ---: | --- |
+| Page load | 0 | Uses no-write project summary helper on desktop. |
+| Copy/open/download local assets | 0 | Clipboard, browser Blob, Canvas, and jsPDF paths only. |
+| Starter activation signal | 0-1 | Existing store signal write, only when the starter-activation policy allows and only once per signal. |
+| Child workflow actions | Feature-owned | Menu Card Export, Feedback, Digital Screens, POS, and Print Assets document their own writes. |
 
-## Collections Used (Read-Only)
+## Collections Read
 
-| Collection | Field | Purpose |
-|------------|-------|---------|
-| `platformSummary` | `screen.screenToken` | Build screen URL |
-| `platformSummary` | `screen.screenLastSeenAt` | Show screen activity status |
+| Collection/doc | Purpose |
+| --- | --- |
+| `platformSummary/projects_{sId}` | Project selection, direct menu links, feedback links, QR targets. |
+| `platformSummary/campaigns_{sId}` | Digital screen token and last-seen state. |
+| `projects/{tId}/{sId}/{projectId}` | On-demand full data for PDF/export fallback only. |
 
-## Asset Generation
+## June 11, 2026 Audit Fix
 
-Hub-owned asset generation (Menu Kit ZIP, Print Menu Surfaces table-tent and single-card assets, individual QRs, PDF fallback bridge, XLSX, and JSON) happens **client-side** using existing browser generators. The PDF fallback bridge delegates to the Menu Card Export renderer and still creates only a browser Blob. Zero server cost for the hub itself.
+Desktop Use MenuList now uses `getExistingProjectsListWithoutLoader(true)` instead of `getProjectsList(true)`. Loading the output hub no longer creates a default project for stores with no menu.
 
-Branded QR/card treatment reuses already-loaded store logo URL and brand color from context. Gradient framing, fitted text, white scan panels, and near-black QR modules are generated locally in the browser. This adds no Firestore reads/writes and no generated Storage uploads; if the logo image is not already cached, the browser may fetch the existing logo URL once while rendering the local file.
-
-MenuList logo/name/domain attribution on generated QR cards and print/PDF outputs is drawn locally from `src/lib/menu-kit/platformAttribution.ts`. The Premium removal check uses already-loaded `stores/{storeId}.activePlanType` through `src/lib/platform/menuListBranding.ts`. It adds no extra database read, write, Storage upload, Cloud Function, rule, or index.
-
-## At Scale
-
-| Scale | Monthly Cost |
-|-------|-------------|
-| 100 stores | ₹0 generation cost |
-| 1,000 stores | ₹0 generation cost |
-| 10,000 stores | ₹0 generation cost |
-| 100,000 stores | ₹0 generation cost |
-
-The desktop page only reads 1 doc per visit. Mobile Share also reads screen state once so phone owners can copy/open digital screen links without desktop. Mobile PDF and structured export read full selected project data only on tap when it is not already cached.
+This preserves the product boundary: read-only output surfaces should not create public menu truth.

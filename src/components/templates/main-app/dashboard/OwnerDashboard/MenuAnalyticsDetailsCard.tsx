@@ -3,6 +3,7 @@ import {
     type OwnerMenuAnalyticsDetailData,
 } from '@lib/analytics/ownerDashboardDetails';
 import { Card, Collapse, Empty, Flex, Tag, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import styles from './OwnerDashboard.module.scss';
 
@@ -15,15 +16,16 @@ interface MenuAnalyticsDetailsCardProps {
 
 const MenuAnalyticsDetailsCard: React.FC<MenuAnalyticsDetailsCardProps> = ({
     data,
-    title = 'Menu Details',
+    title,
 }) => {
-    const sections = useMemo(() => buildMenuAnalyticsDetailSections(data), [data]);
+    const t = useTranslations('Dashboard.owner');
+    const sections = useMemo(() => buildMenuAnalyticsDetailSections(data, t), [data, t]);
 
     return (
-        <Card className={styles.detailCard} title={title} variant="borderless">
+        <Card className={styles.detailCard} title={title || t('details.menuDetails')} variant="borderless">
             {sections.length === 0 ? (
                 <Empty
-                    description={<Text type="secondary">No extra menu detail yet for this period.</Text>}
+                    description={<Text type="secondary">{t('details.noExtraMenuDetail')}</Text>}
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                 />
             ) : (

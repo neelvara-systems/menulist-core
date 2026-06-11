@@ -16,7 +16,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { EMPTY_STATE_MESSAGES, MonthlyViewData } from '@template/main-app/projects/types';
 import { formatDateKey } from '@util/dateTime';
 import { Card, Col, Empty, Row, Statistic, Typography } from 'antd';
-import { useFormatter } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import React from 'react';
 import { LuCheckCircle } from 'react-icons/lu';
 import AISummaryCard from './AISummaryCard';
@@ -33,6 +33,7 @@ interface MonthlyViewProps {
 const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
     const labels = useOfferingLabels();
     const formatter = useFormatter();
+    const t = useTranslations('Dashboard.owner');
 
     if (!data) {
         return (
@@ -68,7 +69,7 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                             {monthName}
                         </Title>
                         <Text type="secondary">
-                            {daysWithData} days of activity recorded
+                            {t('monthly.daysOfActivityRecorded', { count: daysWithData })}
                         </Text>
                     </div>
                 </div>
@@ -83,72 +84,72 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
             <Row gutter={[16, 16]} className={styles.metricsRow}>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
-                        title="Total Menu Scans"
+                        title={t('metrics.totalMenuScans')}
                         value={metrics.menuVisits}
-                        subtitle="this month"
+                        subtitle={t('periods.thisMonthLower')}
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
-                        title="Total Item Clicks"
+                        title={t('metrics.totalItemClicks')}
                         value={metrics.itemClicks}
-                        subtitle="this month"
+                        subtitle={t('periods.thisMonthLower')}
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
-                        title="Engaged Sessions"
+                        title={t('metrics.engagedSessions')}
                         value={`${metrics.engagedSessionRate || 0}%`}
-                        subtitle="menu interest"
+                        subtitle={t('subtitles.menuInterest')}
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
-                        title="Action Rate"
+                        title={t('metrics.actionRate')}
                         value={`${metrics.actionRate || 0}%`}
-                        subtitle="final actions"
+                        subtitle={t('subtitles.finalActions')}
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
-                        title="Smart Picks Shown"
+                        title={t('metrics.smartPicksShown')}
                         value={metrics.smartPicksRendered}
-                        subtitle="times displayed"
+                        subtitle={t('subtitles.timesDisplayed')}
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
-                        title="Smart Picks Engagement"
+                        title={t('metrics.smartPicksEngagement')}
                         value={`${smartPicksEngagementRate}%`}
-                        subtitle={`${metrics.smartPicksClicks} total clicks`}
+                        subtitle={t('units.totalClicks', { count: metrics.smartPicksClicks })}
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
-                        title="Customer Actions"
+                        title={t('metrics.customerActions')}
                         value={metrics.menuActionClicks || 0}
-                        subtitle="final clicks"
+                        subtitle={t('subtitles.finalClicks')}
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
-                        title="Searches"
+                        title={t('metrics.searches')}
                         value={metrics.searches || 0}
-                        subtitle="demand checks"
+                        subtitle={t('subtitles.demandChecks')}
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
-                        title="No-result Searches"
+                        title={t('metrics.noResultSearches')}
                         value={metrics.zeroResultSearches || 0}
-                        subtitle="no match found"
+                        subtitle={t('subtitles.noMatchFound')}
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <MetricCard
-                        title="Unavailable Interest"
+                        title={t('metrics.unavailableInterest')}
                         value={metrics.unavailableItemTaps || 0}
-                        subtitle="missed demand"
+                        subtitle={t('subtitles.missedDemand')}
                     />
                 </Col>
             </Row>
@@ -159,26 +160,26 @@ const MonthlyView: React.FC<MonthlyViewProps> = ({ data }) => {
                 <Row gutter={[24, 16]}>
                     <Col xs={12} sm={6}>
                         <Statistic
-                            title="Active Days"
+                            title={t('metrics.activeDays')}
                             value={daysWithData}
-                            suffix="days"
+                            suffix={t('units.days')}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
                         <Statistic
-                            title="Avg. Daily Scans"
+                            title={t('metrics.avgDailyScans')}
                             value={daysWithData > 0 ? Math.round(metrics.menuVisits / daysWithData) : 0}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
                         <Statistic
-                            title="Smart Picks Active"
-                            value={metrics.smartPicksRendered > 0 ? 'Yes' : 'No'}
+                            title={t('metrics.smartPicksActive')}
+                            value={metrics.smartPicksRendered > 0 ? t('states.yes') : t('states.no')}
                         />
                     </Col>
                     <Col xs={12} sm={6}>
                         <Statistic
-                            title="Engagement Rate"
+                            title={t('metrics.engagementRate')}
                             value={smartPicksEngagementRate}
                             suffix="%"
                         />

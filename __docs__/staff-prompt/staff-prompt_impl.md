@@ -5,6 +5,8 @@
 **Audience:** Engineering only  
 **Parent Spec:** `@__docs__/staff-prompt/staff-prompt_spec.md`
 
+> **Runtime note (June 11, 2026):** The standalone helper implementation described below is historical. Active code reads `staffPrompt` from `platformSummary/campaigns_{sId}` through `getTodayCampaigns()` and renders it read-only in Today/mobile Today only when `eligible` is true.
+
 ---
 
 ## Analysis: ChatGPT Suggestions vs Codebase Reality

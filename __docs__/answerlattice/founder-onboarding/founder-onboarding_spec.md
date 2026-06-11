@@ -13,7 +13,7 @@ The #1 reason AI support tools fail is the **empty knowledge base problem**. Saa
 
 - 60-70% of knowledge base setups are never completed
 - Average time to first useful AI answer without automation: 2-4 hours
-- Founders who don't see value in first 10 minutes have <20% retention
+- Founders who do not reach a useful first setup moment quickly are likely to abandon.
 
 Answerlattice's current onboarding flow requires 4 manual steps:
 1. Upload KB source files

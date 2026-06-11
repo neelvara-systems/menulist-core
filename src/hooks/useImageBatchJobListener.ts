@@ -8,6 +8,41 @@ import { onSnapshot } from "firebase/firestore";
 import { useContext, useEffect, useRef } from "react";
 import { BatchImageGenerationJobType, Project } from '../components/templates/main-app/projects/types';
 
+function timestampValue(value: unknown): number {
+    if (!value) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Date.parse(value) || 0;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'object' && 'toMillis' in value && typeof (value as { toMillis?: unknown }).toMillis === 'function') {
+        return ((value as { toMillis: () => number }).toMillis());
+    }
+    if (typeof value === 'object' && 'seconds' in value && typeof (value as { seconds?: unknown }).seconds === 'number') {
+        return (value as { seconds: number }).seconds * 1000;
+    }
+    return 0;
+}
+
+function getJobSortTime(job: BatchImageGenerationJobType): number {
+    return Math.max(
+        timestampValue((job as Record<string, unknown>).modifiedOn),
+        timestampValue((job as Record<string, unknown>).createdOn),
+        ...((job.statusHistory || []).map((entry) => timestampValue(entry.createdOn))),
+    );
+}
+
+function withSelectedGeneratedImages(job: BatchImageGenerationJobType): BatchImageGenerationJobType {
+    return {
+        ...job,
+        itemsList: (job.itemsList || []).map((item) => ({
+            ...item,
+            images: (item.images || []).map((img) => ({
+                ...img,
+                isSelected: true,
+            })),
+        })),
+    };
+}
+
 interface UseImageBatchJobListenerProps {
     project?: Project | null;
     setActiveBatchImageJob: any;
@@ -64,12 +99,9 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
                     });
 
                     if (jobsList.length > 0) {
-                        const updatedJob = jobsList[0];
-                        updatedJob.itemsList.forEach(item => {
-                            item.images.forEach(img => {
-                                img.isSelected = true;
-                            })
-                        })
+                        const updatedJob = withSelectedGeneratedImages(
+                            jobsList.sort((a, b) => getJobSortTime(b) - getJobSortTime(a))[0]
+                        );
                         logger.debug('Active batch job updated', { jobId: updatedJob.id, itemsCount: updatedJob.itemsList.length });
                         setActiveBatchImageJob(updatedJob);
                     } else {

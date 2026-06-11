@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { FEATURE_FLAGS } from '@config/features';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import type {
@@ -18,13 +19,13 @@ import type {
   MessagingOnboardingOpsSnapshot,
 } from '@lib/ops/messagingOnboardingTypes';
 import { buildSecurityContext } from '@lib/security/securityContext';
-import { FieldPath, Timestamp } from 'firebase-admin/firestore';
+import { Timestamp } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 import { withAuth } from '../../../../middleware/auth';
 
 const db = firestoreAdmin;
 
-const HEALTH_DOC_PREFIX = 'messaging_onboarding_';
+const HEALTH_CONTROL_DOC = 'messaging_onboarding_control';
 const EVENT_WINDOW_HOURS = 24;
 const RECENT_EVENT_LIMIT = 12;
 const RECENT_SESSION_LIMIT = 8;
@@ -108,17 +109,14 @@ function toIso(value: any): string | null {
 }
 
 async function getLatestHealthSnapshot(): Promise<MessagingOnboardingOpsHealth> {
-  const snapshots = await db
-    .collection(DB_COLLECTIONS.SYSTEM_HEALTH)
-    .where(FieldPath.documentId(), '>=', HEALTH_DOC_PREFIX)
-    .where(FieldPath.documentId(), '<', `${HEALTH_DOC_PREFIX}\uf8ff`)
-    .orderBy(FieldPath.documentId(), 'desc')
-    .limit(1)
-    .get();
+  const healthCollection = db.collection(DB_COLLECTIONS.SYSTEM_HEALTH);
+  const control = await healthCollection.doc(HEALTH_CONTROL_DOC).get();
+  const lastSnapshotId = control.data()?.lastSnapshotId;
+  const latest = typeof lastSnapshotId === 'string' && lastSnapshotId.trim()
+    ? await healthCollection.doc(lastSnapshotId).get()
+    : null;
 
-  const latest = snapshots.docs[0];
-
-  if (!latest) {
+  if (!latest?.exists) {
     return {
       id: null,
       status: 'unknown',
@@ -307,6 +305,10 @@ async function getRecentAlerts(): Promise<MessagingOnboardingOpsAlert[]> {
 }
 
 export const GET = withAuth(async (request, session) => {
+  if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING_DASHBOARD) {
+    return NextResponse.json({ error: 'Messaging onboarding ops dashboard is disabled' }, { status: 404 });
+  }
+
   try {
     const [health, inboundQueue, sessionsByState, webhook, recentSessions, recentAlerts] =
       await Promise.all([

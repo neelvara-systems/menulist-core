@@ -1,7 +1,8 @@
 # Use MenuList — Product Specification
 
-> **Version:** 1.0
+> **Version:** 1.1
 > **Feature Flag:** `ENABLE_USE_MENULIST`
+> **Last Updated:** June 11, 2026
 
 ## 1. Problem Statement
 
@@ -89,9 +90,9 @@ Micro-guides (modal-based):
 
 | State | Condition | Behavior |
 |-------|-----------|----------|
-| `ready` | Menu published + screen initialized | Full page with all outputs |
+| `ready` | At least one existing non-deleted active project is available | Full page with available outputs |
 | `no_menu` | No projects exist | "Create your first menu" CTA |
-| `not_published` | Menu exists but not published | "Publish your menu" CTA + links disabled |
+| `not_published` | Type exists but no current runtime branch | Reserved in type only; do not claim as implemented UI |
 | `no_screen` | Screen not initialized | Screen section shows "Set up" button |
 | `generating` | Menu Kit being generated | Loading state on download button |
 

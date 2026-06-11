@@ -22,7 +22,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getScreenState } from '@database/campaigns';
-import { getProjectsList } from '@database/projects';
+import { getExistingProjectsListWithoutLoader } from '@database/projects';
 import { recordStarterActivationSignal } from '@database/stores';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
@@ -151,7 +151,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
 
         try {
             // Get projects list to check if menu exists & is published
-            const result = await getProjectsList(true);
+            const result = await getExistingProjectsListWithoutLoader(true);
             const projects = result?.projects || [];
             const defaultProject = projects.find((p: any) => p.projectId === projectIdQuery)
                 || projects.find((p: any) => p.isDefault)

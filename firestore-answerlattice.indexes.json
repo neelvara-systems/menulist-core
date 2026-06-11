@@ -93,6 +93,28 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "cacheKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "aiSearchHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "tId",
           "order": "ASCENDING"
         },

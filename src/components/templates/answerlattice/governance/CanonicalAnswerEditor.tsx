@@ -440,7 +440,20 @@ export default function CanonicalAnswerEditor() {
                     pagination={{ pageSize: 20, showSizeChanger: false }}
                     size="small"
                     scroll={{ x: 'max-content' }}
-                    locale={{ emptyText: <Empty description="No canonical answers yet" /> }}
+                    locale={{
+                        emptyText: (
+                            <Empty description="No approved answers yet">
+                                <Space direction="vertical" size={8} align="center">
+                                    <Text type="secondary">
+                                        Start with one answer tied to a product entity, or generate drafts from Knowledge Intake first.
+                                    </Text>
+                                    <Button type="primary" icon={<LuPlus />} onClick={() => setCreateModalOpen(true)}>
+                                        Create first answer
+                                    </Button>
+                                </Space>
+                            </Empty>
+                        ),
+                    }}
                 />
             </Card>
 

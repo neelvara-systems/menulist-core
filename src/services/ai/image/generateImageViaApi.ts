@@ -30,6 +30,7 @@ async function generateImageViaApi({ itemDetails, generationConfig, projectId, f
                 isMultiMode,
             },
             itemDetails: {
+                id: itemDetails.id,
                 name: itemName,
                 description: descriptionLine,
                 attributes: attributesList,

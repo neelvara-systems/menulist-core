@@ -22,7 +22,7 @@ Use a managed localization system for resource content:
 Current state:
 
 - The website supports `en-US`, `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES` in the public language switcher.
-- The broader app locale files also include `en-GB`, `gu-IN`, and `zh-CN`, but those locales are not currently in the public website switcher.
+- The broader owner app locale registry also supports `en-GB`, `gu-IN`, `kn-IN`, `ml-IN`, `pa-IN`, `ur-IN`, `or-IN`, `as-IN`, `ne-NP`, `mai-IN`, `kok-IN`, `sd-IN`, `ks-IN`, `doi-IN`, `mni-IN`, `sat-IN`, `brx-IN`, `fr-FR`, `pt-BR`, `de-DE`, `it-IT`, `ja-JP`, `zh-CN`, `id-ID`, `vi-VN`, `th-TH`, `ko-KR`, `tr-TR`, `ms-MY`, `nl-NL`, `pl-PL`, `uk-UA`, `cs-CZ`, `ro-RO`, `el-GR`, `hu-HU`, `sv-SE`, `da-DK`, `fi-FI`, `fil-PH`, `zh-TW`, `he-IL`, `fa-IR`, and `sw-KE`. These are app/UI locales with `en-US` fallback coverage, not reviewed public website resource locales.
 - Resource content currently has full English content plus reviewed full resource packs for Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish for all 12 articles, including hub copy, metadata, descriptions, quick answers, CTAs, sections, checklists, comparison rows, FAQ, and schema-rendered article content.
 - Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish now have stable locale-prefixed resource URLs under `/{locale}/resources` and `/{locale}/resources/[slug]`.
 - Reviewed resource URLs are exposed in sitemap, `hreflang`, `llms.txt`, and `llms-full.txt` only after passing `npm run verify:website-resource-locales`.
@@ -50,8 +50,13 @@ Current state:
 
 | Locale | Decision Needed |
 | --- | --- |
-| `gu-IN` | Locale file exists, but it is not in `APP_LANGUAGES` or the public website switcher. Add only with a full locale-support pass. |
-| `kn-IN`, `ml-IN`, `ur-IN` | Not currently supported by the app locale registry. Add only after a broader app/website locale architecture decision, not inside the resources task. |
+| `gu-IN` | Owner app locale support is active. Public website/resource support remains pending until a full reviewed resource pack is created and verified. |
+| `kn-IN`, `ml-IN`, `pa-IN`, `ur-IN` | Owner app locale support is active with `en-US` fallback for untranslated UI keys. Public website/resource support remains pending until full reviewed resource packs are created and verified. |
+| `or-IN`, `as-IN`, `ne-NP`, `mai-IN`, `kok-IN` | Owner app locale support is active with compact dashboard/mobile runtime coverage and `en-US` fallback for untranslated UI keys. Public website/resource support remains pending until full reviewed resource packs are created and verified. |
+| `sd-IN`, `doi-IN`, `mni-IN`, `sat-IN` | Owner app locale support is active with compact dashboard/mobile runtime coverage and `en-US` fallback for untranslated UI keys. Public website/resource support remains pending until full reviewed resource packs are created and verified. |
+| `ks-IN`, `brx-IN` | Owner app locale support is active as fallback-safe runtime coverage. Native copy remains pending because no reliable machine-translation source was used for Kashmiri or Bodo in this pass. Public website/resource support remains pending until full reviewed resource packs are created and verified. |
+| `fr-FR`, `pt-BR`, `de-DE`, `it-IT`, `ja-JP`, `zh-CN`, `id-ID`, `vi-VN`, `th-TH`, `ko-KR`, `tr-TR`, `ms-MY` | International owner app locale support is active with compact dashboard/mobile runtime coverage and `en-US` fallback for untranslated UI keys. Public website/resource support remains pending until full reviewed resource packs are created and verified. |
+| `nl-NL`, `pl-PL`, `uk-UA`, `cs-CZ`, `ro-RO`, `el-GR`, `hu-HU`, `sv-SE`, `da-DK`, `fi-FI`, `fil-PH`, `zh-TW`, `he-IL`, `fa-IR`, `sw-KE` | Final practical global owner app locale support is active with compact dashboard/mobile runtime coverage and `en-US` fallback for untranslated UI keys. Public website/resource support remains pending until full reviewed resource packs are created and verified. |
 
 ### Active Non-Indian Website Languages
 
@@ -315,5 +320,6 @@ New verifier should check:
 - No CMS dependency in this pass.
 - No unverified machine-translation publishing. Generated packs must preserve protected terms, pass source-version/completeness/forbidden-claim checks, and stay eligible for native-market copy polish when feedback is available.
 - No locale expansion outside supported app languages without a separate locale-support decision.
+- Owner-app locale support is not the same as public website/resource support. A language may appear in app settings while remaining absent from `src/config/websiteLanguages.ts`, resource route static params, sitemap alternates, and LLM discovery files until long-form resources pass review.
 - No translation work inside owner dashboard, customer menu runtime, billing, auth, Firebase, Cloud Functions, Answerlattice, Canonica, MyCodex, GrowthOS, or KitStamp.
 - No translated slugs in v1.

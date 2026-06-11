@@ -57,8 +57,8 @@ export default function LocationsPage() {
     }
 
     const storesList = tenantDetails?.storesList || [];
-    const outletCount = storesList.filter((s) => !s.isMaster).length;
     const activeCount = storesList.filter((s: any) => s.active !== false).length;
+    const activeOutletCount = storesList.filter((s: any) => !s.isMaster && s.active !== false).length;
     const masterStoreId = Number(masterStoreSummary?.storeId || storeDetails?.storeId || 0);
 
     // Billing summary
@@ -216,9 +216,9 @@ export default function LocationsPage() {
                 {/* Billing Summary */}
                 <Card size="small" title="Billing Summary">
                     <Space direction="vertical">
-                        <Text>Active Outlets: <Text strong>{outletCount}</Text></Text>
+                        <Text>Active Outlets: <Text strong>{activeOutletCount}</Text></Text>
                         <Text>Cost per Store: <Text strong>{currency} {amount}/month</Text></Text>
-                        <Text>Total Chain Cost: <Text strong>{currency} {totalCost}/month</Text> (Master + {outletCount} outlets)</Text>
+                        <Text>Total Chain Cost: <Text strong>{currency} {totalCost}/month</Text> (Master + {activeOutletCount} active outlets)</Text>
                         {activeSubscription?.cycleEndDate && (
                             <Text type="secondary">
                                 Next Invoice: {activeSubscription.cycleEndDate.toDate().toLocaleDateString()}

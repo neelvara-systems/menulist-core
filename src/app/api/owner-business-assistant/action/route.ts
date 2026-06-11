@@ -19,7 +19,7 @@ const readJsonBody = async (request: NextRequest) => {
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
-  if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT) {
+  if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT) {
     return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
   }
 

@@ -4,7 +4,7 @@
 
 **File:** `__docs__/production-readiness/infrastructure-risk-tracker.md`  
 **Rule:** Rule 10.10 in `IDE_PROMPTS/MASTER-EXECUTION-PROMPT.md`  
-**Last Updated:** March 13, 2026
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -25,7 +25,7 @@ Risks related to Firestore document size limits (1MB max per document).
 | #    | Risk                                                                                                                                                                                                                                    | Severity  | Collection / Path                  | Affected Files                                | Recommended Fix                                                                                                                                                              | Source Audit                                          | Status                                                                                                                                                                                |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | DS-1 | **Project `files[]` array grows unbounded** — Each extraction appends files with full `extractedData` (~20-100KB per file). Multiple re-uploads accumulate without cleanup. 10 re-uploads × 100KB = approaching 1MB limit.              | ⚠️ HIGH   | `projects/{tId}/{sId}/{projectId}` | `functions/src/logic/saveFilesToProject.ts`   | (a) Mark old file entries as `deleted: true` and strip their `extractedData` after new extraction succeeds, OR (b) Add pre-write size check — warn at 800KB, refuse at 950KB | AI Data Extraction Firebase Cost Audit (Mar 13, 2026) | 🔧 PARTIAL — Size guard added (900KB hard block, 700KB warning) in `saveFilesToProject.ts`. Prevents silent 1MB overflow. Root cause (unbounded growth) still needs cleanup strategy. |
-| DS-2 | **Job document `result.combinedData` can be large** — Completed job stores full extracted menu data. 400-item menu = ~200KB. 1000+ items could approach limits. `rawBatchResponses` capped at 10KB/batch but `combinedData` has no cap. | ⚠️ MEDIUM | `menuImageProcessingJobs/{jobId}`  | `functions/src/logic/processMenuImagesJob.ts` | Strip `result.combinedData` from terminal jobs after data is saved to project (it's redundant at that point)                                                                 | AI Data Extraction Firebase Cost Audit (Mar 13, 2026) | ⚠️ OPEN                                                                                                                                                                               |
+| DS-2 | **Job document `result.combinedData` can be large** — Completed job stores full extracted menu data. 400-item menu = ~200KB. 1000+ items could approach limits. `rawBatchResponses` capped at 10KB/batch but `combinedData` has no cap. | ⚠️ MEDIUM | `menuImageProcessingJobs/{jobId}`  | `functions/src/logic/processMenuImagesJob.ts`, `functions/src/schedulers/menuJobCleanup.ts` | Strip `result.combinedData` from terminal jobs after data is saved to project (it's redundant at that point)                                                                 | AI Data Extraction Firebase Cost Audit (Mar 13, 2026) | 🔧 PARTIAL — Completed first-extraction project jobs now keep `result.summary` and are pruned after two hours by `menu_old_cleanup`; public draft, messaging, and review jobs intentionally retain payloads while downstream flows need them. |
 
 ---
 
@@ -85,6 +85,6 @@ Items that were previously open but have been fixed. Kept for historical referen
 
 ---
 
-_Last Updated: March 13, 2026_  
-_Updated By: Cascade (AI Image Generation ChatGPT Review Session)_  
-_Note: Added SG-3 (unoptimized AI images), SG-4 (orphan batch images), CG-2 (batch job collection growth), CS-2 (AI generation cost scaling without prompt cache). Previous: DS-1 partially mitigated with pre-write size guard. CG-1 remains highest priority for pre-10K-extractions/month._
+_Last Updated: June 11, 2026_
+_Updated By: Codex (Menu extraction pipeline latency/cost hardening)_
+_Note: DS-2 is partially mitigated through delayed completed project-job payload pruning. DS-1 and CG-1 remain open/partial as listed above._

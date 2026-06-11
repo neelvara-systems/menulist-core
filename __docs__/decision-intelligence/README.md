@@ -2,6 +2,8 @@
 
 **Customer-facing menu recommendations with optional owner control**
 
+**Audit status:** Controlled owner testing ready for the audited runtime slice as of June 11, 2026. Full MenuList production certification is still pending the remaining feature-by-feature audit and global validation.
+
 ---
 
 ## What This Is
@@ -41,7 +43,7 @@ Decision Blocks are 3 recommendation cards shown at the top of every QR menu:
 | **Storage**    | `projects.publicDecisionBlocks` | `menuIntelligence`             |
 | **Visibility** | Customers see it        | Internal only                  |
 
-**Shared Infrastructure:** Both run inside the unified timezone-aware scheduler. The Cloud Scheduler trigger fires hourly at `:30`, and the function processes only stores whose local settlement window is due.
+**Shared Infrastructure:** Both run inside the unified timezone-aware scheduler. The Cloud Scheduler trigger fires hourly at `:30`, and the function processes only stores whose local settlement window is due. Platform-only manual recovery uses the same compact 7-day analytics snapshot path as the scheduler.
 
 ```
 decisionBlocksScoring.ts (hourly trigger, store-local settlement window)
@@ -61,6 +63,12 @@ decisionBlocksScoring.ts (hourly trigger, store-local settlement window)
 | `functions/src/decisionBlocksScoring.ts`             | Timezone-aware scheduler + platform-only manual recovery |
 | `src/components/mobile/sheets/SmartRecommendationsSheet.tsx` | Mobile owner controls |
 
+Runtime safety notes:
+
+- Customer rendering uses the store timezone for category time-slot checks.
+- Malformed or missing precomputed timestamps are treated as stale instead of trusted.
+- Hard-stale analytics suppress automatic recommendations, but explicit owner pins can still render if the item is active, available, in-slot, and otherwise safe.
+
 ---
 
 ## Extending This Feature
@@ -74,5 +82,5 @@ To extend Decision Blocks:
 
 ---
 
-_Last Updated: May 7, 2026_
-_Status: 🔒 LOCKED — Production Ready_
+_Last Updated: June 11, 2026_
+_Status: Controlled owner testing ready in audited slice; full MenuList certification pending_

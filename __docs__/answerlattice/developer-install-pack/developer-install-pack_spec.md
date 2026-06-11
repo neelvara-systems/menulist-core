@@ -18,7 +18,7 @@ Help an Answerlattice client reach the first successful support install quickly:
 - Frozen safe context contract for canonical v1 fields: `path`, `title`, `feature`, `workflow`, `role`, and `locale`.
 - Generated public agent files: AGENTS.md, CLAUDE.md, Cursor `RULE.md`, Cursor `.mdc`, Windsurf rule, Codex skill, and agent kit ZIP.
 - Public install pages and Markdown mirrors generated from one contract source.
-- Dashboard `/answerlattice/install-center` route generated from the workspace widget key prefix, allowed origins, blocked routes, runtime status, and v1 contract source.
+- Dashboard `/answerlattice/install-center` route generated from the explicit full-key placeholder, saved-key identifier, allowed origins, blocked routes, runtime status, and v1 contract source.
 - Quickstarts for Next.js App Router, React SPA, Vue/Nuxt, and vanilla script.
 - Dashboard install verifier based on existing widget runtime telemetry.
 - Starter surface templates for Billing, Onboarding, Team Settings, Releases, Integrations, and Common Errors.
@@ -74,7 +74,8 @@ Help an Answerlattice client reach the first successful support install quickly:
 
 - AGENTS.md, CLAUDE.md, Cursor `RULE.md`, Cursor `.mdc`, Windsurf rule, Codex skill, Markdown docs, dashboard packet JSON, and agent kit ZIP render from the same contract source.
 - Generated packet does not expose the raw widget key unless the user explicitly copies/reveals the key through the existing key flow.
-- Workspace-specific ZIP contains key prefix, dashboard-owned allowed origins, dashboard-owned blocked routes, framework hints, and env placeholders by default.
+- Workspace-specific ZIP contains the explicit full-key placeholder, saved-key identifier, dashboard-owned allowed origins, dashboard-owned blocked routes, framework hints, and env placeholders by default.
+- Saved key identifiers and prefix-style display values must not be presented as installable widget keys.
 - Generated prompts must not ask owners to manually maintain `ALLOWED_ORIGINS` or `BLOCKED_ROUTES` variables. Answerlattice dashboard owns those values.
 - Tool-specific files are wrappers around the Answerlattice v1 contract, not independent hand-written docs.
 

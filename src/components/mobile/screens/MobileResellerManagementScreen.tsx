@@ -1,13 +1,12 @@
 'use client'
 
 import { RESELLER_CAPS } from '@config/resellerPricing';
-import { ECOMSAI_PLATFORM_PASSWORD, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import type { ResellerProfile } from '@type/reseller';
 import { formatInrPaise } from '@util/formatters';
-import { theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
-import { LuCheck, LuLock, LuPencil, LuPlus, LuRefreshCw, LuUsers } from 'react-icons/lu';
+import { LuPencil, LuPlus, LuRefreshCw, LuUsers } from 'react-icons/lu';
 import { Button, Card, Empty, Flex, Input, Spin, Switch, Tag, Text, TextArea, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -83,12 +82,9 @@ function draftFromProfile(profile: ResellerProfile): ResellerDraft {
 }
 
 export default function MobileResellerManagementScreen({ onBack }: { onBack: () => void }) {
-    const { token } = theme.useToken();
     const { data: session } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
-    const [authenticated, setAuthenticated] = useState(false);
-    const [passwordInput, setPasswordInput] = useState('');
     const [profiles, setProfiles] = useState<ResellerProfile[]>([]);
     const [monthlySummary, setMonthlySummary] = useState<ResellerMonthlySummary | null>(null);
     const [loading, setLoading] = useState(false);
@@ -138,11 +134,11 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
     };
 
     useEffect(() => {
-        if (authenticated) {
+        if (isPlatform) {
             void loadProfiles();
             void loadMonthlySummary();
         }
-    }, [authenticated]);
+    }, [isPlatform]);
 
     const openCreate = () => {
         setEditingProfile(null);
@@ -212,32 +208,6 @@ export default function MobileResellerManagementScreen({ onBack }: { onBack: () 
                 <MobileSettingsScreenHeader description="Only platform admins can manage reseller profiles." onBack={onBack} title="Reseller Management" />
                 <Flex style={{ padding: 16 }} vertical>
                     <Card><Text>Only platform admins can use this screen.</Text></Card>
-                </Flex>
-            </Flex>
-        );
-    }
-
-    if (!authenticated) {
-        return (
-            <Flex style={{ minHeight: '100%' }} vertical>
-                <MobileSettingsScreenHeader description="Authenticate before managing reseller profiles." onBack={onBack} title="Reseller Management" />
-                <Flex gap={12} style={{ padding: 16 }} vertical>
-                    <Card>
-                        <Flex align="center" gap={12} vertical>
-                            <LuLock color={token.colorPrimary} size={42} />
-                            <Title level={5} style={{ margin: 0 }}>Platform admin access</Title>
-                            <Input onChange={setPasswordInput} placeholder="Enter platform password" type="password" value={passwordInput} />
-                            <Button block onClick={() => {
-                                if (passwordInput === ECOMSAI_PLATFORM_PASSWORD) {
-                                    setAuthenticated(true);
-                                } else {
-                                    Toast.show({ content: 'Invalid password', duration: 1800 });
-                                }
-                            }} style={{ minHeight: 44 }}>
-                                <Flex align="center" gap={6} justify="center"><LuCheck size={16} /> Authenticate</Flex>
-                            </Button>
-                        </Flex>
-                    </Card>
                 </Flex>
             </Flex>
         );

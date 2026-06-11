@@ -3,11 +3,13 @@
 **Document Type:** Non-Technical PRD  
 **Status:** ✅ READY FOR IMPLEMENTATION  
 **Priority:** P0 (Feature #1 — LOCKED)  
-**Date:** January 18, 2026  
+**Date:** June 11, 2026
 **Author:** Lead Architect  
 **Target ICP:** Premium SMB (India + Non-India)
 
 > **Scope Clarification:** Web/QR menu and Staff Prompt already read live from Firestore—no new work needed. This feature is specifically about **Screens refresh** and **PDF auto-regeneration**.
+
+> **Runtime verification (June 11, 2026):** Shared menu price formatting preserves owner-entered text prices such as `Market Price` and renders numeric ranges such as `199-249` as ranges instead of coercing them to `0`.
 
 ---
 

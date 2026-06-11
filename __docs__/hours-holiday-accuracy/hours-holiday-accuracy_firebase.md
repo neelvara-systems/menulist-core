@@ -2,14 +2,14 @@
 
 **Feature:** Hours Status Display + Holiday Exceptions  
 **Status:** #2A ✅ IMPLEMENTED (Hours Status) | #2B 🔶 DEFERRED (Holidays)  
-**Last Updated:** February 7, 2026  
+**Last Updated:** June 11, 2026
 **Priority:** LOW — Reads existing store data. No new collections or writes.
 
 ---
 
 ## Summary
 
-- **Collections Used:** `stores` (workingHours field — already exists)
+- **Collections Used:** `stores` (`workingHours` field plus `hoursLastUpdatedAt` freshness stamp)
 - **Storage Buckets:** None
 - **Cloud Functions:** None
 - **Estimated Monthly Cost:** **Negligible** — Uses existing store data reads
@@ -28,7 +28,7 @@
 
 | Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |
 |-----------|-----------|---------|-----------|-------------|--------|-------|
-| Update working hours | `stores/{storeId}` | Owner edits hours in settings | Rare (setup only) | 1 | workingHours object | Standard store settings update. |
+| Update working hours | `stores/{storeId}` | Owner edits hours in settings | Rare (setup only) | 1 | `workingHours`, `hoursLastUpdatedAt` | Same store settings write; no extra document write. |
 
 ### Deletes
 

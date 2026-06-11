@@ -21,7 +21,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 /** Current schema version for pull API responses */
 export const PULL_API_SCHEMA_VERSION = "1.0";
-const PUBLIC_API_KEY_PATTERN = /^(ml|cn)_[A-Za-z0-9_-]{20,128}$/;
+const PUBLIC_API_KEY_PATTERN = /^(ml|cn|al)_[A-Za-z0-9_-]{20,128}$/;
 
 function normalizePublicApiKey(apiKey: string | null): string | null {
     const normalizedApiKey = apiKey?.trim();

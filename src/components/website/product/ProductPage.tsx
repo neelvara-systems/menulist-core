@@ -176,7 +176,7 @@ export default function ProductPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
             gap: 'var(--ws-space-16)',
             alignItems: 'center',
             maxWidth: '960px',
@@ -229,7 +229,7 @@ export default function ProductPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
             gap: 'var(--ws-space-16)',
             alignItems: 'center',
             maxWidth: '960px',
@@ -276,7 +276,7 @@ export default function ProductPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
             gap: 'var(--ws-space-16)',
             alignItems: 'center',
             maxWidth: '960px',
@@ -363,7 +363,7 @@ export default function ProductPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
                 gap: 'var(--ws-space-4)',
               }}
             >

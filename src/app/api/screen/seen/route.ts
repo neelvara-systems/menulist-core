@@ -15,12 +15,15 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
+import { logger } from "@lib/monitoring/logger";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
 
 // Rate limit: prevent abuse (even though client-side also limits)
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const seenRequests = new Map<string, number>();
+const SCREEN_TOKEN_PATTERN = /^[a-z0-9_-]{6,24}$/i;
+const STORE_ID_PATTERN = /^\d+$/;
 
 const getUtcDateKey = (value: unknown): string | null => {
     const date =
@@ -38,12 +41,30 @@ const getUtcDateKey = (value: unknown): string | null => {
 
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
-        const { token, storeId } = body;
+        let body: Record<string, unknown>;
+        try {
+            body = await request.json();
+        } catch {
+            return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+        }
+
+        const token = typeof body.token === 'string' ? body.token.trim() : '';
+        const rawStoreId = body.storeId;
+        const normalizedStoreId = typeof rawStoreId === 'string' || typeof rawStoreId === 'number'
+            ? String(rawStoreId).trim()
+            : '';
 
         // Validate token
-        if (!token || typeof token !== 'string' || token.length < 6 || token.length > 24) {
+        if (!SCREEN_TOKEN_PATTERN.test(token)) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
+        }
+
+        if (rawStoreId != null && typeof rawStoreId !== 'string' && typeof rawStoreId !== 'number') {
+            return NextResponse.json({ error: 'Invalid store' }, { status: 400 });
+        }
+
+        if (rawStoreId != null && normalizedStoreId && !STORE_ID_PATTERN.test(normalizedStoreId)) {
+            return NextResponse.json({ error: 'Invalid store' }, { status: 400 });
         }
 
         // Simple rate limit per token (1 per hour max server-side)
@@ -56,9 +77,9 @@ export async function POST(request: NextRequest) {
         const summaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY);
         let docRef;
 
-        if (storeId && typeof storeId === 'string') {
+        if (normalizedStoreId) {
             // OPTIMIZATION: Direct doc lookup instead of query (no index scan)
-            const directRef = summaryRef.doc(`campaigns_${storeId}`);
+            const directRef = summaryRef.doc(`campaigns_${normalizedStoreId}`);
             const docSnap = await directRef.get();
 
             // Security: verify token matches to prevent spoofing
@@ -110,11 +131,14 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        console.log(`[Screen Seen] Token: ${token.substring(0, 4)}*** at ${new Date().toISOString()}`);
+        logger.info('[Screen Seen] Daily signal recorded', {
+            directStoreLookup: Boolean(normalizedStoreId),
+            storeId: normalizedStoreId || undefined,
+        });
 
         return NextResponse.json({ ok: true });
     } catch (error) {
-        console.error('[Screen Seen] Error:', error);
+        logger.error('[Screen Seen] Error', error);
         // Return success anyway - don't break screen for ops signal
         return NextResponse.json({ ok: true, error: 'logged' });
     }

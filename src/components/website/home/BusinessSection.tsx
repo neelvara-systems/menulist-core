@@ -40,7 +40,7 @@ export default function BusinessSection() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
           gap: 'var(--ws-space-6)',
           marginTop: 'var(--ws-space-12)',
           maxWidth: '900px',

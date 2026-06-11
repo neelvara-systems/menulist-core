@@ -1,44 +1,43 @@
 # Staff Prompt — Help Documentation
 
 ## Quick Summary
-Staff Prompt is a simplified menu view for your staff. It shows current prices, availability, popular items, and dietary info — helping staff answer customer questions instantly.
+Staff Prompt is a short read-only line in Today. When MenuList has a safe staff line for the day, the owner sees it and can tell the team what to say.
 
 ---
 
 ## How-To Guides
 
-### How staff can access the prompt
-1. Open MenuList on any phone or tablet
-2. Navigate to the Staff Prompt view
-3. See the full menu with current prices and availability
-4. Use search to find specific items quickly
+### How to use the staff prompt
+1. Open **Today** in MenuList.
+2. Look for **Staff prompt for today**.
+3. Share the line with staff before service.
+4. If no staff prompt appears, no action is needed.
 
 ### How to use during service
-- **Customer asks "What's popular?"** → Check the "Popular" section
-- **Customer asks "Is X available?"** → Check the availability indicator
-- **Customer asks price** → Current price is always shown
-- **Customer asks about ingredients** → Check item description/tags
+- Use the exact line shown in Today.
+- Do not create a staff line when MenuList does not show one.
+- For price, availability, or ingredient questions, use the live menu.
 
 ---
 
 ## Troubleshooting
 
-### Staff prompt shows outdated info
-**Fix:** Refresh the page. Data updates within seconds of owner making changes.
+### Staff prompt is not showing
+**Fix:** No action needed. Staff Prompt only appears when the Today summary includes an eligible line.
 
-### Can't access staff prompt
-**Fix:** Make sure you have the correct user role. Contact your manager for access.
+### Staff prompt looks wrong
+**Fix:** Check the live menu first. If the item is unavailable or should not be mentioned, do not use the line.
 
 ---
 
 ## Tips
-- 💡 Bookmark the Staff Prompt URL on staff phones for quick access
-- 💡 Use it during training — new staff learn the menu faster
-- 💡 Check it before each shift for the latest changes
+- Set the line once before service.
+- Keep it simple; do not add extra claims.
+- If the card is absent, there is nothing to explain.
 
 ## Related Features
 - **[Data Editor]** — Where menu data comes from
-- **[Hours & Holiday Accuracy]** — Open/closed status shown on staff prompt
+- **[Today]** — Where the staff line appears when available
 
 ## Need More Help?
 - **Email:** support@menulist.ai

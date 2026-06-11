@@ -3,7 +3,7 @@
  * Simple project selector for Owner Dashboard.
  */
 
-import { getMetadataProjectsList } from '@database/projects';
+import { getExistingProjectsListWithoutLoader } from '@database/projects';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { resolveProjectImageUrl } from '@lib/image/projectImageDisplay';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
@@ -12,6 +12,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { ProjectMetadata, SpecialMenuStatus } from '@template/main-app/projects/types';
 import type { MenuProps } from 'antd';
 import { Avatar, Dropdown, Flex, Skeleton, Tag, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo } from 'react';
 import { LuCheck, LuChevronDown, LuFolderOpen, LuSparkles, LuXCircle } from 'react-icons/lu';
 import useSWR from 'swr';
@@ -58,9 +59,10 @@ type DashboardProject = ProjectMetadata & {
 
 type ProjectStatus = 'active' | 'inactive' | 'deleted';
 type ResolvedSpecialMenuStatus = SpecialMenuStatus | null;
+type DashboardTranslator = (key: string, values?: Record<string, string | number>) => string;
 
-const resolveProjectName = (value: DashboardProject['name'] | undefined) =>
-    getLocalizedText(value, undefined, getPrimaryLocalizedLanguage(value, 'en'), 'Untitled');
+const resolveProjectName = (value: DashboardProject['name'] | undefined, fallback = 'Untitled') =>
+    getLocalizedText(value, undefined, getPrimaryLocalizedLanguage(value, 'en'), fallback);
 
 const getProjectStatus = (project: DashboardProject | null | undefined): ProjectStatus => {
     if ((project as any)?.deleted === true) return 'deleted';
@@ -83,13 +85,13 @@ const getResolvedSpecialMenuStatus = (
     return project.specialMenuStatus || 'scheduled';
 };
 
-const renderStatusTag = (status: ProjectStatus) => {
+const renderStatusTag = (status: ProjectStatus, t: DashboardTranslator) => {
     if (status === 'deleted') {
         return (
             <Tag color="error" style={{ marginInlineEnd: 0 }}>
                 <Flex align="center" gap={4}>
                     <LuXCircle size={13} />
-                    <span>Deleted</span>
+                    <span>{t('projectSelector.deleted')}</span>
                 </Flex>
             </Tag>
         );
@@ -99,7 +101,7 @@ const renderStatusTag = (status: ProjectStatus) => {
             <Tag color="error" style={{ marginInlineEnd: 0 }}>
                 <Flex align="center" gap={4}>
                     <LuXCircle size={13} />
-                    <span>Inactive</span>
+                    <span>{t('projectSelector.inactive')}</span>
                 </Flex>
             </Tag>
         );
@@ -107,26 +109,26 @@ const renderStatusTag = (status: ProjectStatus) => {
     return null;
 };
 
-const renderSpecialMenuTag = (status: ResolvedSpecialMenuStatus) => {
+const renderSpecialMenuTag = (status: ResolvedSpecialMenuStatus, t: DashboardTranslator) => {
     if (!status) return null;
 
     if (status === 'expired') {
-        return <Tag color="warning" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>Ended</Tag>;
+        return <Tag color="warning" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>{t('projectSelector.ended')}</Tag>;
     }
 
     if (status === 'active') {
-        return <Tag color="success" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>Special</Tag>;
+        return <Tag color="success" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>{t('projectSelector.special')}</Tag>;
     }
 
     if (status === 'scheduled') {
-        return <Tag color="processing" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>Special</Tag>;
+        return <Tag color="processing" icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>{t('projectSelector.special')}</Tag>;
     }
 
-    return <Tag icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>Cancelled</Tag>;
+    return <Tag icon={<LuSparkles size={12} />} style={{ marginInlineEnd: 0 }}>{t('projectSelector.cancelled')}</Tag>;
 };
 
-const renderDefaultTag = (isDefault?: boolean) => (
-    isDefault ? <Tag color="processing" style={{ marginInlineEnd: 0 }}>Default</Tag> : null
+const renderDefaultTag = (isDefault: boolean | undefined, t: DashboardTranslator) => (
+    isDefault ? <Tag color="processing" style={{ marginInlineEnd: 0 }}>{t('projectSelector.default')}</Tag> : null
 );
 
 export const DashboardProjectSelector: React.FC<Props> = ({
@@ -135,6 +137,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
     onReady,
 }) => {
     const { token } = useToken();
+    const t = useTranslations('Dashboard.owner');
     const session = useClientAuthSession();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const activeStoreScope = storeDetails?.storeId ? String(storeDetails.storeId) : null;
@@ -145,7 +148,7 @@ export const DashboardProjectSelector: React.FC<Props> = ({
 
     const { data, isLoading } = useSWR(
         sessionReady ? `dashboard-projects-${activeTenantScope}-${activeStoreScope}` : null,
-        () => getMetadataProjectsList(true),
+        () => getExistingProjectsListWithoutLoader(true),
         { dedupingInterval: 3600000, revalidateOnFocus: false }
     );
 
@@ -159,47 +162,47 @@ export const DashboardProjectSelector: React.FC<Props> = ({
 
         const resolvedProject = resolveSelectableProject(projects, selectedProjectId);
         if (resolvedProject?.projectId && resolvedProject.projectId !== selectedProjectId) {
-            onProjectChange(resolvedProject.projectId, resolveProjectName(resolvedProject.name));
+            onProjectChange(resolvedProject.projectId, resolveProjectName(resolvedProject.name, t('projectSelector.untitled')));
             return;
         }
 
         // Session resolved + projects fetched (even if empty) — unblock dashboard
         onReady?.();
-    }, [selectedProjectId, projects, sessionLoading, isLoading, onProjectChange, onReady]);
+    }, [selectedProjectId, projects, sessionLoading, isLoading, onProjectChange, onReady, t]);
 
     const selectedProject = projects.find(p => p.projectId === selectedProjectId);
     const baseProjectNameById = useMemo(
-        () => Object.fromEntries(projects.map((project) => [project.projectId, resolveProjectName(project.name)])),
-        [projects]
+        () => Object.fromEntries(projects.map((project) => [project.projectId, resolveProjectName(project.name, t('projectSelector.untitled'))])),
+        [projects, t]
     );
 
     const menuItems: MenuProps['items'] = useMemo(() => {
         return projects.map((p) => ({
-            key: p.projectId || resolveProjectName(p.name),
+            key: p.projectId || resolveProjectName(p.name, t('projectSelector.untitled')),
             label: (
                 <Flex align="center" gap={12}>
                     <Avatar
                         size={24}
                         src={resolveProjectImageUrl(p.projectImage) || undefined}
-                        style={{ backgroundColor: getAvatarColor(resolveProjectName(p.name), token).bg, fontSize: 10 }}
+                        style={{ backgroundColor: getAvatarColor(resolveProjectName(p.name, t('projectSelector.untitled')), token).bg, fontSize: 10 }}
                     >
-                        {getInitials(resolveProjectName(p.name))}
+                        {getInitials(resolveProjectName(p.name, t('projectSelector.untitled')))}
                     </Avatar>
                     <Flex vertical style={{ flex: 1, minWidth: 0 }}>
-                        <Text>{resolveProjectName(p.name)}</Text>
+                        <Text>{resolveProjectName(p.name, t('projectSelector.untitled'))}</Text>
                         {p.isSpecialMenu && p.specialMenuBaseProjectId && baseProjectNameById[p.specialMenuBaseProjectId] ? (
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                From {baseProjectNameById[p.specialMenuBaseProjectId]}
+                                {t('projectSelector.fromBase', { name: baseProjectNameById[p.specialMenuBaseProjectId] })}
                             </Text>
                         ) : null}
                     </Flex>
-                    {renderDefaultTag(p.isDefault)}
-                    {renderSpecialMenuTag(getResolvedSpecialMenuStatus(p))}
-                    {renderStatusTag(getProjectStatus(p))}
+                    {renderDefaultTag(p.isDefault, t)}
+                    {renderSpecialMenuTag(getResolvedSpecialMenuStatus(p), t)}
+                    {renderStatusTag(getProjectStatus(p), t)}
                     {p.projectId === selectedProjectId && <LuCheck size={14} color={token.colorPrimary} />}
                 </Flex>
             ),
-            onClick: () => p.projectId && onProjectChange(p.projectId, resolveProjectName(p.name)),
+            onClick: () => p.projectId && onProjectChange(p.projectId, resolveProjectName(p.name, t('projectSelector.untitled'))),
         }));
     }, [
         baseProjectNameById,
@@ -215,13 +218,14 @@ export const DashboardProjectSelector: React.FC<Props> = ({
         token.colorFillTertiary,
         token.colorTextSecondary,
         token.colorBorder,
+        t,
     ]);
 
     if (isLoading) return <Skeleton.Input active size="small" style={{ width: 150 }} />;
-    if (!projects.length) return <Text type="secondary">No catalogs</Text>;
+    if (!projects.length) return <Text type="secondary">{t('projectSelector.noCatalogs')}</Text>;
 
     const color = selectedProject
-        ? getAvatarColor(resolveProjectName(selectedProject.name), token)
+        ? getAvatarColor(resolveProjectName(selectedProject.name, t('projectSelector.untitled')), token)
         : { bg: token.colorFillTertiary, text: token.colorTextSecondary };
 
     return (
@@ -242,21 +246,21 @@ export const DashboardProjectSelector: React.FC<Props> = ({
                     src={resolveProjectImageUrl(selectedProject?.projectImage) || undefined}
                     style={{ backgroundColor: color.bg, color: color.text, fontSize: 11 }}
                 >
-                    {selectedProject ? getInitials(resolveProjectName(selectedProject.name)) : <LuFolderOpen size={14} />}
+                    {selectedProject ? getInitials(resolveProjectName(selectedProject.name, t('projectSelector.untitled'))) : <LuFolderOpen size={14} />}
                 </Avatar>
                 <Flex vertical style={{ minWidth: 0 }}>
                     <Text strong style={{ maxWidth: 150 }} ellipsis>
-                        {selectedProject ? resolveProjectName(selectedProject.name) : 'Select catalog'}
+                        {selectedProject ? resolveProjectName(selectedProject.name, t('projectSelector.untitled')) : t('projectSelector.selectCatalog')}
                     </Text>
                     {selectedProject?.isSpecialMenu && selectedProject.specialMenuBaseProjectId && baseProjectNameById[selectedProject.specialMenuBaseProjectId] ? (
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            From {baseProjectNameById[selectedProject.specialMenuBaseProjectId]}
+                            {t('projectSelector.fromBase', { name: baseProjectNameById[selectedProject.specialMenuBaseProjectId] })}
                         </Text>
                     ) : null}
                 </Flex>
-                {renderDefaultTag(selectedProject?.isDefault)}
-                {renderSpecialMenuTag(getResolvedSpecialMenuStatus(selectedProject))}
-                {renderStatusTag(getProjectStatus(selectedProject))}
+                {renderDefaultTag(selectedProject?.isDefault, t)}
+                {renderSpecialMenuTag(getResolvedSpecialMenuStatus(selectedProject), t)}
+                {renderStatusTag(getProjectStatus(selectedProject), t)}
                 <LuChevronDown size={14} color={token.colorTextSecondary} />
             </Flex>
         </Dropdown>

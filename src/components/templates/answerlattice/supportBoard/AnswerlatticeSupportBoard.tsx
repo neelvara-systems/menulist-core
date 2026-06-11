@@ -13,7 +13,7 @@ import {
     type AnswerlatticeSupportBoardPriority,
     type AnswerlatticeSupportBoardStatus,
 } from '@type/answerlattice';
-import { Alert, Badge, Button, Card, Col, Empty, Flex, Form, Grid, Input, Modal, Row, Select, Skeleton, Space, Statistic, Tag, Typography, theme } from 'antd';
+import { Alert, Badge, Button, Card, Col, Empty, Flex, Form, Grid, Input, Modal, Row, Select, Skeleton, Space, Statistic, Tag, Tooltip, Typography, theme } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import {
@@ -259,6 +259,18 @@ export default function AnswerlatticeSupportBoard() {
     const needsAnswerCount = groupedCards[ANSWERLATTICE_SUPPORT_BOARD_STATUS.NEEDS_ANSWER]?.length || 0;
     const openCount = cards.filter((card) => card.status !== ANSWERLATTICE_SUPPORT_BOARD_STATUS.RESOLVED).length;
     const proposalCount = cards.filter((card) => Boolean(card.relatedProposalId)).length;
+    const selectedCardHasEntity = Boolean(selectedCard?.relatedEntityId && selectedCard.relatedEntityId !== 'unresolved');
+    const canCreateProposalForSelectedCard = Boolean(selectedCard)
+        && canCreateGovernanceProposal
+        && selectedCardHasEntity
+        && !selectedCard?.relatedProposalId;
+    const selectedProposalHelp = selectedCard?.relatedProposalId
+        ? 'A proposal is already linked to this support card.'
+        : !canCreateGovernanceProposal
+            ? 'Governance access is required to create answer proposals.'
+            : !selectedCardHasEntity
+                ? 'Link a product entity before creating an answer proposal.'
+                : 'Create a reviewed answer proposal from this support card.';
 
     const openCard = (card: AnswerlatticeSupportBoardCard) => {
         setSelectedCard(card);
@@ -556,17 +568,21 @@ export default function AnswerlatticeSupportBoard() {
                                 </Button>
                             ) : null}
                             {selectedCard ? (
-                                <Button
-                                    icon={<LuSparkles />}
-                                    onClick={() => createAnswerProposal(selectedCard)}
-                                    disabled={Boolean(selectedCard.relatedProposalId) || !canCreateGovernanceProposal}
-                                >
-                                    {selectedCard.relatedProposalId
-                                        ? 'Proposal linked'
-                                        : canCreateGovernanceProposal
-                                            ? 'Create answer proposal'
-                                            : 'Governance access required'}
-                                </Button>
+                                <Tooltip title={selectedProposalHelp}>
+                                    <span>
+                                        <Button
+                                            icon={<LuSparkles />}
+                                            onClick={() => createAnswerProposal(selectedCard)}
+                                            disabled={!canCreateProposalForSelectedCard}
+                                        >
+                                            {selectedCard.relatedProposalId
+                                                ? 'Proposal linked'
+                                                : canCreateGovernanceProposal
+                                                    ? 'Create answer proposal'
+                                                    : 'Governance access required'}
+                                        </Button>
+                                    </span>
+                                </Tooltip>
                             ) : null}
                         </Space>
                         <Space>

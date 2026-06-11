@@ -1,5 +1,7 @@
 import AnimatedVerticalLogo from '@atoms/animatedVerticalLogo';
 import AnswerlatticeLoaderLogo from '@atoms/answerlatticeLoaderLogo';
+import CampaignCueLoaderLogo from '@atoms/campaignCueLoaderLogo';
+import { isCampaignCueRuntimeRoute } from '@constant/campaigncue/domains';
 import { useAppSelector } from '@hook/useAppSelector';
 import { isAnswerlatticeRuntimeRoute } from '@lib/answerlattice/sessionScope';
 import { getLoaderState } from '@reduxSlices/loader';
@@ -20,6 +22,8 @@ function Loader() {
     const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const isAnswerlatticeRoute = isAnswerlatticeRuntimeRoute(pathname, currentHostname);
+    const isCampaignCueRoute = isCampaignCueRuntimeRoute(pathname, currentHostname);
+    const loaderBrand = isAnswerlatticeRoute ? 'answerlattice' : isCampaignCueRoute ? 'campaigncue' : 'menulist';
 
     useEffect(() => {
         if (loading) {
@@ -71,13 +75,15 @@ function Loader() {
         <>
             {isVisible ? <div
                 data-loader-source={loading}
-                data-loader-brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'}
-                className={`${Style.loaderbody} ${isAnswerlatticeRoute ? Style.answerlatticeLoaderbody : ''}`.trim()}
-                style={isAnswerlatticeRoute ? undefined : { background: token.colorBgMask }}
+                data-loader-brand={loaderBrand}
+                className={`${Style.loaderbody} ${isAnswerlatticeRoute ? Style.answerlatticeLoaderbody : ''} ${isCampaignCueRoute ? Style.campaigncueLoaderbody : ''}`.trim()}
+                style={isAnswerlatticeRoute || isCampaignCueRoute ? undefined : { background: token.colorBgMask }}
             >
                 {isAnswerlatticeRoute
                     ? <AnswerlatticeLoaderLogo idPrefix="answerlattice-global-loader" />
-                    : <AnimatedVerticalLogo showLabel={false} />}
+                    : isCampaignCueRoute
+                        ? <CampaignCueLoaderLogo idPrefix="campaigncue-global-loader" />
+                        : <AnimatedVerticalLogo showLabel={false} />}
             </div> : null}
         </>
     )

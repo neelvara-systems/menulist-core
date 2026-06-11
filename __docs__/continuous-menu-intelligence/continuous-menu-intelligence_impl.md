@@ -1,9 +1,9 @@
 # Continuous Menu Intelligence - Implementation Plan
 
-**Created:** January 8, 2026  
-**Last Updated:** March 15, 2026  
-**Status:** 🔒 **LOCKED — Two-Layer Architecture (Observation Active, Optimization GrowthOS-Deferred)**  
-**Author:** Lead Architect (Cascade)  
+**Created:** January 8, 2026
+**Last Updated:** June 11, 2026
+**Status:** Controlled owner testing ready in audited slice; full MenuList certification pending
+**Author:** Lead Architect (Cascade)
 **Applies:** 3-Year Architecture Freeze Rule
 
 > **⚠️ March 2026 Strategic Repositioning:** CMI autonomous actions (AUTO_HIDE, AUTO_PROMOTE, etc.) are architecturally classified as GrowthOS territory. Code stays in place (feature-flagged, safety-gated) but the observation layer is what MenuList owns. See `_archive/chatgpt-review-strategic-repositioning.md`.
@@ -32,7 +32,7 @@
 
 ### Code Status
 
-All autonomous action logic exists in `functions/src/intelligence/menuIntelligence.ts` and runs during the nightly scheduler. The actions are **computed and logged** in the intelligence state document. Downstream surfaces (`shouldShowItem()` in `src/lib/intelligence/dal.ts`) read this state. When GrowthOS launches, these become active optimization behaviors.
+All autonomous action logic exists in `functions/src/intelligence/menuIntelligence.ts` and runs inside the unified hourly scheduler when a store's local settlement window is due. The actions are **computed and logged** in the intelligence state document. Downstream DAL helpers (`getItemPresentation()` and `getItemsByPriority()` in `src/lib/intelligence/dal.ts`) read this state as a priority-only layer; they do not hide menu truth. When GrowthOS launches, these become active optimization behaviors.
 
 ### Future Scoring Improvements (Documented, Not Scheduled)
 
@@ -70,7 +70,7 @@ All autonomous action logic exists in `functions/src/intelligence/menuIntelligen
 
 | Component                     | Location                                 | Relevance                                                                                   |
 | ----------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **Decision Blocks Scheduler** | `functions/src/decisionBlocksScoring.ts` | **EXTEND THIS** - Already iterates stores/projects, fetches 7-day analytics, extracts items |
+| **Decision Blocks Scheduler** | `functions/src/decisionBlocksScoring.ts` | **EXTEND THIS** - Already iterates stores/projects, fetches compact 7-day analytics snapshots, extracts items |
 | GrowthOS ranking              | `src/lib/growthos/actionRanking.ts`      | Current generated-action ranking source after old Social Content engine deletion            |
 | Slide Generator               | `src/lib/screen/slideGenerator.ts`       | Already uses confidence thresholds (0.7), monotonicity                                      |
 | Analytics Tracking            | `src/lib/analytics/unified.ts`           | Tracks views, taps, decision block clicks                                                   |
@@ -94,13 +94,13 @@ All autonomous action logic exists in `functions/src/intelligence/menuIntelligen
 
 ### ⚠️ Architecture Decision: Extend Decision Blocks, NOT Separate Job
 
-**ChatGPT proposed:** New `menuIntelligenceJob.ts` running at 2:00 AM  
-**Cascade decision:** Extend `decisionBlocksScoring.ts` (runs at 2:30 AM)
+**ChatGPT proposed:** New `menuIntelligenceJob.ts` running at 2:00 AM
+**Cascade decision:** Extend `decisionBlocksScoring.ts` (hourly trigger; store-local settlement window)
 
 **Why:**
 
 - Decision Blocks already iterates ALL stores → ALL projects
-- Decision Blocks already fetches 7-day analytics (same data we need)
+- Decision Blocks already fetches the compact 7-day intelligence analytics snapshot (same data we need)
 - Decision Blocks already extracts items from `project.files`
 - One cold start instead of two
 - One Firestore read instead of two (analytics)
@@ -112,8 +112,9 @@ All autonomous action logic exists in `functions/src/intelligence/menuIntelligen
 
 ### What We Track Today
 
-**Collection:** `analytics`  
-**Document ID:** `{tId}_{sId}_{projectId}_daily_{YYYY-MM-DD}`
+**Collection:** `analytics`
+**Primary CMI/Decision Blocks input:** `{tId}_{sId}_{projectId}_intelligence_7d`
+**Daily source documents:** `{tId}_{sId}_{projectId}_daily_{YYYY-MM-DD}` are settled into the compact 7-day snapshot before CMI consumes them.
 
 ```typescript
 // From src/lib/analytics/types.ts + src/lib/analytics/unified.ts
@@ -472,7 +473,7 @@ src/
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    decisionBlocksScoring.ts                      │
-│                    (Single Entry Point - 2:30 AM)                │
+│       (Hourly trigger; store-local settlement window)            │
 ├─────────────────────────────────────────────────────────────────┤
 │  For each store → For each project:                              │
 │                                                                  │
@@ -480,60 +481,26 @@ src/
 │  2. itemExtractor.extractActiveItems()       ─────┼─► SHARED     │
 │  3. scoreNormalizer.normalize()              ─────┘              │
 │                                                                  │
-│  4. decisionBlocks.computeScores()     → decisionBlocks/{docId}  │
-│  5. menuIntelligence.computeState()    → menuIntelligence/{docId}│
+│  4. decisionBlocks.computeScores()     → project.publicDecisionBlocks │
+│  5. menuIntelligence.computeState()    → menuIntelligence/{docId}     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Implementation Checklist (Day-One Complete)
+## Runtime Implementation Status
 
-> **Rule:** 3+ years untouched. Everything ships together. No phased approach.
-
-### Part 1: Shared Modules (Extract from Decision Blocks)
-
-| Task                                   | File                                                       | Status     | Notes                                               |
-| -------------------------------------- | ---------------------------------------------------------- | ---------- | --------------------------------------------------- |
-| Create shared analytics module         | `functions/src/intelligence/shared/analyticsAggregator.ts` | ⬜ Pending | Extract lines 298-343 from decisionBlocksScoring.ts |
-| Create shared item extractor           | `functions/src/intelligence/shared/itemExtractor.ts`       | ⬜ Pending | Extract lines 349-388 from decisionBlocksScoring.ts |
-| Create shared score normalizer         | `functions/src/intelligence/shared/scoreNormalizer.ts`     | ⬜ Pending | Extract normalize() + WEIGHTS                       |
-| Refactor Decision Blocks to use shared | `functions/src/decisionBlocksScoring.ts`                   | ⬜ Pending | Import from shared/, no logic change                |
-
-### Part 2: Menu Intelligence Core
-
-| Task                             | File                                             | Status     | Notes                                    |
-| -------------------------------- | ------------------------------------------------ | ---------- | ---------------------------------------- |
-| Add MENU_INTELLIGENCE collection | `functions/src/constants/database.ts`            | ⬜ Pending | + getMenuIntelligenceDocId() helper      |
-| Create intelligence types        | `src/types/intelligence.ts`                      | ⬜ Pending | Zod schemas from above                   |
-| Create intelligence logic        | `functions/src/intelligence/menuIntelligence.ts` | ⬜ Pending | computeIntelligenceState() - uses shared |
-| Create audit log utility         | `functions/src/utils/auditLog.ts`                | ⬜ Pending | Append-only pattern                      |
-| Create DAL for reading state     | `src/lib/intelligence/dal.ts`                    | ⬜ Pending | Server-side only                         |
-
-### Part 3: Extend Decision Blocks Scheduler
-
-| Task                              | File                                     | Status     | Notes                                        |
-| --------------------------------- | ---------------------------------------- | ---------- | -------------------------------------------- |
-| Add menuIntelligence import       | `functions/src/decisionBlocksScoring.ts` | ⬜ Pending | Import computeIntelligenceState              |
-| Call intelligence in project loop | `functions/src/decisionBlocksScoring.ts` | ⬜ Pending | After computeForProject(), call intelligence |
-| Write intelligence document       | `functions/src/decisionBlocksScoring.ts` | ⬜ Pending | Write to menuIntelligence/{docId}            |
-| Add results tracking              | `functions/src/decisionBlocksScoring.ts` | ⬜ Pending | Track intelligence success/fail counts       |
-
-### Part 4: Integration
-
-| Task                           | File                               | Status     | Notes                      |
-| ------------------------------ | ---------------------------------- | ---------- | -------------------------- |
-| Integrate with GrowthOS ranking | `src/lib/growthos/actionRanking.ts` | ⬜ Pending | Read confidence from current action ranking |
-| Integrate with slide generator | `src/lib/screen/slideGenerator.ts` | ⬜ Pending | Read suppression windows   |
-| Add Firestore security rules   | `firestore.rules`                  | ⬜ Pending | Read-only for owners       |
-
-### Part 5: Testing & Deploy
-
-| Task                       | File                               | Status     | Notes                                      |
-| -------------------------- | ---------------------------------- | ---------- | ------------------------------------------ |
-| Manual testing             | N/A                                | ⬜ Pending | Test with staging projects                 |
-| Verify shared modules work | N/A                                | ⬜ Pending | Decision Blocks still works after refactor |
-| Deploy functions           | `firebase deploy --only functions` | ⬜ Pending | Single deploy includes both                |
+| Area | Runtime status | Evidence |
+| ---- | -------------- | -------- |
+| Shared analytics snapshot reader | Implemented | `functions/src/intelligence/shared/analyticsAggregator.ts` reads `analytics/{tId}_{sId}_{projectId}_intelligence_7d` and returns empty analytics when the snapshot is missing or stale. |
+| Shared item extractor | Implemented | `functions/src/intelligence/shared/itemExtractor.ts` extracts active items and merges compact analytics data. |
+| Shared score normalizer | Implemented | `functions/src/intelligence/shared/scoreNormalizer.ts` owns score constants and normalization helpers. |
+| Menu Intelligence state computation | Implemented | `functions/src/intelligence/menuIntelligence.ts` computes confidence, priority, suppression observations, calibration, and audit context. |
+| Scheduler integration | Implemented | `functions/src/decisionBlocksScoring.ts` computes Decision Blocks and Menu Intelligence in the same per-project loop. |
+| Decision Blocks write model | Implemented | Scheduler writes customer-safe `project.publicDecisionBlocks`; there is no separate active `decisionBlocks` collection dependency. |
+| Client DAL | Implemented | `src/lib/intelligence/dal.ts` exposes `getMenuIntelligence()`, `getItemPresentation()`, and `getItemsByPriority()`. |
+| Firestore rules | Implemented | `firestore.rules` allows authenticated tenant/platform reads of `menuIntelligence` and denies client writes. |
+| GrowthOS/screen consumers | Not certified in this audit slice | The DAL is available, but downstream GrowthOS/screen behavior needs its own feature loop before certification. |
 
 ---
 
@@ -615,42 +582,16 @@ src/
 | Timestamp handling              | ✅ PASS | Uses `firebase-admin/firestore` Timestamp           |
 | No manual timestamp in UI       | ✅ PASS | DAL handles conversion                              |
 
-### Post-Implementation Validation
+### Current Audit Validation
 
-| Check                              | Status     | Evidence                             |
-| ---------------------------------- | ---------- | ------------------------------------ |
-| Decision Blocks still works        | ⬜ Pending | Existing tests pass after refactor   |
-| Shared modules extracted correctly | ⬜ Pending | No logic change, same output         |
-| Menu Intelligence doc created      | ⬜ Pending | `menuIntelligence/{tId}_{sId}_{pId}` |
-| Confidence updates correctly       | ⬜ Pending | Manual inspection                    |
-| Suppression windows work           | ⬜ Pending | Item hidden after threshold          |
-| Campaign engine reads state        | ⬜ Pending | Today tab reflects changes           |
-| Screen generator reads state       | ⬜ Pending | Screens reflect changes              |
-| Audit log populates                | ⬜ Pending | Check Firestore                      |
-| Calibration locks at day 21        | ⬜ Pending | Staging test                         |
-| No UI changes visible              | ✅ PASS    | By design - no UI                    |
-| Single deploy works                | ⬜ Pending | `firebase deploy --only functions`   |
-
----
-
-## Progress Tracking
-
-| Part   | Task                     | Owner | Status         | Notes |
-| ------ | ------------------------ | ----- | -------------- | ----- |
-| Part 1 | Shared analytics module  | Dev   | ⬜ Not Started |       |
-| Part 1 | Shared item extractor    | Dev   | ⬜ Not Started |       |
-| Part 1 | Shared score normalizer  | Dev   | ⬜ Not Started |       |
-| Part 1 | Refactor Decision Blocks | Dev   | ⬜ Not Started |       |
-| Part 2 | DB_COLLECTIONS update    | Dev   | ⬜ Not Started |       |
-| Part 2 | Intelligence types       | Dev   | ⬜ Not Started |       |
-| Part 2 | Intelligence logic       | Dev   | ⬜ Not Started |       |
-| Part 2 | Audit log utility        | Dev   | ⬜ Not Started |       |
-| Part 2 | DAL                      | Dev   | ⬜ Not Started |       |
-| Part 3 | Extend Decision Blocks   | Dev   | ⬜ Not Started |       |
-| Part 4 | Campaign integration     | Dev   | ⬜ Not Started |       |
-| Part 4 | Screen integration       | Dev   | ⬜ Not Started |       |
-| Part 4 | Security rules           | Dev   | ⬜ Not Started |       |
-| Part 5 | Testing & Deploy         | Dev   | ⬜ Not Started |       |
+| Check | Status | Evidence |
+| ----- | ------ | -------- |
+| Compact analytics snapshot path used | Verified | `fetch7DayAnalytics()` reads only `*_intelligence_7d` and returns empty analytics on stale/missing input. |
+| Manual Decision Blocks recovery avoids daily analytics scans | Fixed | `computeForProject()` now fetches the compact snapshot when no prefetched analytics is supplied. |
+| Decision Blocks customer runtime uses store-local category slots | Fixed | `DecisionBlocks.tsx` receives `storeTimeZone` from `MenuPageNew`. |
+| CMI DAL never hides menu items | Verified | `getItemPresentation()` always returns `visible: true`; `getItemsByPriority()` sorts and does not filter out items. |
+| Downstream GrowthOS/screen presentation | Not certified in this slice | Queued for the remaining feature inventory audit. |
+| Function deployment | Pending | Cloud Function deploy is pending because targeted Firebase Functions deploy fails on `ecomsai` billing-disabled Secret Manager 403 after local function build/lint passes. |
 
 ---
 
@@ -662,8 +603,8 @@ src/
 
 1. Deploy function to staging: `firebase deploy --only functions:computeDecisionBlocksScores`
 2. Trigger manually via Firebase Console OR use `triggerDecisionBlocksScoring` callable
-3. Verify BOTH documents created:
-   - `decisionBlocks/{tId}_{sId}_{projectId}` (existing)
+3. Verify BOTH outputs are written:
+   - `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks`
    - `menuIntelligence/{tId}_{sId}_{projectId}` (new)
 4. Verify `itemConfidence` populated for all menu items
 5. Verify `computedAt` and `validUntil` timestamps set
@@ -989,7 +930,8 @@ function checkCalibrationLock(
 | 2026-01-11 | v1.1    | Implementation complete — shared modules extracted, integrated into Decision Blocks scheduler                                                                                                                                                                   |
 | 2026-02-09 | v1.2    | Refactor audit: Fixed inaccurate comment in intelligence.ts (Zod → plain TS interfaces). Verified types sync between Cloud Function and frontend. Fixed firebase doc (incorrect function names, wrong feature flag). Status → LOCKED.                           |
 | 2026-03-21 | v1.3    | Decision Blocks Hardening: statsUsed enrichment (7 new CF fields), lifecycle states (COLD/LEARNING/STABLE), global activation gate, block-level eligibility gates, minimum viability rule (≥2), hard stale guard (72h). Source: ChatGPT review (~40% accuracy). |
+| 2026-06-11 | v1.4    | Production-readiness audit slice: current runtime status added, compact analytics snapshot cost contract documented, stale build-plan tables replaced, and CMI DAL confirmed as priority-only/no hiding. |
 
 ---
 
-_Status: 🔒 LOCKED — V1.3 Hardened Decision Blocks + Production Ready_
+_Status: Controlled owner testing ready in audited slice; full MenuList certification pending_

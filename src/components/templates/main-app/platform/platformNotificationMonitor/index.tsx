@@ -342,6 +342,7 @@ export default function PlatformNotificationMonitor() {
                     <Text type="secondary">{metadataText(record)}</Text>
                 </Space>
             ),
+            width: 380,
         },
         {
             title: 'Status',
@@ -465,7 +466,7 @@ export default function PlatformNotificationMonitor() {
                     dataSource={snapshot?.events || []}
                     pagination={{ pageSize: 10, hideOnSinglePage: true }}
                     loading={loading}
-                    scroll={{ x: 1180 }}
+                    scroll={{ x: 1526 }}
                     onRow={(record) => ({
                         onClick: () => openEvent(record),
                         style: { cursor: 'pointer' },

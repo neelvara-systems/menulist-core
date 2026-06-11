@@ -315,8 +315,22 @@ const resolveStaffLoginDisplayId = (value?: string | null) => formatStaffLoginId
 
 const resolveStaffLoginUsername = (value?: string | null) => normalizeStaffLoginUsername(value);
 
-const sanitizeStaffUser = (id: string, data: any): StaffUserSummary => {
-    const stores = Array.isArray(data?.stores)
+type StaffUserSanitizeOptions = {
+    visibleStoreIds?: number[];
+};
+
+const sanitizeStaffUser = (
+    id: string,
+    data: any,
+    options: StaffUserSanitizeOptions = {},
+): StaffUserSummary => {
+    const visibleStoreIds = options.visibleStoreIds?.length
+        ? new Set(options.visibleStoreIds.map(Number).filter(isPositiveId))
+        : null;
+    const canShowStore = (storeId: unknown) => (
+        !visibleStoreIds || visibleStoreIds.has(Number(storeId))
+    );
+    const rawStores = Array.isArray(data?.stores)
         ? data.stores
             .filter((store: any) => isPositiveId(store?.storeId))
             .map((store: any) => ({
@@ -325,6 +339,14 @@ const sanitizeStaffUser = (id: string, data: any): StaffUserSummary => {
                 role: String(store.role || ""),
             }))
         : [];
+    const stores = rawStores.filter((store) => canShowStore(store.storeId));
+    const rawStoreIds = Array.isArray(data?.storeIds)
+        ? data.storeIds.filter(isPositiveId).map(Number)
+        : rawStores.map((store) => store.storeId);
+    const storeIds = rawStoreIds.filter(canShowStore);
+    const defaultStoreId = isPositiveId(data?.storeId) && canShowStore(data.storeId)
+        ? Number(data.storeId)
+        : stores[0]?.storeId || storeIds[0];
 
     return {
         id,
@@ -348,14 +370,18 @@ const sanitizeStaffUser = (id: string, data: any): StaffUserSummary => {
         sessionRevokedAt: serializeStaffTimestamp(data?.sessionRevokedAt),
         staffAuthMode: getStaffAuthMode(data),
         staffLoginId: resolveStaffLoginDisplayId(data?.staffLoginId || data?.loginUsername),
-        storeId: Number(data?.storeId) || stores[0]?.storeId,
-        storeIds: Array.isArray(data?.storeIds)
-            ? data.storeIds.filter(isPositiveId).map(Number)
-            : stores.map((store) => store.storeId),
+        storeId: defaultStoreId,
+        storeIds,
         stores,
         tenantId: Number(data?.tenantId),
     };
 };
+
+const sanitizeStaffUserForAuthority = (id: string, data: any, authority: any): StaffUserSummary => (
+    sanitizeStaffUser(id, data, {
+        visibleStoreIds: authority?.isMaster ? undefined : [authority?.sessionStoreId].filter(isPositiveId),
+    })
+);
 
 const sanitizeStoreOption = (store: StoreDataType): StaffStoreOption => ({
     active: store?.active !== false,
@@ -552,13 +578,35 @@ const roleOrStoreMappingsChanged = (currentStores: UserStoreMappingType[], nextS
     return JSON.stringify(normalize(currentStores || [])) !== JSON.stringify(normalize(nextStores || []));
 };
 
-const getUsersForTenant = async (tenantId: number) => {
-    const snapshot = await firestoreAdmin
-        .collection(USERS_COLLECTION)
-        .where("tenantId", "==", tenantId)
-        .get();
+const getUsersForStore = async (tenantId: number, storeId: number) => {
+    const storeIdVariants: Array<number | string> = [storeId, String(storeId)];
+    const storeIdArraySnapshots = storeIdVariants.map((storeIdValue) => (
+        firestoreAdmin
+            .collection(USERS_COLLECTION)
+            .where("storeIds", "array-contains", storeIdValue)
+            .get()
+    ));
+    const legacyStoreIdSnapshots = storeIdVariants.map((storeIdValue) => (
+        firestoreAdmin
+            .collection(USERS_COLLECTION)
+            .where("storeId", "==", storeIdValue)
+            .get()
+    ));
+    const snapshots = await Promise.all([
+        ...storeIdArraySnapshots,
+        ...legacyStoreIdSnapshots,
+    ]);
+    const docsById = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
 
-    return snapshot.docs;
+    snapshots.forEach((snapshot) => {
+        snapshot.docs.forEach((doc) => {
+            if (Number(doc.data()?.tenantId) === tenantId) {
+                docsById.set(doc.id, doc);
+            }
+        });
+    });
+
+    return Array.from(docsById.values());
 };
 
 const ensureAnotherActiveOwner = async (
@@ -566,7 +614,7 @@ const ensureAnotherActiveOwner = async (
     storeId: number,
     targetUserId: string,
 ) => {
-    const docs = await getUsersForTenant(tenantId);
+    const docs = await getUsersForStore(tenantId, storeId);
     const hasOtherOwner = docs.some((doc) => {
         if (doc.id === targetUserId) return false;
         const data = doc.data();
@@ -588,7 +636,7 @@ const ensureNotSelfDestructive = (session: any, targetUserId: string) => {
 };
 
 const roleIsAssignedToActiveUser = async (tenantId: number, storeId: number, roleId: string) => {
-    const docs = await getUsersForTenant(tenantId);
+    const docs = await getUsersForStore(tenantId, storeId);
     return docs.some((doc) => {
         const data = doc.data();
         if (data?.active === false || data?.deleted === true) return false;
@@ -665,7 +713,7 @@ export const listStaffUsers = async (
         return jsonError("Forbidden", 403, "FORBIDDEN");
     }
 
-    const docs = await getUsersForTenant(tenantId);
+    const docs = await getUsersForStore(tenantId, storeId);
     const rawStoreOptionDocs = authority.isMaster
         ? await fetchStoresForTenant(tenantId)
         : [await fetchStoreById(storeId)].filter(Boolean) as StoreDataType[];
@@ -676,7 +724,7 @@ export const listStaffUsers = async (
         .map(sanitizeStoreOption)
         .sort((a, b) => a.name.localeCompare(b.name));
     const users = docs
-        .map((doc) => sanitizeStaffUser(doc.id, doc.data()))
+        .map((doc) => sanitizeStaffUserForAuthority(doc.id, doc.data(), authority))
         .filter((user) => user.deleted !== true)
         .filter((user) => user.storeIds?.includes(storeId) || user.stores?.some((store) => Number(store.storeId) === storeId))
         .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
@@ -783,7 +831,7 @@ export const createStaffUser = async (
             stores: nextStores,
         }));
 
-        const updated = sanitizeStaffUser(existingDoc.id, {
+        const updated = sanitizeStaffUserForAuthority(existingDoc.id, {
             ...existingData,
             active: true,
             authDisabled: false,
@@ -792,7 +840,7 @@ export const createStaffUser = async (
             storeId: existingData.storeId || input.storeId,
             storeIds: nextStoreIds,
             stores: nextStores,
-        });
+        }, authority);
 
         logger.info("[staff] Existing user added to store", {
             tenantId: input.tenantId,
@@ -921,7 +969,7 @@ export const createStaffUser = async (
         staffAuthMode: authMode,
         staffLoginId,
         temporaryPasscode: tempPasscode || undefined,
-        user: sanitizeStaffUser(docRef.id, newUserDoc),
+        user: sanitizeStaffUserForAuthority(docRef.id, newUserDoc, authority),
         userId: docRef.id,
     };
 
@@ -1082,7 +1130,7 @@ export const updateStaffUser = async (
     const response: StaffMutationResponse = {
         success: true,
         mode: "user_updated",
-        user: sanitizeStaffUser(input.userId, targetDoc.data()),
+        user: sanitizeStaffUserForAuthority(input.userId, targetDoc.data(), authority),
         userId: input.userId,
     };
 
@@ -1197,7 +1245,7 @@ export const removeStaffFromStore = async (
     const response: StaffMutationResponse = {
         success: true,
         mode: shouldDeactivate ? "user_deactivated" : "store_mapping_removed",
-        user: sanitizeStaffUser(input.userId, updatedSnapshot.data()),
+        user: sanitizeStaffUserForAuthority(input.userId, updatedSnapshot.data(), authority),
         userId: input.userId,
     };
 
@@ -1313,7 +1361,7 @@ export const requestStaffPasswordReset = async (
         staffAuthMode: getStaffAuthMode(existingData),
         staffLoginId: loginId,
         temporaryPasscode,
-        user: sanitizeStaffUser(input.userId, updatedSnapshot.data()),
+        user: sanitizeStaffUserForAuthority(input.userId, updatedSnapshot.data(), authority),
         userId: input.userId,
     } satisfies StaffMutationResponse);
 };
@@ -1398,7 +1446,7 @@ export const forceSignOutStaffUser = async (
         success: true,
         message: "Staff member signed out.",
         mode: "session_revoked",
-        user: sanitizeStaffUser(input.userId, updatedSnapshot.data()),
+        user: sanitizeStaffUserForAuthority(input.userId, updatedSnapshot.data(), authority),
         userId: input.userId,
     } satisfies StaffMutationResponse);
 };

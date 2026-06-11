@@ -6,6 +6,8 @@
 **Implementation Status:** ✅ COMPLETE  
 **TypeScript Compilation:** ✅ PASS
 
+> **Runtime note (June 11, 2026):** Standalone helper files referenced by older rows in this report were removed on June 1, 2026. Current runtime only reads `staffPrompt` from `platformSummary/campaigns_{sId}` and renders it read-only in Today/mobile Today when `eligible` is true.
+
 ---
 
 ## 📋 Engineering Checklist Verification

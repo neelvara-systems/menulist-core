@@ -31,6 +31,31 @@ export const FEATURE_FLAGS = {
     ENABLE_WEBSITE_ASSET_OPERATING_SYSTEM: true,
 
     /**
+     * Enable the CampaignCue public product shell.
+     *
+     * CampaignCue is a separate product in the shared app. This flag only
+     * activates the static public surface mounted locally at /__campaigncue
+     * and on the CampaignCue product domain. It must not enable provider
+     * calls, Firebase writes, publishing, billing, or MenuList write-back.
+     */
+    ENABLE_CAMPAIGNCUE_PUBLIC_SITE: true,
+
+    /**
+     * CampaignCue runtime module gates.
+     *
+     * App shell, source context, deterministic generation, and analytics are
+     * enabled for the manual/export-first runtime. Direct provider publishing
+     * and billing remain disabled until credentials, opt-in, spend approval,
+     * webhook, and checkout controls are configured.
+     */
+    ENABLE_CAMPAIGNCUE_APP_SHELL: true,
+    ENABLE_CAMPAIGNCUE_SOURCE_INTEGRATIONS: true,
+    ENABLE_CAMPAIGNCUE_GENERATION: true,
+    ENABLE_CAMPAIGNCUE_PUBLISHING: false,
+    ENABLE_CAMPAIGNCUE_BILLING: false,
+    ENABLE_CAMPAIGNCUE_ANALYTICS: true,
+
+    /**
      * Enable Upstash rate limiting
      *
      * true: Use Upstash for rate limiting (production)
@@ -238,10 +263,10 @@ export const FEATURE_FLAGS = {
      *
      * How It Works:
      * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     * - Client-side scoring initially (uses isBestSeller, duration, price)
-     * - Precomputed scoring later (Cloud Function + Firestore)
+     * - Scheduler-owned scoring writes a project-embedded public projection
+     * - Client runtime only applies TTL, availability, time-slot, and owner-pin filters
      * - Tracks recommendation views and clicks
-     * - Owner can boost/suppress items
+     * - Owner can toggle blocks and pin explicit choices
      *
      * Business Category Aware:
      * - Food: "Popular Right Now", "Quick Pick", "Best Value"
@@ -1363,7 +1388,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when GBP API access is granted
      * Development: Keep false — no data without GBP API
      */
-    ENABLE_REVIEWS_REPUTATION: true,
+    ENABLE_REVIEWS_REPUTATION: false,
 
     /**
      * AI Reply Assist — Gemini-powered reply suggestions
@@ -1373,7 +1398,7 @@ export const FEATURE_FLAGS = {
      *
      * @see __docs__/reputation-protection/reputation-protection_impl.md
      */
-    ENABLE_AI_REPLY_ASSIST: true,
+    ENABLE_AI_REPLY_ASSIST: false,
 
     // ─────────────────────────────────────────────────────────────
     // COMPLIANCE PAGES (Domain Activation Infrastructure)

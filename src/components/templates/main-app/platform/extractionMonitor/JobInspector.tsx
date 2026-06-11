@@ -107,6 +107,10 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
         notification.success({ message: `${label} copied to clipboard`, duration: 2 });
     };
 
+    const formatMs = (value: unknown) => typeof value === 'number' && Number.isFinite(value)
+        ? `${Math.round(value / 100) / 10}s`
+        : '—';
+
     // ================================================================
     // TAB 1: OVERVIEW
     // ================================================================
@@ -147,6 +151,18 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                     <Descriptions.Item label="Processing Time">
                         {job.processingTime != null ? `${Math.round(job.processingTime / 1000)}s` : '—'}
                     </Descriptions.Item>
+                    <Descriptions.Item label="Queue Wait">
+                        {formatMs(job.timings?.queueWaitMs)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="AI Time">
+                        {formatMs(job.timings?.aiProcessingMs)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Save Time">
+                        {formatMs(job.timings?.saveMs)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Worker Total">
+                        {formatMs(job.timings?.workerTotalMs)}
+                    </Descriptions.Item>
                     <Descriptions.Item label="Type">
                         {job.isFirstExtraction === true ? 'First Extraction' : job.isFirstExtraction === false ? 'Re-extraction' : '—'}
                     </Descriptions.Item>
@@ -155,6 +171,13 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                     </Descriptions.Item>
                     <Descriptions.Item label="Source">
                         <PipelineTag value={job.source} />
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Source Fingerprint">
+                        {job.sourceFingerprint ? (
+                            <Text copyable={{ text: job.sourceFingerprint }}>
+                                {String(job.sourceFingerprint).slice(0, 12)}...
+                            </Text>
+                        ) : '—'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Skip Project Save">
                         {job.skipProjectSave ? <Tag color="orange">Yes</Tag> : <Tag>No</Tag>}
@@ -218,10 +241,12 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
     // ================================================================
 
     const AIResponseTab = () => {
-        if (!job?.result?.combinedData && !job?.result?.rawBatchResponses?.length) return <Empty description="No AI response data" />;
+        if (!job?.result?.combinedData && !job?.result?.rawBatchResponses?.length && !job?.result?.summary) return <Empty description="No AI response data" />;
 
         const combinedJson = JSON.stringify(job.result.combinedData || null, null, 2);
+        const summaryJson = JSON.stringify(job.result.summary || null, null, 2);
         const rawResponsesJson = JSON.stringify(job.result.rawBatchResponses || [], null, 2);
+        const normalizedDataPruned = !job.result.combinedData && Boolean(job.result.dataPrunedAt);
 
         return (
             <div>
@@ -229,12 +254,18 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                     <Button
                         size="small"
                         icon={<LuCopy />}
+                        disabled={!job.result.combinedData}
                         onClick={() => copyToClipboard(combinedJson, 'Normalized AI data')}
                     >
                         Copy Normalized Data
                     </Button>
                 </div>
                 <Text strong style={{ display: 'block', marginBottom: 8 }}>Normalized Extraction Output</Text>
+                {normalizedDataPruned ? (
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                        Full normalized data was pruned after project save. Summary and raw provider responses remain available.
+                    </Text>
+                ) : null}
                 <pre style={{
                     background: token.colorFillAlter,
                     padding: 12,
@@ -245,7 +276,7 @@ export default function JobInspector({ jobId, open, onClose, onRetrySuccess }: J
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-all',
                 }}>
-                    {combinedJson}
+                    {job.result.combinedData ? combinedJson : summaryJson}
                 </pre>
 
                 {job.result.rawBatchResponses?.length ? (

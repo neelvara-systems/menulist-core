@@ -49,3 +49,5 @@ No. Notes on Support Board cards are internal owner/staff notes only.
 ## Can a card become an approved answer?
 
 Not directly. If a card has a related product entity, you can create an answer proposal. The answer still goes through Knowledge Governance before it becomes official support truth.
+
+If the proposal button is unavailable, check the card first: it needs a related product entity, Governance access, and no existing linked proposal.

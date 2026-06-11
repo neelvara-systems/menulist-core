@@ -12,13 +12,11 @@ import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { FUNCTION_OPTIONS } from '../config/secrets';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
 import { embedArticleWorkerLogic } from '../logic/embedArticleWorker';
-import { processMenuImagesLogic } from '../logic/processMenuImages';
 import { publishApprovedJobLogic } from '../logic/publishApprovedJob';
 import { regenerateEmbeddingLogic } from '../logic/regenerateEmbedding';
 import {
     EmbedArticleType,
     IngestionJobCategoriesMap,
-    ProcessMenuImagesRequest,
 } from '../types';
 
 function getRequesterRole(request: { auth?: { token?: Record<string, any> } }): string {
@@ -106,53 +104,19 @@ export const publishApprovedJobFn = onCall(FUNCTION_OPTIONS.aiCallable, async (r
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Process menu images in parallel using Gemini AI.
- * Extended timeout (540s) and better memory (2GB) vs Next.js API routes.
+ * Legacy direct menu-image callable.
+ *
+ * Production extraction now runs only through menuImageProcessingJobs so
+ * tenant checks, upload URL allowlists, rate limits, identity checks, retry
+ * metadata, cleanup, and cache invalidation stay on one path.
  */
 export const processMenuImages = onCall(
     FUNCTION_OPTIONS.aiParallel,
     async (request) => {
-        assertStoreScopedAccount(request, 'process menu images');
-
-        const logger = functions.logger;
-        const data = request.data as ProcessMenuImagesRequest;
-
-        // Validate required fields
-        if (!data.files || !Array.isArray(data.files) || data.files.length === 0) {
-            throw new HttpsError('invalid-argument', 'files array is required and must not be empty');
-        }
-
-        if (!data.targetLanguages || !Array.isArray(data.targetLanguages)) {
-            throw new HttpsError('invalid-argument', 'targetLanguages array is required');
-        }
-
-        // Validate each file
-        for (const file of data.files) {
-            if (!file.url) {
-                throw new HttpsError('invalid-argument', `File "${file.name}" is missing URL`);
-            }
-            if (!file.url.startsWith('https://') && !file.url.startsWith('data:')) {
-                throw new HttpsError('invalid-argument', `File "${file.name}" has invalid URL (must be HTTPS or data URI)`);
-            }
-        }
-
-        logger.info('[processMenuImages] Function called', {
-            filesCount: data.files.length,
-            targetLanguages: data.targetLanguages.map(l => l.code),
-            projectId: data.projectId,
-            fileId: data.fileId,
-        });
-
-        try {
-            const result = await processMenuImagesLogic(data);
-            return result;
-        } catch (error: any) {
-            logger.error('[processMenuImages] Function error', { error: error.message });
-
-            if (error.message?.includes('Rate limit')) {
-                throw new HttpsError('resource-exhausted', error.message);
-            }
-            throw new HttpsError('internal', error.message || 'Image processing failed');
-        }
+        assertStoreScopedAccount(request, 'queue menu extraction');
+        throw new HttpsError(
+            'failed-precondition',
+            'Direct menu extraction is disabled. Use the MenuList extraction job queue.',
+        );
     },
 );

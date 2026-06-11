@@ -80,12 +80,18 @@ export interface MenuProcessingJobStatus {
     expiresAt?: any;
     forceReview?: boolean;
     source?: string;
+    sourceFingerprint?: string;
+    sourceFingerprintVersion?: number;
     destination?: MenuExtractionJobDestination;
     destinationType?: MenuExtractionDestinationType;
     skipProjectSave?: boolean;
     sourceMetadata?: Record<string, unknown>;
+    timings?: Record<string, unknown>;
     result?: {
-        combinedData: any;
+        combinedData?: any;
+        summary?: Record<string, unknown>;
+        dataPrunedAt?: any;
+        dataPrunedReason?: string;
         qualityScore: number;
         qualityDetails: any;
         processingTime: number;
@@ -202,10 +208,11 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         projectId,
         filesCount: files.length,
         jobMode,
+        reusedCompletedJob: payload?.reusedCompletedJob === true,
         reusedExistingJob: payload?.reusedExistingJob === true,
     });
 
-    if (payload?.reusedExistingJob === true) {
+    if (payload?.reusedExistingJob === true || payload?.reusedCompletedJob === true) {
         return jobId;
     }
 

@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Card, Flex, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useState } from 'react';
 import { LuClock, LuX } from 'react-icons/lu';
 
@@ -27,6 +28,7 @@ const { useToken } = theme;
  */
 export default function HoursFreshnessNudge() {
     const { token } = useToken();
+    const t = useTranslations('Dashboard.owner');
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [dismissed, setDismissed] = useState(false);
     const [initialized, setInitialized] = useState(false);
@@ -68,8 +70,8 @@ export default function HoursFreshnessNudge() {
     };
 
     const message = confidenceState === 'RISKY'
-        ? 'Your hours may be outdated. Update them to show accurate open status to customers.'
-        : 'Your hours are missing or invalid. Update them so customers can see when you\'re open.';
+        ? t('hoursNudge.riskyMessage')
+        : t('hoursNudge.brokenMessage');
 
     return (
         <Card
@@ -97,7 +99,7 @@ export default function HoursFreshnessNudge() {
                     </Flex>
                     <Flex vertical gap={4} style={{ flex: 1 }}>
                         <Text strong style={{ fontSize: 14 }}>
-                            {confidenceState === 'RISKY' ? 'Hours may be outdated' : 'Hours need updating'}
+                            {confidenceState === 'RISKY' ? t('hoursNudge.riskyTitle') : t('hoursNudge.brokenTitle')}
                         </Text>
                         <Text type="secondary" style={{ fontSize: 13 }}>
                             {message}

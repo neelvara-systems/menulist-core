@@ -229,7 +229,7 @@ export default function AnswerlatticeActivationCommandCenter() {
             <Alert
                 type="warning"
                 message="Activation summary is unavailable"
-                description="Refresh the page after Answerlattice Firebase is configured for this workspace."
+                description="Refresh after this Answerlattice workspace is fully connected."
                 showIcon
                 action={<Button onClick={() => loadSummary(true)}>Retry</Button>}
             />
@@ -259,7 +259,7 @@ export default function AnswerlatticeActivationCommandCenter() {
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Launch Support Setup</Title>
                     <Text type="secondary">
-                        Launch support in 10 minutes for {summary.workspace.productName || summary.workspace.companyName || 'this product'}.
+                        Finish the support setup for {summary.workspace.productName || summary.workspace.companyName || 'this product'} from one checklist.
                     </Text>
                 </div>
                 <Space wrap>

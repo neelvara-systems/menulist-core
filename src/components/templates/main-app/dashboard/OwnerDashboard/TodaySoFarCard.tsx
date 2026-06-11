@@ -2,7 +2,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { DailyViewData } from '@template/main-app/projects/types';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { Button, Card, Col, Popover, Row, Skeleton, Statistic, Typography } from 'antd';
-import { useFormatter } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import React from 'react';
 import { LuClock, LuInfo } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
@@ -28,10 +28,12 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     data,
     loading = false,
     fetchedAt,
-    title = 'Menu',
+    title,
 }) => {
     const labels = useOfferingLabels();
     const formatter = useFormatter();
+    const t = useTranslations('Dashboard.owner');
+    const cardTitle = title || t('menu');
 
     if (loading) {
         return (
@@ -47,10 +49,10 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                 <div className={styles.todayCardHeader}>
                     <div>
                         <Title level={5} style={{ margin: '8px 0 0' }}>
-                            {title}
+                            {cardTitle}
                         </Title>
                         <Text type="secondary">
-                            No menu activity yet today.
+                            {t('today.noMenuActivityToday')}
                         </Text>
                     </div>
                 </div>
@@ -68,40 +70,57 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
     const detailContent = (
         <div style={{ maxWidth: 320 }}>
             <Text type="secondary" style={{ display: 'block' }}>
-                This is the current business day&apos;s partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement.
+                {t('today.partialActivity')}
             </Text>
             <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                Fresh data appears when this screen is opened again or refreshed after 10 minutes. It does not auto-update continuously.
+                {t('today.refreshHint')}
             </Text>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
-                Searches are de-duplicated within a session. Customer actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
+                {t('today.metricsHint')}
             </Text>
             {topSearch ? (
                 <Text style={{ display: 'block', marginTop: 8 }}>
-                    Top search right now: {topSearch.term} ({topSearch.count})
+                    {t('today.topSearchNow', { term: topSearch.term, count: topSearch.count })}
                 </Text>
             ) : null}
             {topFilter ? (
                 <Text style={{ display: 'block', marginTop: 8 }}>
-                    Top filter right now: {topFilter.label || topFilter.filterId} ({topFilter.interactions} intent, {topFilter.actionClicks} actions)
+                    {t('today.topFilterNow', {
+                        label: topFilter.label || topFilter.filterId,
+                        interactions: topFilter.interactions,
+                        actions: topFilter.actionClicks,
+                    })}
                 </Text>
             ) : null}
             {topLanguage ? (
                 <Text style={{ display: 'block', marginTop: 8 }}>
-                    Top language right now: {topLanguage.label} ({topLanguage.menuSessions || topLanguage.menuViews} sessions/views, {topLanguage.adoptions} stayed switches)
+                    {t('today.topLanguageNow', {
+                        label: topLanguage.label,
+                        sessions: topLanguage.menuSessions || topLanguage.menuViews,
+                        adoptions: topLanguage.adoptions,
+                    })}
                 </Text>
             ) : null}
             <Text style={{ display: 'block', marginTop: 8 }}>
-                No-result searches so far: {data.metrics.zeroResultSearches || 0}
+                {t('today.noResultSearchesSoFar', { count: data.metrics.zeroResultSearches || 0 })}
             </Text>
             {topUnavailable ? (
                 <Text style={{ display: 'block', marginTop: 8 }}>
-                    Most tapped unavailable item: {topUnavailable.name || topUnavailable.itemId} ({topUnavailable.clicks})
+                    {t('today.mostTappedUnavailableItem', {
+                        item: topUnavailable.name || topUnavailable.itemId,
+                        count: topUnavailable.clicks,
+                    })}
                 </Text>
             ) : null}
             {hasActions ? (
                 <Text style={{ display: 'block', marginTop: 8 }}>
-                    Customer actions: Call {data.menuActions?.call || 0}, WhatsApp {data.menuActions?.whatsapp || 0}, Directions {data.menuActions?.directions || 0}, Reserve {data.menuActions?.reserve || 0}, Order {data.menuActions?.order || 0}
+                    {t('today.customerActionsBreakdown', {
+                        call: data.menuActions?.call || 0,
+                        whatsapp: data.menuActions?.whatsapp || 0,
+                        directions: data.menuActions?.directions || 0,
+                        reserve: data.menuActions?.reserve || 0,
+                        order: data.menuActions?.order || 0,
+                    })}
                 </Text>
             ) : null}
         </div>
@@ -113,18 +132,18 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                 <div>
                     <div style={{ alignItems: 'center', display: 'flex', gap: 8 }}>
                         <Title level={5} style={{ margin: 0 }}>
-                            {title}
+                            {cardTitle}
                         </Title>
-                        <Popover content={detailContent} title="Today so far">
+                        <Popover content={detailContent} title={t('views.todaySoFar')}>
                             <Button icon={<LuInfo />} size="small" type="text" />
                         </Popover>
                     </div>
-                    <Text type="secondary">Current menu activity for today.</Text>
+                    <Text type="secondary">{t('today.currentActivity')}</Text>
                 </div>
                 <div className={styles.todayCardMeta}>
                     <LuClock />
                     <Text type="secondary">
-                        {updatedLabel ? `Updated ${updatedLabel}` : 'Live partial data'}
+                        {updatedLabel ? t('today.updated', { time: updatedLabel }) : t('today.livePartialData')}
                     </Text>
                 </div>
             </div>
@@ -134,23 +153,23 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                     <Statistic title={labels.scansLabel} value={data.metrics.menuVisits || 0} />
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Statistic title="Searches" value={data.metrics.searches || 0} />
+                    <Statistic title={t('metrics.searches')} value={data.metrics.searches || 0} />
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Statistic title="Engaged Sessions" suffix="%" value={data.metrics.engagedSessionRate || 0} />
+                    <Statistic title={t('metrics.engagedSessions')} suffix="%" value={data.metrics.engagedSessionRate || 0} />
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Statistic title="Action Rate" suffix="%" value={data.metrics.actionRate || 0} />
+                    <Statistic title={t('metrics.actionRate')} suffix="%" value={data.metrics.actionRate || 0} />
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Statistic title="Customer Actions" value={data.metrics.menuActionClicks || 0} />
+                    <Statistic title={t('metrics.customerActions')} value={data.metrics.menuActionClicks || 0} />
                 </Col>
                 <Col xs={12} sm={6}>
-                    <Statistic title="Unavailable Interest" value={data.metrics.unavailableItemTaps || 0} />
+                    <Statistic title={t('metrics.unavailableInterest')} value={data.metrics.unavailableItemTaps || 0} />
                 </Col>
                 {topLanguage ? (
                     <Col xs={12} sm={6}>
-                        <Statistic title="Top Language" value={topLanguage.label} />
+                        <Statistic title={t('metrics.topLanguage')} value={topLanguage.label} />
                     </Col>
                 ) : null}
             </Row>

@@ -3,9 +3,10 @@
  * ═══════════════════════════════════════════════════════════════════════════════════
  * 
  * Routing Priority:
- * 1. Active product website domains (QA ecomsai.com / prod answerlattice.com → /sites/answerlattice,
- *    menulist.digital → /sites/mycodex)
- * 2. Dev path prefixes (/__answerlattice → /sites/answerlattice) — local dev only
+ * 1. Active product domains. Public product website paths rewrite to /sites/{product};
+ *    product owner app paths rewrite to the product route group when configured.
+ * 2. Dev path prefixes (/__answerlattice → /sites/answerlattice,
+ *    /__campaigncue/app → /campaigncue/app) — local dev only
  * 3. Client tenant domains (*.menulist.ai → /client)
  * 4. Platform domain (menulist.ai → (website) route group)
  * 
@@ -25,6 +26,7 @@ import {
     ANSWERLATTICE_PRODUCT_PASSTHROUGH_PATHS,
     getAnswerlatticeDashboardRewritePath,
 } from '@constant/answerlattice/domains';
+import { getCampaignCueWorkspaceRewritePath } from '@constant/campaigncue/domains';
 import {
     getProductDeploymentTarget,
     isActiveProductDomain,
@@ -265,9 +267,11 @@ export async function middleware(request: NextRequest) {
     // ═══════════════════════════════════════════════════════════
     // Priority 1: Multi-Product Website Routing
     // ═══════════════════════════════════════════════════════════
-    // Product domains (answerlattice.com, surfaceos.app, etc.) are rewritten
-    // to internal route groups: /sites/answerlattice/, /sites/surfaceos/, etc.
+    // Product domains (answerlattice.com, campaigncue.ai, surfaceos.app, etc.) are rewritten
+    // to public website route groups under /sites/{product}. Product owner apps are
+    // explicitly mapped to their own route groups, never nested under /sites.
     // In local dev, path prefixes work too: /__answerlattice/pricing → /sites/answerlattice/pricing
+    // and /__campaigncue/app → /campaigncue/app.
 
     // Block direct access to /sites/* in production (only reachable via middleware rewrite)
     if (pathname.startsWith('/sites/') && process.env.VERCEL === '1') {
@@ -354,6 +358,16 @@ export async function middleware(request: NextRequest) {
             return applySecurityHeaders(request, response);
         }
 
+        if (productConfig.id === 'campaigncue') {
+            const campaignCueWorkspacePath = getCampaignCueWorkspaceRewritePath(pathname);
+            const url = request.nextUrl.clone();
+            url.pathname = campaignCueWorkspacePath || `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;
+            const response = NextResponse.rewrite(url);
+            response.headers.set('x-product-id', productConfig.id);
+            response.headers.set('x-product-name', productConfig.name);
+            return applySecurityHeaders(request, response);
+        }
+
         const url = request.nextUrl.clone();
         url.pathname = `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;
         const response = NextResponse.rewrite(url);
@@ -390,10 +404,13 @@ export async function middleware(request: NextRequest) {
             const answerlatticeDashboardPath = product.id === 'answerlattice'
                 ? getAnswerlatticeDashboardRewritePath(strippedPath)
                 : null;
+            const campaignCueWorkspacePath = product.id === 'campaigncue'
+                ? getCampaignCueWorkspaceRewritePath(strippedPath)
+                : null;
             url.pathname = answerlatticeDashboardPath || (
                 product.id === 'answerlattice'
                     ? buildAnswerlatticeWebsiteRewritePath(product.internalBasePath, strippedPath)
-                    : `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`
+                    : campaignCueWorkspacePath || `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`
             );
             const response = NextResponse.rewrite(url);
             response.headers.set('x-product-id', product.id);

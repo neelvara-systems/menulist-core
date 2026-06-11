@@ -1,10 +1,10 @@
 # Decision Intelligence - Implementation Document
 
 **Created:** January 11, 2026  
-**Status:** 🔒 **LOCKED — Production Ready**
+**Status:** Controlled owner testing ready in audited slice; full MenuList certification pending
 **Source:** Codebase (Single Source of Truth)  
 **Applies:** 3-Year Architecture Freeze Rule
-**Last Verified:** May 7, 2026
+**Last Verified:** June 11, 2026
 
 ---
 
@@ -41,6 +41,7 @@
 │  │           ├── Check: item.active === true               │
 │  │           ├── Check: item.available === true            │
 │  │           ├── Check: Category time slot valid           │
+│  │           │          (store timezone, browser fallback) │
 │  │           └── Return first available                     │
 │  ├── If valid but activation gate fails: pinned-only       │
 │  └── If missing/expired: computeBlocksFallback()           │
@@ -83,7 +84,7 @@ functions/
 | Surface | File | Responsibility |
 | ------- | ---- | -------------- |
 | Scheduled generation | `functions/src/decisionBlocksScoring.ts` | Hourly scheduler that processes stores whose local settlement window is due. |
-| Manual recovery | `triggerDecisionBlocksScoring` in `functions/src/decisionBlocksScoring.ts` | Platform-only callable used by Scheduler Monitor to recompute Decision Blocks. |
+| Manual recovery | `triggerDecisionBlocksScoring` in `functions/src/decisionBlocksScoring.ts` | Platform-only callable used by Scheduler Monitor to recompute Decision Blocks through the same compact analytics snapshot path as the scheduler. |
 | Public precomputed read | `src/app/client/[[...slug]]/page.tsx` | Uses `project.publicDecisionBlocks` from the already-loaded project document. |
 | Customer rendering | `src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx` | Applies TTL, lifecycle, owner controls, availability, and time-slot filters. |
 | Desktop owner editing | `DecisionBlocksSettingsModal.tsx` | Saves pins/toggles into `project.menuSettings.decisionBlocks`. |
@@ -149,7 +150,7 @@ Generated ranking data is stored as the customer-safe `project.publicDecisionBlo
 
 Owner pin values are normalized by the shared owner helper before desktop/mobile display and save. The helper accepts the canonical string item id, tolerates legacy picker payloads such as arrays or `{ value }` objects, and resolves `extractionIdAliases` back to the current item id after re-extraction or outlet resolution. The public renderer applies the same alias lookup before runtime availability checks so owner UI and customer output stay aligned.
 
-Owner pins are evaluated before automatic candidate ranking gates in the public renderer. A pin can render even when a block lacks enough analytics coverage or the scheduler produced no candidate for that block, but it still must pass runtime safety checks: item exists, item is active, item is available, category time slot is active, the block is enabled for the business type, and Best Value is hidden when prices are hidden.
+Owner pins are evaluated before automatic candidate ranking gates in the public renderer. A pin can render even when a block lacks enough analytics coverage, precomputed timestamps are stale, or the scheduler produced no candidate for that block, but it still must pass runtime safety checks: item exists, item is active, item is available, category time slot is active in the store timezone, the block is enabled for the business type, and Best Value is hidden when prices are hidden.
 
 ### Collection: `analytics`
 
@@ -236,7 +237,7 @@ function selectAvailableCandidate(
     if (!item) return false;
     if (item.active === false) return false; // Permanently disabled
     if (item.available === false) return false; // Sold out
-    if (!isCategoryWithinTimeSlot(categoryMap.get(item.category))) return false;
+    if (!isCategoryWithinTimeSlot(categoryMap.get(item.category), currentStoreMinutes)) return false;
     if (usedItemIds.has(itemId)) return false; // Already used in another block
     return true;
   };
@@ -492,7 +493,8 @@ schedulerRunLogs: trigger ASC + startedAt DESC
 | 2026-01-11 | v1.0    | Initial implementation document from codebase                                                                                                                                                                                                                                                                                                                |
 | 2026-02-09 | v1.1    | Refactor: decisionBlocksScoring.ts now imports WEIGHTS/THRESHOLDS/DURATIONS/normalize from shared scoreNormalizer.ts (eliminates duplication). Removed dead types (SCORING_WEIGHTS, DisplayBlock, MenuItemStatsDaily, MenuItemStatsAggregated) from decisionBlocks.types.ts. Updated file structure to include shared intelligence modules. Status → LOCKED. |
 | 2026-02-20 | v1.2    | Added Scheduler Monitor Dashboard: persistent run logs (`schedulerRunLogs` collection), per-task tracking (8 tasks), health badge, error inspection, manual trigger, Firestore indexes. CF now persists detailed run results after each execution.                                                                                                           |
+| 2026-06-11 | v1.3    | Production-readiness audit slice: customer runtime now uses store-local time for category time-slot filtering, malformed precomputed timestamps are stale, and manual recovery uses the same compact 7-day analytics snapshot path as scheduled scoring. |
 
 ---
 
-_Status: 🔒 LOCKED — Production Ready_
+_Status: Controlled owner testing ready in audited slice; full MenuList certification pending_

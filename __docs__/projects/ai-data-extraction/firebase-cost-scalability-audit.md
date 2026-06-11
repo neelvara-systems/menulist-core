@@ -433,8 +433,10 @@ Scenario C (100K/mo):  ███████████████████
 | **Job TTL (7 days)**           | Terminal jobs deleted automatically. Collection doesn't grow unbounded.        | `cleanupOldJobsLogic()` limit 500                 |
 | **Preview TTL (24h)**          | Unapproved re-extraction jobs cleaned up.                                      | `cleanupExpiredPreviewJobsLogic()`                |
 | **Raw response truncation**    | Provenance text capped at 10KB/batch to prevent doc bloat.                     | `processMenuImages.ts:511-514`                    |
+| **Project job payload pruning** | Completed first-extraction project jobs prune `result.combinedData` after the saved project has had time to consume it; public, messaging, and review jobs are skipped. | `pruneCompletedProjectJobPayloadsLogic()` |
 | **Rate limiting**              | 5 req/min per project via Upstash Redis.                                       | `checkExpensiveAIRateLimit()`                     |
 | **Circuit breaker**            | Stops cascading failures to Gemini API.                                        | `executeWithCircuitBreaker()`                     |
+| **Owner upload fingerprint reuse** | Repeat owner uploads can reuse a recent completed project job based on server-trusted Storage metadata instead of spending another provider extraction. | `POST /api/menu-extraction/jobs` |
 
 ---
 
@@ -460,7 +462,7 @@ Scenario C (100K/mo):  ███████████████████
 
 | #   | Recommendation                                                                                                                                                            | Effort | Impact                                |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------- |
-| 7   | **Strip `result.combinedData` from terminal jobs** — After job data is saved to project, the job doesn't need the full extraction data anymore. Strip it to save storage. | Low    | ~50% reduction in job doc size        |
+| 7   | **Strip `result.combinedData` from terminal jobs** — Implemented for completed first-extraction project jobs through delayed maintenance pruning while preserving public, messaging, and review jobs. | Done | Reduces completed project job document size |
 | 8   | **Gemini cost optimization** — Use Gemini 2.0 Flash Lite for simple menus (1-2 pages), reserve 2.5 Flash for complex multi-page menus.                                    | Medium | Potentially 50% Gemini cost reduction |
 
 ---

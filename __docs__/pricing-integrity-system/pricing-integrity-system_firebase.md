@@ -2,7 +2,7 @@
 
 **Feature:** Cross-Surface Price Consistency  
 **Status:** ✅ Ready for Implementation  
-**Last Updated:** February 7, 2026  
+**Last Updated:** June 11, 2026
 **Priority:** LOW — QR/Web menu and Staff Prompt already read live. This is about Screens refresh + PDF regeneration.
 
 ---
@@ -44,6 +44,8 @@
 
 Current: **$0.00/month** — Live reads are already happening.
 Planned (with PDF + Screens): **~$0.10/month** per 1000 price changes.
+
+Runtime formatter correction (June 11, 2026): `formatMenuPrice()` now preserves text prices and numeric ranges. This is a local render fix and has no Firebase cost impact.
 
 ---
 

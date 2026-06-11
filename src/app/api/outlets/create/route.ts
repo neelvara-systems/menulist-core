@@ -263,7 +263,7 @@ export const POST = withAuth(async (request, session) => {
                 );
             }
         }
-        if (subId && newQty !== previousQty) {
+        if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING && subId && newQty !== previousQty) {
             await updateSubscription(subId, { quantity: newQty });
             subscriptionQuantityUpdated = true;
         }

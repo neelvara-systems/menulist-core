@@ -6,6 +6,8 @@
 **Applies:** 3-Year Architecture Freeze Rule  
 **Related:** `@__docs__/governance/AUTHORITY_ENFORCEMENT.md`
 
+> **Runtime note (June 11, 2026):** Active MenuList code does not expose a separate staff-facing interface. It renders a read-only `staffPrompt` card in desktop/mobile Today when the existing Today summary marks the prompt eligible.
+
 ---
 
 ## Executive Summary

@@ -1,7 +1,6 @@
 'use client';
 
 import { RESELLER_CAPS } from "@config/resellerPricing";
-import { ECOMSAI_PLATFORM_PASSWORD } from "@constant/user";
 import { ResellerProfile } from "@type/reseller";
 import { formatInrPaise } from "@util/formatters";
 import {
@@ -13,10 +12,10 @@ import {
 } from "antd";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-    LuCheck, LuLock, LuPencil,
-    LuPhone, LuPlus, LuRefreshCw, LuShield, LuUser, LuUsers
+    LuCheck, LuPencil,
+    LuPhone, LuPlus, LuRefreshCw, LuUser, LuUsers
 } from "react-icons/lu";
 
 const { Title, Text, Paragraph } = Typography;
@@ -49,7 +48,7 @@ type ResellerMonthlySummary = {
  * 
  * This screen is ONLY accessible to PLATFORM role users (founder).
  * Resellers themselves CANNOT access this screen.
- * Protected by an additional platform password gate.
+ * Protected by the page-level platform role check and platform-only API routes.
  * 
  * Features:
  * - List all reseller profiles with stats
@@ -60,8 +59,6 @@ type ResellerMonthlySummary = {
 function ResellerManagement() {
     const { token } = theme.useToken();
     const { data: session } = useSession();
-    const [authenticated, setAuthenticated] = useState(false);
-    const [passwordInput, setPasswordInput] = useState('');
     const [profiles, setProfiles] = useState<ResellerProfile[]>([]);
     const [monthlySummary, setMonthlySummary] = useState<ResellerMonthlySummary | null>(null);
     const [loading, setLoading] = useState(false);
@@ -76,17 +73,6 @@ function ResellerManagement() {
     if (session && platformRole !== 'PLATFORM') {
         redirect('/dashboard');
     }
-
-    // Platform password gate
-    const handlePasswordSubmit = () => {
-        if (passwordInput === ECOMSAI_PLATFORM_PASSWORD) {
-            setAuthenticated(true);
-            loadProfiles();
-            loadMonthlySummary();
-        } else {
-            message.error('Invalid password');
-        }
-    };
 
     const loadProfiles = useCallback(async () => {
         setLoading(true);
@@ -115,6 +101,13 @@ function ResellerManagement() {
             setMonthlyLoading(false);
         }
     }, []);
+
+    useEffect(() => {
+        if (platformRole === 'PLATFORM') {
+            loadProfiles();
+            loadMonthlySummary();
+        }
+    }, [loadMonthlySummary, loadProfiles, platformRole]);
 
     const handleCreateOrUpdate = async (values: any) => {
         setSaving(true);
@@ -176,36 +169,6 @@ function ResellerManagement() {
         });
         setDrawerOpen(true);
     };
-
-    // Password gate screen
-    if (!authenticated) {
-        return (
-            <Flex vertical align="center" justify="center" style={{ minHeight: '60vh', padding: 24 }}>
-                <Card style={{ maxWidth: 400, width: '100%' }}>
-                    <Flex vertical align="center" gap={16}>
-                        <LuShield style={{ fontSize: 48, color: token.colorPrimary }} />
-                        <Title level={3} style={{ margin: 0 }}>Reseller Management</Title>
-                        <Text type="secondary">Platform admin access required</Text>
-                        <Form onFinish={handlePasswordSubmit} style={{ width: '100%' }}>
-                            <Form.Item>
-                                <Input.Password
-                                    size="large"
-                                    placeholder="Enter platform password"
-                                    prefix={<LuLock />}
-                                    value={passwordInput}
-                                    onChange={e => setPasswordInput(e.target.value)}
-                                    onPressEnter={handlePasswordSubmit}
-                                />
-                            </Form.Item>
-                            <Button type="primary" block size="large" htmlType="submit" icon={<LuCheck />}>
-                                Authenticate
-                            </Button>
-                        </Form>
-                    </Flex>
-                </Card>
-            </Flex>
-        );
-    }
 
     // Columns for the resellers table
     const columns = [

@@ -3,6 +3,7 @@
 **Feature Status:** ✅ FULLY IMPLEMENTED  
 **Priority:** Medium (#5 in Expansion Surfaces)  
 **Feature Flag:** `ENABLE_GUEST_FEEDBACK: true`
+**Last Production Audit:** June 11, 2026
 
 ---
 
@@ -102,8 +103,9 @@ The Guest Feedback System is a **private correction channel** for guest feedback
 | File                                                                              | Purpose                                                                           | Status |
 | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------ |
 | `src/types/guestFeedback.ts`                                                      | GuestFeedback type + FeedbackDefaults + form types                                | ✅     |
-| `src/database/guestFeedback/index.ts`                                             | DAL: submitGuestFeedback, getFeedbackList, updateFeedbackStatus, getFeedbackCount | ✅     |
-| `src/app/api/public/feedback/submit/route.ts`                                     | Public submit endpoint (no auth, rate limited)                                    | ✅     |
+| `src/database/guestFeedback/index.ts`                                             | Client owner DAL: getFeedbackList, updateFeedbackStatus, getFeedbackCount         | ✅     |
+| `src/database/guestFeedback/server.ts`                                            | Admin DAL: public API feedback writes + compact MOL event writes                  | ✅     |
+| `src/app/api/public/feedback/submit/route.ts`                                     | Public submit endpoint (no auth, rate limited, Admin SDK write)                   | ✅     |
 | `src/app/feedback/[projectId]/page.tsx`                                           | Standalone feedback page (QR surface, server component)                           | ✅     |
 | `src/middleware/publicApi.ts`                                                     | Public rate limiting + honeypot + sanitization                                    | ✅     |
 | `src/lib/utils/whatsappLink.ts`                                                   | WhatsApp deep link + phone validation + formatting                                | ✅     |
@@ -132,7 +134,7 @@ Public feedback pages reuse the same temporary-status banner, business identity 
 | `src/lib/rateLimit/configs.ts`           | Added `FEEDBACK_SUBMISSION` rate limit config                   | ✅     |
 | `src/lib/validation/apiSchemas.ts`       | Added `guestFeedbackSubmitSchema` + `guestFeedbackUpdateSchema` | ✅     |
 | `src/constants/navigations.ts`           | Added `/feedback` route with `LuTicket` icon                    | ✅     |
-| `firestore.rules`                        | Added guestFeedback collection security rules                   | ✅     |
+| `firestore.rules`                        | guestFeedback client rules: API-only creates, tenant/store reads, status-only updates | ✅     |
 | `firestore.indexes.json`                 | Added 3 composite indexes                                       | ✅     |
 | `functions/src/decisionBlocksScoring.ts` | Added retention cleanup to nightly scheduler                    | ✅     |
 
@@ -168,6 +170,14 @@ feedbackDefaults?: {
 feedbackEnabled?: boolean; // default: true — master store toggle
 reviewUrl?: string;        // Google Review URL for CTA
 ```
+
+### Production Boundary Confirmed June 11, 2026
+
+- Public submissions go through `POST /api/public/feedback/submit`; direct unauthenticated Firestore creates are denied.
+- The public API verifies project existence, project active/deleted status, store tenant match, store active/deleted/blocked state, project feedback toggle, and store feedback toggle before writing.
+- Store-owned field defaults are enforced on the server. Hidden contact fields are dropped even if a caller posts them directly, and required fields are validated by the API.
+- Store-scoped owner/manager sessions can update only feedback from their store. Updates are limited to `status`, `needsAttention`, `modifiedOn`, `modifiedBy`, and `ownerNote`.
+- Guest feedback writes do not invalidate public menu/OBP cache because feedback is private owner workflow data and does not change public truth packets.
 
 ---
 

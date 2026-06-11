@@ -1,18 +1,30 @@
 # Ops Control Room — Implementation Blueprint
 
-**Status:** ✅ IMPLEMENTED — Superadmin access at /ops  
+**Status:** ✅ IMPLEMENTED — Platform-only access at /ops
 **Created:** February 20, 2026  
-**Last Updated:** June 2, 2026
+**Last Updated:** June 11, 2026
 **Audience:** Developers
 
 ---
+
+## June 11, 2026 Audit Notes
+
+- Desktop and mobile Ops Control Room read Firestore only after the session has resolved to `platformRole === 'PLATFORM'`.
+- `/api/ops/platform-notifications` returns `404` when `ENABLE_PLATFORM_NOTIFICATION_DASHBOARD` is disabled, before any alert reads or writes.
+- `/api/ops/owner-notifications` returns `404` when `ENABLE_OWNER_NOTIFICATIONS` or `ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD` is disabled.
+- `/api/ops/messaging-onboarding` returns `404` when `ENABLE_MESSAGING_ONBOARDING_DASHBOARD` is disabled.
+- `/api/ops/messaging-onboarding` reads latest health through `systemHealth/messaging_onboarding_control.lastSnapshotId` and one direct snapshot read, avoiding document-id prefix scans or a `__name__` index dependency.
+- `/api/platform/entity-blocks` returns `404` when `ENABLE_PLATFORM_ENTITY_BLOCKS` is disabled.
+- Invalid JSON on ops mutations is handled as invalid input instead of a generic server failure.
+- Chrome visual QA found the desktop header action group could overflow horizontally; the action group now wraps inside the content column.
+- Chrome visual QA found platform notification messages could collapse in the alert table; the table now keeps a readable Message column with table-level horizontal scroll.
 
 ## Architecture Overview
 
 ```
 Route: /ops (Next.js page)
-Access: platformRole === 'PLATFORM' || 'ADMIN' (superadmin only)
-Data: Fetch-on-open, manual refresh button
+Access: platformRole === 'PLATFORM'
+Data: Fetch-on-open after platform session confirmation, manual refresh button
 Layout: Single column, 5 numeric card sections
 ```
 
@@ -107,6 +119,7 @@ export async function getRecentAlerts(limit: number = 10): Promise<Alert[]> {
 { success: true, SAFE_MODE: boolean }
 
 // Access: withAuth({ requiredPlatformRole: 'PLATFORM' })
+// Invalid JSON or invalid action returns 400.
 ```
 
 ### POST `/api/ops/mute-alerts`
@@ -119,6 +132,7 @@ export async function getRecentAlerts(limit: number = 10): Promise<Alert[]> {
 { success: true, mutedUntil: string }
 
 // Access: withAuth({ requiredPlatformRole: 'PLATFORM' })
+// Invalid JSON or out-of-range duration returns 400.
 ```
 
 ## UI Design (Lean v1)

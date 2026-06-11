@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { PERMISSIONS } from '@constant/permissions';
+import { requireConfiguredGoogleAnalyticsProperty, toGoogleAnalyticsPropertyResource } from '@lib/analytics/googlePropertyAccess';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../middleware/auth';
@@ -22,14 +23,17 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const startDate = searchParams.get('startDate');
         const endDate = searchParams.get('endDate');
         
-        if (!propertyId || !startDate || !endDate) {
+        if (!startDate || !endDate) {
             return NextResponse.json({ 
                 error: 'Property ID, start date, and end date are required' 
             }, { status: 400 });
         }
+        const propertyAccessError = await requireConfiguredGoogleAnalyticsProperty(request, session, propertyId);
+        if (propertyAccessError) return propertyAccessError;
+        const property = toGoogleAnalyticsPropertyResource(propertyId)!;
 
         const [response] = await analyticsClient.runReport({
-            property: `properties/${propertyId}`,
+            property,
             dateRanges: [{ startDate, endDate }],
             dimensions: [
                 { name: 'eventName' },

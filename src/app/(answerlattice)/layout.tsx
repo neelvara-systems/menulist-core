@@ -23,7 +23,40 @@ export const metadata: Metadata = {
     applicationName: 'Answerlattice',
     title: 'Answerlattice — Governed Answer Infrastructure',
     description: 'The Governed Answer Infrastructure for SaaS Support',
+    metadataBase: new URL('https://answerlattice.com'),
     manifest: '/answerlattice.webmanifest',
+    keywords: [
+        'governed answer infrastructure',
+        'support knowledge infrastructure',
+        'canonical answers',
+        'support widget',
+        'SaaS support knowledge',
+    ],
+    authors: [{ name: 'Answerlattice', url: 'https://answerlattice.com' }],
+    creator: 'Answerlattice',
+    publisher: 'Answerlattice',
+    openGraph: {
+        title: 'Answerlattice — Governed Answer Infrastructure',
+        description: 'The governed answer infrastructure that keeps product truth consistent across AI, documentation, and support systems.',
+        url: 'https://answerlattice.com',
+        siteName: 'Answerlattice',
+        images: [
+            {
+                url: '/answerlattice-og-image.png',
+                width: 1200,
+                height: 630,
+                alt: 'Answerlattice governed answer infrastructure',
+            },
+        ],
+        locale: 'en_US',
+        type: 'website',
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'Answerlattice — Governed Answer Infrastructure',
+        description: 'The governed answer infrastructure that keeps product truth consistent across AI, documentation, and support systems.',
+        images: ['/answerlattice-og-image.png'],
+    },
     icons: {
         icon: [
             { url: '/answerlattice-favicon.ico', sizes: 'any' },

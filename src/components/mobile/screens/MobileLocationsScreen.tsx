@@ -122,7 +122,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
 
     const storesList = tenantDetails?.storesList || [];
     const activeStoresList = storesList.filter((store: any) => store.active !== false);
-    const outletCount = storesList.filter((store: any) => !store.isMaster).length;
+    const outletCount = activeStoresList.filter((store: any) => !store.isMaster).length;
     const currency = activeSubscription?.currency || 'INR';
     const amount = activeSubscription?.amount || 0;
     const isManualBilling = activeSubscription?.billingMode === 'manual';

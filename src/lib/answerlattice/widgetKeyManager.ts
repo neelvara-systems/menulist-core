@@ -1,14 +1,11 @@
 import { PRODUCT_IDS } from '@constant/product';
 import { ANSWERLATTICE_WIDGET_SCOPES } from '@lib/answerlattice/widgetConfig';
-import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 
 export const ANSWERLATTICE_WIDGET_KEY_SCHEMA_VERSION = 'answerlattice.widgetKeys.v1';
 export const ANSWERLATTICE_WIDGET_KEY_LIMIT = 10;
 
 const DEFAULT_KEY_NAME = 'Widget key';
-const ENCRYPTION_PREFIX = 'v1';
-const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
-const ENCRYPTION_SECRET_ENV = 'ANSWERLATTICE_WIDGET_KEY_ENCRYPTION_SECRET';
 
 export type AnswerlatticeWidgetKeyStatus = 'active' | 'revoked';
 
@@ -62,59 +59,6 @@ const safeString = (value: unknown): string => (typeof value === 'string' ? valu
 export const normalizeAnswerlatticeWidgetKeyName = (value: unknown): string => {
     const normalized = safeString(value).replace(/\s+/g, ' ').slice(0, 80);
     return normalized || DEFAULT_KEY_NAME;
-};
-
-export const getAnswerlatticeWidgetKeyEncryptionReadiness = () => ({
-    configured: Boolean(safeString(process.env[ENCRYPTION_SECRET_ENV])),
-    envName: ENCRYPTION_SECRET_ENV,
-});
-
-const getEncryptionKey = (): Buffer | null => {
-    const secret = safeString(process.env[ENCRYPTION_SECRET_ENV]);
-    if (!secret) return null;
-    return createHash('sha256').update(secret).digest();
-};
-
-export const encryptAnswerlatticeWidgetKey = (apiKey: string): string | null => {
-    const encryptionKey = getEncryptionKey();
-    if (!encryptionKey) return null;
-
-    const iv = randomBytes(12);
-    const cipher = createCipheriv(ENCRYPTION_ALGORITHM, encryptionKey, iv);
-    const ciphertext = Buffer.concat([cipher.update(apiKey, 'utf8'), cipher.final()]);
-    const tag = cipher.getAuthTag();
-
-    return [
-        ENCRYPTION_PREFIX,
-        iv.toString('base64url'),
-        tag.toString('base64url'),
-        ciphertext.toString('base64url'),
-    ].join(':');
-};
-
-export const decryptAnswerlatticeWidgetKey = (encryptedKey: unknown): string | null => {
-    const encrypted = safeString(encryptedKey);
-    const encryptionKey = getEncryptionKey();
-    if (!encrypted || !encryptionKey) return null;
-
-    const [version, ivPart, tagPart, ciphertextPart] = encrypted.split(':');
-    if (version !== ENCRYPTION_PREFIX || !ivPart || !tagPart || !ciphertextPart) return null;
-
-    try {
-        const decipher = createDecipheriv(
-            ENCRYPTION_ALGORITHM,
-            encryptionKey,
-            Buffer.from(ivPart, 'base64url'),
-        );
-        decipher.setAuthTag(Buffer.from(tagPart, 'base64url'));
-        const plaintext = Buffer.concat([
-            decipher.update(Buffer.from(ciphertextPart, 'base64url')),
-            decipher.final(),
-        ]);
-        return plaintext.toString('utf8');
-    } catch {
-        return null;
-    }
 };
 
 const normalizeRecord = (
@@ -236,7 +180,6 @@ export const getAnswerlatticeWidgetKeyRecordById = (
 
 export const buildAnswerlatticeWidgetKeySummaries = (rawState: unknown): AnswerlatticeWidgetKeySummary[] => {
     const state = normalizeAnswerlatticeWidgetApiState(rawState);
-    const encryptionReady = getAnswerlatticeWidgetKeyEncryptionReadiness().configured;
 
     return state.keyHashes
         .map((keyHash) => {
@@ -251,8 +194,8 @@ export const buildAnswerlatticeWidgetKeySummaries = (rawState: unknown): Answerl
                 displayKey: `${record.keyPrefix}${suffix}`,
                 createdAt: record.createdAt,
                 updatedAt: record.updatedAt || null,
-                copyable: Boolean(record.encryptedKey && encryptionReady),
-                legacy: Boolean(record.legacy || !record.encryptedKey),
+                copyable: false,
+                legacy: Boolean(record.legacy),
                 status: record.status,
                 isActive: state.activeKeyHash === keyHash,
             };
@@ -274,21 +217,20 @@ export const buildAnswerlatticeWidgetApiStateWithNewKey = (params: {
         throw new Error('ANSWERLATTICE_WIDGET_KEY_LIMIT_REACHED');
     }
 
-    const encryptedKey = encryptAnswerlatticeWidgetKey(params.apiKey);
     const record: AnswerlatticeWidgetKeyRecord = {
         id: randomUUID(),
         name: normalizeAnswerlatticeWidgetKeyName(params.name),
         keyPrefix: params.apiKey.slice(0, 7),
         keySuffix: params.apiKey.slice(-4),
-        encryptedKey,
-        encryptionVersion: encryptedKey ? `${ENCRYPTION_ALGORITHM}:${ENCRYPTION_PREFIX}` : null,
+        encryptedKey: null,
+        encryptionVersion: null,
         status: 'active',
         productId: PRODUCT_IDS.ANSWERLATTICE,
         purpose: 'answerlattice_widget',
         scopes: [...ANSWERLATTICE_WIDGET_SCOPES],
         createdAt: nowIso,
         updatedAt: nowIso,
-        legacy: !encryptedKey,
+        legacy: false,
     };
 
     const keysByHash = {
@@ -300,7 +242,7 @@ export const buildAnswerlatticeWidgetApiStateWithNewKey = (params: {
 
     return {
         record,
-        copyable: Boolean(encryptedKey),
+        copyable: false,
         state: {
             ...currentState,
             activeKeyHash: params.keyHash,

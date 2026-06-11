@@ -414,7 +414,7 @@ Intake processing is owner-triggered. Scheduler/ops do not discover active intak
 | Time to first useful source audit | <3 minutes for small URL/docs import |
 | Time to first product map | <7 minutes for starter import |
 | Owner launch decisions | 5-15 decisions for first launch |
-| Time to first approved answer | <10 minutes after paid workspace and source import |
+| Time to first approved answer | One focused setup session for small starter imports, after human review |
 | Source coverage | At least top 2-5 product pages mapped in first session |
 | High-risk unresolved count | Zero before support is marked ready for that topic |
 | Draft approval rate | >60% approved with minor edits |

@@ -13,6 +13,7 @@ import {
     extractScreenMenuItemsFromProject,
     normalizeOwnerSlideCaption,
 } from "@lib/screen/screenContent";
+import { syncPublicScreenState } from "@lib/screen/publicScreenState";
 import { generateScreenToken } from "@lib/screen/utils";
 import {
     Campaign,
@@ -688,6 +689,7 @@ export const initializeScreenState = async (): Promise<DigitalScreenState> => {
             await setDoc(docRef, {
                 screen: screenState
             }, { merge: true });
+            await syncPublicScreenState(session.sId, screenState);
 
             console.log(`✅ [initializeScreenState] Created screen with token: ${screenToken}`);
             return screenState;
@@ -706,12 +708,27 @@ export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: bo
         async () => {
             const session = await getActiveSession();
             const docRef = getCampaignsSummaryDocRef(session);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists() || !docSnap.data().screen?.screenToken) {
+                throw new Error("Screen not initialized");
+            }
+
+            const data = docSnap.data() as CampaignsSummaryDocument;
+            const now = Timestamp.now();
+            const nextScreen: DigitalScreenState = {
+                ...data.screen!,
+                ownerOverrideEnabled: typeof settings.ownerOverrideEnabled === "boolean"
+                    ? settings.ownerOverrideEnabled
+                    : data.screen!.ownerOverrideEnabled,
+                contentVersion: (data.screen?.contentVersion || 0) + 1,
+                lastContentChangeAt: now,
+            };
 
             await setDoc(docRef, {
-                screen: {
-                    ...settings,
-                }
+                screen: nextScreen
             }, { merge: true });
+            await syncPublicScreenState(session.sId, nextScreen);
 
             console.log(`✅ [updateScreenSettings] Updated:`, settings);
         },
@@ -736,6 +753,10 @@ export const addPinnedSlide = async (slide: ScreenSlide): Promise<void> => {
             }
 
             const data = docSnap.data() as CampaignsSummaryDocument;
+            if (!data.screen?.screenToken) {
+                throw new Error("Screen not initialized");
+            }
+
             const currentSlides = data.screen?.pinnedSlides || [];
 
             if (currentSlides.length >= 3) {
@@ -743,14 +764,18 @@ export const addPinnedSlide = async (slide: ScreenSlide): Promise<void> => {
             }
 
             const updatedSlides = [...currentSlides, slide];
+            const now = Timestamp.now();
+            const nextScreen: DigitalScreenState = {
+                ...data.screen,
+                pinnedSlides: updatedSlides,
+                contentVersion: (data.screen?.contentVersion || 0) + 1,
+                lastContentChangeAt: now,
+            };
 
             await setDoc(docRef, {
-                screen: {
-                    pinnedSlides: updatedSlides,
-                    contentVersion: (data.screen?.contentVersion || 0) + 1,
-                    lastContentChangeAt: Timestamp.now()
-                }
+                screen: nextScreen
             }, { merge: true });
+            await syncPublicScreenState(session.sId, nextScreen);
 
             console.log(`✅ [addPinnedSlide] Added slide: ${slide.id}`);
         },
@@ -774,16 +799,24 @@ export const removePinnedSlide = async (slideId: string): Promise<void> => {
             }
 
             const data = docSnap.data() as CampaignsSummaryDocument;
+            if (!data.screen?.screenToken) {
+                throw new Error("Screen not initialized");
+            }
+
             const currentSlides = data.screen?.pinnedSlides || [];
             const updatedSlides = currentSlides.filter(s => s.id !== slideId);
+            const now = Timestamp.now();
+            const nextScreen: DigitalScreenState = {
+                ...data.screen,
+                pinnedSlides: updatedSlides,
+                contentVersion: (data.screen?.contentVersion || 0) + 1,
+                lastContentChangeAt: now,
+            };
 
             await setDoc(docRef, {
-                screen: {
-                    pinnedSlides: updatedSlides,
-                    contentVersion: (data.screen?.contentVersion || 0) + 1,
-                    lastContentChangeAt: Timestamp.now()
-                }
+                screen: nextScreen
             }, { merge: true });
+            await syncPublicScreenState(session.sId, nextScreen);
 
             console.log(`✅ [removePinnedSlide] Removed slide: ${slideId}`);
         },
@@ -807,6 +840,10 @@ export const updatePinnedSlideCaption = async (slideId: string, caption: string)
             }
 
             const data = docSnap.data() as CampaignsSummaryDocument;
+            if (!data.screen?.screenToken) {
+                throw new Error("Screen not initialized");
+            }
+
             const currentSlides = data.screen?.pinnedSlides || [];
             const nextCaption = normalizeOwnerSlideCaption(caption);
             const updatedSlides = currentSlides.map((slide) => (
@@ -814,14 +851,18 @@ export const updatePinnedSlideCaption = async (slideId: string, caption: string)
                     ? { ...slide, caption: nextCaption }
                     : slide
             ));
+            const now = Timestamp.now();
+            const nextScreen: DigitalScreenState = {
+                ...data.screen,
+                pinnedSlides: updatedSlides,
+                contentVersion: (data.screen?.contentVersion || 0) + 1,
+                lastContentChangeAt: now,
+            };
 
             await setDoc(docRef, {
-                screen: {
-                    pinnedSlides: updatedSlides,
-                    contentVersion: (data.screen?.contentVersion || 0) + 1,
-                    lastContentChangeAt: Timestamp.now()
-                }
+                screen: nextScreen
             }, { merge: true });
+            await syncPublicScreenState(session.sId, nextScreen);
 
             console.log(`✅ [updatePinnedSlideCaption] Updated slide: ${slideId}`);
         },
@@ -847,13 +888,17 @@ export const bumpScreenContentVersion = async (): Promise<void> => {
             }
 
             const data = docSnap.data() as CampaignsSummaryDocument;
+            const now = Timestamp.now();
+            const nextScreen: DigitalScreenState = {
+                ...data.screen!,
+                contentVersion: (data.screen?.contentVersion || 0) + 1,
+                lastContentChangeAt: now,
+            };
 
             await setDoc(docRef, {
-                screen: {
-                    contentVersion: (data.screen?.contentVersion || 0) + 1,
-                    lastContentChangeAt: Timestamp.now()
-                }
+                screen: nextScreen
             }, { merge: true });
+            await syncPublicScreenState(session.sId, nextScreen);
 
             console.log(`✅ [bumpScreenContentVersion] Bumped to v${(data.screen?.contentVersion || 0) + 1}`);
         },

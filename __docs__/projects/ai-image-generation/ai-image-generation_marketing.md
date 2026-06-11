@@ -1,15 +1,15 @@
 # AI Image Generation — Marketing & Sales
 
-**Feature:** AI-Powered Image Generation & Editing  
-**Status:** ✅ Production Ready  
-**Last Updated:** January 28, 2026  
+**Feature:** Menu Image Generation & Editing
+**Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
+**Last Updated:** June 11, 2026
 **Audience:** Sales Team, Marketing, Landing Page Writers
 
 ---
 
 ## Elevator Pitch (30-Second Hook)
 
-> "MenuList AI turns your menu text into stunning professional photos in seconds. No photographer needed. No expensive equipment. Just type your dish name, and watch AI create appetizing images that make customers hungry. Generate one image or process your entire 200-item menu overnight—all automatically."
+> "MenuList helps owners prepare menu item images for review before publishing. Generate one image or prepare a bounded batch, then keep only the images that match the real business."
 
 ---
 

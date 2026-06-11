@@ -15,19 +15,19 @@ The dashboard and public quickstarts now recommend env-backed installs for clien
 
 ```bash
 # Next.js / Vercel
-NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=al_your_widget_key
+NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=al_full_widget_key_shown_once
 NEXT_PUBLIC_ANSWERLATTICE_WIDGET_SCRIPT_SRC=https://answerlattice.com/widget/v1/answerlattice-widget.js
 
 # Vite / React SPA
-VITE_ANSWERLATTICE_WIDGET_KEY=al_your_widget_key
+VITE_ANSWERLATTICE_WIDGET_KEY=al_full_widget_key_shown_once
 VITE_ANSWERLATTICE_WIDGET_SCRIPT_SRC=https://answerlattice.com/widget/v1/answerlattice-widget.js
 
 # Nuxt
-NUXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=al_your_widget_key
+NUXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=al_full_widget_key_shown_once
 NUXT_PUBLIC_ANSWERLATTICE_WIDGET_SCRIPT_SRC=https://answerlattice.com/widget/v1/answerlattice-widget.js
 ```
 
-This is guidance, not a new Answerlattice runtime authority model. The only browser-safe credential is the public `al_*` widget key. Client products must not put Firebase service accounts, Answerlattice admin credentials, private API keys, tenant IDs, store IDs, user IDs, emails, phones, billing data, or customer records in frontend env files.
+This is guidance, not a new Answerlattice runtime authority model. The placeholder must be replaced with the full `al_*` value shown immediately after key creation. The saved key identifier is only for finding the key later in the dashboard. The only browser-safe credential is the public `al_*` widget key. Client products must not put Firebase service accounts, Answerlattice admin credentials, private API keys, tenant IDs, store IDs, user IDs, emails, phones, billing data, or customer records in frontend env files.
 
 ## Agent Install Contract Source
 
@@ -80,7 +80,7 @@ Framework examples read from client-safe env variables where the framework suppo
 
 The route uses `runtimeStatus`, `allowedOrigins`, `blockedRoutes`, and widget key metadata already returned by `/api/answerlattice/widget-config`. It optionally reads `/api/answerlattice/activation/summary` for workspace name/readiness. The widget management Install tab now links to `/answerlattice/install-center` instead of duplicating the full agent packet. Existing `/answerlattice/widget` remains the widget configuration route and must keep working. The protected packet/kit endpoints perform one authenticated store read and never return the raw key by default.
 
-The workspace-specific agent kit ZIP may include widget key prefix, dashboard-owned allowed origins, dashboard-owned blocked routes, public script URL, framework choice, install checklist, and env placeholders. It must not include the raw widget key unless the user explicitly chooses a one-time include/reveal action through the existing key flow.
+The workspace-specific agent kit ZIP may include the explicit full-key placeholder, saved-key identifier, dashboard-owned allowed origins, dashboard-owned blocked routes, public script URL, framework choice, install checklist, and env placeholders. It must not include the raw widget key unless the user explicitly chooses a one-time include/reveal action through the existing key flow. The saved-key identifier is for dashboard lookup only and must not be used as the installed widget key.
 
 Allowed origins and blocked routes are edited in Answerlattice dashboard UI. The generated agent packet may include the saved values for verification and local route-guard decisions, but must not tell the client product to create duplicate owner settings.
 

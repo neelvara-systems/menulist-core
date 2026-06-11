@@ -11,11 +11,13 @@ import type {
 } from '@database/ownerDashboard';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
 import { theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { LuExternalLink, LuGlobe, LuInfo, LuMapPin, LuMessageSquare, LuPhone, LuTrendingUp } from 'react-icons/lu';
 import { Button, Card, DotLoading, Flex, Popover, Tag, Text, Title } from '../../antd';
 
 type OBPCardMode = 'today' | 'overview' | 'daily' | 'weekly' | 'monthly' | 'overall';
 type AntThemeToken = ReturnType<typeof theme.useToken>['token'];
+type DashboardTranslator = (key: string, values?: Record<string, string | number>) => string;
 
 // Social platform colors are brand cues; surrounding dashboard chrome uses Ant tokens.
 const SOCIAL_BRAND_COLORS = {
@@ -36,13 +38,13 @@ interface MobileOBPMetricsCardProps {
     mode: OBPCardMode;
 }
 
-function renderActionRows(actions: OBPActionBreakdown, token: AntThemeToken) {
+function renderActionRows(actions: OBPActionBreakdown, token: AntThemeToken, t: DashboardTranslator) {
     const rows = [
-        { key: 'call', label: 'Call', value: actions.call, icon: <LuPhone color={token.colorSuccess} size={14} /> },
-        { key: 'whatsapp', label: 'WhatsApp', value: actions.whatsapp, icon: <LuMessageSquare color={token.colorSuccess} size={14} /> },
-        { key: 'directions', label: 'Directions', value: actions.directions, icon: <LuMapPin color={token.colorWarning} size={14} /> },
-        { key: 'reserve', label: 'Reserve', value: actions.reserve, icon: <LuMessageSquare color={token.colorPrimary} size={14} /> },
-        { key: 'order', label: 'Order', value: actions.order, icon: <LuExternalLink color={token.colorInfo} size={14} /> },
+        { key: 'call', label: t('actions.call'), value: actions.call, icon: <LuPhone color={token.colorSuccess} size={14} /> },
+        { key: 'whatsapp', label: t('actions.whatsapp'), value: actions.whatsapp, icon: <LuMessageSquare color={token.colorSuccess} size={14} /> },
+        { key: 'directions', label: t('actions.directions'), value: actions.directions, icon: <LuMapPin color={token.colorWarning} size={14} /> },
+        { key: 'reserve', label: t('actions.reserve'), value: actions.reserve, icon: <LuMessageSquare color={token.colorPrimary} size={14} /> },
+        { key: 'order', label: t('actions.order'), value: actions.order, icon: <LuExternalLink color={token.colorInfo} size={14} /> },
     ].filter((row) => row.value > 0);
 
     if (rows.length === 0) return null;
@@ -50,7 +52,7 @@ function renderActionRows(actions: OBPActionBreakdown, token: AntThemeToken) {
     return (
         <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                Action breakdown
+                {t('obp.actionBreakdown')}
             </Text>
             <Flex gap={6} vertical>
                 {rows.map((row) => (
@@ -67,11 +69,11 @@ function renderActionRows(actions: OBPActionBreakdown, token: AntThemeToken) {
     );
 }
 
-function renderShareRows(shares: OBPShareBreakdown, token: AntThemeToken) {
+function renderShareRows(shares: OBPShareBreakdown, token: AntThemeToken, t: DashboardTranslator) {
     const rows = [
-        { key: 'whatsapp', label: 'WhatsApp shares', value: shares.whatsapp, icon: <LuMessageSquare color={token.colorSuccess} size={14} /> },
-        { key: 'copy_link', label: 'Copy link', value: shares.copy_link, icon: <LuExternalLink color={token.colorInfo} size={14} /> },
-        { key: 'copy_message', label: 'Copy message', value: shares.copy_message, icon: <LuExternalLink color={token.colorPrimary} size={14} /> },
+        { key: 'whatsapp', label: t('obp.whatsappShares'), value: shares.whatsapp, icon: <LuMessageSquare color={token.colorSuccess} size={14} /> },
+        { key: 'copy_link', label: t('obp.copyLink'), value: shares.copy_link, icon: <LuExternalLink color={token.colorInfo} size={14} /> },
+        { key: 'copy_message', label: t('obp.copyMessage'), value: shares.copy_message, icon: <LuExternalLink color={token.colorPrimary} size={14} /> },
     ].filter((row) => row.value > 0);
 
     if (rows.length === 0) return null;
@@ -79,7 +81,7 @@ function renderShareRows(shares: OBPShareBreakdown, token: AntThemeToken) {
     return (
         <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                Share breakdown
+                {t('obp.shareBreakdown')}
             </Text>
             <Flex gap={6} vertical>
                 {rows.map((row) => (
@@ -96,12 +98,12 @@ function renderShareRows(shares: OBPShareBreakdown, token: AntThemeToken) {
     );
 }
 
-function renderLinkRows(links: OBPLinkBreakdown, token: AntThemeToken) {
+function renderLinkRows(links: OBPLinkBreakdown, token: AntThemeToken, t: DashboardTranslator) {
     const rows = [
-        { key: 'google_review', label: 'Google reviews', value: links.google_review, icon: <LuGlobe color={token.colorInfo} size={14} /> },
-        { key: 'instagram', label: 'Instagram', value: links.instagram, icon: <LuExternalLink color={SOCIAL_BRAND_COLORS.instagram} size={14} /> },
-        { key: 'facebook', label: 'Facebook', value: links.facebook, icon: <LuExternalLink color={SOCIAL_BRAND_COLORS.facebook} size={14} /> },
-        { key: 'website', label: 'Website', value: links.website, icon: <LuExternalLink color={token.colorInfo} size={14} /> },
+        { key: 'google_review', label: t('obp.googleReviews'), value: links.google_review, icon: <LuGlobe color={token.colorInfo} size={14} /> },
+        { key: 'instagram', label: t('obp.instagram'), value: links.instagram, icon: <LuExternalLink color={SOCIAL_BRAND_COLORS.instagram} size={14} /> },
+        { key: 'facebook', label: t('obp.facebook'), value: links.facebook, icon: <LuExternalLink color={SOCIAL_BRAND_COLORS.facebook} size={14} /> },
+        { key: 'website', label: t('obp.website'), value: links.website, icon: <LuExternalLink color={token.colorInfo} size={14} /> },
     ].filter((row) => row.value > 0);
 
     if (rows.length === 0) return null;
@@ -109,7 +111,7 @@ function renderLinkRows(links: OBPLinkBreakdown, token: AntThemeToken) {
     return (
         <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                Link taps
+                {t('obp.linkTaps')}
             </Text>
             <Flex gap={6} vertical>
                 {rows.map((row) => (
@@ -126,7 +128,7 @@ function renderLinkRows(links: OBPLinkBreakdown, token: AntThemeToken) {
     );
 }
 
-function renderSourceRows(sources: OBPSourceBreakdown[] | undefined, token: AntThemeToken) {
+function renderSourceRows(sources: OBPSourceBreakdown[] | undefined, token: AntThemeToken, t: DashboardTranslator) {
     const rows = (sources || []).filter((source) => (
         source.views > 0 || source.actionClicks > 0 || source.menuClicks > 0 || source.linkClicks > 0
     ));
@@ -135,17 +137,17 @@ function renderSourceRows(sources: OBPSourceBreakdown[] | undefined, token: AntT
     return (
         <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                Visitor sources
+                {t('details.sections.visitorSources')}
             </Text>
             <Flex gap={8} vertical>
                 {rows.slice(0, 6).map((source) => (
                     <Flex key={source.source} align="center" justify="space-between" gap={10}>
                         <Text type="secondary" style={{ fontSize: 12 }}>{source.label}</Text>
                         <Text style={{ fontSize: 12, textAlign: 'right' }}>
-                            {source.views.toLocaleString()} views
-                            {source.menuClicks > 0 ? ` · ${source.menuClicks.toLocaleString()} menu` : ''}
-                            {source.actionClicks > 0 ? ` · ${source.actionClicks.toLocaleString()} actions` : ''}
-                            {source.linkClicks > 0 ? ` · ${source.linkClicks.toLocaleString()} links` : ''}
+                            {t('obp.sourceViews', { count: source.views.toLocaleString() })}
+                            {source.menuClicks > 0 ? ` · ${t('obp.sourceMenu', { count: source.menuClicks.toLocaleString() })}` : ''}
+                            {source.actionClicks > 0 ? ` · ${t('obp.sourceActions', { count: source.actionClicks.toLocaleString() })}` : ''}
+                            {source.linkClicks > 0 ? ` · ${t('obp.sourceLinks', { count: source.linkClicks.toLocaleString() })}` : ''}
                         </Text>
                     </Flex>
                 ))}
@@ -154,7 +156,7 @@ function renderSourceRows(sources: OBPSourceBreakdown[] | undefined, token: AntT
     );
 }
 
-function renderLanguageRows(languages: OBPLanguageUsage[] | undefined, token: AntThemeToken) {
+function renderLanguageRows(languages: OBPLanguageUsage[] | undefined, token: AntThemeToken, t: DashboardTranslator) {
     const rows = (languages || []).filter((language) => (
         language.views > 0 || language.sessions > 0 || language.adoptions > 0
     ));
@@ -163,15 +165,15 @@ function renderLanguageRows(languages: OBPLanguageUsage[] | undefined, token: An
     return (
         <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                OBP languages
+                {t('obp.languages')}
             </Text>
             <Flex gap={6} vertical>
                 {rows.slice(0, 5).map((language) => (
                     <Flex key={language.language} align="center" justify="space-between" gap={10}>
                         <Text type="secondary" style={{ fontSize: 12 }}>{language.label}</Text>
                         <Text style={{ fontSize: 12, textAlign: 'right' }}>
-                            {Math.max(language.sessions, language.views).toLocaleString()} page opens
-                            {language.adoptions > 0 ? ` · ${language.adoptions.toLocaleString()} stayed` : ''}
+                            {t('obp.pageOpens', { count: Math.max(language.sessions, language.views).toLocaleString() })}
+                            {language.adoptions > 0 ? ` · ${t('obp.stayed', { count: language.adoptions.toLocaleString() })}` : ''}
                         </Text>
                     </Flex>
                 ))}
@@ -180,54 +182,55 @@ function renderLanguageRows(languages: OBPLanguageUsage[] | undefined, token: An
     );
 }
 
-function renderMetricCards(metrics: OBPPeriodMetrics, token: AntThemeToken) {
+function renderMetricCards(metrics: OBPPeriodMetrics, token: AntThemeToken, t: DashboardTranslator) {
     return (
         <>
             <Flex gap={12} wrap>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
                         <LuGlobe color={token.colorInfo} size={14} />
-                        <Text type="secondary">Page Views</Text>
+                        <Text type="secondary">{t('obp.pageViews')}</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{metrics.views.toLocaleString()}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
                         <LuExternalLink color={token.colorPrimary} size={14} />
-                        <Text type="secondary">View Menu Clicks</Text>
+                        <Text type="secondary">{t('obp.viewMenuClicks')}</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{metrics.menuClicks.toLocaleString()}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
                         <LuTrendingUp color={token.colorSuccess} size={14} />
-                        <Text type="secondary">Actions</Text>
+                        <Text type="secondary">{t('obp.actions')}</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{metrics.actionClicks.toLocaleString()}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
-                    <Text type="secondary">Shares</Text>
+                    <Text type="secondary">{t('obp.shares')}</Text>
                     <Title level={3} style={{ margin: 0 }}>{metrics.shares.toLocaleString()}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
                         <LuExternalLink color={token.colorInfo} size={14} />
-                        <Text type="secondary">Link Taps</Text>
+                        <Text type="secondary">{t('obp.linkTaps')}</Text>
                     </Flex>
                     <Title level={3} style={{ margin: 0 }}>{metrics.linkClicks.toLocaleString()}</Title>
                 </Card>
             </Flex>
 
-            {renderActionRows(metrics.actions, token)}
-            {renderLinkRows(metrics.links, token)}
-            {renderShareRows(metrics.shareMethods, token)}
-            {renderSourceRows(metrics.sources, token)}
-            {renderLanguageRows(metrics.topLanguages, token)}
+            {renderActionRows(metrics.actions, token, t)}
+            {renderLinkRows(metrics.links, token, t)}
+            {renderShareRows(metrics.shareMethods, token, t)}
+            {renderSourceRows(metrics.sources, token, t)}
+            {renderLanguageRows(metrics.topLanguages, token, t)}
         </>
     );
 }
 
 export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode }: MobileOBPMetricsCardProps) {
+    const t = useTranslations('Dashboard.owner');
     if (!FEATURE_FLAGS.ENABLE_OBP) return null;
 
     const { token } = theme.useToken();
@@ -237,13 +240,13 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
     const sharedInfoContent = (
         <div style={{ maxWidth: 280 }}>
             <Text type="secondary" style={{ display: 'block' }}>
-                This card shows how customers interact with your Official Business Page before or around opening the menu.
+                {t('obp.mobileInfoIntro')}
             </Text>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
-                Actions count final clicks on Call, WhatsApp, Directions, Reserve, and Order.
+                {t('obp.mobileInfoActions')}
             </Text>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
-                Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.
+                {t('obp.mobileInfoLinks')}
             </Text>
         </div>
     );
@@ -253,7 +256,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
             <div style={{ maxWidth: 280 }}>
                 {sharedInfoContent}
                 <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
-                    Today so far is partial live activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals.
+                    {t('obp.todayPartialInfo')}
                 </Text>
             </div>
         );
@@ -264,7 +267,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     size="small"
                     title={(
                         <Flex align="center" justify="space-between">
-                            <Text strong>Official Business Page</Text>
+                            <Text strong>{t('obp.officialBusinessPage')}</Text>
                             <Popover content={todayInfoContent} placement="bottom" trigger="click">
                                 <Button fill="none" style={{ minHeight: 'auto', padding: 4 }}>
                                     <LuInfo color={token.colorTextSecondary} size={16} />
@@ -275,7 +278,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                 >
                     <Flex align="center" gap={8}>
                         <DotLoading color="primary" />
-                        <Text type="secondary">Loading current OBP activity</Text>
+                        <Text type="secondary">{t('obp.loadingCurrentActivity')}</Text>
                     </Flex>
                 </Card>
             );
@@ -286,7 +289,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                 size="small"
                 title={(
                     <Flex align="center" justify="space-between">
-                        <Text strong>Official Business Page</Text>
+                        <Text strong>{t('obp.officialBusinessPage')}</Text>
                         <Popover content={todayInfoContent} placement="bottom" trigger="click">
                             <Button fill="none" style={{ minHeight: 'auto', padding: 4 }}>
                                 <LuInfo color={token.colorTextSecondary} size={16} />
@@ -295,8 +298,8 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     </Flex>
                 )}
             >
-                {today ? renderMetricCards(today, token) : (
-                    <Text type="secondary">No OBP activity yet today.</Text>
+                {today ? renderMetricCards(today, token, t) : (
+                    <Text type="secondary">{t('obp.noActivityToday')}</Text>
                 )}
             </Card>
         );
@@ -304,14 +307,14 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
 
     const title =
         mode === 'overall'
-            ? 'Official Business Page · Overall'
+            ? t('obp.titles.overall')
             : mode === 'daily'
-                ? 'Official Business Page · Yesterday'
+                ? t('obp.titles.daily')
                 : mode === 'weekly'
-                    ? 'Official Business Page · Last 7 Days'
+                    ? t('obp.titles.weekly')
                     : mode === 'monthly'
-                        ? 'Official Business Page · This Month'
-                        : 'Official Business Page';
+                        ? t('obp.titles.monthly')
+                        : t('obp.officialBusinessPage');
 
     if (loading && !data) {
         return (
@@ -326,7 +329,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
             >
                 <Flex align="center" gap={8}>
                     <DotLoading color="primary" />
-                    <Text type="secondary">Loading OBP activity</Text>
+                    <Text type="secondary">{t('obp.loadingActivity')}</Text>
                 </Flex>
             </Card>
         );
@@ -342,11 +345,11 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     : null;
 
     const statusTag = mode === 'overview'
-        ? overview?.status === 'working'
-            ? <Tag color="success">Active</Tag>
+            ? overview?.status === 'working'
+            ? <Tag color="success">{t('states.active')}</Tag>
             : overview?.status === 'low_activity'
-                ? <Tag color="warning">Low activity</Tag>
-                : <Tag>No data</Tag>
+                ? <Tag color="warning">{t('states.lowActivity')}</Tag>
+                : <Tag>{t('states.noData')}</Tag>
         : null;
 
     return (
@@ -370,18 +373,18 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
             )}
         >
             {mode === 'overall' ? (
-                !overall ? <Text type="secondary">No lifetime OBP activity yet.</Text> : null
+                !overall ? <Text type="secondary">{t('obp.noLifetimeActivity')}</Text> : null
             ) : mode === 'overview' ? (
                 <>
                     {overview?.wtd ? (
                         <>
                             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-                                Last 7 Days
+                                {t('views.last7Days')}
                             </Text>
-                            {renderMetricCards(overview.wtd, token)}
+                            {renderMetricCards(overview.wtd, token, t)}
                         </>
                     ) : (
-                        <Text type="secondary">No settled OBP activity yet.</Text>
+                        <Text type="secondary">{t('obp.noSettledActivity')}</Text>
                     )}
 
                     {overview?.mtd ? (
@@ -389,31 +392,37 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
                                 {overview.mtd.monthName}
                             </Text>
-                            {renderMetricCards(overview.mtd, token)}
+                            {renderMetricCards(overview.mtd, token, t)}
                         </div>
                     ) : null}
                 </>
             ) : selectedMetrics ? (
-                renderMetricCards(selectedMetrics, token)
+                renderMetricCards(selectedMetrics, token, t)
             ) : (
-                <Text type="secondary">No settled OBP activity yet for this period.</Text>
+                <Text type="secondary">{t('obp.noSettledActivityPeriod')}</Text>
             )}
 
             {mode === 'overall' && overall ? (
                 <div style={getSectionDividerStyle(token)}>
                     <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                        {`Lifetime: ${overall.lifetimeViews.toLocaleString()} views, ${overall.lifetimeMenuClicks.toLocaleString()} View Menu clicks, ${overall.lifetimeActionClicks.toLocaleString()} actions, ${overall.lifetimeLinkClicks.toLocaleString()} link taps, ${overall.lifetimeShares.toLocaleString()} shares`}
+                        {t('obp.lifetimeSummary', {
+                            views: overall.lifetimeViews.toLocaleString(),
+                            menuClicks: overall.lifetimeMenuClicks.toLocaleString(),
+                            actions: overall.lifetimeActionClicks.toLocaleString(),
+                            links: overall.lifetimeLinkClicks.toLocaleString(),
+                            shares: overall.lifetimeShares.toLocaleString(),
+                        })}
                     </Text>
                     {overall.firstDataDate ? (
                         <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 4 }}>
-                            {`Since ${overall.firstDataDate}`}
+                            {t('overall.since', { date: overall.firstDataDate })}
                         </Text>
                     ) : null}
-                    {renderActionRows(overall.lifetimeActions, token)}
-                    {renderLinkRows(overall.lifetimeLinks, token)}
-                    {renderShareRows(overall.lifetimeShareMethods, token)}
-                    {renderSourceRows(overall.lifetimeSources, token)}
-                    {renderLanguageRows(overall.lifetimeLanguages, token)}
+                    {renderActionRows(overall.lifetimeActions, token, t)}
+                    {renderLinkRows(overall.lifetimeLinks, token, t)}
+                    {renderShareRows(overall.lifetimeShareMethods, token, t)}
+                    {renderSourceRows(overall.lifetimeSources, token, t)}
+                    {renderLanguageRows(overall.lifetimeLanguages, token, t)}
                 </div>
             ) : null}
         </Card>

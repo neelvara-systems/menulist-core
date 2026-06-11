@@ -62,6 +62,8 @@ interface DecisionBlocksProps {
     /** Controls whether decision-block analytics should fire. */
     trackingEnabled?: boolean;
     menuLayout?: MenuLayout;
+    /** Store timezone used for category time-slot checks. */
+    storeTimeZone?: string;
 }
 
 interface ComputedBlock {
@@ -152,6 +154,52 @@ function buildDecisionItemLookup(items: ExtractedDataItem[]): Map<string, Extrac
 
 type LifecycleState = 'COLD' | 'LEARNING' | 'STABLE';
 
+function getTimestampMillis(value: unknown): number | null {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.getTime();
+    if (typeof value === 'string' || typeof value === 'number') {
+        const millis = new Date(value).getTime();
+        return Number.isNaN(millis) ? null : millis;
+    }
+    if (typeof value === 'object') {
+        const timestampLike = value as { toMillis?: () => number; toDate?: () => Date; seconds?: number; _seconds?: number };
+        if (typeof timestampLike.toMillis === 'function') {
+            const millis = timestampLike.toMillis();
+            return Number.isFinite(millis) ? millis : null;
+        }
+        if (typeof timestampLike.toDate === 'function') {
+            const date = timestampLike.toDate();
+            return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
+        }
+        const seconds = timestampLike.seconds ?? timestampLike._seconds;
+        return typeof seconds === 'number' && Number.isFinite(seconds) ? seconds * 1000 : null;
+    }
+    return null;
+}
+
+function getCurrentStoreMinutes(timeZone?: string): number {
+    if (timeZone) {
+        try {
+            const parts = new Intl.DateTimeFormat('en-GB', {
+                hour: '2-digit',
+                hourCycle: 'h23',
+                minute: '2-digit',
+                timeZone,
+            }).formatToParts(new Date());
+            const hour = Number(parts.find((part) => part.type === 'hour')?.value);
+            const minute = Number(parts.find((part) => part.type === 'minute')?.value);
+            if (Number.isFinite(hour) && Number.isFinite(minute)) {
+                return hour * 60 + minute;
+            }
+        } catch {
+            // Fall back to browser time if the store timezone is invalid.
+        }
+    }
+
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+}
+
 /** Thresholds for lifecycle gating */
 const LIFECYCLE_THRESHOLDS = {
     COLD_MAX_VIEWS: 100,       // Below this = COLD (no blocks)
@@ -186,11 +234,8 @@ function isPrecomputedValid(precomputed: PrecomputedDecisionBlocks | null | unde
     if (!precomputed) return false;
     if (!precomputed.validUntil) return false;
 
-    const validUntil = precomputed.validUntil instanceof Date
-        ? precomputed.validUntil
-        : new Date(precomputed.validUntil);
-
-    return validUntil > new Date();
+    const validUntilMs = getTimestampMillis(precomputed.validUntil);
+    return Boolean(validUntilMs && validUntilMs > Date.now());
 }
 
 /**
@@ -202,13 +247,10 @@ function isHardStale(precomputed: PrecomputedDecisionBlocks | null | undefined):
     if (!precomputed) return false;
     if (!precomputed.computedAt) return true;
 
-    const computedAt = (precomputed.computedAt as any)?.toDate
-        ? (precomputed.computedAt as any).toDate()
-        : precomputed.computedAt instanceof Date
-            ? precomputed.computedAt
-            : new Date(precomputed.computedAt as any);
+    const computedAtMs = getTimestampMillis(precomputed.computedAt);
+    if (!computedAtMs) return true;
 
-    const hoursSinceCompute = (Date.now() - computedAt.getTime()) / (1000 * 60 * 60);
+    const hoursSinceCompute = (Date.now() - computedAtMs) / (1000 * 60 * 60);
     return hoursSinceCompute > LIFECYCLE_THRESHOLDS.STALE_HOURS;
 }
 
@@ -239,12 +281,9 @@ function passesGlobalGate(precomputed: PrecomputedDecisionBlocks | null | undefi
  * - Category has no time slots (always visible)
  * - Current time is within any of the category's time slots
  */
-function isCategoryWithinTimeSlot(category: ExtractedDataCategory | undefined): boolean {
+function isCategoryWithinTimeSlot(category: ExtractedDataCategory | undefined, currentMinutes: number): boolean {
     if (!category) return true; // No category = always visible
     if (!Array.isArray(category.timeSlots) || category.timeSlots.length === 0) return true; // No slots = always visible
-
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
     for (const slot of category.timeSlots) {
         if (!slot?.startTime || !slot?.endTime) continue;
@@ -285,6 +324,7 @@ function selectAvailableCandidate(
     items: ExtractedDataItem[],
     categoryMap: Map<string, ExtractedDataCategory>,
     usedItemIds: Set<string>,
+    currentStoreMinutes: number,
     pinnedId?: string
 ): { item: ExtractedDataItem; reason: string; reasonParams?: Record<string, any> } | undefined {
     // Build lookup map for O(1) access
@@ -303,7 +343,7 @@ function selectAvailableCandidate(
 
         // Check 3: Category time-slot validation
         const category = categoryMap.get(item.category);
-        if (!isCategoryWithinTimeSlot(category)) return undefined;
+        if (!isCategoryWithinTimeSlot(category, currentStoreMinutes)) return undefined;
 
         // Check 4: Not already used in another block
         if (usedItemIds.has(item.id)) return undefined;
@@ -354,7 +394,8 @@ function computeFromPrecomputed(
     businessType?: string,
     businessCategory?: string,
     ownerControls?: OwnerControls,
-    showItemPrices = true
+    showItemPrices = true,
+    storeTimeZone?: string
 ): ComputedBlock[] {
     const stats = precomputed.statsUsed;
     const lifecycle = getLifecycleState(stats);
@@ -364,6 +405,7 @@ function computeFromPrecomputed(
 
     // Build category lookup map for time-slot validation
     const categoryMap = new Map(categories.map(cat => [cat.id, cat]));
+    const currentStoreMinutes = getCurrentStoreMinutes(storeTimeZone);
 
     // ── Block-level eligibility (data coverage gates) ──
 
@@ -391,6 +433,7 @@ function computeFromPrecomputed(
             items,
             categoryMap,
             usedItemIds,
+            currentStoreMinutes,
             ownerControls?.pinnedPopular
         );
         if (result) {
@@ -411,6 +454,7 @@ function computeFromPrecomputed(
             items,
             categoryMap,
             usedItemIds,
+            currentStoreMinutes,
             ownerControls?.pinnedQuickPick
         );
         if (result) {
@@ -431,6 +475,7 @@ function computeFromPrecomputed(
             items,
             categoryMap,
             usedItemIds,
+            currentStoreMinutes,
             ownerControls?.pinnedBestValue
         );
         if (result) {
@@ -469,7 +514,8 @@ function computeBlocksFallback(
     businessType?: string,
     businessCategory?: string,
     ownerControls?: OwnerControls,
-    showItemPrices = true
+    showItemPrices = true,
+    storeTimeZone?: string
 ): ComputedBlock[] {
     const enabledBlocks = getEnabledBlocks(businessType, businessCategory);
     const blocks: ComputedBlock[] = [];
@@ -477,6 +523,7 @@ function computeBlocksFallback(
 
     // Build category lookup map for time-slot validation
     const categoryMap = new Map(categories.map(cat => [cat.id, cat]));
+    const currentStoreMinutes = getCurrentStoreMinutes(storeTimeZone);
 
     // Build item lookup map
     const itemMap = buildDecisionItemLookup(items);
@@ -488,7 +535,7 @@ function computeBlocksFallback(
         if (item.active === false) return undefined;
         if (item.available === false) return undefined;
         const category = categoryMap.get(item.category);
-        if (!isCategoryWithinTimeSlot(category)) return undefined;
+        if (!isCategoryWithinTimeSlot(category, currentStoreMinutes)) return undefined;
         if (usedItemIds.has(item.id)) return undefined;
         return item;
     };
@@ -557,6 +604,7 @@ export default function DecisionBlocks({
     analyticsIds,
     trackingEnabled = true,
     menuLayout = MenuLayout.LIST,
+    storeTimeZone,
 }: DecisionBlocksProps) {
     const { deviceType } = useDeviceType();
     const isDesktopLayout = deviceType === 'desktop';
@@ -624,10 +672,12 @@ export default function DecisionBlocks({
     // LAYER 2: If precomputed stale → owner-pinned only (no client-side ranking)
     // LAYER 3: If hard stale (>72h) → owner-pinned only; automatic scoring hidden
     const blocks = useMemo(() => {
+        const effectiveStoreTimeZone = storeTimeZone || analyticsIds?.storeTimeZone;
+
         // Hard stale guard: if scheduler hasn't run in >72h, keep owner pins only.
         // Owner pins are explicit menu truth; stale analytics should not suppress them.
         if (isHardStale(precomputedBlocks)) {
-            return computeBlocksFallback(items, categories, businessType, businessCategory, ownerControls, showItemPrices);
+            return computeBlocksFallback(items, categories, businessType, businessCategory, ownerControls, showItemPrices, effectiveStoreTimeZone);
         }
 
         const usePrecomputed = isPrecomputedValid(precomputedBlocks);
@@ -638,7 +688,7 @@ export default function DecisionBlocks({
                 // Automatic recommendations need enough behavior data. Owner pins
                 // are owner-authored menu truth, so they can still render as
                 // pinned-only blocks while the automatic system is learning.
-                return computeBlocksFallback(items, categories, businessType, businessCategory, ownerControls, showItemPrices);
+                return computeBlocksFallback(items, categories, businessType, businessCategory, ownerControls, showItemPrices, effectiveStoreTimeZone);
             }
 
             // Layer 1 + 2: Precomputed candidates with lifecycle-aware gating + runtime filter
@@ -649,14 +699,15 @@ export default function DecisionBlocks({
                 businessType,
                 businessCategory,
                 ownerControls,
-                showItemPrices
+                showItemPrices,
+                effectiveStoreTimeZone
             );
         }
 
         // Fallback: Only show owner-pinned items (client never ranks)
         // This ensures single source of truth - scheduler ranks, client filters
-        return computeBlocksFallback(items, categories, businessType, businessCategory, ownerControls, showItemPrices);
-    }, [items, categories, businessType, businessCategory, ownerControls, precomputedBlocks, showItemPrices]);
+        return computeBlocksFallback(items, categories, businessType, businessCategory, ownerControls, showItemPrices, effectiveStoreTimeZone);
+    }, [analyticsIds?.storeTimeZone, items, categories, businessType, businessCategory, ownerControls, precomputedBlocks, showItemPrices, storeTimeZone]);
 
     // Handle block click
     const handleClick = useCallback((rec: ComputedBlock) => {

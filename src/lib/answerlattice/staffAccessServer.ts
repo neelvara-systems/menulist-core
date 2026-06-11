@@ -37,6 +37,7 @@ import { z } from 'zod';
 const STAFF_LOGIN_ID_PREFIX = '77';
 const STAFF_AUTH_MODE_EMAIL = 'email';
 const STAFF_AUTH_MODE_OWNER_PASSCODE = 'owner_passcode';
+const STAFF_STORE_USER_QUERY_LIMIT = 500;
 
 const optionalTrimmedStringSchema = (max: number) => z.preprocess((value) => {
     if (value === undefined || value === null) return undefined;
@@ -590,11 +591,13 @@ const ensureAnotherActiveOwner = async (
     if (!db) throw new Error('ANSWERLATTICE_FIREBASE_NOT_CONFIGURED');
 
     const snapshot = await db.collection(DB_COLLECTIONS.USERS)
-        .where('tenantId', '==', tenantId)
+        .where('storeIds', 'array-contains', storeId)
+        .limit(STAFF_STORE_USER_QUERY_LIMIT)
         .get();
     const hasOtherOwner = snapshot.docs.some((doc) => {
         if (doc.id === targetUserId) return false;
         const data = doc.data();
+        if (Number(data?.tenantId || data?.tId) !== tenantId) return false;
         if (data?.active === false || data?.deleted === true) return false;
         return (Array.isArray(data?.stores) ? data.stores : []).some((store: any) => (
             Number(store?.storeId) === storeId && store?.role === DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER
@@ -614,16 +617,20 @@ const roleIsAssignedToActiveUser = async (tenantId: number, storeId: number, rol
     const db = getAnswerlatticeDb();
     if (!db) return false;
     const snapshot = await db.collection(DB_COLLECTIONS.USERS)
-        .where('tenantId', '==', tenantId)
+        .where('storeIds', 'array-contains', storeId)
+        .limit(STAFF_STORE_USER_QUERY_LIMIT)
         .get();
 
-    return snapshot.docs.some((doc) => {
+    const roleAssigned = snapshot.docs.some((doc) => {
         const data = doc.data();
+        if (Number(data?.tenantId || data?.tId) !== tenantId) return false;
         if (data?.active === false || data?.deleted === true) return false;
         return (Array.isArray(data?.stores) ? data.stores : []).some((store: any) => (
             Number(store?.storeId) === storeId && store?.role === roleId
         ));
     });
+
+    return roleAssigned || snapshot.size >= STAFF_STORE_USER_QUERY_LIMIT;
 };
 
 const verifyStaffFeature = () => FEATURE_FLAGS.ENABLE_ANSWERLATTICE_STAFF_ACCESS;
@@ -641,10 +648,12 @@ export const listAnswerlatticeStaffUsers = async (request: NextRequest, session:
     if (!db) return jsonError('Answerlattice Firebase is not configured', 503, 'ANSWERLATTICE_FIREBASE_NOT_CONFIGURED');
 
     const snapshot = await db.collection(DB_COLLECTIONS.USERS)
-        .where('tenantId', '==', access.scope.tenantId)
+        .where('storeIds', 'array-contains', access.scope.storeId)
+        .limit(STAFF_STORE_USER_QUERY_LIMIT)
         .get();
     const users = snapshot.docs
         .map((doc) => sanitizeAnswerlatticeStaffUser(doc.id, doc.data(), access.roles))
+        .filter((user) => user.tenantId === access.scope.tenantId)
         .filter((user) => user.deleted !== true)
         .filter((user) => user.storeIds.includes(access.scope.storeId))
         .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
@@ -1072,6 +1081,19 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
     const target = await getAnswerlatticeUserById(input.userId);
     if (!target) return jsonError('Team member not found', 404, 'USER_NOT_FOUND');
     const existingData = target.data || {};
+    if (Number(existingData.tenantId || existingData.tId) !== access.scope.tenantId) {
+        logSecurity('Authorization Failed - Answerlattice Staff Password Reset Tenant Mismatch', session, request, {
+            requestedTenantId: access.scope.tenantId,
+            targetTenantId: existingData.tenantId || existingData.tId,
+            userId: input.userId,
+        }, 'critical');
+        return jsonError('Forbidden', 403, 'FORBIDDEN');
+    }
+    const currentStores = Array.isArray(existingData.stores) ? existingData.stores : [];
+    const currentStore = currentStores.find((store: any) => Number(store.storeId) === access.scope.storeId);
+    if (!currentStore || existingData.deleted === true) {
+        return jsonError('Team member is not assigned to this workspace', 404, 'STORE_MAPPING_NOT_FOUND');
+    }
     if (existingData.active === false || existingData.deleted === true) {
         return jsonError('Activate this team member before creating new login details.', 409, 'STAFF_INACTIVE');
     }
@@ -1079,8 +1101,6 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
     const email = String(existingData.email || '').toLowerCase().trim();
     if (!email) return jsonError('Team member does not have a login account.', 400, 'LOGIN_MISSING');
     const now = admin.firestore.Timestamp.now();
-    const currentStores = Array.isArray(existingData.stores) ? existingData.stores : [];
-    const currentStore = currentStores.find((store: any) => Number(store.storeId) === access.scope.storeId);
     const roleId = currentStore?.role || existingData.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
     const storeIds = (Array.isArray(existingData.storeIds) ? existingData.storeIds : currentStores.map((store: any) => store.storeId))
         .map(Number)

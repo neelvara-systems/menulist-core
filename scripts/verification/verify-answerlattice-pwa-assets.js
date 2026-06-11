@@ -70,7 +70,8 @@ function verifyLoaderBranding() {
   assertIncludes(serverLoader, 'brand={resolvedBrand}', 'server loader resolved brand handoff');
   assertIncludes(brandedPageLoader, "brand === 'answerlattice'", 'branded page loader Answerlattice branch');
   assertIncludes(brandedPageLoader, '<AnswerlatticeLoaderLogo idPrefix="answerlattice-loader-logo" />', 'branded page loader Answerlattice logo');
-  assertIncludes(globalLoader, "data-loader-brand={isAnswerlatticeRoute ? 'answerlattice' : 'menulist'}", 'global loader brand marker');
+  assertIncludes(globalLoader, "const loaderBrand = isAnswerlatticeRoute ? 'answerlattice'", 'global loader Answerlattice brand branch');
+  assertIncludes(globalLoader, 'data-loader-brand={loaderBrand}', 'global loader brand marker');
   assertIncludes(globalLoader, '<AnswerlatticeLoaderLogo idPrefix="answerlattice-global-loader" />', 'global loader Answerlattice logo');
   assertIncludes(logoMark, 'viewBox="0 0 8367 5131"', 'Answerlattice inline logo source viewBox');
   assertIncludes(logoMark, 'strokeWidth="545"', 'Answerlattice inline logo final stroke width');

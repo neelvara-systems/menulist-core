@@ -1,6 +1,6 @@
 "use client";
 
-import { getProjectsListWithoutLoader } from "@database/projects";
+import { getExistingProjectsListWithoutLoader } from "@database/projects";
 import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { usePastActivity } from "@hook/usePastActivity";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
@@ -77,7 +77,7 @@ const PastActivityScreen = () => {
     } = useSWR<ProjectSummary[]>(
         "past-activity-projects",
         async () => {
-            const result = await getProjectsListWithoutLoader(true);
+            const result = await getExistingProjectsListWithoutLoader(true);
             return (result?.projects || []) as ProjectSummary[];
         },
         {

@@ -1,15 +1,15 @@
 # AI Data Extraction — Product Specification
 
-**Feature:** OCR & Menu Extraction with Gemini AI  
-**Parent Feature:** Projects (Menu Digitization)  
-**Status:** ✅ Production Ready  
-**Last Updated:** May 2, 2026
+**Feature:** OCR & Menu Extraction with Gemini AI
+**Parent Feature:** Projects (Menu Digitization)
+**Status:** Controlled owner testing ready; production deploy pending for the legacy callable hardening
+**Last Updated:** June 11, 2026
 
 ---
 
 ## Executive Summary
 
-AI Data Extraction is the core intelligence that transforms menu images into structured data. After users upload photos or PDFs, this feature uses Google Gemini AI to read and extract menu items, categories, prices, and descriptions automatically.
+AI Data Extraction transforms owner-provided menu, service, or catalog images into structured public-business data. After users upload photos or PDFs, this feature uses Google Gemini AI through the MenuList job queue to read and extract items, categories, prices, and descriptions.
 
 ### What It Does
 
@@ -19,6 +19,7 @@ AI Data Extraction is the core intelligence that transforms menu images into str
 - **Multi-Language Detection** → Identifies languages present in the menu
 - **Quality Scoring** → Rates extraction quality (0-100 score)
 - **Job Queue Processing** → Reliable async processing via Firebase Cloud Functions
+- **Review Safety** → Re-extraction applies only from an owned `preview_ready` job; linked outlets use the validated server outlet-save path
 
 ### What It Does NOT Do
 
@@ -75,9 +76,9 @@ AI Data Extraction is the core intelligence that transforms menu images into str
 
 ## User Stories
 
-### Restaurant Owner
+### SMB Owner
 
-> "As a restaurant owner, I want the AI to read my menu photo so I don't have to type everything manually."
+> "As an owner, I want MenuList to read my menu or service photo so I don't have to type everything manually."
 
 **Acceptance Criteria:**
 

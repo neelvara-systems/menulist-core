@@ -1,7 +1,7 @@
 # Menu Extraction Pipeline — Implementation
 
 **Status:** Implemented
-**Last Updated:** June 2, 2026
+**Last Updated:** June 11, 2026
 
 ## Files
 
@@ -16,6 +16,7 @@
 | `functions/src/types/menuProcessingJob.types.ts` | Adds `destination` to the job contract. |
 | `functions/src/logic/processMenuImagesJob.ts` | Central worker with destination handling and source validation. |
 | `functions/src/logic/saveFilesToProject.ts` | Project save now fails if the project document does not exist. |
+| `functions/src/triggers/shared.ts` | Legacy direct `processMenuImages` callable stays exported for compatibility but fails closed; production extraction must use the job queue. |
 | `src/app/api/public/create-menu/route.ts` | Public drafts now queue durable extraction jobs. |
 | `src/app/api/menu-link-imports/route.ts` | Adds explicit project destination metadata. |
 | `functions/src/messagingOnboarding/intakeProcessor.ts` | Adds messaging destination metadata. |
@@ -33,13 +34,17 @@ The route:
 4. Verifies tenant/store access.
 5. Confirms `projectId` belongs to the session tenant/store.
 6. Allows only configured Firebase Storage URLs under `projects/files/{tId}/{sId}/`.
-7. Applies `AI_EXPENSIVE` rate limiting.
-8. Requires the target project document to exist.
-9. Reuses an existing active job if present.
-10. Runs menu-intake identity when enabled.
-11. Creates the job with shared routing fields: `destination.type = "project"` and `destinationType = "project"`.
+7. Requires the target project document to exist.
+8. Reuses an existing active job if present.
+9. Computes a server-trusted owner-upload `sourceFingerprint` from Firebase Storage metadata when the request is a normal owner upload.
+10. Reuses a recent completed first-extraction project job for the same project/user/fingerprint before running new AI work.
+11. Applies `AI_EXPENSIVE` rate limiting only when a new extraction job is still needed.
+12. Runs menu-intake identity when enabled.
+13. Creates the job with shared routing fields: `destination.type = "project"` and `destinationType = "project"`.
 
 The protected owner route treats source lineage as server-owned. It does not accept client-provided `source` or `sourceMetadata`; retry jobs load those fields from the original failed job after verifying owner, tenant, store, and project ownership.
+
+Owner-upload completed-job reuse is intentionally narrow. The route uses server-read Storage `md5Hash`/`crc32c` metadata, target languages, action, business type, and business category to build the fingerprint. It only scans the latest bounded completed jobs for the same project/user, reuses completed `owner_upload` project jobs within 24 hours, skips forced-review and retry jobs, skips non-project destinations, skips reuse when the project was updated after the previous extraction, and deletes the duplicate newly-uploaded Storage objects when reuse succeeds.
 
 ## Public Draft Job Creation
 
@@ -55,6 +60,8 @@ When the public source is readable by the shared identity helper, the route also
 
 The worker marks the draft as `processing`, then writes `completed` or `failed`.
 
+`GET /api/public/create-menu` supports `statusOnly=1`. The public preview client polls with that flag until the draft is completed, then performs one full fetch to retrieve `extractedData`. Default GET behavior remains backward-compatible and still returns `extractedData` when `statusOnly` is omitted.
+
 Before the draft is marked completed, the worker normalizes public draft extracted data to the same project/editor payload shape used by owner extraction: categories have `active`, items have `category`, `active`, `available`, normalized attribute activity, and languages are normalized objects with `isPrimary`. Claiming a completed public draft then creates a normal project file entry with `active: true`, `deleted: false`, `index: 0`, and `extractedData.message`. This keeps public `/create-menu` output aligned with owner extraction and messaging publish file shapes.
 
 Claimed projects use the normal parseable project ID format `{tenantId}-{timestamp}-{storeId}`. This is required because the public client renderer and several backend helpers derive the nested project path from the project ID before loading `projects/{tenantId}/{storeId}/{projectId}`. The claim route also stores the resolved `businessType` and `businessCategory` on the project document and `projectsSummary` entry so future project-scoped defaults stay aligned with the store created from the same claim.
@@ -63,7 +70,9 @@ Claimed projects use the normal parseable project ID format `{tenantId}-{timesta
 
 Failed-job retry still starts from the extraction monitor DAL, but the new retry job is created through `POST /api/menu-extraction/jobs`. The server route loads the failed source job, verifies owner/tenant/project ownership, preserves `source` and `sourceMetadata`, and validates the original Storage path before creating a replacement job. This keeps failed menu-link imports on the `menu_link_import` path instead of treating them as normal owner uploads.
 
-When a review apply needs to create a source file shell for imported/re-extracted content, `applyExtractionChanges` writes the standard project file envelope (`active`, `deleted`, `index`, and `extractedData.message`) before saving categories/items. The same apply path revalidates the public client cache for the project, so the customer menu can render the applied data.
+When a review apply needs to create a source file shell for imported/re-extracted content, `applyExtractionChanges` first verifies that the review job exists, is `preview_ready`, belongs to the current tenant/store/user, and matches the target project. It then writes the standard project file envelope (`active`, `deleted`, `index`, and `extractedData.message`) before saving categories/items. The same apply path revalidates the public client cache for the project, so the customer menu can render the applied data.
+
+Linked-outlet review applies do not write project files directly from the browser. They build the outlet-local project payload and call `POST /api/projects/outlet-save`, which enforces tenant membership, store permissions, outlet policy, and local-only ID prefixes before using Admin SDK to persist the outlet-local file/override state.
 
 ## Messaging Job Creation
 
@@ -80,20 +89,27 @@ The worker enforces MIME by source/destination before AI work:
 - Link import: acquired text/image/PDF artifacts.
 - Messaging onboarding: PDF/JPEG/PNG/WebP/HEIC/HEIF.
 
+The worker also writes timing telemetry on the job root. `timings.queueWaitMs`, `timings.aiProcessingMs`, `timings.postProcessingMs`, `timings.saveMs`, and `timings.workerTotalMs` are derived from existing worker stages; `timings.provider` carries the lower-level upload/batch timing returned by `processMenuImagesLogic()`. These fields are telemetry only and do not affect billing or owner-visible extraction output.
+
+Completed first-extraction project jobs include `result.summary` with category/item/language/file-message counts and confidence summary. The daily `menu_old_cleanup` maintenance task first prunes heavy `result.combinedData` and `result.redistributedFiles` from completed project auto-save jobs older than two hours, preserving `result.summary`, raw provider provenance, cost transaction data, public drafts, messaging onboarding jobs, and `preview_ready` review jobs. The project document remains the source of truth for rendered menu data after save.
+
 ## Verification
 
 `npm run verify:menu-extraction-pipeline` checks:
 
 - app and Functions shared contract files are byte-for-byte identical
 - owner upload uses the protected API and does not accept client-owned source metadata
+- owner upload uses trusted Storage metadata to reuse recent completed jobs without spending another AI call
 - public create-menu no longer contains inline extraction
 - link import and messaging onboarding use shared routing builders
 - worker uses shared limits, validates source files, updates public drafts, and keeps cache revalidation
+- worker writes timing telemetry and result summaries before any delayed project-job payload pruning
 - Firestore rules keep browser job creation blocked
 - app-side job types and the extraction monitor expose source/destination fields
 - public draft completion and claim write the standard extracted-data and project file shapes
 - public draft claim creates renderer-parseable project IDs and revalidates menu/store cache tags
-- review apply creates standard source file shells and revalidates the public render cache
+- review apply validates `preview_ready` job ownership/status, creates standard source file shells, routes linked outlets through `outlet-save`, and revalidates the public render cache
+- the legacy direct `processMenuImages` callable fails closed and does not invoke AI processing
 - messaging extraction stores standard project file envelopes and messaging publish writes a renderer-ready project, summary entry, and public cache tags
 - public `/client` loading and `MenuPageNew` rendering stay aligned with the parseable project ID and normalized extracted-data contracts
 

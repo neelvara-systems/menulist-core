@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.51 Feature Visual Launch Polish
-**Last Updated:** June 10, 2026
+**Status:** IMPLEMENTED — v3.6.53 Feature Visual Tag De-Duplication
+**Last Updated:** June 11, 2026
 **Audience:** Developers
 
 ---
@@ -10,7 +10,7 @@
 
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
 
-The latest launch-polish pass keeps the feature-page visual proof system from v3.6.49 but simplifies the hero media treatment so feature visuals read as clean product-proof canvases: wider hero media columns, fewer nested borders, no duplicate internal marketing headlines, softer chips, and mobile-readable microcopy.
+The latest launch-polish pass keeps the feature-page visual proof system from v3.6.49 but simplifies the hero media treatment so feature visuals read as clean product-proof canvases: wider hero media columns, fewer nested borders, no duplicate internal marketing headlines, no trailing duplicate proof-chip row, softer chips, and mobile-readable microcopy.
 
 ```
 Route Group: src/app/(website)/
@@ -72,7 +72,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 - Resource article routes are generated from `src/content/websiteResources/` and use `generateStaticParams()` for the 15 article slugs.
 - Reviewed localized resource routes are generated from the same resource registry for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES`; non-reviewed locales are not exposed as resource routes.
 - Public website CTAs route to `/create-menu` for free-account-first menu intake. `/get-started` remains a guided setup/sign-in page and no longer acts as the primary homepage funnel.
-- `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are build-compatibility defaults only. They satisfy Next's generated Pages Router entries during production page-data collection and do not define marketing routes.
+- `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are build-compatibility defaults only. They satisfy Next's generated Pages Router entries during production page-data collection and do not define marketing routes. `next.config.js` repairs emitted special Pages Router and App Router manifest entries if the worker build emits route files while leaving generated manifests incomplete.
 
 ---
 
@@ -140,7 +140,7 @@ LocalisationProvider (locale from next-intl/server)
 
 **Feature card mobile layout:** v3.6.48 adds a narrow-screen override for `WebsiteFeatureCard` when `leadingIcon` and `action` are both present. Mobile cards use a two-column `icon + heading` row and place the `View` action below the heading, so long headings stay left-aligned and do not compete with the action pill. The desktop top-right action layout is unchanged.
 
-**Feature page visual proof system:** v3.6.49 adds `src/components/website/features/FeatureDetailVisual.tsx` and wires it into the shared `FeatureDetailPage` hero media slot. The component uses each `FeatureDetailConfig` slug, existing icon config, and existing `Website.FeatureDetail` locale keys to render feature-specific code-native product visuals: import source flow, content prep board, Featured Choices phone, Official Business Page public-surface card, QR/link kit, Print-ready Kit asset board, Owner Phone Dashboard phone panel, Menu Quality Validation checklist, Customer Feedback Loop correction flow, and Public Discovery source card. v3.6.51 widens the hero visual column, removes the nested browser border and redundant bottom pills from the Official Business Page visual, raises microcopy label sizes for mobile readability, and changes Print-ready Kit mobile assets from compressed three-column mini cards to compact rows. `website.css` owns the theme-aware visual system, responsive sizing, and mobile compaction rules. This is static public website component/CSS/docs work only; it does not add generated bitmap dependencies, owner dashboard runtime changes, customer menu runtime changes, Firebase changes, pricing/payment changes, auth changes, or Vercel deployment.
+**Feature page visual proof system:** v3.6.49 adds `src/components/website/features/FeatureDetailVisual.tsx` and wires it into the shared `FeatureDetailPage` hero media slot. The component uses each `FeatureDetailConfig` slug, existing icon config, and existing `Website.FeatureDetail` locale keys to render feature-specific code-native product visuals: import source flow, content prep board, Featured Choices phone, Official Business Page public-surface card, QR/link kit, Print-ready Kit asset board, Owner Phone Dashboard phone panel, Menu Quality Validation checklist, Customer Feedback Loop correction flow, and Public Discovery source card. v3.6.51 widens the hero visual column, removes the nested browser border and redundant bottom pills from the Official Business Page visual, raises microcopy label sizes for mobile readability, and changes Print-ready Kit mobile assets from compressed three-column mini cards to compact rows. v3.6.53 removes the shared trailing proof-chip row from all generic feature visuals so internal visual labels and the page-level signal strip do not create repeated tag stacks on mobile. `website.css` owns the theme-aware visual system, responsive sizing, and mobile compaction rules. This is static public website component/CSS/docs work only; it does not add generated bitmap dependencies, owner dashboard runtime changes, customer menu runtime changes, Firebase changes, pricing/payment changes, auth changes, or Vercel deployment.
 
 **Feature journey panel polish:** v3.6.45 changes the shared `FeatureDetailJourney` desktop story panel from a nested two-column layout into a single parent story card with a top narrative row and full-width proof-card row. The parent panel owns the gradient/background, with no internal copy-vs-proof divider, so pages such as `/features/customer-feedback-loop` read as one cohesive story instead of two compartments. v3.6.46 tightens the desktop height clamp to `32rem -> 72vh -> 39rem`, reduces the largest internal gap/padding, and gives proof cards a controlled responsive minimum height. This keeps the left tab rail and sticky stacked-card behavior intact, gives the three supporting proof cards enough horizontal space, reduces empty vertical space on tall displays, and keeps mobile one-column. This is static website CSS/docs only; feature routes, owner dashboard runtime, customer menu runtime, Firebase, Cloud Functions, pricing, payment, auth, and Vercel deployment were not changed.
 
@@ -329,7 +329,7 @@ src/pages/
 - **Components:** Mix of Tailwind CSS + custom CSS + shadcn/ui
 - **Theme:** System-preference light/dark mode via `ThemeProvider`; `website.css` provides the public website token set and `pricing-pages/main.css` bridges the shadcn/Tailwind pricing variables
 - **Service worker boundary:** `ServiceWorkerRegister.tsx` registers owner Workbox `/sw.js` only on owner/app platform routes and unregisters it on public marketing routes. If a stale worker controlled the current public page, the page reloads once after unregistering so Safari moves to the network-controlled website. Customer tenant origins still use `sw-customer.js`.
-- **Pages Router defaults:** `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are intentionally minimal. They satisfy Next's generated Pages Router manifest entries during production page-data collection and do not change the App Router website layout or route behavior.
+- **Pages Router defaults:** `src/pages/_app.tsx`, `src/pages/_document.tsx`, and `src/pages/_error.tsx` are intentionally minimal. They satisfy Next's generated Pages Router manifest entries during production page-data collection and do not change the App Router website layout or route behavior. `MenuListServerChunkCompatPlugin` in `next.config.js` also repairs emitted page/app manifest entries when local worker builds produce route files but incomplete manifests.
 
 ---
 

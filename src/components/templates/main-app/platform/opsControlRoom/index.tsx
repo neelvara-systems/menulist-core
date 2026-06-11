@@ -27,7 +27,7 @@ const { Title, Text } = Typography;
 function OpsControlRoom() {
     const { token } = theme.useToken();
     const formatter = useFormatter();
-    const { data: session } = useSession();
+    const { data: session, status } = useSession();
     const [loading, setLoading] = useState(true);
     const [systemState, setSystemState] = useState<SystemState | null>(null);
     const [adoption, setAdoption] = useState<AdoptionPulse | null>(null);
@@ -47,7 +47,7 @@ function OpsControlRoom() {
     } = usePlatformStoreSummaryOptions(isPlatform);
 
     // Gate: superadmin only
-    if (session && !isPlatform) {
+    if (status !== 'loading' && !isPlatform) {
         redirect('/dashboard');
     }
 
@@ -73,8 +73,13 @@ function OpsControlRoom() {
     }, []);
 
     useEffect(() => {
+        if (status === 'loading') return;
+        if (!isPlatform) {
+            setLoading(false);
+            return;
+        }
         loadData();
-    }, [loadData]);
+    }, [isPlatform, loadData, status]);
 
     // SAFE_MODE toggle
     const toggleSafeMode = async (action: 'activate' | 'deactivate') => {
@@ -165,7 +170,7 @@ function OpsControlRoom() {
         }
     };
 
-    if (loading) {
+    if (status === 'loading' || loading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
                 <Spin size="large" />
@@ -175,9 +180,9 @@ function OpsControlRoom() {
 
     return (
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 8 }}>
                 <Title level={3} style={{ margin: 0 }}>Ops Control Room</Title>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', maxWidth: '100%' }}>
                     <Button onClick={loadData} loading={loading}>Refresh</Button>
                     <Button type="default" href="/ops/scheduler">Scheduler Monitor</Button>
                     <Button type="default" href="/ops/extraction">Extraction Monitor</Button>

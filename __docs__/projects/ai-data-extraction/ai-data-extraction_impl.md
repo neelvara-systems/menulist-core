@@ -1,9 +1,9 @@
 # AI Data Extraction — Implementation
 
-**Feature:** OCR & Menu Extraction with Gemini AI  
-**Status:** ✅ Production Ready  
-**Architecture:** Job Queue (Firebase Cloud Functions)  
-**Last Updated:** May 2, 2026
+**Feature:** OCR & Menu Extraction with Gemini AI
+**Status:** Controlled owner testing ready; production deploy pending for the legacy callable hardening
+**Architecture:** Job Queue (Firebase Cloud Functions)
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -83,6 +83,7 @@ functions/src/
 ├── index.ts                              # Conditional exports (prod triggers vs dev callables)
 ├── dev-triggers.ts                       # dev_triggerProcessMenuImages callable
 ├── triggers/production.ts                # processMenuImagesJob (onDocumentCreated)
+├── triggers/shared.ts                    # legacy processMenuImages callable fails closed
 ├── logic/
 │   ├── processMenuImagesJob.ts           # Job orchestration (idempotency, branching, hardening)
 │   ├── processMenuImages.ts              # Main AI processing (batch, upload, scoring)
@@ -292,6 +293,12 @@ export const dev_triggerProcessMenuImages = onCall(
   },
 );
 ```
+
+### Legacy Direct Callable
+
+`functions/src/triggers/shared.ts` still exports `processMenuImages` for compatibility, but the callable now fails closed with `failed-precondition` and does not invoke Gemini. Production extraction must enter through `menuImageProcessingJobs` so the protected API route, source allowlists, tenant checks, identity checks, retry metadata, cleanup scheduler, and public cache invalidation stay on one path.
+
+Deployment of this callable hardening was attempted on June 11, 2026 with `firebase deploy --only functions:processMenuImages --project ecomsai`; Firebase blocked the deploy during Secret Manager validation because billing is disabled on the `ecomsai` project.
 
 ### Main Processing Logic
 

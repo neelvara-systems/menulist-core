@@ -533,97 +533,51 @@ async function computeForProject(
 
     // Aggregate item stats from analytics
     const itemStatsMap = new Map<string, ItemStats>();
-    let standaloneDaysWithData = 0; // Track days when using standalone query path
+    const analyticsForScoring = prefetchedAnalytics || await fetch7DayAnalytics(
+        db,
+        tId,
+        sId,
+        projectId,
+        timeZone,
+        businessDayEndTime,
+    );
+    if (!prefetchedAnalytics) {
+        if (analyticsForScoring.source === 'missing_or_stale') {
+            logger.warn(`[${tId}_${sId}_${projectId}] Missing or stale intelligence snapshot; manual scoring without analytics`);
+        }
+    }
 
-    if (prefetchedAnalytics) {
-        // OPTIMIZATION: Use pre-fetched analytics (avoids duplicate Firestore reads)
-        // Build itemStatsMap from AggregatedAnalytics
-        for (const [itemId, views] of Object.entries(prefetchedAnalytics.viewsByItem)) {
+    // Build itemStatsMap from the compact scheduler-written analytics snapshot.
+    for (const [itemId, views] of Object.entries(analyticsForScoring.viewsByItem)) {
+        itemStatsMap.set(itemId, {
+            itemId,
+            itemName: analyticsForScoring.itemNames[itemId] || itemId,
+            category: '',
+            views,
+            clicks: analyticsForScoring.clicksByItem[itemId] || 0,
+            orders: 0,
+            price: 0
+        });
+    }
+    // Add items with clicks but no views
+    for (const [itemId, clicks] of Object.entries(analyticsForScoring.clicksByItem)) {
+        if (!itemStatsMap.has(itemId)) {
             itemStatsMap.set(itemId, {
                 itemId,
-                itemName: prefetchedAnalytics.itemNames[itemId] || itemId,
+                itemName: analyticsForScoring.itemNames[itemId] || itemId,
                 category: '',
-                views,
-                clicks: prefetchedAnalytics.clicksByItem[itemId] || 0,
+                views: 0,
+                clicks,
                 orders: 0,
                 price: 0
             });
         }
-        // Add items with clicks but no views
-        for (const [itemId, clicks] of Object.entries(prefetchedAnalytics.clicksByItem)) {
-            if (!itemStatsMap.has(itemId)) {
-                itemStatsMap.set(itemId, {
-                    itemId,
-                    itemName: prefetchedAnalytics.itemNames[itemId] || itemId,
-                    category: '',
-                    views: 0,
-                    clicks,
-                    orders: 0,
-                    price: 0
-                });
-            }
-        }
-        // Apply 2x weight for recommendation clicks (high-value interactions)
-        for (const [itemId, clicks] of Object.entries(prefetchedAnalytics.recommendationClicksByItem)) {
-            const existing = itemStatsMap.get(itemId);
-            if (existing) {
-                existing.clicks += clicks * 2;
-            }
-        }
-    } else {
-        // Standalone mode (manual triggers): Query analytics directly
-        const dateStr = addDaysToAnalyticsDateKey(getBusinessAnalyticsDateKey(new Date(), timeZone, businessDayEndTime), -7);
-
-        const analyticsQuery = await db.collection(DB_COLLECTIONS.ANALYTICS)
-            .where('__name__', '>=', `${tId}_${sId}_${projectId}_daily_${dateStr}`)
-            .where('__name__', '<=', `${tId}_${sId}_${projectId}_daily_9999`)
-            .get();
-
-        standaloneDaysWithData = analyticsQuery.size;
-
-        for (const doc of analyticsQuery.docs) {
-            const data = doc.data();
-
-            if (data.viewsByItem) {
-                for (const [itemId, views] of Object.entries(data.viewsByItem)) {
-                    const existing = itemStatsMap.get(itemId) || {
-                        itemId,
-                        itemName: data.itemNames?.[itemId] || itemId,
-                        category: '',
-                        views: 0,
-                        clicks: 0,
-                        orders: 0,
-                        price: 0
-                    };
-                    existing.views += (views as number);
-                    itemStatsMap.set(itemId, existing);
-                }
-            }
-
-            if (data.clicksByItem) {
-                for (const [itemId, clicks] of Object.entries(data.clicksByItem)) {
-                    const existing = itemStatsMap.get(itemId) || {
-                        itemId,
-                        itemName: data.itemNames?.[itemId] || itemId,
-                        category: '',
-                        views: 0,
-                        clicks: 0,
-                        orders: 0,
-                        price: 0
-                    };
-                    existing.clicks += (clicks as number);
-                    itemStatsMap.set(itemId, existing);
-                }
-            }
-
-            if (data.recommendationClicksByItem) {
-                for (const [itemId, clicks] of Object.entries(data.recommendationClicksByItem)) {
-                    const existing = itemStatsMap.get(itemId);
-                    if (existing) {
-                        existing.clicks += (clicks as number) * 2;
-                    }
-                }
-            }
+    }
+    // Apply 2x weight for recommendation clicks (high-value interactions)
+    for (const [itemId, clicks] of Object.entries(analyticsForScoring.recommendationClicksByItem)) {
+        const existing = itemStatsMap.get(itemId);
+        if (existing) {
+            existing.clicks += clicks * 2;
         }
     }
 
@@ -761,7 +715,7 @@ async function computeForProject(
             itemsWithPrice: items.filter(i => i.price > 0).length,
             durationCoverage: items.length > 0 ? items.filter(i => i.duration !== undefined && i.duration > 0).length / items.length : 0,
             priceCoverage: items.length > 0 ? items.filter(i => i.price > 0).length / items.length : 0,
-            daysWithData: prefetchedAnalytics?.daysWithData ?? standaloneDaysWithData,
+            daysWithData: analyticsForScoring.daysWithData,
         }
     };
 }

@@ -12,6 +12,7 @@
 
 import { AISummary } from '@template/main-app/projects/types';
 import { Card, List, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuLightbulb } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
@@ -23,13 +24,8 @@ interface AISummaryCardProps {
     period: 'daily' | 'weekly' | 'monthly';
 }
 
-const periodTitles = {
-    daily: 'Yesterday at a glance',
-    weekly: 'This week at a glance',
-    monthly: 'This month in summary',
-};
-
 const AISummaryCard: React.FC<AISummaryCardProps> = ({ summary, period }) => {
+    const t = useTranslations('Dashboard.owner');
     if (!summary?.bulletPoints?.length) {
         return null;
     }
@@ -39,7 +35,7 @@ const AISummaryCard: React.FC<AISummaryCardProps> = ({ summary, period }) => {
             <div className={styles.aiSummaryHeader}>
                 <LuLightbulb className={styles.aiIcon} />
                 <Title level={5} className={styles.aiTitle}>
-                    {periodTitles[period]}
+                    {t(`aiSummary.${period}`)}
                 </Title>
             </div>
             <List

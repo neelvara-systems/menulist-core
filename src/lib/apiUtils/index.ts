@@ -1,43 +1,75 @@
 import { UserUploadedFileType } from "@type/common";
 
+const MAX_AI_REFERENCE_IMAGE_BYTES = 10 * 1024 * 1024;
+const SUPPORTED_AI_IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+
+function assertSupportedMimeType(mimeType: string) {
+    if (!SUPPORTED_AI_IMAGE_TYPES.has(mimeType.toLowerCase())) {
+        throw new Error("Unsupported image type.");
+    }
+}
+
+function getApproximateBase64Bytes(base64: string) {
+    return Math.floor((base64.replace(/=+$/, '').length * 3) / 4);
+}
+
+function parseImageDataUrl(dataUrl: string): { base64ImageData: string; mimeType: string } {
+    const match = dataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([\s\S]+)$/i);
+    if (!match) {
+        throw new Error("Invalid image data URL format.");
+    }
+
+    const mimeType = match[1].toLowerCase().replace('image/jpg', 'image/jpeg');
+    const base64ImageData = match[2];
+    assertSupportedMimeType(mimeType);
+
+    if (!base64ImageData || getApproximateBase64Bytes(base64ImageData) > MAX_AI_REFERENCE_IMAGE_BYTES) {
+        throw new Error("Image is too large.");
+    }
+
+    return { base64ImageData, mimeType };
+}
+
+function assertFirebaseStorageUrl(url: string) {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' || parsed.hostname !== 'firebasestorage.googleapis.com') {
+        throw new Error("Unsupported image URL.");
+    }
+}
+
 export const getImageAsBase64 = async (referanceImage: UserUploadedFileType) => {
+    if (!referanceImage?.url || typeof referanceImage.url !== 'string') {
+        throw new Error("Image URL is required.");
+    }
+
     let base64ImageData: string;
     let mimeType: string = referanceImage.type || "image/jpeg"; // Default or use provided type
     if (referanceImage.url && referanceImage.url.includes("https://firebasestorage.googleapis.com")) {
-        console.log("fetching firebase url")
+        assertFirebaseStorageUrl(referanceImage.url);
         const imageUrl = referanceImage.url;
         const response = await fetch(imageUrl);
+        if (!response.ok) {
+            throw new Error("Unable to read source image.");
+        }
+
+        const responseType = response.headers.get('content-type') || mimeType;
+        mimeType = responseType.split(';')[0].toLowerCase().replace('image/jpg', 'image/jpeg');
+        assertSupportedMimeType(mimeType);
+
+        const contentLength = Number(response.headers.get('content-length') || 0);
+        if (contentLength > MAX_AI_REFERENCE_IMAGE_BYTES) {
+            throw new Error("Image is too large.");
+        }
+
         const imageArrayBuffer = await response.arrayBuffer();
+        if (imageArrayBuffer.byteLength > MAX_AI_REFERENCE_IMAGE_BYTES) {
+            throw new Error("Image is too large.");
+        }
+
         base64ImageData = Buffer.from(imageArrayBuffer).toString('base64');
-        console.log("fetched firebase base64ImageData")
     } else if (referanceImage.url && typeof referanceImage.url === 'string' && referanceImage.url.startsWith('data:')) {
-        // This block handles the data URL case
-        console.log("Processing image from Data URL");
-        const dataUrl = referanceImage.url;
-        const commaIndex = dataUrl.indexOf(',');
-
-        if (commaIndex === -1) {
-            console.error("Invalid data URL format: missing comma", dataUrl);
-            throw new Error("Invalid image data URL format.");
-        }
-
-        // Extract mime type from data URL (e.g., "image/png;base64")
-        const meta = dataUrl.substring(5, commaIndex);
-        const metaParts = meta.split(';');
-        mimeType = metaParts[0]; // Get the actual mime type (e.g., "image/png")
-
-        // Extract the raw Base64 data after the comma
-        base64ImageData = dataUrl.substring(commaIndex + 1);
-
-        // Optional: Basic validation of the extracted Base64 data
-        if (!base64ImageData || base64ImageData.length % 4 !== 0) {
-            console.warn("Extracted Base64 data looks potentially invalid or incomplete");
-            // You might add more rigorous Base64 validation here if needed
-        }
-
+        ({ base64ImageData, mimeType } = parseImageDataUrl(referanceImage.url));
     } else {
-        // Handle cases where the URL is neither Firebase nor a data URL
-        console.error("Unsupported image URL format or invalid data:", referanceImage.url);
         throw new Error("Unsupported image data format.");
     }
     return { base64ImageData, mimeType }

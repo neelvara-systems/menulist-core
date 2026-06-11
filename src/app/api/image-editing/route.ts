@@ -4,6 +4,7 @@ import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constan
 import { GenerateContentResponse, Modality } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { sanitizeImageGenerationConfigForLogging, summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { getImageAsBase64 } from "@lib/apiUtils";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
@@ -22,7 +23,7 @@ import { generateImageEditingPrompt } from "./promptsList";
 const AI_MODEL = "gemini-2.5-flash-image";
 const LOG_FILE = "image-editing.log"
 
-async function editImageViaFlash(generationConfig: { prompt?: string, referanceImage: UserUploadedFileType, promptImages?: UserUploadedFileType[] }): Promise<{ images: { base64: string; mimeType: string }[], response: GenerateContentResponse } | null | NextResponse> {
+async function editImageViaFlash(generationConfig: { prompt?: string, referanceImage: UserUploadedFileType, promptImages?: UserUploadedFileType[] }): Promise<{ images: { base64: string; mimeType: string }[], response: GenerateContentResponse } | null> {
     try {
 
         const { base64ImageData, mimeType } = await getImageAsBase64(generationConfig.referanceImage);
@@ -63,10 +64,7 @@ async function editImageViaFlash(generationConfig: { prompt?: string, referanceI
     } catch (error) {
         logger.error('Error editing image', error);
         await writeLogEntry({ logFileName: LOG_FILE, logType: 'FLASH_ERROR', error });
-        return NextResponse.json(
-            { error: error, message: (error as Error).message },
-            { status: 500 }
-        );
+        throw error;
     }
 }
 
@@ -104,7 +102,15 @@ export const POST = withAuth(async (request, session) => {
                 },
             }, 'high'); // HIGH severity - very expensive
 
-            await writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId, rawData?.fileId, rawData);
+            await writeMissingParamsLogEntry(LOG_FILE, userId, rawData?.projectId, rawData?.fileId, {
+                error: errorMsg,
+                hasGenerationConfig: !!rawData?.generationConfig,
+                hasPrompt: !!rawData?.generationConfig?.prompt,
+                hasPromptImages: Array.isArray(rawData?.generationConfig?.promptImages),
+                hasReferenceImage: !!rawData?.generationConfig?.referanceImage?.url,
+                projectId: rawData?.projectId,
+                fileId: rawData?.fileId,
+            });
 
             return NextResponse.json({
                 error: 'Invalid input',
@@ -112,7 +118,7 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 400 });
         }
 
-        const { generationConfig, projectId, fileId, itemDetails, businessType } = rawData as EditImageViaApiPayloadType;
+        const { generationConfig, projectId, fileId, itemDetails, businessType } = validation.data as unknown as EditImageViaApiPayloadType;
 
         const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
             action: "image",
@@ -148,10 +154,30 @@ export const POST = withAuth(async (request, session) => {
         const startTime = new Date().getTime();
         generationConfig.prompt = generateImageEditingPrompt(businessType, generationConfig, itemDetails)
         logger.debug('Prompt generated for image edit', { promptLength: generationConfig.prompt?.length })
-        let imageEditGemeiniResponse: any = await editImageViaFlash(generationConfig);
+        const promptImages = (generationConfig.promptImages || []).filter((image): image is UserUploadedFileType => Boolean(image?.url));
+        let imageEditGemeiniResponse = await editImageViaFlash({
+            ...generationConfig,
+            promptImages,
+        });
 
         const endTime = new Date().getTime();
         const processingTime = endTime - startTime;
+
+        if (!imageEditGemeiniResponse?.images?.length) {
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                projectId,
+                fileId,
+                logType: 'NO_IMAGE_EDIT_GENERATED',
+                data: {
+                    generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
+                    itemDetails,
+                    response: summarizeImageProviderResponse(imageEditGemeiniResponse?.response),
+                },
+            });
+            return NextResponse.json({ error: 'Image editing produced no image' }, { status: 502 });
+        }
 
         // Update the transaction object with calculated values and other details
         const transactionObject = {
@@ -159,7 +185,7 @@ export const POST = withAuth(async (request, session) => {
             action: AI_ACTIONS_TYPES.IMAGE_EDITING,
             unitsConsumed: 0,
             itemDetails,
-            generationConfig,
+            generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
             projectId,
             fileId,
             processingTime,
@@ -199,7 +225,20 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // Log successful response to file using the new generic function
-        await writeLogEntry({ logFileName: LOG_FILE, userId: session.user.id, projectId, fileId, logType: 'SUCCESS_RESPONSE', data: { imageEditGemeiniResponse, transactionObject }, });
+        await writeLogEntry({
+            logFileName: LOG_FILE,
+            userId: session.user.id,
+            projectId,
+            fileId,
+            logType: 'SUCCESS_RESPONSE',
+            data: {
+                imageEditResponse: {
+                    imageCount: imageEditGemeiniResponse.images.length,
+                    response: summarizeImageProviderResponse(imageEditGemeiniResponse.response),
+                },
+                transactionObject,
+            },
+        });
 
         return NextResponse.json({
             data: imageEditGemeiniResponse?.images,

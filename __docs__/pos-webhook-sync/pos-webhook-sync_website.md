@@ -4,8 +4,8 @@
 > **Audience:** Potential customers visiting menulist.ai
 > **Language:** Follows `__docs__/constitution/02-language-governance.md`
 > **Status:** Implemented
-> **Last Updated:** May 18, 2026
-> **Version:** 2.1
+> **Last Updated:** June 11, 2026
+> **Version:** 2.2
 
 > Current website governance note: This page is an older feature-page draft. The active main website should mention POS Sync only as low-prominence operations proof until vendor/customer proof exists. Use "approved menu changes can be sent as a signed full-menu snapshot to a connected store POS webhook" language. Do not use "works with any POS", "real-time sync", "seamless integration", "POS connector", or universal POS support claims on the main website.
 
@@ -91,7 +91,7 @@ MenuList sends your full updated menu to your POS system automatically whenever 
   **A:** MenuList shows you exactly what happened. When your POS comes back online, click "Test" to verify the connection. The next menu change will sync normally.
 
 - **Q:** Do I need a developer to set this up?
-  **A:** You enter a webhook URL and click Test. If you need help, click "Send Instructions to POS Provider" and we email your POS vendor everything they need — setup steps, sample data, and documentation.
+  **A:** You enter a public HTTPS webhook URL and click Test. If you need help, MenuList can prepare an email draft with setup steps, sample data, and documentation for your provider or developer.
 
 - **Q:** Is my menu data secure?
   **A:** Every update is signed with a unique secret key using the same security standard banks use (HMAC-SHA256). Your POS verifies each update is genuinely from MenuList.

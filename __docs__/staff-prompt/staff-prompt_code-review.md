@@ -4,6 +4,8 @@
 **Reviewer:** Cascade AI (Post-Implementation Quality Gate)  
 **Status:** 🔄 In Progress
 
+> **Runtime note (June 11, 2026):** This review contains historical references to standalone `src/lib/staff-prompt/` helper files. Those files were removed on June 1, 2026. Current active code only reads `staffPrompt` from the Today summary and renders it read-only when `eligible` is true.
+
 ---
 
 ## 1. SPEC ALIGNMENT CHECK

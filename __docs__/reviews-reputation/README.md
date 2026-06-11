@@ -1,9 +1,9 @@
 # Reviews & Reputation
 
 **Feature:** Reviews & Reputation  
-**Status:** 🔒 SPEC LOCKED — Implementation blocked until GBP API access granted  
+**Status:** 🔒 SPEC LOCKED — Runtime infrastructure present, product disabled until GBP API access granted
 **Version:** 1.0  
-**Last Updated:** February 2, 2026
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -49,10 +49,10 @@ States:
 
 | File                                                            | Purpose                               | Status     |
 | --------------------------------------------------------------- | ------------------------------------- | ---------- |
-| `src/types/reviews.ts`                                          | Review, ReviewState types             | 🔶 BLOCKED |
-| `src/database/reviews/index.ts`                                 | DAL for reviews collections           | 🔶 BLOCKED |
-| `src/app/api/reviews/states/route.ts`                           | GET review states API (booleans only) | 🔶 BLOCKED |
-| `src/components/templates/main-app/reviews/ReputationGuard.tsx` | Passive warning notice (auto-expires) | 🔶 BLOCKED |
+| `src/types/reviews.ts`                                          | Review, ReviewState types             | ✅ BUILT |
+| `src/database/reviews/index.ts`                                 | DAL for reviews collections           | ❌ NOT PRESENT |
+| `src/app/api/reviews/states/route.ts`                           | GET review states API (booleans only; flag-gated, rate-limited) | ✅ BUILT / DISABLED |
+| `src/components/templates/main-app/reviews/ReputationGuard.tsx` | Passive warning notice (not mounted while flag is off) | ✅ BUILT / DISABLED |
 | `functions/src/reviews/reviewsIngestion.ts`                     | Cloud Function - ingestion            | 🔶 BLOCKED |
 | `functions/src/reviews/reviewsClassifier.ts`                    | Cloud Function - classification       | 🔶 BLOCKED |
 | `functions/src/reviews/classificationRules.ts`                  | Classification rules                  | 🔶 BLOCKED |
@@ -65,10 +65,16 @@ States:
 // src/config/features.ts
 
 ENABLE_REVIEWS_REPUTATION: false; // Master toggle - INACTIVE until GBP access
-REVIEWS_CLASSIFICATION: true; // Rule-based classification
-REVIEWS_BLOCK_STATE: true; // Block dangerous replies
-REVIEWS_ESCALATION: true; // Rare escalation notices
+ENABLE_AI_REPLY_ASSIST: false; // Requires ENABLE_REVIEWS_REPUTATION
 ```
+
+## June 11, 2026 Runtime Notes
+
+- `ENABLE_REVIEWS_REPUTATION` and `ENABLE_AI_REPLY_ASSIST` are disabled by default.
+- `/api/reviews/states` returns only booleans, is parent-flag gated, rate-limited, and queries non-expired `reviewsState` documents.
+- `/api/reviews/suggest` is also parent-flag gated and SAFE_MODE guarded. It remains a suggestion-only route; MenuList does not auto-post review replies.
+- `ReputationGuard` and `ReviewReplyTool` exist as components but are not mounted in the owner dashboard while the feature is disabled.
+- No GBP ingestion Cloud Function is active in this repo snapshot; full review product launch remains blocked.
 
 ---
 
@@ -127,6 +133,6 @@ REVIEWS_ESCALATION: true; // Rare escalation notices
 
 ---
 
-**IMPLEMENTATION STATUS:** 🔶 BLOCKED (GBP API dependency)
+**IMPLEMENTATION STATUS:** 🔶 BLOCKED FOR PRODUCT LAUNCH (GBP API dependency)
 
-_This feature is defined, not built. Implementation begins only after GBP API access is granted._
+_Infrastructure scaffolding exists, but the product remains disabled until GBP API access and ingestion are real._

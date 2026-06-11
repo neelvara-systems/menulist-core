@@ -2,12 +2,12 @@
 
 **Feature:** #4 — Multi-Outlet Brand Consistency  
 **Document Type:** Technical Blueprint (Dev-Only)  
-**Status:** ✅ Production Ready  
+**Status:** ✅ Controlled Owner Testing Ready (full MenuList certification pending)
 **Stack:** Next.js 14 + Firebase (Firestore)  
 **Constraints:** 3-year architecture freeze • backwards-compatible • feature-flagged  
 **Default:** OFF (`ENABLE_MULTI_OUTLET: false`)  
 **Original Date:** January 19, 2026  
-**Last Reviewed:** May 27, 2026
+**Last Reviewed:** June 11, 2026
 **Author:** Lead Architect
 
 > **Post-Implementation Notes (Feb 13, 2026):** This blueprint was the original technical plan. The core architecture below remains accurate. The following were added during implementation and have their own dedicated docs:
@@ -22,6 +22,7 @@
 > - **May 19, 2026 hardening:** linked outlet editor saves now use `/api/projects/outlet-save` for server-side tenant/store validation, local-only menu persistence, OutletPolicy enforcement, and public cache invalidation. Desktop master extraction status uses `/api/projects/master-job-status` instead of a direct outlet-client listener on master job documents.
 > - **May 20, 2026 completion pass:** master/local extraction records now persist `extractionIdAliases` for ID stability, outlet-only local changes stamp `outletLocalState` in the same write, public item links fall back cleanly when a deleted local item is requested, and mobile has master-update review/history parity with desktop.
 > - **May 27, 2026 outlet policy hardening:** mobile/desktop policy controls share `OUTLET_POLICY_CATEGORIES`, and `processMenuImagesJob` now checks linked outlet `canUseMenuExtraction` before extraction provider processing.
+> - **June 11, 2026 production audit:** outlet creation no longer writes subscription quantity when `ENABLE_OUTLET_BILLING` is off; deactivation validates the canonical target `stores/{outletSId}` doc before Admin writes; inactive outlets are excluded from project propagation, brand propagation, and master-delete linked-outlet scans; inactive outlet rename is rejected; desktop/mobile active outlet counters now exclude inactive outlets.
 
 ---
 

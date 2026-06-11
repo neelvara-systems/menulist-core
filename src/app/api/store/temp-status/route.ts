@@ -10,8 +10,10 @@ export const dynamic = 'force-dynamic';
  * @see __docs__/temp-status-layer/temp-status-layer_impl.md
  */
 import { DB_COLLECTIONS } from "@constant/database";
+import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -43,6 +45,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (!tenantId || !storeId) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
+
+    const permissionError = await requireAnyStorePermission(
+        request,
+        session,
+        [PERMISSIONS.MANAGE_STORE, PERMISSIONS.MANAGE_PUBLIC_PRESENCE],
+        "temporary status",
+    );
+    if (permissionError) return permissionError;
 
     const body = await request.json();
     const validation = RequestSchema.safeParse(body);

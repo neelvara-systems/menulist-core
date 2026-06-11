@@ -5,6 +5,7 @@ import {
     type OwnerMenuAnalyticsDetailData,
 } from '@lib/analytics/ownerDashboardDetails';
 import { theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
 import { Card, Flex, Tag, Text } from '../../antd';
 
@@ -15,15 +16,16 @@ interface MobileMenuAnalyticsDetailsCardProps {
 
 export default function MobileMenuAnalyticsDetailsCard({
     data,
-    title = 'Menu Details',
+    title,
 }: MobileMenuAnalyticsDetailsCardProps) {
     const { token } = theme.useToken();
-    const sections = useMemo(() => buildMenuAnalyticsDetailSections(data), [data]);
+    const t = useTranslations('Dashboard.owner');
+    const sections = useMemo(() => buildMenuAnalyticsDetailSections(data, t), [data, t]);
 
     return (
-        <Card size="small" title={<Text strong>{title}</Text>}>
+        <Card size="small" title={<Text strong>{title || t('details.menuDetails')}</Text>}>
             {sections.length === 0 ? (
-                <Text type="secondary">No extra menu detail yet for this period.</Text>
+                <Text type="secondary">{t('details.noExtraMenuDetail')}</Text>
             ) : (
                 <Flex gap={14} vertical>
                     {sections.map((section) => (

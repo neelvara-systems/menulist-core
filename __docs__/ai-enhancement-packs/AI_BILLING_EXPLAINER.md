@@ -1,8 +1,8 @@
 # How the AI Billing System Works
 
 **For: Founder / CEO / Co-Founder**
-**Last Updated: Feb 10, 2026**
-**Status: Fully Implemented — Production Ready**
+**Last Updated: June 11, 2026**
+**Status: Implemented — billing-slice audited; full MenuList certification pending**
 
 This document explains the complete subscription, credit, and AI billing system as it exists in the codebase today. Nothing here is proposed or planned — everything described is built and working.
 
@@ -67,9 +67,11 @@ When a customer subscribes (onboarding or plan change):
 ```
 monthlyCreditsAllowance = plan's monthly credit value (e.g., 200 for Pro)
 monthlyCredits = 200  (full balance — ready to use)
-topUpCredits = 0  (or carry-forward credits from previous subscription on upgrade)
+topUpCredits = 0
 creditsLastResetMonth = current billing period key (YYYYMM)
 ```
+
+For upgrades, carry-forward is applied by the server-owned upgrade route after both the old and new subscription documents are verified. The subscription creation route never accepts browser-supplied top-up or carry-forward credit values.
 
 ### 3.2 Credits Are Consumed on Every Paid AI Action
 
@@ -138,10 +140,13 @@ Top-up credits are never reset, never expire, and persist across billing cycles.
 
 When a customer upgrades their plan (e.g., Starter → Pro):
 
-1. Old subscription is cancelled immediately
-2. Remaining credits from the old plan are calculated
-3. Those remaining credits are added as `topUpCredits` on the new subscription
-4. New subscription starts with fresh `monthlyCredits` from the new plan
+1. New Razorpay subscription is created with `topUpCredits = 0`
+2. Razorpay checkout completes and `/api/razorpay/verify-subscription` verifies the checkout signature, captured payment, and payment-subscription ownership
+3. `/api/razorpay/upgrade-subscription` verifies both old and new subscription documents belong to the same billing scope
+4. Remaining credits from the old plan are calculated server-side
+5. Old subscription is expired
+6. Server writes the remaining credits onto the new subscription as `topUpCredits` and stamps `carryForwardFromSubscriptionId`
+7. New subscription starts with fresh `monthlyCredits` from the new plan
 
 This means customers never lose paid-for credits when upgrading.
 

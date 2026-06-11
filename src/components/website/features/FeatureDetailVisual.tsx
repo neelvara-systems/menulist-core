@@ -305,11 +305,6 @@ export default function FeatureDetailVisual({ config }: FeatureDetailVisualProps
       <div className="ws-feature-visual__stage">
         {renderPrimaryVisual()}
       </div>
-      <div className="ws-feature-visual__pills">
-        {previewPills.map((label) => (
-          <span key={label}>{label}</span>
-        ))}
-      </div>
     </div>
   );
 }

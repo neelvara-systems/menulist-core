@@ -114,6 +114,8 @@ const FRAMEWORK_ITEMS = [
     { key: 'webflow', label: 'Webflow', snippet: ANSWERLATTICE_FRAMEWORK_SNIPPETS.webflow },
 ];
 
+const FULL_WIDGET_KEY_PLACEHOLDER = 'al_full_widget_key_shown_once';
+
 const formatDateTime = (value: any): string => {
     if (!value) return 'Not seen yet';
     const date = typeof value?.toDate === 'function'
@@ -215,6 +217,9 @@ export default function AnswerlatticeInstallCenter() {
 
     const aiPacket = useMemo(() => renderAnswerlatticeAgentPrompt(agentInput), [agentInput]);
     const setupSnapshot = useMemo(() => JSON.stringify(buildAnswerlatticeAgentPacketJson(agentInput), null, 2), [agentInput]);
+    const installSnippet = useMemo(() => (
+        buildAnswerlatticeWidgetEmbedSnippet(FULL_WIDGET_KEY_PLACEHOLDER, { blockedRoutes: savedBlockedRoutes })
+    ), [savedBlockedRoutes]);
 
     const statusItems = [
         {
@@ -269,7 +274,7 @@ export default function AnswerlatticeInstallCenter() {
                 type="warning"
                 showIcon
                 message="Install setup is unavailable"
-                description="Refresh after Answerlattice Firebase and widget access are configured for this workspace."
+                description="Refresh after this Answerlattice workspace and widget access are fully connected."
                 action={<Button onClick={() => loadInstallState(true)}>Retry</Button>}
             />
         );
@@ -329,14 +334,14 @@ export default function AnswerlatticeInstallCenter() {
                     <Card title={<Flex align="center" gap={8}><LuCode /> AI install packet</Flex>}>
                         <Flex vertical gap={12}>
                             <Paragraph type="secondary" style={{ margin: 0 }}>
-                                Give this to Codex, Claude Code, Cursor, Windsurf, or another coding agent. It uses the saved key prefix, dashboard origins, dashboard blocked routes, v1 script URL, safe context rules, and acceptance checks.
+                                Give this to Codex, Claude Code, Cursor, Windsurf, or another coding agent. It includes the install placeholder, saved-key identifier, dashboard origins, dashboard blocked routes, v1 script URL, safe context rules, and acceptance checks.
                             </Paragraph>
                             {!widgetConfig.hasWidgetKey ? (
                                 <Alert
                                     type="warning"
                                     showIcon
                                     message="Widget key required"
-                                    description="Create or copy the al_* widget key from Keys & Origins before a coding agent can complete the install."
+                                    description="Create a widget key in Keys & Origins and save the full one-time al_* value before a coding agent completes the install."
                                 />
                             ) : null}
                             <Space wrap>
@@ -375,7 +380,7 @@ export default function AnswerlatticeInstallCenter() {
                         <Descriptions column={1} size="small" bordered>
                             <Descriptions.Item label="Contract">answerlattice-widget-v1</Descriptions.Item>
                             <Descriptions.Item label="Script URL">{ANSWERLATTICE_WIDGET_SCRIPT_URL}</Descriptions.Item>
-                            <Descriptions.Item label="Key prefix">{widgetConfig.keyPrefix || 'Not created yet'}</Descriptions.Item>
+                            <Descriptions.Item label="Saved key identifier">{widgetConfig.keyPrefix || 'Not created yet'}</Descriptions.Item>
                             <Descriptions.Item label="Allowed origins">{tagList(allowedOrigins, 'No origins saved')}</Descriptions.Item>
                             <Descriptions.Item label="Blocked routes">{tagList(savedBlockedRoutes, 'No blocked routes saved')}</Descriptions.Item>
                             <Descriptions.Item label="Last route">{runtimeStatus?.lastPath || 'Not seen yet'}</Descriptions.Item>
@@ -406,13 +411,22 @@ export default function AnswerlatticeInstallCenter() {
             <Row gutter={[16, 16]}>
                 <Col xs={24} lg={12}>
                     <Card title="Install script">
+                        <Alert
+                            type={widgetConfig.hasWidgetKey ? 'info' : 'warning'}
+                            showIcon
+                            style={{ marginBottom: 12 }}
+                            message={widgetConfig.hasWidgetKey ? 'Snippet uses a placeholder key' : 'Create a widget key before install'}
+                            description={widgetConfig.hasWidgetKey
+                                ? 'Replace the placeholder with the full al_* value shown immediately after creating a key. The prefix shown in this dashboard is only for identifying the saved key later.'
+                                : 'Widget keys are shown once after creation. Create one in Keys & Origins, store it in your app environment, then use this snippet.'}
+                        />
                         <Input.TextArea
-                            value={buildAnswerlatticeWidgetEmbedSnippet(widgetConfig.keyPrefix ? `${widgetConfig.keyPrefix}...` : 'al_your_widget_key', { blockedRoutes: savedBlockedRoutes })}
+                            value={installSnippet}
                             readOnly
                             rows={5}
                             style={{ fontFamily: 'monospace', fontSize: 12, background: token.colorFillTertiary, color: token.colorText }}
                         />
-                        <Button style={{ marginTop: 12 }} icon={<LuClipboard />} onClick={() => copyText(buildAnswerlatticeWidgetEmbedSnippet(widgetConfig.keyPrefix ? `${widgetConfig.keyPrefix}...` : 'al_your_widget_key', { blockedRoutes: savedBlockedRoutes }), 'Script snippet copied')}>
+                        <Button style={{ marginTop: 12 }} icon={<LuClipboard />} onClick={() => copyText(installSnippet, 'Script snippet copied')}>
                             Copy Snippet
                         </Button>
                     </Card>

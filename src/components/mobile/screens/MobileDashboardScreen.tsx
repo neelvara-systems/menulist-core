@@ -12,7 +12,7 @@ import { useOBPDashboard } from '@hook/useOBPDashboard';
 import { useOwnerDashboard } from '@hook/useOwnerDashboard';
 import { getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { VIEW_MODE_CONFIG, type OwnerDashboardViewMode } from '@template/main-app/projects/types';
+import { type OwnerDashboardViewMode } from '@template/main-app/projects/types';
 import { formatDateKey, formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
@@ -51,7 +51,6 @@ interface MobileDashboardScreenProps {
     onOpenDesignEditor?: () => void;
 }
 
-const SETTLED_TAB_HELPER_TEXT = 'Settled analytics are fetched only when this tab is opened. After the first fetch, this device uses cached settled data until the next store end-of-day cycle.';
 const FULL_WIDTH_TAG_STYLE = {
     display: 'block',
     fontSize: 13,
@@ -124,7 +123,8 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
         { enabled: canShowBusinessHealthAnalytics && isBusinessHealthReady },
     );
 
-    const viewModeLabel = VIEW_MODE_CONFIG[viewMode].label;
+    const getViewModeLabel = useCallback((mode: OwnerDashboardViewMode) => t(`viewModes.${mode}`), [t]);
+    const viewModeLabel = getViewModeLabel(viewMode);
 
     const handleRefresh = useCallback(async () => {
         try {
@@ -210,9 +210,9 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                     <Card>
                         <Flex align="center" gap={12} vertical>
                             <LuAlertTriangle color={token.colorWarning} size={36} />
-                            <Text strong>Unable to load dashboard</Text>
+                            <Text strong>{t('unableToLoad')}</Text>
                             <Text type="secondary" style={{ textAlign: 'center' }}>
-                                Please try refreshing this screen. If the problem persists, contact support.
+                                {t('refreshOrContactSupport')}
                             </Text>
                         </Flex>
                     </Card>
@@ -302,12 +302,12 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
         <Flex gap={12} wrap>
             {renderMetricTile(labels.scansLabel, (metrics?.menuVisits || 0).toLocaleString(), <LuEye color={token.colorPrimary} size={14} />)}
             {renderMetricTile(t('itemTaps'), (metrics?.itemClicks || 0).toLocaleString(), <LuFlame color={token.colorWarning} size={14} />)}
-            {renderMetricTile('Engaged Sessions', `${metrics?.engagedSessionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={14} />)}
-            {renderMetricTile('Action Rate', `${metrics?.actionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={14} />)}
-            {renderMetricTile('Customer Actions', (metrics?.menuActionClicks || 0).toLocaleString(), <LuHeart color={token.colorSuccess} size={14} />)}
-            {renderMetricTile('Searches', (metrics?.searches || 0).toLocaleString(), <LuBarChart3 color={token.colorInfo} size={14} />)}
-            {renderMetricTile('No-result Searches', (metrics?.zeroResultSearches || 0).toLocaleString(), <LuTrendingDown color={token.colorWarning} size={14} />)}
-            {renderMetricTile('Unavailable Interest', (metrics?.unavailableItemTaps || 0).toLocaleString(), <LuShield color={token.colorWarning} size={14} />)}
+            {renderMetricTile(t('engagedSessions'), `${metrics?.engagedSessionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={14} />)}
+            {renderMetricTile(t('actionRate'), `${metrics?.actionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={14} />)}
+            {renderMetricTile(t('customerActions'), (metrics?.menuActionClicks || 0).toLocaleString(), <LuHeart color={token.colorSuccess} size={14} />)}
+            {renderMetricTile(t('searches'), (metrics?.searches || 0).toLocaleString(), <LuBarChart3 color={token.colorInfo} size={14} />)}
+            {renderMetricTile(t('noResultSearches'), (metrics?.zeroResultSearches || 0).toLocaleString(), <LuTrendingDown color={token.colorWarning} size={14} />)}
+            {renderMetricTile(t('unavailableInterest'), (metrics?.unavailableItemTaps || 0).toLocaleString(), <LuShield color={token.colorWarning} size={14} />)}
             {metrics?.smartPicksRendered > 0 ? (
                 <>
                     {renderMetricTile(t('smartPicks'), metrics.smartPicksRendered.toLocaleString(), <LuZap color={token.colorInfo} size={14} />)}
@@ -320,10 +320,10 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
     const renderTodaySoFar = () => {
         if (loadingToday) {
             return (
-                <Card size="small" title={<Text strong>Menu</Text>}>
+                <Card size="small" title={<Text strong>{t('menu')}</Text>}>
                     <Flex align="center" gap={8}>
                         <DotLoading color="primary" />
-                        <Text type="secondary">Loading current activity</Text>
+                        <Text type="secondary">{t('loadingCurrentActivity')}</Text>
                     </Flex>
                 </Card>
             );
@@ -331,9 +331,9 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
 
         if (!today) {
             return (
-                <Card size="small" title={<Text strong>Menu</Text>}>
+                <Card size="small" title={<Text strong>{t('menu')}</Text>}>
                     <Text type="secondary" style={{ display: 'block' }}>
-                        No menu activity yet today.
+                        {t('noMenuActivityToday')}
                     </Text>
                 </Card>
             );
@@ -349,46 +349,60 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
             <div style={{ maxWidth: 280 }}>
                 <Text type="secondary" style={{ display: 'block' }}>
                     {updatedLabel
-                        ? `Updated ${updatedLabel}. This is the current business day's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement.`
-                        : "This is the current business day's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement."}
+                        ? t('todayPartialActivityUpdated', { updated: updatedLabel })
+                        : t('todayPartialActivity')}
                 </Text>
                 <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
-                    Fresh data appears when this screen is opened again or refreshed after 10 minutes. It does not auto-update continuously.
+                    {t('refreshHint')}
                 </Text>
                 <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
-                    Searches are de-duplicated within a session. Actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.
+                    {t('metricsHint')}
                 </Text>
                 {topSearch ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
-                        {`Top search right now: ${topSearch.term} (${topSearch.count})`}
+                        {t('topSearchNow', { term: topSearch.term, count: topSearch.count })}
                     </Text>
                 ) : null}
                 {topFilter ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
-                        {`Top filter right now: ${topFilter.label || topFilter.filterId} (${topFilter.interactions} intent, ${topFilter.actionClicks} actions)`}
+                        {t('topFilterNow', {
+                            label: topFilter.label || topFilter.filterId,
+                            interactions: topFilter.interactions,
+                            actions: topFilter.actionClicks,
+                        })}
                     </Text>
                 ) : null}
                 {topLanguage ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
-                        {`Top language right now: ${topLanguage.label || topLanguage.language} (${topLanguage.menuSessions || topLanguage.menuViews} sessions/views, ${topLanguage.adoptions || 0} stayed switches)`}
+                        {t('topLanguageNow', {
+                            label: topLanguage.label || topLanguage.language,
+                            sessions: topLanguage.menuSessions || topLanguage.menuViews,
+                            adoptions: topLanguage.adoptions || 0,
+                        })}
                     </Text>
                 ) : null}
                 <Text style={{ display: 'block', marginTop: 8 }}>
-                    {`No-result searches so far: ${today.metrics.zeroResultSearches || 0}`}
+                    {t('noResultSearchesSoFar', { count: today.metrics.zeroResultSearches || 0 })}
                 </Text>
                 {today.topZeroResultSearchTerms?.length ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
-                        {`No-result terms so far: ${today.topZeroResultSearchTerms.map((term: any) => `${term.term} (${term.count})`).join(', ')}`}
+                        {t('noResultTermsSoFar', { terms: today.topZeroResultSearchTerms.map((term: any) => `${term.term} (${term.count})`).join(', ') })}
                     </Text>
                 ) : null}
                 {topUnavailable ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
-                        {`Most tapped unavailable item: ${topUnavailable.name || topUnavailable.itemId} (${topUnavailable.clicks})`}
+                        {t('mostTappedUnavailableItem', { item: topUnavailable.name || topUnavailable.itemId, count: topUnavailable.clicks })}
                     </Text>
                 ) : null}
                 {hasActions ? (
                     <Text style={{ display: 'block', marginTop: 8 }}>
-                        {`Customer actions: Call ${today.menuActions?.call || 0}, WhatsApp ${today.menuActions?.whatsapp || 0}, Directions ${today.menuActions?.directions || 0}, Reserve ${today.menuActions?.reserve || 0}, Order ${today.menuActions?.order || 0}`}
+                        {t('customerActionsBreakdown', {
+                            call: today.menuActions?.call || 0,
+                            whatsapp: today.menuActions?.whatsapp || 0,
+                            directions: today.menuActions?.directions || 0,
+                            reserve: today.menuActions?.reserve || 0,
+                            order: today.menuActions?.order || 0,
+                        })}
                     </Text>
                 ) : null}
             </div>
@@ -399,7 +413,7 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                 size="small"
                 title={(
                     <Flex align="center" justify="space-between">
-                        <Text strong>Menu</Text>
+                        <Text strong>{t('menu')}</Text>
                         <Popover content={todayInfoContent} placement="bottom" trigger="click">
                             <Button
                                 fill="none"
@@ -433,7 +447,7 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
         if (!periodData) {
             return (
                 <Card size="small" title={<Text strong>{viewModeLabel}</Text>}>
-                    <Text type="secondary">No menu activity yet for this period.</Text>
+                    <Text type="secondary">{t('noMenuActivityForPeriod')}</Text>
                 </Card>
             );
         }
@@ -461,7 +475,7 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                     {renderMetricsCards(periodData.metrics)}
                     {viewMode === 'monthly' && periodData.daysWithData > 0 ? (
                         <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
-                            {`${periodData.daysWithData} active days this month`}
+                            {t('activeDaysThisMonth', { count: periodData.daysWithData })}
                         </Text>
                     ) : null}
                 </Card>
@@ -476,22 +490,22 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                     <Flex gap={12} wrap>
                         {renderMetricTile(t('totalScans'), overall.lifetimeMetrics.totalViews?.toLocaleString() || '0', undefined, 4)}
                         {renderMetricTile(t('totalClicks'), overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0', undefined, 4)}
-                        {renderMetricTile('Engaged Sessions', `${overall.lifetimeMetrics.engagedSessionRate || 0}%`, undefined, 4)}
-                        {renderMetricTile('Action Rate', `${overall.lifetimeMetrics.actionRate || 0}%`, undefined, 4)}
-                        {renderMetricTile('Customer Actions', overall.lifetimeMetrics.totalMenuActionClicks?.toLocaleString() || '0', undefined, 4)}
-                        {renderMetricTile('Searches', overall.lifetimeMetrics.totalSearches?.toLocaleString() || '0', undefined, 4)}
-                        {renderMetricTile('No-result Searches', overall.lifetimeMetrics.totalZeroResultSearches?.toLocaleString() || '0', undefined, 4)}
-                        {renderMetricTile('Unavailable Interest', overall.lifetimeMetrics.totalUnavailableItemTaps?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile(t('engagedSessions'), `${overall.lifetimeMetrics.engagedSessionRate || 0}%`, undefined, 4)}
+                        {renderMetricTile(t('actionRate'), `${overall.lifetimeMetrics.actionRate || 0}%`, undefined, 4)}
+                        {renderMetricTile(t('customerActions'), overall.lifetimeMetrics.totalMenuActionClicks?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile(t('searches'), overall.lifetimeMetrics.totalSearches?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile(t('noResultSearches'), overall.lifetimeMetrics.totalZeroResultSearches?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile(t('unavailableInterest'), overall.lifetimeMetrics.totalUnavailableItemTaps?.toLocaleString() || '0', undefined, 4)}
                     </Flex>
                     {overall.firstDataDate ? (
                         <Text type="secondary">
-                            {`Since ${formatDateKey(overall.firstDataDate, formatter)}`}
+                            {t('since', { date: formatDateKey(overall.firstDataDate, formatter) })}
                         </Text>
                     ) : null}
                 </Card>
             ) : (
                 <Card size="small" title={<Text strong>{t('allTime')}</Text>}>
-                    <Text type="secondary">No lifetime menu activity yet.</Text>
+                    <Text type="secondary">{t('noLifetimeMenuActivityYet')}</Text>
                 </Card>
             )}
         </>
@@ -549,12 +563,12 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                     <Card className="mobile-dashboard-tabs-card" size="small">
                         <div className="mobile-dashboard-tabs">
                             <Tabs activeKey={viewMode} centered onChange={handleViewModeChange}>
-                                <Tabs.Tab title={VIEW_MODE_CONFIG.today.label} key="today" />
-                                <Tabs.Tab title={VIEW_MODE_CONFIG.overview.label} key="overview" />
-                                <Tabs.Tab title={VIEW_MODE_CONFIG.daily.label} key="daily" />
-                                <Tabs.Tab title={VIEW_MODE_CONFIG.weekly.label} key="weekly" />
-                                <Tabs.Tab title={VIEW_MODE_CONFIG.monthly.label} key="monthly" />
-                                <Tabs.Tab title={VIEW_MODE_CONFIG.overall.label} key="overall" />
+                                <Tabs.Tab title={getViewModeLabel('today')} key="today" />
+                                <Tabs.Tab title={getViewModeLabel('overview')} key="overview" />
+                                <Tabs.Tab title={getViewModeLabel('daily')} key="daily" />
+                                <Tabs.Tab title={getViewModeLabel('weekly')} key="weekly" />
+                                <Tabs.Tab title={getViewModeLabel('monthly')} key="monthly" />
+                                <Tabs.Tab title={getViewModeLabel('overall')} key="overall" />
                             </Tabs>
                         </div>
                     </Card>
@@ -562,7 +576,7 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
 
                 <Flex align="center" justify="space-between">
                     <Title level={5} style={{ margin: 0 }}>
-                        {viewMode === 'today' ? 'Today so far' : viewModeLabel}
+                        {viewMode === 'today' ? t('todaySoFar') : viewModeLabel}
                     </Title>
                     {viewMode === 'today' ? (
                         <Button fill="none" onClick={handleRefresh} style={{ paddingInline: 8 }}>
@@ -580,7 +594,7 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
 
                 {viewMode !== 'today' ? (
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        {SETTLED_TAB_HELPER_TEXT}
+                        {t('settledTabHelper')}
                     </Text>
                 ) : null}
 
@@ -662,7 +676,7 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                             {wtd ? (
                                 renderMetricsCards(wtd.metrics)
                             ) : (
-                                <Text type="secondary">No settled menu activity yet for the last 7 days.</Text>
+                                <Text type="secondary">{t('noSettledMenuActivityLast7Days')}</Text>
                             )}
                         </Card>
                         <MobileOBPMetricsCard
@@ -679,7 +693,7 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                             confidence={data?.ownerConfidence || overview?.ownerConfidence}
                             sourceQuality={data?.sourceQuality || overview?.sourceQuality || []}
                             analyticsAiEntitlement={data?.analyticsAiEntitlement || overview?.analyticsAiEntitlement}
-                            title="Menu Intelligence Action Plan"
+                            title={t('menuIntelligenceActionPlan')}
                         />
 
                         {overview?.aiSummary?.bulletPoints?.length ? (
@@ -699,7 +713,7 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                                 <Card size="small" title={
                                     <Flex align="center" gap={6}>
                                         <LuTrendingUp color={token.colorPrimary} size={14} />
-                                        <Text strong>4-Week Trend</Text>
+                                        <Text strong>{t('fourWeekTrend')}</Text>
                                     </Flex>
                                 }>
                                     <Flex gap={8} vertical>
@@ -730,7 +744,7 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                                                                 padding: '0 4px',
                                                             }}
                                                         >
-                                                            Now
+                                                            {t('now')}
                                                         </Tag>
                                                     ) : null}
                                                 </Flex>
@@ -746,24 +760,24 @@ export default function MobileDashboardScreen({ onBack, onOpenBusinessHealth, on
                             <Card size="small" title={
                                 <Flex align="center" gap={6}>
                                     <LuCalendar color={token.colorInfo} size={14} />
-                                    <Text strong>This Month</Text>
+                                    <Text strong>{t('thisMonth')}</Text>
                                 </Flex>
                             }>
                                 <Flex gap={12} wrap>
                                     {renderMetricTile(labels.scansLabel, (mtd.metrics?.menuVisits || 0).toLocaleString(), <LuEye color={token.colorPrimary} size={12} />, 4)}
                                     {renderMetricTile(t('itemTaps'), (mtd.metrics?.itemClicks || 0).toLocaleString(), <LuFlame color={token.colorWarning} size={12} />, 4)}
-                                    {renderMetricTile('Engaged Sessions', `${mtd.metrics?.engagedSessionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
-                                    {renderMetricTile('Action Rate', `${mtd.metrics?.actionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
+                                    {renderMetricTile(t('engagedSessions'), `${mtd.metrics?.engagedSessionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
+                                    {renderMetricTile(t('actionRate'), `${mtd.metrics?.actionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
                                 </Flex>
                                 {mtd.daysWithData > 0 ? (
                                     <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
-                                        {`${mtd.daysWithData} active days this month`}
+                                        {t('activeDaysThisMonth', { count: mtd.daysWithData })}
                                     </Text>
                                 ) : null}
                             </Card>
                         ) : null}
-                        <MobileMenuAnalyticsDetailsCard data={wtd} title="Last 7 Days Menu Details" />
-                        <MobileMenuAnalyticsDetailsCard data={mtd} title={`${mtd?.monthName || 'This Month'} Menu Details`} />
+                        <MobileMenuAnalyticsDetailsCard data={wtd} title={t('last7DaysMenuDetails')} />
+                        <MobileMenuAnalyticsDetailsCard data={mtd} title={t('monthMenuDetails', { month: mtd?.monthName || t('thisMonth') })} />
                         {!overview && !overall && !hasOBPSettledData && !isOBPSettledPending ? (
                             <Card>
                                 <Flex align="center" gap={12} vertical>

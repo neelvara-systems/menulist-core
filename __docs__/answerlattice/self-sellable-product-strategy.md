@@ -61,7 +61,7 @@ Answerlattice should not optimize the first product experience for enterprise pr
 
 Answerlattice should sell a simple promise:
 
-1. **Install in 10 minutes**
+1. **Guided install without a fixed-time promise**
    - founder creates account
    - adds product details
    - imports docs or starter knowledge
@@ -231,7 +231,7 @@ Build only when the work increases at least one of:
 ### C. Launch Setup Onboarding
 
 - [x] Keep the activation checklist as the client owner's first dashboard.
-- [x] Make the setup path read as "Launch support in 10 minutes."
+- [x] Make the setup path read as a guided launch checklist without promising a fixed setup time.
 - [x] Capture product name, product URL, support email, billing model, and primary product surfaces.
 - [x] Let founders import docs, URLs, PDFs, and starter answers.
 - [x] Generate initial entity candidates and canonical answer drafts after import.

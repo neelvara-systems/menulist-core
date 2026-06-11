@@ -1,7 +1,7 @@
 # Use MenuList — Mobile Support
 
-> **Version:** 1.2
-> **Last Updated:** June 3, 2026
+> **Version:** 1.3
+> **Last Updated:** June 11, 2026
 
 ## Feature Admission Test
 
@@ -19,6 +19,7 @@
 - Desktop: full `UseMenuList` page with asset generation, guides, and broader distribution tooling
 - Mobile: dedicated `MobileShareScreen.tsx` is the phone-side output center for the same owner distribution jobs
 - Shared logic: same DAL/data sources for project links, OBP links, feedback links, screen state, selected project data, PDF fallback bridge, structured export, Menu Kit generation, and Menu Card Export route entry
+- Mobile output actions should not create project truth. Default project creation remains limited to the mobile menu-management provider/shell when the owner enters menu editing.
 
 ## Mobile UX Requirements
 

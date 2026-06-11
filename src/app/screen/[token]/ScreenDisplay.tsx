@@ -21,6 +21,7 @@ import {
     resolveScreenText,
     truncateScreenText,
 } from "@lib/screen/screenContent";
+import { getPublicScreenStateDocId } from "@lib/screen/publicScreenState";
 import { guardedReload as _guardedReload, guardedReloadWithJitter as _guardedReloadWithJitter } from "@lib/screen/utils";
 import { ScreenSlide, ScreenStoreInfo } from "@type/campaigns";
 import { QRCode } from "antd";
@@ -178,7 +179,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     // Doc listener = 1 persistent connection to exact doc. Query listener = index scan.
     // At 5k+ screens, this saves significant Firestore cost.
     useEffect(() => {
-        const docId = `campaigns_${storeId}`;
+        const docId = getPublicScreenStateDocId(storeId);
         console.log(`[Screen] Setting up doc listener: platformSummary/${docId}`);
 
         const docRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, docId);
@@ -187,7 +188,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
             (snapshot) => {
                 if (snapshot.exists()) {
                     const docData = snapshot.data();
-                    const newVersion = docData.screen?.contentVersion || 1;
+                    const newVersion = docData.contentVersion || 1;
                     const currentVersion = initialData.contentVersion;
 
                     // Only reload if content version changed (real update)

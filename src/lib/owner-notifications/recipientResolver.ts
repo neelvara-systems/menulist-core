@@ -69,12 +69,19 @@ export async function resolveOwnerNotificationScope(
     }
 
     if (!event.tenantId || !event.storeId) return {};
-    const storeSnap = await admin.firestore()
+
+    const db = admin.firestore();
+    const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(event.storeId)).get();
+    if (storeSnap.exists) {
+        return { storeData: storeSnap.data() || null };
+    }
+
+    const legacyStoreSnap = await db
         .collection(DB_COLLECTIONS.TENANTS).doc(String(event.tenantId))
         .collection(DB_COLLECTIONS.STORES).doc(String(event.storeId))
         .get();
 
-    return { storeData: storeSnap.exists ? storeSnap.data() || null : null };
+    return { storeData: legacyStoreSnap.exists ? legacyStoreSnap.data() || null : null };
 }
 
 export function resolveOwnerNotificationRecipient(

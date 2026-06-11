@@ -1,6 +1,6 @@
 'use client'
 
-import { removePresetFromAllCategories } from '@database/projects';
+import { removePresetFromAllCategories, updatePresetInAllCategories } from '@database/projects';
 import { generatePresetId, updateTimeSlotPresets } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { TimeSlotPreset } from '@type/platform/store';
@@ -140,6 +140,12 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                 updated = [...presets, { color: formColor, endTime: formEnd, id: generatePresetId(storeDetails?.tenantId, storeDetails?.storeId), label, startTime: formStart }];
             }
             await updateTimeSlotPresets(storeDetails?.storeId, updated);
+            if (editingPreset) {
+                const updatedPreset = updated.find((preset) => preset.id === editingPreset.id);
+                if (updatedPreset) {
+                    await updatePresetInAllCategories(updatedPreset);
+                }
+            }
             setPresets(updated);
             setIsFormOpen(false);
             Toast.show({ content: editingPreset ? t('updated') : t('created'), icon: 'success', duration: 1500 });

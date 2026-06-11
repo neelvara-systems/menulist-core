@@ -16,7 +16,14 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey } from '@lib/publicApi/auth';
+import {
+    handlePublicApiCorsPreflight,
+    hashApiKey,
+    hasPublicApiCredentialScope,
+    isRequestOriginAllowed,
+    validatePublicApiKey,
+    withPublicApiCors,
+} from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
@@ -29,6 +36,16 @@ const FeedbackRequestSchema = z.object({
     isGood: z.boolean(),
 });
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
+
+const jsonResponse = (
+    request: NextRequest,
+    body: Record<string, any>,
+    init?: ResponseInit,
+): NextResponse => withPublicApiCors(NextResponse.json(body, init), request);
+
+export function OPTIONS(request: NextRequest) {
+    return handlePublicApiCorsPreflight(request);
+}
 
 const cleanSignalContextText = (value: unknown, maxLength = 140): string | null => {
     const text = String(value || '').replace(/\s+/g, ' ').trim();
@@ -63,19 +80,23 @@ const buildWidgetFeedbackContextMetadata = (historyData: Record<string, any>) =>
     };
 };
 
+const isWidgetSearchHistoryRow = (historyData: Record<string, any>): boolean => (
+    historyData.mountContext === 'widget' || historyData.uId === 'widget'
+);
+
 export async function POST(request: NextRequest) {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
-        return NextResponse.json({ error: 'Widget not enabled' }, { status: 404 });
+        return jsonResponse(request, { error: 'Widget not enabled' }, { status: 404 });
     }
 
     try {
         // API key authentication
         const apiKey = request.headers.get('x-api-key')?.trim();
         if (!apiKey) {
-            return NextResponse.json({ error: 'Missing API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Missing API key' }, { status: 401 });
         }
         if (!apiKey.startsWith('al_')) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
         const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
@@ -87,7 +108,8 @@ export async function POST(request: NextRequest) {
         });
         if (!rateLimitResult.allowed) {
             const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
-            return NextResponse.json(
+            return jsonResponse(
+                request,
                 { error: 'Rate limit exceeded' },
                 {
                     status: 429,
@@ -104,19 +126,19 @@ export async function POST(request: NextRequest) {
             preferAnswerlatticeWidgetApi: true,
         });
         if (!authResult) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
         const { storeData, storeId } = authResult;
         const credential = authResult.credential || {};
         if (credential.productId && credential.productId !== 'AL') {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
         if (credential.purpose && !String(credential.purpose).startsWith('answerlattice')) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:feedback')) {
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
         const tId = Number(storeData.tenantId || storeData.tId);
         const sId = Number(storeData.id || storeId);
@@ -126,18 +148,18 @@ export async function POST(request: NextRequest) {
                 new Error('Authenticated API key does not resolve to a valid tenant/store'),
                 { storeId }
             );
-            return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+            return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
 
         const requestOrigin = request.headers.get('origin');
         if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
-            return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
+            return jsonResponse(request, { error: 'Origin not allowed' }, { status: 403 });
         }
 
         // Parse request body
         const validation = FeedbackRequestSchema.safeParse(await request.json());
         if (!validation.success) {
-            return NextResponse.json({ error: 'searchHistoryId and isGood are required' }, { status: 400 });
+            return jsonResponse(request, { error: 'searchHistoryId and isGood are required' }, { status: 400 });
         }
         const { searchHistoryId, isGood } = validation.data;
 
@@ -150,15 +172,16 @@ export async function POST(request: NextRequest) {
         if (
             !historyData ||
             Number(historyData.tId) !== tId ||
-            Number(historyData.sId) !== sId
+            Number(historyData.sId) !== sId ||
+            !isWidgetSearchHistoryRow(historyData)
         ) {
-            return NextResponse.json({ error: 'Search record not found' }, { status: 404 });
+            return jsonResponse(request, { error: 'Search record not found' }, { status: 404 });
         }
 
         const alreadySubmitted = typeof historyData.submittedAt !== 'undefined'
             || typeof historyData.modifiedOn !== 'undefined';
         if (alreadySubmitted && historyData.isGood === isGood) {
-            return NextResponse.json({ success: true });
+            return jsonResponse(request, { success: true });
         }
 
         await historyRef.set({
@@ -193,10 +216,10 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        return NextResponse.json({ success: true });
+        return jsonResponse(request, { success: true });
 
     } catch (err: any) {
         secureError('[Widget Feedback] Error', err as Error);
-        return NextResponse.json({ error: 'Something went wrong' }, { status: 500 });
+        return jsonResponse(request, { error: 'Something went wrong' }, { status: 500 });
     }
 }

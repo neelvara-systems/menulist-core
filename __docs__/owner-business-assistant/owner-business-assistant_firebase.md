@@ -4,7 +4,7 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Implemented behind feature flags; Firebase rules/functions deployed
-**Last Updated:** June 10, 2026
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -90,9 +90,13 @@ Domain posture:
 | `platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}` | WRITE | First successful local-date run | Daily point-in-time proof; retention capped |
 | `platformSummary/ownerBusinessHealthMultiLocation_{tId}` | WRITE | Store-local Business Health rebuild | One compact tenant doc with `stores.{sId}` summary entries for multi-location comparison |
 
+The `/api/owner-business-assistant/locations` route is now gated by both `ENABLE_OWNER_BUSINESS_HEALTH` and `ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION`.
+
 ### Flag-Gated Workflow Docs
 
 These docs are part of the complete architecture, but they are written only by protected APIs when the matching runtime flag is enabled. No client should write them directly.
+
+The `/api/owner-business-assistant/action` route requires both `ENABLE_OWNER_BUSINESS_HEALTH` and `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT`. Action request payloads are capped at 12,000 JSON characters before they can be stored in draft or action audit documents.
 
 | Collection | Operation | Retention | Notes |
 | --- | --- | --- | --- |

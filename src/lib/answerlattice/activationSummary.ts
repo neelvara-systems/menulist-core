@@ -212,7 +212,7 @@ export function buildAnswerlatticeActivationSummary(params: {
     const content = params.contextSummary || null;
     const widgetKeyState = normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi);
     const widgetKeySummaries = buildAnswerlatticeWidgetKeySummaries(widgetKeyState);
-    const hasWidgetKey = widgetKeySummaries.length > 0 || Boolean(storeData.publicApi?.apiKeyHash || storeData.publicApi?.apiKey);
+    const hasWidgetKey = widgetKeySummaries.length > 0;
     const allowedOrigins = Array.isArray(storeData.widgetAllowedOrigins) ? storeData.widgetAllowedOrigins : [];
     const subscriptionStatus = String(subscription?.status || '').toLowerCase();
     const licenseStatus: AnswerlatticeActivationStepStatus = subscriptionStatus === 'active'
@@ -522,7 +522,7 @@ export function buildAnswerlatticeActivationSummary(params: {
         subscription,
         widget: {
             hasWidgetKey,
-            keyPrefix: widgetKeyState.keyPrefix || storeData.publicApi?.keyPrefix || null,
+            keyPrefix: widgetKeyState.keyPrefix || null,
             allowedOriginCount: allowedOrigins.length,
             configVersion: Number(storeData.widgetConfigVersion || 0),
             runtimeStatus,

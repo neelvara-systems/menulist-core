@@ -1,6 +1,6 @@
 # Official Business Page (OBP) — Firebase Cost Tracking
 
-**Date:** May 10, 2026
+**Date:** June 11, 2026
 **Audience:** Founder, developers, cost auditors
 
 ---
@@ -20,7 +20,7 @@
 
 | Operation                     | Collection                      | Trigger                      | Frequency              | Docs Read | Indexed? | Notes                                                              |
 | ----------------------------- | ------------------------------- | ---------------------------- | ---------------------- | --------- | -------- | ------------------------------------------------------------------ |
-| Load OBP page                 | `stores`                        | Customer visits OBP URL      | Per visit (cached 60s) | 1         | Yes      | Uses `where("subdomain", "==", ...)` — same as menu page           |
+| Load OBP page                 | `stores`                        | Customer visits OBP URL      | Per visit (cached 60s) | 1 store query + optional tenant-block doc on cache miss | Yes | Uses shared `src/lib/firestore/clientStoreLookup.ts` helpers for subdomain, verified custom domain, and outlet slug lookup. |
 | Check published menu exists   | `projects/{tId}/{sId}/metadata` | OBP render                   | Per visit (cached 60s) | 1         | Yes      | `where("deleted","==",false), where("active","==",true), limit(1)` |
 | Load OBP settings (dashboard) | `stores`                        | Owner opens Business Profile | On demand              | 0         | —        | Already loaded as part of store data in Redux                      |
 | Load OBP metrics (dashboard)  | `analytics`                     | Owner opens Dashboard / opens a settled analytics tab | Today: 10 min TTL. Settled: scheduler-window cached | Today: 1 doc. Settled: 1 dashboard summary doc when requested | Yes | The `Today` tab reads the current store-local OBP daily doc when the dashboard opens. `Overview`, `Daily`, `Weekly`, `Monthly`, and `Overall` read `{tId}_{sId}_obp_dashboard_summary` only after the owner opens a settled tab, then cache on the device until the next store-local settlement cycle. |
@@ -39,6 +39,7 @@
 | Track OBP share action | `analytics` | Owner shares official business link from settings | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPShares` and `obpShares.{whatsapp,copy_link,copy_message}`. |
 | Track OBP language adoption | `analytics` | Customer switches language on a multi-language OBP and stays after the dwell window | Per accepted switch | 1 | merge update | Same daily doc. Tracks `obpLanguageAdoptions.{language}`. Single-language OBPs do not track language usage. Quick taps before dwell are ignored. |
 | Apply extraction-derived business attribute defaults | `stores` | First extraction auto-save or owner-approved re-extraction | Once per applicable extraction | 0-1 | merge update | Only fills missing `businessAttributes` keys. Existing owner-set `true`/`false` values are never overwritten. First extraction runs in Cloud Functions; re-extraction approval runs through desktop/mobile client paths. |
+| Connect custom domain | `stores` | Owner connects or removes custom domain | Rare | 1 | `customDomain`, `domainVerified`, domain timestamps | `/api/domain` owns the Firestore write and revalidates `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`. Desktop UI updates local state only after API success to avoid duplicate writes. |
 
 **Key point:** OBP settings are saved as part of the existing store document update. OBP analytics use the same `analytics` collection as digital menu with virtual `projectId='obp'`. Rate limiting prevents abuse.
 
@@ -152,12 +153,13 @@ Assumptions:
 
 | Function                   | File                                              | Operation Type |
 | -------------------------- | ------------------------------------------------- | -------------- |
-| `getStoreBySubdomain()`    | `src/app/client/[[...slug]]/page.tsx` (existing) | Read (cached)  |
-| `getStoreByCustomDomain()` | `src/app/client/[[...slug]]/page.tsx` (existing) | Read (cached)  |
-| `getStoreById()`           | `src/database/stores/index.ts` (existing)         | Read (cached)  |
-| `updateStore()`            | `src/database/stores/index.ts` (existing)         | Write (merge)  |
+| `getStoreBySubdomain()`    | `src/lib/firestore/clientStoreLookup.ts` | Read (cached)  |
+| `getStoreByCustomDomain()` | `src/lib/firestore/clientStoreLookup.ts` | Read (cached)  |
+| `getStoreByOutletSlug()`   | `src/lib/firestore/clientStoreLookup.ts` | Read (cached, multi-outlet only) |
+| `updateStore()`            | `src/database/stores/index.tsx`          | Write (merge + public cache revalidation) |
+| `revalidateMenuCache()`    | `src/lib/actions/revalidateMenuCache.ts` | Server cache invalidation |
 
-**No new Firestore DAL functions needed.** OBP reuses existing store updates. `uploadOBPCover()` and `uploadOBPPhoto()` are Storage helpers only; both feed URLs into the existing `updateStore()` path.
+OBP business settings reuse existing store updates. `uploadOBPCover()` and `uploadOBPPhoto()` are Storage helpers only; both feed URLs into the existing `updateStore()` path. Custom-domain routing fields are the exception: `/api/domain` owns those server-side writes because it must coordinate with Vercel before updating Firestore.
 
 ---
 
@@ -166,7 +168,9 @@ Assumptions:
 | Route                        | Method    | Firebase Ops  | Rate Limited? | Notes                                       |
 | ---------------------------- | --------- | ------------- | ------------- | ------------------------------------------- |
 | `client/[[...slug]]/` (OBP) | GET (SSR) | 1-2R (cached) | CDN cache     | Public page, no API route                   |
-| No new API routes            | —         | —             | —             | OBP is server-rendered, no client API calls |
+| `POST /api/domain`           | POST      | 1 store write + Vercel call | Auth + permission guarded | Adds custom domain routing fields and revalidates public store tags |
+| `GET /api/domain`            | GET       | 1 store read, 0-1 store write + Vercel call | Auth + permission guarded | Writes `domainVerified` only when verification flips true |
+| `DELETE /api/domain`         | DELETE    | 1 store read + 1 store write + Vercel call | Auth + permission guarded | Removes local custom-domain routing fields even if Vercel cleanup fails |
 
 ---
 

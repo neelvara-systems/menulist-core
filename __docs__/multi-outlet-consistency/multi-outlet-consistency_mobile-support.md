@@ -1,6 +1,6 @@
 # Multi-Outlet Consistency — Mobile Support
 
-**Last Updated:** May 27, 2026 (v9 - outlet policy hardening)
+**Last Updated:** June 11, 2026 (v10 - active-outlet lifecycle audit)
 
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage outlets and chain policy from phone
 
@@ -44,6 +44,8 @@
 - Mobile and desktop hide the add-outlet proration card for `billingMode: "manual"` subscriptions because those accounts are prepaid/offline, not auto-debited through Razorpay.
 - Mobile and desktop disable add-outlet submission for manual/offline accounts when prepaid location capacity is exhausted. The owner sees a reseller-capacity message instead of hitting a generic "outlet creation failed" error.
 - Mobile and desktop also disable direct add-outlet submission for active UPI-backed Razorpay subscriptions when paid location capacity is exhausted. Razorpay does not allow quantity updates for that payment mode, so Locations shows "Paid location needed" and routes to Billing; Billing creates a replacement same-plan checkout with the next `quantity`.
+- Mobile and desktop active outlet counters exclude inactive outlets, matching billing quantity and public visibility behavior.
+- Inactive outlets remain visible for context, but switch, rename, and deactivation actions are blocked through the normal UI and server routes.
 - Same `canManageLocationSettings()` gate across mobile More, mobile Locations, desktop Locations, and desktop sidebars
 - Mobile More `Branch` dropdown refreshes Firebase auth claims for the selected mapped store. Switching back to HQ refreshes claims back to the master store before clearing the active outlet context, preventing stale outlet-claim permission errors.
 - Mobile outlet rules sheet uses the shared `OUTLET_POLICY_CATEGORIES` taxonomy with owner-facing labels, allowed/blocked state tags, an unsaved-change warning, and a discard confirmation before closing.

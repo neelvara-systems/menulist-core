@@ -1,5 +1,6 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { Descriptions, Divider, Table, Tag, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { TransactionDetails } from '../TransactionDetailsModal'; // Adjust import path if needed
 
@@ -8,9 +9,10 @@ interface DescriptionDetailsViewProps {
 }
 
 const DescriptionDetailsView: React.FC<DescriptionDetailsViewProps> = ({ transaction }) => {
+    const t = useTranslations('Transactions');
     const { clientResponse, action, itemsList, sourceLang, targetLang, contentLength } = transaction;
 
-    if (!clientResponse) return <Typography.Text>No descriptions available</Typography.Text>;
+    if (!clientResponse) return <Typography.Text>{t('noDescriptionsAvailable')}</Typography.Text>;
 
     // For rewrite action, we need to show before and after
     const isRewrite = action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION;
@@ -30,13 +32,13 @@ const DescriptionDetailsView: React.FC<DescriptionDetailsViewProps> = ({ transac
             Object.entries(langDescriptions).forEach(([langCode, description]: [string, any]) => {
                 // Find original description and item name if available
                 let originalDescription;
-                let itemName = 'Unknown';
+                let itemName = t('unknown');
 
                 if (itemsList) {
                     const item = itemsList.find(item => item.id === itemId);
                     if (item) {
                         // Get item name
-                        itemName = item.name || 'Unknown';
+                        itemName = item.name || t('unknown');
 
                         // Get original description for rewrites
                         if (isRewrite && item.description && item.description[langCode]) {
@@ -56,34 +58,34 @@ const DescriptionDetailsView: React.FC<DescriptionDetailsViewProps> = ({ transac
         }
     });
 
-    const actionLabel = isRewrite ? 'Rewritten' : 'Generated';
+    const actionLabel = isRewrite ? t('rewritten') : t('generated');
 
     // Define columns based on action type
     const columns = isRewrite ? [
-        { title: 'ID', dataIndex: 'itemId', key: 'itemId', width: '10%' },
-        { title: 'Item Name', dataIndex: 'itemName', key: 'itemName', width: '15%' },
-        { title: 'Language', dataIndex: 'language', key: 'language', width: '10%' },
+        { title: t('id'), dataIndex: 'itemId', key: 'itemId', width: '10%' },
+        { title: t('itemName'), dataIndex: 'itemName', key: 'itemName', width: '15%' },
+        { title: t('language'), dataIndex: 'language', key: 'language', width: '10%' },
         // { title: 'Before', dataIndex: 'originalDescription', key: 'originalDescription', width: '32.5%' },
-        { title: 'After', dataIndex: 'description', key: 'description', width: '32.5%' }
+        { title: t('after'), dataIndex: 'description', key: 'description', width: '32.5%' }
     ] : [
-        { title: 'ID', dataIndex: 'itemId', key: 'itemId', width: '10%' },
-        { title: 'Item Name', dataIndex: 'itemName', key: 'itemName', width: '20%' },
-        { title: 'Language', dataIndex: 'language', key: 'language', width: '10%' },
-        { title: 'Description', dataIndex: 'description', key: 'description', width: '60%' }
+        { title: t('id'), dataIndex: 'itemId', key: 'itemId', width: '10%' },
+        { title: t('itemName'), dataIndex: 'itemName', key: 'itemName', width: '20%' },
+        { title: t('language'), dataIndex: 'language', key: 'language', width: '10%' },
+        { title: t('description'), dataIndex: 'description', key: 'description', width: '60%' }
     ];
 
     return (
         <>
-            <Descriptions title="Description Information" column={1}>
+            <Descriptions title={t('descriptionInformation')} column={1}>
                 {/* Source Language */}
-                <Descriptions.Item label="Source Language">
+                <Descriptions.Item label={t('sourceLanguage')}>
                     {sourceLang &&
                         `${sourceLang.name} (${sourceLang.code})`
                     }
                 </Descriptions.Item>
 
                 {/* Target Languages */}
-                <Descriptions.Item label="Target Languages">
+                <Descriptions.Item label={t('targetLanguages')}>
                     {/* For description operations, targetLang is an array */}
                     {Array.isArray(targetLang) &&
                         targetLang.map((lang) => (
@@ -94,14 +96,14 @@ const DescriptionDetailsView: React.FC<DescriptionDetailsViewProps> = ({ transac
 
                 {/* Content Length */}
                 {contentLength && (
-                    <Descriptions.Item label="Description Length">
+                    <Descriptions.Item label={t('descriptionLength')}>
                         <Tag>{contentLength}</Tag>
                     </Descriptions.Item>
                 )}
             </Descriptions>
 
             <Divider />
-            <Typography.Title level={5}>{actionLabel} Descriptions</Typography.Title>
+            <Typography.Title level={5}>{t('descriptionsHeading', { action: actionLabel })}</Typography.Title>
             <div style={{ maxHeight: 400, overflow: 'auto' }}>
                 <Table
                     dataSource={descriptionEntries.map((entry, index) => ({

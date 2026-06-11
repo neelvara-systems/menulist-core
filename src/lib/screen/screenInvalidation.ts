@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { extractScreenMenuItemsFromProject } from "@lib/screen/screenContent";
+import { syncPublicScreenState } from "@lib/screen/publicScreenState";
 import type { ScreenMenuProjection } from "@type/campaigns";
 
 const pendingScreenTouches = new Map<string, Promise<void>>();
@@ -112,6 +113,7 @@ export const touchDigitalScreenContentVersion = async (
             }
 
             const nextContentVersion = Number(screen.contentVersion || 0) + 1;
+            const now = Timestamp.now();
             const menuProjection = await buildScreenMenuProjection(
                 options.projectId,
                 nextContentVersion,
@@ -125,8 +127,13 @@ export const touchDigitalScreenContentVersion = async (
 
             await updateDoc(screenRef, {
                 "screen.contentVersion": increment(1),
-                "screen.lastContentChangeAt": Timestamp.now(),
+                "screen.lastContentChangeAt": now,
                 ...(menuProjection ? { "screen.menuProjection": menuProjection } : {}),
+            });
+            await syncPublicScreenState(normalizedStoreId, {
+                ...screen,
+                contentVersion: nextContentVersion,
+                lastContentChangeAt: now,
             });
         } catch (error) {
             if (process.env.NODE_ENV !== "production") {

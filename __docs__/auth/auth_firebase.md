@@ -2,7 +2,7 @@
 
 **Feature:** Authentication System (NextAuth.js + Firebase)  
 **Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
+**Last Updated:** June 11, 2026
 **Priority:** MEDIUM — Every API call validates auth. Session-based caching minimizes reads.
 
 ---
@@ -24,7 +24,7 @@
 | Operation          | Collection          | Trigger                   | Frequency | Docs Read | Notes                                                                    |
 | ------------------ | ------------------- | ------------------------- | --------- | --------- | ------------------------------------------------------------------------ |
 | User lookup        | `users`             | Login (NextAuth callback) | Per login | 1         | Check/create user doc.                                                   |
-| Session validation | — (JWT)             | Per API call              | Per call  | 0         | JWT-based session — no Firestore read. `withAuth()` validates JWT token. |
+| Session validation | — (JWT)             | Per API call              | Per call  | 0         | JWT-based session — no Firestore read. `withAuth()` validates JWT token. The compact session user includes `storeIds` derived from the user document for multi-location guard helpers. |
 | Tenant/store data  | `tenants`, `stores` | Login (embedded in JWT)   | Per login | 1-2       | Loaded once, embedded in session token.                                  |
 
 ### Writes
@@ -112,7 +112,8 @@ Owner-triggered reset never stores the staff password or passcode. The temporary
 - Rate limiting on expensive operations (`checkExpensiveAILimit`)
 - Generic error messages (no sensitive data leakage)
 - `claim-account` Mode 2 uses 256-bit claim token as authentication (single-use)
-- `update-profile` allows only whitelisted fields — no email changes
+- `users/{userId}` direct Firestore writes are platform-admin only. Owner/staff profile changes, password changes, staff CRUD, role assignments, and revocation metadata are server API writes.
+- `update-profile` allows only whitelisted fields — no login email changes
 - `change-password` verifies current password before allowing change
 - `create-staff` generates 24-byte cryptographic random password — never exposed
 

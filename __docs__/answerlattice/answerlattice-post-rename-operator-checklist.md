@@ -82,23 +82,23 @@ For local-only testing, `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS=./answerla
 ANSWERLATTICE_CRON_SECRET=
 ANSWERLATTICE_MCP_SESSION_SECRET=
 ANSWERLATTICE_PUBLIC_BUNDLE_SALT=
-ANSWERLATTICE_WIDGET_KEY_ENCRYPTION_SECRET=
 ANSWERLATTICE_TRIGGER_NIGHTLY_URL=
 ANSWERLATTICE_NIGHTLY_TRIGGER_URL=
 ```
 
 Only set one nightly trigger URL unless you need a temporary override.
+Widget keys are shown once at creation time and are not recoverable by secret-backed copy later.
 
 ### MenuList-Side Widget Embed
 
 MenuList loads Answerlattice as an external client only when this key exists:
 
 ```bash
-NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY=al_your_widget_key
+NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY=al_full_widget_key_shown_once
 NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=https://answerlattice.com/widget/v1/answerlattice-widget.js
 ```
 
-The script source override is optional. Use it only for temporary preview testing.
+Use the full `al_*` value shown immediately after key creation. The dashboard prefix is only for identifying the saved key later. The script source override is optional; use it only for temporary preview testing.
 
 ## Firebase Setup
 

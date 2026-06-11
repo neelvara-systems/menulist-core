@@ -3,8 +3,8 @@
 > **Document Type:** Firebase cost tracking (CRITICAL — directly impacts revenue)
 > **Audience:** Founder, developers, cost auditors
 > **Status:** Implemented
-> **Last Updated:** May 23, 2026
-> **Version:** 2.1
+> **Last Updated:** June 11, 2026
+> **Version:** 2.2
 
 ---
 
@@ -28,7 +28,7 @@
 | -------------------------------- | ------------------------------ | ----------------- | ----------------------- | --------- | -------- | ------------------------------------- |
 | Load store POS sync config       | `stores`                       | POS Sync tab open | Per settings page visit | 1         | Yes      | Already loaded by page, no extra read |
 | Read webhook config for delivery | `stores`                       | API route trigger | Per delivery job        | 1         | Yes      | Reads webhook URL + secret            |
-| Read project data for delivery   | `projects`                     | API route trigger | Per delivery job        | 1         | Yes      | Via getProjectData() DAL              |
+| Read project data for delivery   | `projects/{tId}/{sId}`         | API route trigger | Per delivery job        | 1         | Yes      | Admin SDK read scoped to request tenant/store/project |
 | Load delivery logs (client)      | `stores/{sId}/posDeliveryLogs` | POS Sync tab open | Per settings page visit | 20 max    | Yes      | Last 20 logs, ordered by sentAt       |
 
 ### Writes
@@ -38,9 +38,9 @@
 | Save POS sync config (client)  | `stores`                       | Owner saves settings    | Rare (setup only)    | 1            | merge update  | posSync object fields via updateStore() DAL  |
 | Enable POS sync + gen secret   | `stores`                       | Owner enables toggle    | Once per store       | 1            | merge update  | Sets posSync.enabled, webhookSecret (client) |
 | Create delivery log (server)   | `stores/{sId}/posDeliveryLogs` | After delivery attempt  | Per delivery attempt | 1            | full document | ~200 bytes per log entry                     |
-| Update store sync status       | `stores`                       | After delivery (server) | Per delivery         | 1            | merge update  | lastSentAt, lastStatus, status               |
+| Update store sync status       | `stores`                       | After delivery/test (server) | Per delivery/test | 1            | merge update  | lastSentAt where applicable, lastStatus, lastError, status |
 | Increment menuVersion (server) | `stores`                       | Menu change             | Per menu change      | 1            | merge update  | posSync.menuVersion++                        |
-| Update instructions count      | `stores`                       | Send instructions       | Max 3/day/store      | 1            | merge update  | instructionsSentCount, sentDate (client)     |
+| Update instructions count      | `stores`                       | Prepare provider email draft | Max 3/day/store | 1            | merge update  | instructionsSentCount, sentDate (client)     |
 | Regenerate secret (client)     | `stores`                       | Owner action            | Very rare            | 1            | merge update  | webhookSecret + latest rotation metadata via updateStore() DAL |
 | Log secret rotation audit      | `menuChangeLog/{tId}/{sId}`    | Secret regeneration     | Very rare            | 1            | append-only event | Logs who/when only; never logs secret value |
 | Cleanup old delivery logs      | `stores/{sId}/posDeliveryLogs` | On new log write        | Per delivery         | 0-N delete   | batch delete  | Keep max 20, delete oldest if >20            |
@@ -95,6 +95,8 @@ match /stores/{storeId}/posDeliveryLogs/{logId} {
 - **Subcollection for logs:** Delivery logs in subcollection avoid bloating the store document.
 - **Max 20 logs:** Automatic cleanup prevents unbounded growth.
 - **Log cleanup:** Automatic batch deletion of logs beyond the 20-entry limit prevents unbounded growth.
+- **Scoped project read:** Delivery reads only `projects/{tenantId}/{storeId}/{projectId}` through Admin SDK. No legacy/global project fallback is used in the server route.
+- **Webhook URL guard:** Desktop, mobile, test, and delivery paths require a public HTTPS endpoint and reject localhost/private-network URLs before outbound fetch.
 
 ### Potential Optimizations
 
@@ -151,8 +153,9 @@ match /stores/{storeId}/posDeliveryLogs/{logId} {
 | Operation                               | Route                   | Collection                     | Type           |
 | --------------------------------------- | ----------------------- | ------------------------------ | -------------- |
 | Read store posSync config               | `/api/pos-sync/test`    | `stores/{sId}`                 | Read (1 doc)   |
-| Update store status on test success     | `/api/pos-sync/test`    | `stores/{sId}`                 | Write (merge)  |
+| Update store status on test result      | `/api/pos-sync/test`    | `stores/{sId}`                 | Write (merge)  |
 | Read store config for delivery          | `/api/pos-sync/deliver` | `stores/{sId}`                 | Read (1 doc)   |
+| Read scoped project data for delivery   | `/api/pos-sync/deliver` | `projects/{tId}/{sId}/{projectId}` | Read (1 doc) |
 | Increment menuVersion                   | `/api/pos-sync/deliver` | `stores/{sId}`                 | Write (merge)  |
 | Create delivery log entry               | `/api/pos-sync/deliver` | `stores/{sId}/posDeliveryLogs` | Write (add)    |
 | Cleanup old delivery logs (>20)         | `/api/pos-sync/deliver` | `stores/{sId}/posDeliveryLogs` | Delete (batch) |

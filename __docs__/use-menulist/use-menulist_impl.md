@@ -1,159 +1,83 @@
-# Use MenuList — Technical Implementation
+# Use MenuList - Technical Implementation
 
-> **Version:** 1.1
-> **Feature Flag:** `ENABLE_USE_MENULIST`
-> **Last Updated:** June 3, 2026
+**Version:** 1.3
+**Feature Flag:** `ENABLE_USE_MENULIST`
+**Last Updated:** June 11, 2026
 
-## 1. Architecture
+## Architecture
 
-Use MenuList itself remains a UI aggregation layer. The hub adds no backend logic, no Firestore collections, and no Firebase cost delta. Complex child workflows linked from the hub, such as Menu Card Export and Print Assets, own their own route/API/data contracts and cost documentation.
+Use MenuList is a client-side output aggregation surface. It does not own new backend logic or collections. It reads bounded existing state and delegates deeper workflows to their feature routes.
 
-The page reads existing data (store details, screen state, project metadata) and presents links/downloads using existing generators.
+Runtime data flow:
 
-## 2. Data Flow
-
-```
-UseMenuListPage (client component)
-    ├── Redux session (tId, sId, subdomain, customDomain)
-    ├── getScreenState() → screen token
-    ├── getActiveProject() → projectId for feedback QR
-    ├── generateProjectUrl() → menu/OBP links
-    ├── buildScreenUrl() → screen link
-    ├── getFeedbackUrl() → feedback link
-    ├── generateMenuKit() → ZIP bundle (on-demand, client-side)
-    ├── generateMenuKitAsset() → single printable/social file (on-demand, client-side)
-    ├── generateBrandedQrCodeDataUrl() → branded standalone QR cards (on-demand, client-side)
-    ├── generateBrandedFeedbackQrCode() → branded feedback QR card (on-demand, client-side)
-    ├── generateMenuPdf() → branded Menu Card Export renderer bridge (on-demand, client-side)
-    └── downloadMenuData() → XLSX/JSON export (on-demand, client-side)
+```text
+UseMenuList
+  -> PlatformGlobalDataContext for store, tenant, plan, master-owner state
+  -> getExistingProjectsListWithoutLoader(true) for project summaries
+  -> generateOBPUrl(), generateProjectUrl(), getFeedbackUrl() for links
+  -> getScreenState() for screen token / last-seen state
+  -> browser generators for QR/Menu Kit/print assets
+  -> Menu Card Export / Printable Assets routes for focused print workflows
+  -> getProjectData() only on PDF fallback/export tap when full data is required
 ```
 
-All generated QR/card/PDF paths pass the already-loaded store `activePlanType` into the shared MenuList branding policy. Premium stores hide visible MenuList logo/name/domain attribution; Starter, Pro, missing, and unknown plan data keep it visible.
+Project-specific share, QR, print, Menu Kit, and PDF links must use the store's public address and the shared `generateProjectUrl()` helper. A missing public address is a not-ready state for customer-facing share assets; do not fall back to `/menu/{slug}` or platform-root URLs.
 
-## 3. Data Contract
+## Empty State
 
-```typescript
-interface UseMenuListData {
-    // Links
-    obpLink: string;          // {subdomain}.menulist.ai
-    menuLink: string;         // {subdomain}.menulist.ai/{slug} or root if default
-    storeMenuLink: string;    // {subdomain}.menulist.ai/menu stable store alias
-    feedbackLink: string;     // menulist.ai/feedback/{projectId}
-    
-    // Screen
-    screenToken: string | null;
-    menuBoardLink: string | null;    // menulist.ai/screen/{token}
-    highlightsLink: string | null;   // menulist.ai/screen/{token}?mode=highlights
-    screenLastSeenAt: any;
-    
-    // Store info
-    storeName: string;
-    storeLogo: string | null;
-    subdomain: string;
-    customDomain: string | null;
-    businessType: string;
-    
-    // Project info
-    projectId: string | null;
-    projectName: string | null;
-    isDefaultProject: boolean;
-    menuModifiedOn: any;
-    
-    // States
-    hasPublishedMenu: boolean;
-    hasScreen: boolean;
-    hasFeedbackEnabled: boolean;
-}
-```
+If no existing project summary is returned, the page shows the `no_menu` state with a create-menu CTA. It must not auto-create a default project. Default creation belongs to menu-management entry points, not output surfaces.
 
-## 4. Component Architecture
+The `PageState` type still contains `not_published`, but the current runtime does not branch on a separate unpublished state. The current readiness check is based on whether at least one non-deleted, active project exists.
 
-```
-UseMenuListPage
- ├── HeaderStatus           — "Your menu is live and ready to share"
- ├── QuickActions           — Copy Menu Link, Open Menu, Copy Screen Link, Download Menu Kit
- ├── ShareSection           — OBP link card + Direct menu link card
- ├── QRSection              — Store Menu QR, Business Profile QR, Project Menu QR, outlet QRs
- ├── ScreensSection         — Menu Board + Highlights link cards
- ├── PrintSection           — Print Assets entry plus individual asset cards (table, counter, entrance, feedback, Print Menu, Menu Kit)
- ├── ExportSection          — XLSX/JSON backup downloads
- ├── POSSection             — POS provider setup summary + settings handoff
- └── ResourcesSection       — Setup/Printing/Sharing guide modals
-```
+## Output Data Contract
 
-Mobile implements the same owner output jobs in `src/components/mobile/screens/MobileShareScreen.tsx` using mobile cards and sheets:
-- project/OBP/customer app/feedback link cards
-- branded QR sheet for Store Menu, Business Profile, Project Menu, and outlet aliases
-- Print Menu route entry, Menu Kit ZIP, print assets, social assets, and feedback QR downloads
-- XLSX/JSON export from the selected project cache
-- Menu Board and Highlights links from `getScreenState()`
-- POS setup summary copy and mobile POS settings handoff
-- setup, printing, and sharing guide sheets
+`UseMenuListData` includes:
 
-`/use-menulist/print-assets` renders `UseMenuList` in focused `print-assets` mode on desktop. On handheld devices, the same path maps through `MobileShell` to the More tab `printAssets` sub-screen and reuses `MobileShareScreen` in focused mode. This keeps mobile data loading inside the existing mobile project provider and avoids desktop-route reload behavior.
+- OBP link
+- selected direct project link
+- optional customer app install link
+- feedback link and QR link
+- screen token, menu-board link, highlights link
+- store name/logo/subdomain/custom domain/business type
+- selected project ID/name/default flag/modified date
+- all project links for project switching
+- POS status when enabled
+- published/menu/screen/feedback flags
 
-## 5. Key Files
+## Desktop Components
 
-### New Files
-| File | Lines (est) | Purpose |
-|------|-------------|---------|
-| `src/app/(main)/use-menulist/page.tsx` | ~15 | Page route wrapper |
-| `src/components/templates/main-app/useMenuList/index.tsx` | ~250 | Main orchestrator |
-| `src/components/templates/main-app/useMenuList/QuickActions.tsx` | ~100 | Top action buttons |
-| `src/components/templates/main-app/useMenuList/ShareSection.tsx` | ~80 | Link cards |
-| `src/components/templates/main-app/useMenuList/ScreensSection.tsx` | ~100 | Screen link cards |
-| `src/components/templates/main-app/useMenuList/PrintSection.tsx` | ~150 | Asset download cards |
-| `src/components/templates/main-app/useMenuList/ResourcesSection.tsx` | ~120 | Guide modals |
-| `src/components/templates/main-app/useMenuList/types.ts` | ~40 | Shared types |
+The current implementation is concentrated in `src/components/templates/main-app/useMenuList/index.tsx`. The earlier split-file plan (`QuickActions`, `ShareSection`, `ScreensSection`, `PrintSection`, `ResourcesSection`) is not the active runtime structure.
 
-### Existing Files Modified
-| File | Change |
-|------|--------|
-| `src/config/features.ts` | Add `ENABLE_USE_MENULIST` flag |
-| `src/constants/navigations.ts` | Add route + sidebar entry |
+Desktop renders:
 
-### Existing Files Reused (No Changes)
-| File | Reused For |
-|------|-----------|
-| `src/lib/utils/slugify.ts` | `generateProjectUrl()` |
-| `src/lib/obp/generateOBPUrl.ts` | `generateOBPUrl()` |
-| `src/lib/screen/utils.ts` | `buildScreenUrl()` |
-| `src/lib/utils/feedbackQrCode.ts` | `generateBrandedFeedbackQrCode()`, `getFeedbackUrl()` |
-| `src/lib/utils/qrCode.ts` | branded QR card generation + download helper |
-| `src/lib/menu-kit/platformAttribution.ts`, `src/lib/platform/menuListBranding.ts` | shared MenuList logo/name/domain footer for generated QR, print, PDF, and public attribution outputs; hidden only for Premium stores |
-| `src/lib/menu-kit/brandTokens.ts` | shared logo/color/QR readability tokens |
-| `src/lib/menu-kit/menuKitGenerator.ts` | `generateMenuKit()` |
-| `src/lib/export/menuPdfGenerator.ts` | `generateMenuPdf()` compatibility bridge into Menu Card Export |
-| `src/components/templates/main-app/projects/utils/excelUtils.ts` | `downloadMenuData()` |
-| `src/database/campaigns/index.ts` | `getScreenState()` |
-| `src/lib/menu-kit/businessTypeLabels.ts` | `getOfferingLabels()` |
+- quick action buttons
+- project selector for multi-project stores
+- official business link and direct project link cards
+- Store Menu, Business Profile, Project Menu, and outlet-scoped QR downloads
+- Digital Screens links
+- Menu Kit and print asset downloads
+- Print Assets focused route
+- Print Menu / Menu Card Export route entry
+- feedback QR when enabled
+- POS summary when enabled
+- customer communication kit when enabled
 
-## 6. State Management
+## Mobile Parity
 
-No Redux changes. Uses existing:
-- `useClientAuthSession()` — tId, sId, subdomain, customDomain
-- `getScreenState()` — Screen token from DAL
-- Store/project context from existing providers
+Mobile output actions live in `src/components/mobile/screens/MobileShareScreen.tsx` and route through the `MobileShell` state contract. Mobile uses shared link, QR, Menu Kit, print, and export primitives instead of mobile-only renderers.
 
-## 7. Implementation Order
+`/use-menulist/print-assets` maps handheld devices into the mobile shell print-assets sub-screen.
 
-1. Feature flag + navigation entry
-2. Types file
-3. Main page component with data loading
-4. QuickActions component
-5. ShareSection component
-6. ScreensSection component
-7. PrintSection component (reuses Menu Kit generators)
-8. ResourcesSection component
-9. Mobile responsive testing
+## Firebase Boundary
 
-## 8. Performance
+- Project summary read: `getExistingProjectsListWithoutLoader(true)`, no writes.
+- Screen state read: `getScreenState()`, one summary-doc read.
+- Asset generation: browser-local unless a child workflow is opened.
+- Starter activation signal writes: existing onboarding/store signal contract only, not hub-owned data.
 
-- Page load target: < 1 second
-- No heavy computations on load
-- Menu Kit ZIP generated on-demand (click), not pre-loaded
-- Individual Menu Kit files generated by key through `generateMenuKitAsset()`, not by rendering the full ZIP first
-- Direct PDF fallback generated on-demand through the Menu Card Export renderer bridge, not pre-loaded
-- Branded standalone QR cards generated on-demand; no background generation or server upload
-- Individual asset previews lazy-loaded
-- Screen state fetched once via DAL
+## Performance
+
+- Keep page load bounded to existing summary docs.
+- Do not pre-generate assets.
+- Generate Menu Kit, QR cards, and PDFs only after owner action.
+- Do not read full project data unless the selected action requires full item/category data.

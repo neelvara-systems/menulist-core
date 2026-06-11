@@ -2,7 +2,7 @@
 
 > **Purpose:** Canonical contract for what is localized, where it lives, and how it must be rendered  
 > **Status:** Active  
-> **Last Updated:** April 27, 2026  
+> **Last Updated:** June 11, 2026
 > **Authority Level:** Implementation Guardrail
 
 ---
@@ -20,6 +20,20 @@ The governing rule is simple:
 And one canonical language rule applies everywhere:
 
 - **English (`en`) is the required canonical source language for localization, AI generation, and fallback**
+
+---
+
+## Locale Registry Boundaries
+
+MenuList has three separate language surfaces. Do not merge them.
+
+| Surface | Source | Current contract |
+| --- | --- | --- |
+| Owner app UI locale | `src/constants/common.ts` `APP_LANGUAGES` + `public/locales/menulist.ai/*.json` | Supports `en-US`, `en-GB`, `hi-IN`, `ar-SA`, `es-ES`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `gu-IN`, `kn-IN`, `ml-IN`, `pa-IN`, `ur-IN`, `or-IN`, `as-IN`, `ne-NP`, `mai-IN`, `kok-IN`, `sd-IN`, `ks-IN`, `doi-IN`, `mni-IN`, `sat-IN`, `brx-IN`, `fr-FR`, `pt-BR`, `de-DE`, `it-IT`, `ja-JP`, `zh-CN`, `id-ID`, `vi-VN`, `th-TH`, `ko-KR`, `tr-TR`, `ms-MY`, `nl-NL`, `pl-PL`, `uk-UA`, `cs-CZ`, `ro-RO`, `el-GR`, `hu-HU`, `sv-SE`, `da-DK`, `fi-FI`, `fil-PH`, `zh-TW`, `he-IL`, `fa-IR`, and `sw-KE`. Missing UI keys fall back to `en-US` through `src/i18n/request.ts`. |
+| Menu/customer content language | `src/data/languages.ts` + localized entity fields | Uses base language codes such as `en`, `hi`, `gu`, `kn`, `ml`, `pa`, `ur`, `or`, `as`, `ne`, `mai`, `kok`, `sd`, `ks`, `doi`, `mni`, `sat`, `brx`, `fr`, `pt`, `de`, `it`, `ja`, `zh`, `id`, `vi`, `th`, `ko`, `tr`, `ms`, `nl`, `pl`, `uk`, `cs`, `ro`, `el`, `hu`, `sv`, `da`, `fi`, `tl`, `he`, `fa`, and `sw` in project/store content maps. This is owner-authored or AI-generated business content, not system UI copy. |
+| Public website/resource locale | `src/config/websiteLanguages.ts` + `src/content/websiteResources/routing.ts` | Only reviewed public website languages are exposed in the website switcher, sitemap, `hreflang`, and LLM discovery. New app UI languages stay out of public resource routes until full reviewed resource packs pass `npm run verify:website-resource-locales`. |
+
+`gu-IN`, `kn-IN`, `ml-IN`, `pa-IN`, `ur-IN`, `or-IN`, `as-IN`, `ne-NP`, `mai-IN`, `kok-IN`, `sd-IN`, `ks-IN`, `doi-IN`, `mni-IN`, `sat-IN`, `brx-IN`, `fr-FR`, `pt-BR`, `de-DE`, `it-IT`, `ja-JP`, `zh-CN`, `id-ID`, `vi-VN`, `th-TH`, `ko-KR`, `tr-TR`, `ms-MY`, `nl-NL`, `pl-PL`, `uk-UA`, `cs-CZ`, `ro-RO`, `el-GR`, `hu-HU`, `sv-SE`, `da-DK`, `fi-FI`, `fil-PH`, `zh-TW`, `he-IL`, `fa-IR`, and `sw-KE` are owner-app UI locales as of June 11, 2026. They are not public website/resource SEO locales yet. `ks-IN` and `brx-IN` are fallback-safe runtime locales until native Kashmiri and Bodo copy is reviewed. Filipino customer content uses the existing `tl` base language code; `fil-PH` is the owner UI locale code.
 
 ---
 

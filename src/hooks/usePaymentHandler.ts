@@ -3,7 +3,6 @@ import { PRODUCT_IDS, type ProductId } from '@constant/product';
 import { isFeatureEnabled } from '@config/features';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
-import { calculateRemainingCredits } from '@util/razorpay';
 import { useSession } from 'next-auth/react';
 import { useCallback, useState } from 'react';
 import useRazorpayScript from './useRazorpayScript';
@@ -33,7 +32,7 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
         ? ((session?.user as any)?.productAccounts?.[PRODUCT_IDS.ANSWERLATTICE]?.tenantId || session?.user?.productId === PRODUCT_IDS.ANSWERLATTICE)
         : (session?.user?.tenantId && session?.user?.storeId));
 
-    const createSubscription = async (plan: Plan, currency: Currency, user: any, remainingCredits: number = 0, quantity: number = 1) => {
+    const createSubscription = async (plan: Plan, currency: Currency, user: any, quantity: number = 1) => {
         return new Promise<void>(async (resolve, reject) => {
             try {
                 const subscriptionQuantity = Math.max(1, Number(quantity || 1));
@@ -47,7 +46,6 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                         interval: plan.billingInterval,
                         currency,
                         userType: plan.type,
-                        rc: remainingCredits,
                         quantity: subscriptionQuantity
                         // ✅ Backend gets tenantId/storeId from session (secure)
                     })
@@ -106,7 +104,7 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
         }
         return new Promise<void>(async (resolve, reject) => {
             try {
-                const paymentResponse = await createSubscription(plan, currency, session?.user, 0, quantity);
+                const paymentResponse = await createSubscription(plan, currency, session?.user, quantity);
                 resolve(paymentResponse);
             } catch (error) {
                 console.error('Payment flow failed in onClickPaymentCard', error);
@@ -182,12 +180,12 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
         })
     }
 
-    const handleUpgradeSubscription = ({ rc, nSi, oSi }: { rc: number, nSi: string, oSi: string }) => {
+    const handleUpgradeSubscription = ({ nSi, oSi }: { nSi: string, oSi: string }) => {
         return new Promise<void>(async (resolve, reject) => {
             const response = await fetch('/api/razorpay/upgrade-subscription', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId, rc, nSi, oSi }),
+                body: JSON.stringify({ productId, nSi, oSi }),
             });
 
             if (!response.ok) {
@@ -204,12 +202,11 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
             console.log('Razorpay script not loaded or a payment is already in progress.');
             return;
         }
-        let { totalRemainingCredits } = calculateRemainingCredits(currentPlan);
         const targetQuantity = Math.max(1, Number(quantity || currentPlan.quantity || 1));
         return new Promise<any>(async (resolve, reject) => {
             try {
-                const paymentResponse: any = await createSubscription(newPlan, currency, session?.user, totalRemainingCredits, targetQuantity);
-                await handleUpgradeSubscription({ rc: totalRemainingCredits, nSi: paymentResponse.subscriptionId, oSi: currentPlan.providerSubscriptionId });
+                const paymentResponse: any = await createSubscription(newPlan, currency, session?.user, targetQuantity);
+                await handleUpgradeSubscription({ nSi: paymentResponse.subscriptionId, oSi: currentPlan.providerSubscriptionId });
                 resolve(paymentResponse);
             } catch (error) {
                 console.error('Upgrade Payment flow failed in onUpgradePlan', error);
@@ -401,6 +398,7 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                             razorpay_payment_id: paymentResponse.razorpay_payment_id,
                             productId,
                             razorpay_subscription_id: paymentResponse.razorpay_subscription_id,
+                            razorpay_signature: paymentResponse.razorpay_signature,
                         }),
                     });
 

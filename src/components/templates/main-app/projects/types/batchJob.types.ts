@@ -12,6 +12,7 @@ export type BatchImageGenerationJobType = {
     modifiedOn?: string | number | Date;
     createdOn?: string | number | Date;
     id?: string;
+    requestedItemIds?: string[];
     status: BatchImageGenerationJobStatusType;
     totalImages: number;
     generatedCount: number;

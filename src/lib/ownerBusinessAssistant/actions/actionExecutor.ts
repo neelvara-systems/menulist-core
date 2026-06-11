@@ -53,7 +53,7 @@ export async function executeOwnerBusinessAssistantAction(params: {
 }): Promise<OwnerBusinessAssistantActionResult> {
   let firestoreReadCount = 0;
 
-  if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT) {
+  if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT) {
     return { success: false, status: 'blocked', message: 'Action Support is disabled.', metrics: buildActionMetrics() };
   }
 

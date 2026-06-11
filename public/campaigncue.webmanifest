@@ -1,0 +1,17 @@
+{
+  "name": "CampaignCue",
+  "short_name": "CampaignCue",
+  "description": "Campaign packs from real business data.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f7f4",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "/campaigncue-icon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

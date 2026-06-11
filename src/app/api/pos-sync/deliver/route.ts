@@ -12,14 +12,15 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
-import { getProjectData } from "@database/projects";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { buildMenuSnapshot } from "@lib/posSync/payloadFormatter";
 import { generateDeliveryId, signPayload } from "@lib/posSync/signature";
+import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
 import { checkRateLimit } from "@lib/rateLimit";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError, secureLog } from "@lib/security/secureLogger";
+import type { Project } from "@template/main-app/projects/types";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
@@ -31,6 +32,34 @@ const schema = z.object({
 });
 
 const WEBHOOK_TIMEOUT_MS = 5_000;
+
+async function getScopedProjectData(
+    db: FirebaseFirestore.Firestore,
+    tenantId: number,
+    storeId: number,
+    projectId: string,
+): Promise<Project | null> {
+    const projectDoc = await db
+        .collection(DB_COLLECTIONS.PROJECTS)
+        .doc(String(tenantId))
+        .collection(String(storeId))
+        .doc(projectId)
+        .get();
+
+    if (!projectDoc.exists) return null;
+
+    const projectData = projectDoc.data() as Project | undefined;
+    if (!projectData || projectData.deleted === true) return null;
+
+    return {
+        ...projectData,
+        projectId: projectData.projectId || projectDoc.id,
+    };
+}
+
+function isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
+}
 
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_POS_SYNC) {
@@ -77,7 +106,17 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
-        const projectData = await getProjectData(projectId);
+        const webhookValidation = validatePosSyncWebhookUrl(String(posSync.webhookUrl));
+        if (!webhookValidation.valid || !webhookValidation.normalizedUrl) {
+            await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).update({
+                'posSync.status': 'connection_issue',
+                'posSync.lastStatus': 'failed',
+                'posSync.lastError': webhookValidation.error || 'Invalid provider connection URL',
+            });
+            return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+        }
+
+        const projectData = await getScopedProjectData(db, tenantId, storeId, projectId);
         if (!projectData) {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
@@ -127,7 +166,7 @@ export const POST = withAuth(async (request, session) => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
 
-            const response = await fetch(posSync.webhookUrl, {
+            const response = await fetch(webhookValidation.normalizedUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -148,8 +187,8 @@ export const POST = withAuth(async (request, session) => {
             if (!success) {
                 errorMsg = `HTTP ${response.status}`;
             }
-        } catch (fetchError: any) {
-            const isTimeout = fetchError?.name === 'AbortError';
+        } catch (fetchError: unknown) {
+            const isTimeout = isAbortError(fetchError);
             errorMsg = isTimeout ? 'Timeout (5s)' : 'Connection failed';
         }
 

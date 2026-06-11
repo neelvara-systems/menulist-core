@@ -10,6 +10,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@constant/common";
 import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { checkRateLimit } from "@lib/rateLimit";
 import { secureError } from "@lib/security/secureLogger";
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
@@ -21,6 +22,12 @@ const PreviewQuerySchema = z.object({
   token: z.string().min(20),
 });
 
+function getClientIp(request: NextRequest): string {
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { sessionId: string } },
@@ -30,6 +37,20 @@ export async function GET(
 
     if (!sessionId || sessionId.length < 10) {
       return NextResponse.json({ error: "Invalid session" }, { status: 400 });
+    }
+
+    const ip = getClientIp(request);
+    const rateLimit = await checkRateLimit({
+      key: `msg-preview-read:${sessionId}:${ip}`,
+      limit: 60,
+      window: 600,
+    });
+    if (!rateLimit.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+      return NextResponse.json(
+        { error: "Too many preview requests", retryAfter },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
     }
 
     // Validate token from query params
@@ -79,23 +100,27 @@ export async function GET(
       );
     }
 
-    // Log preview viewed event (fire-and-forget)
-    db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_EVENTS)
-      .add({
-        eventId: crypto.randomUUID(),
-        sessionId,
-        provider: session.provider,
-        eventType: "PREVIEW_VIEWED",
-        sessionState: session.state,
-        userIdMasked: (session.providerUserId || "").slice(-4),
-        metadata: {},
-        timestamp: admin.firestore.Timestamp.now(),
-        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        sessionAgeMs: session.createdAt
-          ? Date.now() - session.createdAt.toMillis()
-          : 0,
-      })
-      .catch(() => { });
+    if (!session.previewViewedAt) {
+      const viewedAt = admin.firestore.Timestamp.now();
+      sessionRef
+        .set({ previewViewedAt: viewedAt, updatedAt: viewedAt }, { merge: true })
+        .then(() => db.collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_EVENTS)
+          .add({
+            eventId: crypto.randomUUID(),
+            sessionId,
+            provider: session.provider,
+            eventType: "PREVIEW_VIEWED",
+            sessionState: session.state,
+            userIdMasked: (session.providerUserId || "").slice(-4),
+            metadata: {},
+            timestamp: viewedAt,
+            expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            sessionAgeMs: session.createdAt
+              ? Date.now() - session.createdAt.toMillis()
+              : 0,
+          }))
+        .catch(() => { });
+    }
 
     const extractedProfile = session.extractedBusinessProfile || session.extractedMenuData?.extractedBusinessProfile || null;
     const resolvedBusinessType = session.detectedBusinessType ||

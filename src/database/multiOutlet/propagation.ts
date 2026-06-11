@@ -78,7 +78,7 @@ export async function propagateNewProjectToOutlets(
     const storesList = tenantSnap.data()?.storesList || [];
     // Filter to non-master stores only
     const outletStores = storesList.filter(
-        (s: any) => s.storeId !== masterStoreId && s.isMaster !== true,
+        (s: any) => s.storeId !== masterStoreId && s.isMaster !== true && s.active !== false,
     );
 
     if (outletStores.length === 0) return { propagated: 0, failed: 0 };

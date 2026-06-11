@@ -1,9 +1,9 @@
 # Menu Correctness Engine — Firebase Cost Tracking
 
-**Version:** 3.1  
-**Status:** ✅ IMPLEMENTED — Verified $0.00/month  
-**Audience:** Engineering, DevOps, Cost Audit  
-**Last Updated:** February 14, 2026
+**Version:** 3.1
+**Status:** ✅ IMPLEMENTED — Active with verified $0.00/month additional Firebase cost
+**Audience:** Engineering, DevOps, Cost Audit
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -86,7 +86,7 @@ None in v1. Drift Guardian deferred to Phase 2 (see spec §17 Decision 3).
 | `_mce` metadata | 0             | 0              | $0.00     | $0.00      | $0.00     |
 | **Total**       | **0**         | **0**          | **$0.00** | **$0.00**  | **$0.00** |
 
-**MCE adds $0.00/month to Firebase costs at any scale.** This is because:
+**MCE is currently enabled and adds $0.00/month to Firebase costs at any scale.** This is because:
 
 1. CSR validation is a pure client-side function — no Firebase calls
 2. The `_mce` field is merged into the existing `setDoc` call — no additional write

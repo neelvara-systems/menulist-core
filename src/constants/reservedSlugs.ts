@@ -7,6 +7,8 @@
  * @see __docs__/url-routing-architecture/README.md ADR-4
  */
 
+import { CAMPAIGNCUE_PRODUCT_ID } from '@constant/campaigncue/product';
+
 /**
  * Reserved project slugs — blocked at project creation/rename time.
  * These are paths that MenuList may use for platform features.
@@ -61,6 +63,9 @@ export const RESERVED_PROJECT_SLUGS: readonly string[] = [
     // Customer App (PWA surface) — analytics project segment + shortcut handoff routes
     'customerapp',     // analytics projectId='customerApp' (lowercase match in checks)
     'pwa',             // future shortcut handoff base path
+
+    // Separate product surfaces
+    CAMPAIGNCUE_PRODUCT_ID,
 ] as const;
 
 /**
@@ -86,6 +91,7 @@ export const RESERVED_SUBDOMAINS: readonly string[] = [
     'help', 'support', 'status', 'menu', 'screen', 'feedback',
     'auth', 'login', 'signup', 'webhook', 'health', 'cdn',
     'dev', 'staging', 'test', 'demo', 'docs', 'billing',
+    CAMPAIGNCUE_PRODUCT_ID,
 ] as const;
 
 /**

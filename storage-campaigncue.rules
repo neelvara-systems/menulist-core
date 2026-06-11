@@ -1,0 +1,55 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /campaigncue/assets/{workspaceId}/{allPaths=**} {
+      allow read: if isCampaignCueWorkspaceMember(workspaceId);
+      allow write: if isCampaignCueWorkspaceMember(workspaceId)
+        && isCampaignCueAssetType()
+        && request.resource.size <= 250 * 1024 * 1024;
+      allow delete: if isCampaignCueWorkspaceMember(workspaceId);
+    }
+
+    match /campaigncue/renders/{workspaceId}/{allPaths=**} {
+      allow read: if isCampaignCueWorkspaceMember(workspaceId);
+      allow write, delete: if false;
+    }
+
+    match /campaigncue/reports/{workspaceId}/{allPaths=**} {
+      allow read: if isCampaignCueWorkspaceMember(workspaceId);
+      allow write, delete: if false;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isPlatformAdmin() {
+      return isAuthenticated()
+        && request.auth.token.platformRole == 'PLATFORM';
+    }
+
+    function currentCampaignCueWorkspaceId() {
+      return 'cc_' + string(request.auth.token.tenantId) + '_' + string(request.auth.token.storeId);
+    }
+
+    function isCampaignCueWorkspaceMember(workspaceId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || workspaceId == currentCampaignCueWorkspaceId()
+        );
+    }
+
+    function isCampaignCueAssetType() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp|gif)')
+        || request.resource.contentType.matches('video/(mp4|quicktime|webm)')
+        || request.resource.contentType.matches('application/(pdf|json|zip)')
+        || request.resource.contentType == 'text/plain';
+    }
+  }
+}

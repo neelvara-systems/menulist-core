@@ -130,7 +130,7 @@ export default function InteractiveWorkflowSection() {
         className="ws-workflow-step-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
           gap: 'var(--ws-space-6)',
           maxWidth: '960px',
           marginLeft: 'auto',

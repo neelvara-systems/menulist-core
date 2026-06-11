@@ -91,6 +91,9 @@ export interface FirestoreSubscriptionDoc {
   monthlyCredits: number;           // NEW: The current balance of recurring credits. RESET every cycle.
   topUpCredits: number;             // NEW: Balance of purchased credits from top-up packs. Does NOT reset.
   creditsLastResetMonth?: number;   // YYYYMM format (e.g., 202602). Tracks when monthlyCredits was last reset.
+  carryForwardCredits?: number;      // Server-computed credits moved during a subscription upgrade.
+  carryForwardFromSubscriptionId?: string;
+  carryForwardAppliedAt?: Timestamp;
 
   totalPaymentsNeededCount: number;
   totalPaymentsMadeCount: number;

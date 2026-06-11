@@ -4,6 +4,7 @@
 **Audience:** Developers, Technical Leads  
 **Version:** 1.0  
 **Date:** February 1, 2026
+**Last Runtime Audit:** June 11, 2026
 
 ---
 
@@ -23,6 +24,17 @@
 ---
 
 ## 1. Architecture Overview
+
+### June 11, 2026 Runtime Contract
+
+The current production contract is stricter than the original implementation plan:
+
+- Public feedback writes are API/Admin-SDK only. `firestore.rules` denies unauthenticated direct creates to `guestFeedback`.
+- `src/app/api/public/feedback/submit/route.ts` verifies the nested project, store tenant match, active/deleted/blocked state, project/store feedback toggles, and store-owned field defaults before writing.
+- `src/database/guestFeedback/server.ts` owns public feedback creates and compact feedback event writes.
+- Owner desktop and mobile feedback screens use the shared client DAL for reads/status updates. Store-scoped sessions cannot update feedback from another store in the same tenant.
+- Client updates are status-only in rules; original guest rating/message/contact/source fields are immutable from owner clients.
+- Feedback writes do not trigger public menu/OBP cache invalidation because they are private workflow records, not public truth packet changes.
 
 ### System Flow
 

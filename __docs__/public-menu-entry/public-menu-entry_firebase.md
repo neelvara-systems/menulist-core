@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Status:** ✅ IMPLEMENTED — Production-audited
-**Last Updated:** June 3, 2026
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -39,8 +39,11 @@ For public menu links, the route performs one bounded outbound source acquisitio
 
 | Operation | Collection | Type | Count | Trigger |
 |-----------|-----------|------|-------|---------|
-| Read owner-bound draft (by token) | `publicMenuDrafts` | READ | 1-5 | Polling until extraction complete |
-| **Subtotal** | | | **1-5R** | |
+| Read owner-bound draft (by token) | `publicMenuDrafts` | READ | 1 per poll, client capped at 30 polls | GET /api/public/create-menu |
+| Rate-limit status polling | Upstash rate limiter | READ/WRITE | 90 requests / 5 min per user+draft | GET /api/public/create-menu |
+| **Subtotal** | | | **1-30 Firestore reads in the normal polling window; 429 after backend limit** | |
+
+The normal preview client polls with `statusOnly=1` while the extraction is pending or processing, so each poll returns status and detected business metadata without the full `extractedData` payload. When the draft is completed, the client performs one full read to load the final extracted menu for claim/review. Firestore read count is unchanged; response size and browser JSON work are reduced during polling.
 
 ### 2.3 Claim + Publish (Authenticated)
 

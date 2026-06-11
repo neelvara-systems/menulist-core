@@ -9,8 +9,10 @@ export const dynamic = 'force-dynamic';
  *
  * @see __docs__/reviews-reputation/reviews-reputation_impl.md §4
  */
+import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { checkRateLimit } from "@lib/rateLimit";
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 
@@ -20,9 +22,25 @@ import { withAuth } from "../../../../middleware/auth";
  * Response: { success: true, data: { hasBlockActive: boolean, hasEscalationActive: boolean } }
  */
 export const GET = withAuth(async (request: NextRequest, session) => {
+    if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION) {
+        return NextResponse.json({ error: "Feature disabled" }, { status: 404 });
+    }
+
     const { tId: tenantId, sId: storeId } = session;
     if (!tenantId || !storeId) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
+    }
+
+    const rateLimit = await checkRateLimit({
+        key: `review-states:${session.uId}:${tenantId}:${storeId}`,
+        limit: 30,
+        window: 60,
+    });
+    if (!rateLimit.allowed) {
+        return NextResponse.json(
+            { error: "Too many requests. Please try again later." },
+            { status: 429 },
+        );
     }
 
     try {
@@ -35,14 +53,11 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             .where("tId", "==", tenantId)
             .where("sId", "==", storeId)
             .where("blockActive", "==", true)
+            .where("autoExpiresAt", ">", now)
             .limit(1)
             .get();
 
-        // Filter out expired block states
-        const hasBlockActive = blockQuery.docs.some(doc => {
-            const data = doc.data();
-            return data.autoExpiresAt && data.autoExpiresAt.toMillis() > now.toMillis();
-        });
+        const hasBlockActive = !blockQuery.empty;
 
         // Check for any active escalation states (non-expired)
         const escalationQuery = await db
@@ -50,13 +65,11 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             .where("tId", "==", tenantId)
             .where("sId", "==", storeId)
             .where("escalationActive", "==", true)
+            .where("autoExpiresAt", ">", now)
             .limit(1)
             .get();
 
-        const hasEscalationActive = escalationQuery.docs.some(doc => {
-            const data = doc.data();
-            return data.autoExpiresAt && data.autoExpiresAt.toMillis() > now.toMillis();
-        });
+        const hasEscalationActive = !escalationQuery.empty;
 
         return NextResponse.json({
             success: true,

@@ -160,10 +160,12 @@ Context-aware support remains generic:
 
 `/answerlattice/widget` is the single source of truth for widget management. Clean sidebar subroutes normalize to `/answerlattice/widget/ui`, `/answerlattice/widget/install`, `/answerlattice/widget/hosted-help`, and `/answerlattice/widget/access`:
 
-- Key create, rename, copy, and delete through `POST /api/answerlattice/widget-key`.
+- Key create, rename, and delete through `POST /api/answerlattice/widget-key`.
+- Raw key copy is limited to the just-created in-browser value; server-side copy requests return a rotate/create-new-key response.
 - Config load/save through `GET`/`PUT /api/answerlattice/widget-config`.
 - Install snippets generated from `src/lib/answerlattice/widgetConfig.ts`.
 - Env-backed install handoff for Next.js, Vite/React, and Nuxt client apps.
+- When the raw key is not currently visible in the browser, dashboard install snippets use an explicit full-key placeholder. They must not render a saved key identifier with ellipsis as if it were an installable key.
 - Origin allowlist management.
 - Context-aware route snippet examples.
 - Desktop/mobile preview.
@@ -188,7 +190,8 @@ Widget credentials use `stores/{sId}.answerlatticeWidgetApi`:
       "name": "Production widget",
       "keyPrefix": "al_abcd",
       "keySuffix": "wxyz",
-      "encryptedKey": "v1:...",
+      "encryptedKey": null,
+      "encryptionVersion": null,
       "status": "active",
       "productId": "AL",
       "purpose": "answerlattice_widget",
@@ -201,15 +204,7 @@ Widget credentials use `stores/{sId}.answerlatticeWidgetApi`:
 }
 ```
 
-`keyHashes` is the active-key lookup array used by `validatePublicApiKey()` with `array-contains`, so runtime validation remains one indexed store lookup and returns the store data the widget routes already need. `keysByHash` carries metadata for the dashboard row and per-key scope check. `encryptedKey` is present only for widget publishable keys when `ANSWERLATTICE_WIDGET_KEY_ENCRYPTION_SECRET` is configured; private/server API keys remain hash-only.
-
-Environment requirement for copy-anytime widget keys:
-
-```bash
-ANSWERLATTICE_WIDGET_KEY_ENCRYPTION_SECRET=<strong random secret, separate per environment>
-```
-
-If the secret is missing, create still returns the raw key once for install, but later copy requests return a rotate/create-new-key message instead of weakening storage.
+`keyHashes` is the active-key lookup array used by `validatePublicApiKey()` with `array-contains`, so runtime validation remains one indexed store lookup and returns the store data the widget routes already need. `keysByHash` carries dashboard metadata and per-key scopes only. Raw widget keys are returned once on create, are not stored for recovery, and later copy requests return a rotate/create-new-key response.
 
 Generic client-product embed environment:
 
@@ -566,8 +561,10 @@ Per image query: 1 additional bounded visual-context model call before normal re
 
 | Date       | Version | Change                                                                                                                                                                                                                                                            |
 | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-11 | 2.5.2   | Clarified dashboard install snippets so one-time raw widget keys are replaced by an explicit full-key placeholder when the value is no longer visible; saved key identifiers are for dashboard lookup only. |
+| 2026-06-11 | 2.5.1   | Hardened widget key management to one-time raw key display: server-side copy/recovery is disabled, key metadata remains hash-only, and lost keys are rotated by creating a replacement key. |
 | 2026-05-28 | 2.5.0   | Added runtime `hide()`/`show()` controls and made the MenuList owner embed suppress, close, and hide the external Answerlattice widget on mobile or blocked routes so sidebar navigation cannot leave the help iframe over the app. |
-| 2026-05-25 | 2.4.9   | Added the store-doc widget key manager: bounded named keys, rename/delete/copy actions, encrypted recoverable widget-key storage when configured, `keyHashes` array lookup, and legacy single-key compatibility. |
+| 2026-05-25 | 2.4.9   | Added the store-doc widget key manager: bounded named keys, rename/delete actions, `keyHashes` array lookup, and legacy single-key compatibility. The old copy/recovery behavior is superseded by 2.5.1. |
 | 2026-05-25 | 2.4.9   | Added MenuList owner-layout external-client embed behind `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY`; script source follows the local/QA/prod Answerlattice host matrix and no widget key is committed. |
 | 2026-05-25 | 2.4.8   | Hardened separated Firebase key validation so `al_` widget keys resolve only through Answerlattice Firestore, widget runtime routes do not query MenuList `publicApi`, MenuList public API routes reject non-`ml_` keys, and widget questions appear in `/answerlattice/widget` activity. |
 | 2026-05-24 | 2.4.6   | Restored predictive support through a guarded runtime capability: widget config advertises predictive support only when active triggers exist, and runtime calls remain origin/context/rate/cooldown protected. |

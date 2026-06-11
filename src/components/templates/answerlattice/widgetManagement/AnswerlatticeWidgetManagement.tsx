@@ -82,6 +82,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 const { Title, Text, Paragraph } = Typography;
 
 type SnippetType = 'html' | 'env' | 'spa' | 'next' | 'react' | 'vue' | 'vanilla';
+const FULL_WIDGET_KEY_PLACEHOLDER = 'al_full_widget_key_shown_once';
 
 type AnswerlatticeWidgetManagementProps = {
     embeddedMobile?: boolean;
@@ -258,8 +259,6 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
     const [hasWidgetKey, setHasWidgetKey] = useState(false);
     const [widgetKeys, setWidgetKeys] = useState<WidgetKeySummary[]>([]);
     const [keyLimit, setKeyLimit] = useState(10);
-    const [keyEncryptionConfigured, setKeyEncryptionConfigured] = useState(false);
-    const [copyingKeyId, setCopyingKeyId] = useState<string | null>(null);
     const [deletingKeyId, setDeletingKeyId] = useState<string | null>(null);
     const [renameKey, setRenameKey] = useState<WidgetKeySummary | null>(null);
     const [renameValue, setRenameValue] = useState('');
@@ -298,7 +297,6 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
             setHasWidgetKey(Boolean(data.hasWidgetKey));
             setWidgetKeys(Array.isArray(data.keys) ? data.keys : []);
             setKeyLimit(Number(data.keyLimit || 10));
-            setKeyEncryptionConfigured(Boolean(data.encryptionConfigured));
             setRuntimeStatus(data.runtimeStatus || null);
 
             const hostedRes = await fetch('/api/answerlattice/hosted-help-settings', { method: 'GET' });
@@ -362,7 +360,6 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
             setHasWidgetKey(Boolean(data.hasWidgetKey));
             setWidgetKeys(Array.isArray(data.keys) ? data.keys : widgetKeys);
             setKeyLimit(Number(data.keyLimit || keyLimit));
-            setKeyEncryptionConfigured(Boolean(data.encryptionConfigured));
             if ('runtimeStatus' in data) {
                 setRuntimeStatus(data.runtimeStatus || null);
             }
@@ -393,7 +390,6 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
             setHasWidgetKey(Boolean(data.hasWidgetKey ?? true));
             setWidgetKeys(Array.isArray(data.keys) ? data.keys : data.key ? [data.key, ...widgetKeys] : widgetKeys);
             setKeyLimit(Number(data.keyLimit || keyLimit));
-            setKeyEncryptionConfigured(Boolean(data.encryptionConfigured));
             message.success('Widget key created');
         } catch (error) {
             message.error(getAnswerlatticeUiErrorMessage(error, 'Could not create widget key'));
@@ -410,23 +406,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
             return;
         }
 
-        setCopyingKeyId(key.id);
-        try {
-            const res = await fetch('/api/answerlattice/widget-key', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'copy', keyId: key.id }),
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok || !data.apiKey) throw new Error(data.error || 'Failed to copy widget key');
-            setApiKey(data.apiKey);
-            setRevealedKeys(prev => ({ ...prev, [key.id]: data.apiKey }));
-            copyText(data.apiKey, 'Widget key copied');
-        } catch (error) {
-            message.error(getAnswerlatticeUiErrorMessage(error, 'Could not copy this key'));
-        } finally {
-            setCopyingKeyId(null);
-        }
+        message.warning('Widget keys are shown only once. Create a new key if the raw value was lost.');
     }, [revealedKeys]);
 
     const handleRenameKey = useCallback(async () => {
@@ -595,19 +575,23 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         }
     }, []);
 
-    const embedCode = useMemo(() => buildAnswerlatticeWidgetEmbedCode({ apiKey, config, scriptSrc }), [apiKey, config, scriptSrc]);
+    const embedCode = useMemo(() => buildAnswerlatticeWidgetEmbedCode({
+        apiKey: apiKey || FULL_WIDGET_KEY_PLACEHOLDER,
+        config,
+        scriptSrc,
+    }), [apiKey, config, scriptSrc]);
     const spaSnippet = useMemo(() => buildAnswerlatticeWidgetRouteSnippet(), []);
     const envSnippet = useMemo(() => [
         '# Next.js / Vercel',
-        `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=${apiKey || 'al_your_widget_key'}`,
+        `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=${apiKey || FULL_WIDGET_KEY_PLACEHOLDER}`,
         `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_SCRIPT_SRC=${scriptSrc}`,
         '',
         '# Vite / React SPA',
-        `VITE_ANSWERLATTICE_WIDGET_KEY=${apiKey || 'al_your_widget_key'}`,
+        `VITE_ANSWERLATTICE_WIDGET_KEY=${apiKey || FULL_WIDGET_KEY_PLACEHOLDER}`,
         `VITE_ANSWERLATTICE_WIDGET_SCRIPT_SRC=${scriptSrc}`,
         '',
         '# Nuxt',
-        `NUXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=${apiKey || 'al_your_widget_key'}`,
+        `NUXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=${apiKey || FULL_WIDGET_KEY_PLACEHOLDER}`,
         `NUXT_PUBLIC_ANSWERLATTICE_WIDGET_SCRIPT_SRC=${scriptSrc}`,
         '',
         '# Keep these out of browser env:',
@@ -656,7 +640,9 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
             label: 'Widget key',
             type: hasWidgetKey ? 'success' as const : 'warning' as const,
             message: hasWidgetKey ? 'Widget key ready' : 'Create a widget key',
-            description: hasWidgetKey ? `Active key prefix: ${primaryWidgetKey?.keyPrefix || keyPrefix || 'available'}.` : 'Create the key before copying install code.',
+            description: hasWidgetKey
+                ? `Saved key identifier: ${primaryWidgetKey?.keyPrefix || keyPrefix || 'available'}. Use the full one-time key value in your app environment.`
+                : 'Create the key before copying install code.',
         },
         {
             label: 'Script loaded',
@@ -897,17 +883,17 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                 </Flex>
                                             </Col>
                                             <Col xs={12} sm={8}>
-                                                <Flex vertical gap={4}>
-                                                    <Text strong style={CONTROL_LABEL_STYLE}>Offset X</Text>
-                                                    <InputNumber value={config.offsetX} min={0} max={200} style={{ width: '100%' }} onChange={(value) => updateConfig('offsetX', Number(value ?? 20))} />
-                                                </Flex>
-                                            </Col>
-                                            <Col xs={12} sm={8}>
-                                                <Flex vertical gap={4}>
-                                                    <Text strong style={CONTROL_LABEL_STYLE}>Offset Y</Text>
-                                                    <InputNumber value={config.offsetY} min={0} max={200} style={{ width: '100%' }} onChange={(value) => updateConfig('offsetY', Number(value ?? 20))} />
-                                                </Flex>
-                                            </Col>
+                                            <Flex vertical gap={4}>
+                                                <Text strong style={CONTROL_LABEL_STYLE}>Side spacing</Text>
+                                                <InputNumber value={config.offsetX} min={0} max={200} style={{ width: '100%' }} onChange={(value) => updateConfig('offsetX', Number(value ?? 20))} />
+                                            </Flex>
+                                        </Col>
+                                        <Col xs={12} sm={8}>
+                                            <Flex vertical gap={4}>
+                                                <Text strong style={CONTROL_LABEL_STYLE}>Bottom spacing</Text>
+                                                <InputNumber value={config.offsetY} min={0} max={200} style={{ width: '100%' }} onChange={(value) => updateConfig('offsetY', Number(value ?? 20))} />
+                                            </Flex>
+                                        </Col>
                                         </Row>
                                     </Card>
                                 </Col>
@@ -952,7 +938,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                 />
                                             </Flex>
                                             <Flex vertical gap={4}>
-                                                <Text strong style={CONTROL_LABEL_STYLE}>Z-index</Text>
+                                                <Text strong style={CONTROL_LABEL_STYLE}>Layer priority</Text>
                                                 <InputNumber value={config.zIndex} min={1000} max={2147483646} style={{ width: '100%' }} onChange={(value) => updateConfig('zIndex', Number(value ?? DEFAULT_ANSWERLATTICE_WIDGET_CONFIG.zIndex))} />
                                             </Flex>
                                         </Flex>
@@ -1030,6 +1016,14 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                 rows={snippetType === 'html' ? 8 : snippetType === 'env' ? 13 : 15}
                                                 style={{ fontFamily: 'monospace', fontSize: 12, background: token.colorFillTertiary, color: token.colorText }}
                                             />
+                                            {!apiKey && (
+                                                <Alert
+                                                    type="warning"
+                                                    showIcon
+                                                    message="Snippet uses a placeholder key"
+                                                    description="Widget keys are shown only once after creation. Create a key, store the full al_* value in your app environment, then replace the placeholder before install."
+                                                />
+                                            )}
                                             <Alert
                                                 type="info"
                                                 showIcon
@@ -1413,7 +1407,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                     disabled={!canCreateWidgetKey}
                                                     onClick={handleGenerateKey}
                                                 >
-                                                    Create API key
+                                                    Create widget key
                                                 </Button>
                                             </Flex>
                                             {widgetKeys.length > 0 ? (
@@ -1422,12 +1416,11 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                     renderItem={(key) => (
                                                         <List.Item
                                                             actions={[
-                                                                <Tooltip title="Copy API key" key="copy">
+                                                                <Tooltip title={revealedKeys[key.id] ? 'Copy widget key' : 'Only shown once when created'} key="copy">
                                                                     <Button
-                                                                        aria-label="Copy API key"
+                                                                        aria-label="Copy widget key"
                                                                         icon={<LuCopy size={14} />}
-                                                                        loading={copyingKeyId === key.id}
-                                                                        disabled={!key.copyable && !revealedKeys[key.id]}
+                                                                        disabled={!revealedKeys[key.id]}
                                                                         size="small"
                                                                         type="text"
                                                                         onClick={() => handleCopyKey(key)}
@@ -1500,14 +1493,12 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                     description="Use the install tab now; refresh will clear the visible raw key from this browser."
                                                 />
                                             )}
-                                            {!keyEncryptionConfigured && (
-                                                <Alert
-                                                    type="warning"
-                                                    showIcon
-                                                    message="Copy-anytime is not configured"
-                                                    description="New keys still work and are shown after creation, but existing keys cannot be copied again until the server encryption secret is configured."
-                                                />
-                                            )}
+                                            <Alert
+                                                type="info"
+                                                showIcon
+                                                message="Widget keys are shown once"
+                                                description="Copy the key after creating it. If the raw value is lost, create a new key and replace it in the installed widget."
+                                            />
                                             {!canCreateWidgetKey && (
                                                 <Alert
                                                     type="info"

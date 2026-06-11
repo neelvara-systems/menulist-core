@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { checkRateLimit } from "@lib/rateLimit";
 import { secureError } from "@lib/security/secureLogger";
 import crypto from "crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
@@ -37,6 +38,12 @@ const FixRequestSchema = z.object({
   note: z.string().max(200).optional(),
 });
 
+function getClientIp(request: NextRequest): string {
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { sessionId: string } },
@@ -46,6 +53,20 @@ export async function POST(
 
     if (!sessionId || sessionId.length < 10) {
       return NextResponse.json({ error: "Invalid session" }, { status: 400 });
+    }
+
+    const ip = getClientIp(request);
+    const rateLimit = await checkRateLimit({
+      key: `msg-preview-fix:${sessionId}:${ip}`,
+      limit: 10,
+      window: 3600,
+    });
+    if (!rateLimit.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+      return NextResponse.json(
+        { error: "Too many correction requests", retryAfter },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } },
+      );
     }
 
     const body = await request.json();

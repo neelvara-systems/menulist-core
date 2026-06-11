@@ -1,9 +1,9 @@
-import QrCodePage from "@template/main-app/qrCode"
+"use client";
 
-function page() {
-    return (
-        <QrCodePage />
-    )
+import UseMenuList from "@template/main-app/useMenuList";
+
+function QrCodePage() {
+    return <UseMenuList />;
 }
 
-export default page
+export default QrCodePage

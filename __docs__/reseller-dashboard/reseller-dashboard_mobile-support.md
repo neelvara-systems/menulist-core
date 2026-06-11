@@ -1,8 +1,9 @@
 # Reseller Dashboard — Mobile Support Assessment
 
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
-**Status:** 📝 DOCUMENTED  
+**Status:** Implemented — billing/reseller slice audited June 11, 2026
 **Created:** February 27, 2026  
+**Last Updated:** June 11, 2026
 **Audience:** Internal
 
 ---
@@ -100,5 +101,12 @@ Reseller mobile shell has simplified bottom tabs:
 
 ---
 
-**DOCUMENT STATUS:** 📝 DOCUMENTED  
-**Last Updated:** February 27, 2026
+## June 11, 2026 Parity Notes
+
+- Mobile uses the same `/api/reseller/clients`, `/api/reseller/monthly-summary`, `/api/reseller/onboard`, and `/api/reseller/add-location-capacity` routes as desktop.
+- Mobile platform reseller management no longer imports or compares a client-bundled platform password. It loads only for `platformRole === 'PLATFORM'` and relies on the same platform-only APIs as desktop.
+- Monthly summary profile reads are now scoped: normal resellers read only their own profile docs; platform users keep the aggregate view.
+- Pending online clients expose copy/open payment-link actions on mobile.
+- Active manual/offline clients expose "Add prepaid location" on mobile with the same bounded server route as desktop.
+
+**DOCUMENT STATUS:** Implemented and audited for this slice

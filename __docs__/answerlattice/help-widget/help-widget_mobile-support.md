@@ -13,7 +13,7 @@
 Reason:
 
 - Widget setup is not a daily mobile workflow, so duplicating the full management console would add maintenance cost.
-- Emergency actions such as copy/delete key, add origin, or confirm cache strategy should still be readable and usable on a phone.
+- Emergency actions such as copying a just-created visible key, deleting a key, adding an origin, or confirming cache strategy should still be readable and usable on a phone.
 - The existing route already owns the single save path through `GET`/`PUT /api/answerlattice/widget-config` and `POST /api/answerlattice/widget-key`.
 
 ## Mobile Surface

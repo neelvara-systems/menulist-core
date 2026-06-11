@@ -25,7 +25,7 @@ async function triggerBatchImageGenerationApi(payload: GenerateImageViaApiPayloa
     } catch (error) {
         if (error instanceof AICapacityError) throw error;
         logger.error('Batch image trigger API failed', error);
-        return [];
+        throw error;
     }
 }
 

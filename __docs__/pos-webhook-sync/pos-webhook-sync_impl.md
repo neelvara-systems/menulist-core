@@ -2,8 +2,8 @@
 
 > **Document Type:** Technical Blueprint (Developers)
 > **Status:** Implemented (Feature flag: `ENABLE_POS_SYNC: true`)
-> **Last Updated:** May 23, 2026
-> **Version:** 2.3
+> **Last Updated:** June 11, 2026
+> **Version:** 2.4
 
 ---
 
@@ -28,11 +28,11 @@
 ┌─────────────────────────────────────────────────────────────┐
 │          API ROUTE: /api/pos-sync/deliver                    │
 │   1. Auth + tenant verification + rate limiting             │
-│   2. Read store config + project data                       │
+│   2. Read store config + tenant/store-scoped project data    │
 │   3. Increment menuVersion on store doc                     │
 │   4. Build full menu snapshot (payloadFormatter.ts)         │
 │   5. Sign with HMAC-SHA256 (signature.ts)                   │
-│   6. POST to webhook URL (5s timeout)                       │
+│   6. POST to validated public HTTPS webhook URL (5s timeout) │
 │   7. Log result to posDeliveryLogs subcollection            │
 │   8. Update store posSync status                            │
 └─────────────────────────────────────────────────────────────┘
@@ -330,7 +330,7 @@ posSync: {
 
 **Delivery History** — Client-side Firestore query on `stores/{storeId}/posDeliveryLogs` subcollection using `collection()` + `orderBy('sentAt', 'desc')` + `limit(20)`. No API route needed.
 
-**Send Instructions** — Client-side counter update via `updateStore()` DAL. Tracks `posSync.instructionsSentCount` and `posSync.instructionsSentDate` for daily rate limiting (max 3/day). Email integration deferred to proper email service.
+**Send Instructions** — Client-side counter update via `updateStore()` DAL plus a `mailto:` draft opened on the owner's device. Tracks `posSync.instructionsSentCount` and `posSync.instructionsSentDate` for daily rate limiting (max 3/day). Server-side email delivery remains deferred to a proper email service.
 
 ---
 
@@ -642,7 +642,7 @@ async def menulist_webhook(request: Request):
 7. Documentation link (`menulist.ai/pos-sync`)
 8. Boundary statement ("For POS configuration, coordinate directly with your client")
 
-**Abuse protection:** Max 3 emails per day per store, tracked via `instructionsSentCount` and `instructionsSentDate` on store document.
+**Abuse protection:** Max 3 provider email drafts per day per store, tracked via `instructionsSentCount` and `instructionsSentDate` on store document.
 
 ---
 
@@ -654,18 +654,18 @@ async def menulist_webhook(request: Request):
 | --------------------------------------- | ---------------------------------------- |
 | Explanation layer renders first         | Owner sees value copy, diagram, trust bullets, and "Who should use this?" before technical fields |
 | Enable External Sync toggle             | Secret auto-generated, fields enabled    |
-| Enter provider connection URL           | URL saved on form submit                 |
+| Enter provider connection URL           | Public HTTPS URL saved on form submit; localhost/private-network URLs rejected |
 | Click "Test connection" with valid URL  | Success message, log entry created       |
 | Click "Test connection" with invalid URL | Failure message shown                   |
 | Edit menu item price                    | Delivery job created after debounce      |
 | Edit 5 items in 10 seconds              | Only 1 delivery job created (debounce)   |
 | Webhook returns 200                     | Status: success, log entry: 200          |
-| Webhook returns 500                     | Retry initiated, eventually mark failing |
-| Webhook times out (>5s)                 | Timeout logged, retry initiated          |
-| 5 consecutive failures                  | Status changes to "connection_issue"     |
+| Webhook returns 500                     | Attempt logged, status changes to `connection_issue` |
+| Webhook times out (>5s)                 | Timeout logged, status changes to `connection_issue` |
+| Next menu change after a failure        | Creates a fresh single delivery attempt  |
 | Fix URL, click "Send Test" successfully | Status recovers to "healthy"             |
 | Regenerate secret                       | New secret generated, masked by default, old one invalidated, rotation metadata and MOL audit event stored |
-| Send instructions (first time)          | Email sent, counter = 1                  |
+| Send instructions (first time)          | Owner email draft opens, counter = 1     |
 | Send instructions (4th time same day)   | Blocked: "Maximum 3 sends per day"       |
 | Disable POS sync toggle                 | All delivery stops, status = disabled    |
 | Menu version increments                 | Version in payload matches store version |
@@ -700,7 +700,7 @@ async def menulist_webhook(request: Request):
 - `test` and `deliver` **must** be server-side because they make **outbound HTTP POST requests to external URLs** — browser CORS policies block arbitrary cross-origin POST requests from the client.
 - `regenerate-secret` is just `crypto.getRandomValues()` + a Firestore write. The client already generates secrets on first enable using the same approach. No server logic needed.
 - `delivery-history` is a simple Firestore subcollection read (`stores/{storeId}/posDeliveryLogs`). Client SDK handles this directly.
-- `send-instructions` is currently just a Firestore counter update (email integration deferred). No server logic needed.
+- `send-instructions` is currently a Firestore counter update plus an owner-device `mailto:` draft (server-side email integration deferred). No server logic needed.
 
 **Trade-off:** Moving to client-side means Firestore security rules must allow reads/writes to the subcollection. Server routes bypassed rules via Admin SDK. Acceptable because the client is already authenticated and the store document is already writable by the owner.
 

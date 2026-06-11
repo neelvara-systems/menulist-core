@@ -52,6 +52,33 @@ const toMillis = (value: any) => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
+async function getVisibleProfileDocs(
+    db: admin.firestore.Firestore,
+    isPlatform: boolean,
+    resellerId: string,
+    email?: string | null,
+) {
+    if (isPlatform) {
+        const snapshot = await db.collection(DB_COLLECTIONS.RESELLER_PROFILES).limit(50).get();
+        return snapshot.docs;
+    }
+
+    const directDocPromise = db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(resellerId).get();
+    const normalizedEmail = email?.toLowerCase()?.trim();
+    const emailSnapshotPromise = normalizedEmail
+        ? db.collection(DB_COLLECTIONS.RESELLER_PROFILES)
+            .where("email", "==", normalizedEmail)
+            .limit(1)
+            .get()
+        : Promise.resolve(null);
+
+    const [directDoc, emailSnapshot] = await Promise.all([directDocPromise, emailSnapshotPromise]);
+    const docs = new Map<string, admin.firestore.QueryDocumentSnapshot | admin.firestore.DocumentSnapshot>();
+    if (directDoc.exists) docs.set(directDoc.id, directDoc);
+    emailSnapshot?.docs?.forEach((doc) => docs.set(doc.id, doc));
+    return Array.from(docs.values());
+}
+
 export const GET = withAuth(async (request: NextRequest, session) => {
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
@@ -70,8 +97,8 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             transactionQuery = transactionQuery.where("resellerId", "==", sessionResellerId);
         }
 
-        const [profileSnapshot, transactionSnapshot] = await Promise.all([
-            db.collection(DB_COLLECTIONS.RESELLER_PROFILES).get(),
+        const [profileDocs, transactionSnapshot] = await Promise.all([
+            getVisibleProfileDocs(db, isPlatform, sessionResellerId, session.user.email),
             transactionQuery
                 .orderBy("createdOn", "desc")
                 .limit(MONTHLY_TRANSACTION_LIMIT)
@@ -79,7 +106,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         ]);
 
         const profilesById = new Map<string, any>();
-        profileSnapshot.docs.forEach((doc) => {
+        profileDocs.forEach((doc) => {
             const data = doc.data();
             profilesById.set(doc.id, { id: doc.id, ...data });
             if (typeof data.authUserId === "string") profilesById.set(data.authUserId, { id: doc.id, ...data });

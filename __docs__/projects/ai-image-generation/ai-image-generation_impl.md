@@ -1,8 +1,8 @@
 # AI Image Generation — Implementation
 
-**Feature:** AI-Powered Image Generation & Editing  
-**Status:** ✅ Production Ready  
-**Last Updated:** January 28, 2026  
+**Feature:** Menu Image Generation & Editing
+**Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
+**Last Updated:** June 11, 2026
 **Audience:** Developers, Future Maintainers
 
 ---
@@ -177,6 +177,7 @@ interface BatchImageGenerationJobType {
     agreeToTerms?: boolean;
   };
   projectId: string;
+  requestedItemIds?: string[];
   itemsList: Array<{
     id: string;
     name: string;
@@ -310,6 +311,18 @@ const ImageGenerationRequestSchema = z.object({
 **Endpoint:** `POST /api/image-generation/batch-generation`
 
 Called by Google Cloud Tasks for each item. Same request structure as batch trigger but with single `itemDetails`.
+
+Worker requirements:
+
+- `project-id` header must match `FIREBASE_PROJECT_ID`.
+- `x-menulist-task-secret` must match `BATCH_IMAGE_GENERATION_WORKER_SECRET`.
+- Payload is validated with `BatchImageGenerationWorkerRequestSchema`.
+- Worker reads the batch job through Admin SDK, verifies project/job match and requested item id, and skips duplicate item tasks that already have generated images.
+- Worker builds deterministic prompts before provider work and checks AI capacity using the prompt/image quantity.
+- Shared `runImageGenerationPrompts()` executes one prompt directly and caps multi-prompt execution at a small concurrency limit.
+- Worker uploads item images through `uploadBase64MediaImageAdmin()` to public `media/menuItem/{tId}/{sId}/...` paths without relying on an owner browser session.
+- Worker uploads generated images with bounded concurrency and then calls `appendImageBatchItemResultAdmin()` so generated count/status are computed transactionally from the latest job state.
+- Provider responses and reference-image data are summarized in operation logs/accounting; image bytes are not stored in Firestore logs.
 
 ### 4. Image Editing
 
@@ -763,7 +776,7 @@ if (!qualityResult.allowed) {
 
 | Item                                      | Location                                | Effort | Risk if Unaddressed                       |
 | ----------------------------------------- | --------------------------------------- | ------ | ----------------------------------------- |
-| Duplicate `generateGeminiImageViaFlash()` | `route.ts`, `batch-generation/route.ts` | Medium | Inconsistent behavior, double maintenance |
+| Remaining model constant cleanup | `generators.ts`, image routes | Low | Model upgrades still need a focused constant pass |
 | No input validation on worker             | `batch-generation/route.ts`             | Low    | Security vulnerability                    |
 | Hardcoded model names                     | Multiple files                          | Low    | Upgrade friction                          |
 | Missing error boundaries                  | UI components                           | Medium | Poor UX on failures                       |
@@ -777,7 +790,7 @@ if (!qualityResult.allowed) {
 | -------------------- | ------------------------------------------------------------------ | -------- |
 | **P0 - This Week**   | Remove debugger, enable transaction logging, add batch size limit  | 1-2 days |
 | **P1 - This Sprint** | Cloud Task auth, cost estimation, partial retry                    | 1 week   |
-| **P2 - Next Sprint** | Code deduplication, prompt enhancements, quality guard integration | 2 weeks  |
+| **P2 - Next Sprint** | Prompt enhancements, quality guard integration, model constant cleanup | 2 weeks  |
 | **P3 - Backlog**     | Batch inference migration, style presets, image variations         | Future   |
 
 ---
@@ -793,6 +806,7 @@ FIREBASE_PROJECT_ID=your-project-id
 FIREBASE_PROJECT_LOCATION=us-central1
 BATCH_IMAGE_GENERATION_QUEUE_ID=image-generation-queue
 BATCH_IMAGE_GENERATION_WORKER_URL=https://your-domain.com/api/image-generation/batch-generation
+BATCH_IMAGE_GENERATION_WORKER_SECRET=generate-a-long-random-secret
 ```
 
 ---
@@ -807,25 +821,25 @@ BATCH_IMAGE_GENERATION_WORKER_URL=https://your-domain.com/api/image-generation/b
 | #   | Task                                | Location                                                     | Verified Issue                                            | Status                            |
 | --- | ----------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- | --------------------------------- |
 | 1   | **Remove debugger statement**       | `src/app/api/image-generation/batch-generation/route.ts:164` | `debugger` statement breaks production execution          | ✅ Done (Jan 30, 2026)            |
-| 2   | **Enable transaction logging**      | `src/app/api/image-generation/route.ts:264`                  | `logTransaction()` commented out, token usage not tracked | ⬜ Pending                        |
-| 3   | **Add batch size limit**            | `src/app/api/image-generation/batch-trigger/route.ts`        | No max item count validation, risk of runaway costs       | ⬜ Pending                        |
-| 4   | **Replace console.log with logger** | Multiple API routes                                          | Security & performance issue                              | ⚠️ Partial (UI done, API pending) |
+| 2   | **Enable transaction logging**      | `src/app/api/image-generation/route.ts`                      | Image generation usage was not reliably accounted         | ✅ Done (June 11, 2026)           |
+| 3   | **Add batch size limit**            | `src/lib/validation/apiSchemas.ts`                           | No max item count validation, risk of runaway costs       | ✅ Done (max 50)                  |
+| 4   | **Replace console.log with logger** | `src/lib/google/cloudTask/index.ts`, `src/lib/apiUtils`      | Security & performance issue                              | ✅ Done for audited API path      |
 | 5   | **Add feature flag**                | `src/config/features.ts`                                     | Missing ENABLE_AI_IMAGE_GENERATION flag                   | ✅ Done (Jan 30, 2026)            |
 
 ### Security Hardening (P1) — This Sprint
 
 | #   | Task                                 | Location                    | Issue                                                 | Status     |
 | --- | ------------------------------------ | --------------------------- | ----------------------------------------------------- | ---------- |
-| 5   | **Add Cloud Task OIDC verification** | `batch-generation/route.ts` | Header-based auth only, no service account validation | ⬜ Pending |
-| 6   | **Add input validation to worker**   | `batch-generation/route.ts` | Worker accepts payload without Zod validation         | ⬜ Pending |
-| 7   | **Validate task origin**             | `batch-generation/route.ts` | No verification that request comes from Cloud Tasks   | ⬜ Pending |
+| 5   | **Add worker authentication**        | `batch-generation/route.ts` | Header-based project id only, no secret validation    | ✅ Done with shared secret |
+| 6   | **Add input validation to worker**   | `batch-generation/route.ts` | Worker accepts payload without Zod validation         | ✅ Done |
+| 7   | **Validate task origin**             | `batch-generation/route.ts` | No verification that request comes from task enqueue  | ✅ Done with project header + shared secret |
 
 ### Code Quality (P2) — Next Sprint
 
 | #   | Task                                          | Location                                | Issue                                                       | Status     |
 | --- | --------------------------------------------- | --------------------------------------- | ----------------------------------------------------------- | ---------- |
 | 8   | **Fix typo: `referanceImage`**                | Multiple files                          | Typo in variable name, breaking change if fixed             | ⬜ Pending |
-| 9   | **Extract shared `generateImage()` function** | `route.ts`, `batch-generation/route.ts` | Duplicate `generateGeminiImageViaFlash()` code              | ⬜ Pending |
+| 9   | **Extract shared `generateImage()` function** | `route.ts`, `batch-generation/route.ts`, `generators.ts` | Duplicate route/worker model execution code | ✅ Done with shared prompt runner |
 | 10  | **Use centralized model constants**           | Multiple files                          | Hardcoded model names instead of `AI_MODELS`                | ⬜ Pending |
 | 11  | **Integrate `imageQualityGuard.ts`**          | Generation flow                         | Quality guard exists but not applied to AI-generated images | ⬜ Pending |
 | 12  | **Integrate `optimizeImage.ts`**              | Upload flow                             | Optimizer exists but not used for generated images          | ⬜ Pending |

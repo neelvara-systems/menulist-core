@@ -5354,17 +5354,6 @@ body[data-menulist-website="true"] {
   padding: 0;
 }
 
-.ws-feature-visual__pills {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: var(--ws-space-2);
-  margin-top: var(--ws-space-4);
-}
-
-.ws-feature-visual__pills span,
 .ws-feature-visual__source-stack span,
 .ws-feature-visual__content-rail span,
 .ws-feature-visual__surface-grid span,
@@ -5384,12 +5373,6 @@ body[data-menulist-website="true"] {
   font-weight: 760;
   line-height: 1.2;
   padding: 0.38rem 0.62rem;
-}
-
-.ws-feature-visual__pills span {
-  min-height: 1.85rem;
-  background: color-mix(in srgb, var(--ws-brand-secondary) 5%, transparent);
-  color: color-mix(in srgb, var(--ws-text-secondary) 88%, var(--ws-brand-secondary));
 }
 
 .ws-feature-visual svg {
@@ -5658,10 +5641,6 @@ body[data-menulist-website="true"] {
   min-height: 2.25rem;
   border-radius: 0.85rem;
   background: color-mix(in srgb, var(--ws-brand-secondary) 5%, var(--ws-bg-primary));
-}
-
-.ws-feature-visual--official-business-page .ws-feature-visual__pills {
-  display: none;
 }
 
 .ws-feature-visual__qr-layout,

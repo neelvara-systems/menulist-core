@@ -1,8 +1,8 @@
 # Decision Intelligence — Firebase Cost Tracking
 
-**Feature:** Decision Blocks (Smart Menu Recommendations)  
-**Status:** ✅ Production Ready  
-**Last Updated:** June 6, 2026
+**Feature:** Decision Blocks (Smart Menu Recommendations)
+**Status:** Controlled owner testing ready in audited slice; full MenuList certification pending
+**Last Updated:** June 11, 2026
 **Priority:** HIGH — Timezone-aware Cloud Function scoring + project-embedded customer-facing read model.
 
 ---
@@ -24,7 +24,7 @@
 | ---------------------------------- | ---------------------------------------- | -------------------- | -------------------------- | --------- | ---------------- | ------------------------------------------------------------------------------------------------------- |
 | Customer: fetch precomputed blocks | `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks` | Customer page load | Per menu cache miss | 0 additional | Project read | Public menu uses the embedded valid projection already loaded with project data. If missing or expired, runtime falls back to owner-pinned/no automatic ranking without another Firestore read. File: `src/app/client/[[...slug]]/page.tsx` |
 | Scoring: read project data         | `projects/{tId}/{sId}/{projectId}`       | Scheduled scoring    | Per active project         | 1         | Direct doc       | Cloud Function reads full project for item analysis.                                                    |
-| Scoring: read analytics snapshot   | `analytics/{tId}_{sId}_{projectId}_intelligence_7d` | Scheduled scoring | Per active project | 1 | Direct doc | Uses the scheduler-written compact 7-day snapshot; missing/stale snapshots score as empty instead of running hidden daily range reads. |
+| Scoring: read analytics snapshot   | `analytics/{tId}_{sId}_{projectId}_intelligence_7d` | Scheduled scoring and manual platform recovery | Per active project | 1 | Direct doc | Uses the scheduler-written compact 7-day snapshot; missing/stale snapshots score as empty instead of running hidden daily range reads. |
 | Scoring: read active project list  | `platformSummary/projects_{sId}`         | Scheduled scoring    | Per store                  | 1         | Direct doc       | Used to resolve active project IDs before nested project reads.                                          |
 | Scoring: read store summary        | `platformSummary/storesSummary`          | Scheduled run        | 1 per scheduler invocation | 1         | Direct doc       | Used for store scheduling, tenant/store IDs, business category, timezone, and active status.             |
 | Owner: read block config           | `projects/{tId}/{sId}/{projectId}`       | Owner opens editor/settings | Existing project load | 0 additional | Direct doc | Pins and toggles are part of already-loaded project data.                                                |
@@ -48,7 +48,7 @@ None — project `publicDecisionBlocks` projections are overwritten during scori
 | Function                      | Trigger                       | Frequency                 | Duration           | Memory | Notes                                                                                                      |
 | ----------------------------- | ----------------------------- | ------------------------- | ------------------ | ------ | ---------------------------------------------------------------------------------------------------------- |
 | `computeDecisionBlocksScores` | Scheduled (`30 * * * *`, UTC) | Hourly trigger; only due stores are processed | Store/project dependent | 256MB | Reads project + compact analytics snapshot, computes scores, writes results. File: `functions/src/decisionBlocksScoring.ts` |
-| `triggerDecisionBlocksScoring` | Callable manual recovery | On platform-owner action only | Store/project dependent | 256MB | Requires authenticated `PLATFORM` role; recomputes Decision Blocks without running all global scheduler tasks. |
+| `triggerDecisionBlocksScoring` | Callable manual recovery | On platform-owner action only | Store/project dependent | 256MB | Requires authenticated `PLATFORM` role; recomputes Decision Blocks without running all global scheduler tasks and uses the same compact analytics snapshot path as scheduled scoring. |
 
 ---
 
@@ -59,12 +59,13 @@ None — project `publicDecisionBlocks` projections are overwritten during scori
 - **Precomputed results**: Scoring runs in the nightly scheduler window for each store. Customer menu renders use the project-embedded `publicDecisionBlocks` projection when valid, with no separate Firestore read.
 - **60s Vercel cache**: Customer-facing reads cached, reducing Firestore reads significantly.
 - **Store-scoped scoring**: Hourly trigger filters stores by local settlement window, avoiding one large global daily run.
-- **Compact analytics input**: Decision Blocks consume the 7-day intelligence snapshot instead of opening daily range reads during normal scheduled scoring.
+- **Compact analytics input**: Decision Blocks consume the 7-day intelligence snapshot instead of opening daily range reads during scheduled or platform-manual scoring.
 - **Runtime availability filter**: Blocks filtered client-side for sold-out items (no extra read).
 
 ### Warnings: Expensive Patterns
 
 - **Analytics snapshot dependency**: If the 7-day intelligence snapshot is missing or stale, scoring proceeds with empty analytics for that run. This protects cost, but output quality depends on the aggregation step being healthy.
+- **Manual recovery scope**: Platform manual scoring is still linear in selected project/store count, but it no longer fans out over daily analytics documents.
 - **Scaling**: Cost grows linearly with active project count.
 
 ---

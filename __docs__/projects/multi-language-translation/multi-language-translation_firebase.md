@@ -1,8 +1,8 @@
 # Multi-Language Translation — Firebase Cost Tracking
 
-**Feature:** AI-Powered Menu Translation  
-**Status:** ✅ Production Ready  
-**Last Updated:** February 7, 2026  
+**Feature:** Menu Translation
+**Status:** Controlled owner testing ready after June 2026 server-governance hardening
+**Last Updated:** June 11, 2026
 **Priority:** MEDIUM — Gemini API cost per translation batch.
 
 ---
@@ -23,6 +23,7 @@
 | Operation                    | Collection                         | Trigger                     | Frequency   | Docs Read | Indexed?   | Notes                                                               |
 | ---------------------------- | ---------------------------------- | --------------------------- | ----------- | --------- | ---------- | ------------------------------------------------------------------- |
 | Load project for translation | `projects/{tId}/{sId}/{projectId}` | User opens translation view | Per request | 1         | Direct doc | Reads full project to get items/categories for translation context. |
+| Validate linked-outlet translation policy | `projects/{tId}/{sId}/{projectId}`, `stores/{masterStoreId}` | Project-scoped `/api/translations` request | Per AI translation request with `projectId` | 1-2 | Direct docs | Confirms the project exists in the caller's store path and blocks inherited linked-outlet item/category translations before Gemini work. |
 
 ### Writes
 
@@ -60,4 +61,4 @@
 
 | Route               | Method | Firebase Ops          | Rate Limited? | Notes                                                                 |
 | ------------------- | ------ | --------------------- | ------------- | --------------------------------------------------------------------- |
-| `/api/translations` | POST   | 0R + 0W (Gemini only) | Yes (20/min)  | Returns translated text. Client saves to project via `updateProject`. |
+| `/api/translations` | POST   | 1-2R + 0W when `projectId` is supplied; 0R + 0W without project context | Yes (20/min)  | Returns translated text. Project-scoped calls validate tenant/store and linked-outlet policy before Gemini. Client saves accepted text via `updateProject`. |

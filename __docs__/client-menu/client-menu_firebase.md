@@ -2,14 +2,14 @@
 
 **Feature:** Client Menu — QR code digital menu for restaurant customers  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 9, 2026
+**Last Updated:** June 11, 2026
 **Priority:** HIGHEST — This is the most trafficked feature. Every customer scan = Firebase reads.
 
 ---
 
 ## Summary
 
-- **Collections Used:** `stores`, `projects` (data + metadata), `decisionBlocks`, `analytics`
+- **Collections Used:** `stores`, `platformSummary`, `projects`, `analytics`
 - **Storage Buckets:** None (reads only from customer side; images served via CDN URLs)
 - **Cloud Functions:** `decisionBlocksScoring` (precomputes blocks on schedule)
 - **Estimated Monthly Cost:** **Medium-High** — scales linearly with customer traffic
@@ -24,12 +24,14 @@
 |-----------|-----------|---------|-----------|-----------|----------|-------|
 | Store lookup (subdomain) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Yes (`subdomain` + `active`) | `getDocs` with `where("subdomain", "==", ...)`, `limit(1)`. Cached via `unstable_cache` with 60s revalidate. File: `src/app/client/[[...slug]]/page.tsx:83-100` |
 | Store lookup (custom domain) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Yes (`customDomain` + `domainVerified` + `active`) | Same pattern as subdomain. File: `src/app/client/[[...slug]]/page.tsx:104-122` |
-| Project metadata listing | `projects/{tId}/{sId}/metadata` | Page load (SSR) | Per unique visit (cached 60s) | 1-50 | Yes (`deleted` + `active`) | `getDocs` with `where("deleted", "==", false)`, `where("active", "==", true)`. Returns all active projects for slug matching. File: `src/app/client/[[...slug]]/page.tsx:157-172` |
-| Project data fetch | `projects/{tId}/{sId}/{projectId}` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Direct doc read | `getDoc` by ID. Heavy document (~50KB with full menu data). File: `src/app/client/[[...slug]]/page.tsx:125-135` |
-| Decision Blocks fetch | `decisionBlocks` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Direct doc read | `getDoc` by composite ID `{tId}_{sId}_{projectId}`. Optional — fails silently. File: `src/app/client/[[...slug]]/page.tsx:138-154` |
-| Store details (full) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Direct doc read via `getStoreById` | Parallel with decision blocks. File: `src/app/client/[[...slug]]/page.tsx:613-617` |
-| Master project (multi-outlet) | `projects/{tId}/{sId}/{masterProjectId}` | Page load (SSR) | Only for outlet stores | 1 | Direct doc read | Only when `ENABLE_MULTI_OUTLET && projectData.masterProjectId`. File: `src/app/client/[[...slug]]/page.tsx:216-229` |
-| SEO metadata (generateMetadata) | `stores` | Page load (SSR) | Per unique visit (cached 60s) | 1 | Same as store lookup | Duplicate read deduplicated by React `cache()`. File: `src/app/client/[[...slug]]/page.tsx:303-360` |
+| Project summary lookup | `platformSummary/projects_{sId}` | Page load (SSR) | Per unique menu cache miss (cached 60s) | 1 | Direct doc read | `getProjectBySlugOrDefault()` reads the store summary packet for slug/default/previousSlug routing. File: `src/app/client/[[...slug]]/page.tsx:202-244` |
+| Project data fetch | `projects/{tId}/{sId}/{projectId}` | Page load (SSR) | Per unique menu cache miss (cached 60s) | 1 | Direct doc read | `getProjectData()` reads the resolved project by immutable ID. File: `src/app/client/[[...slug]]/page.tsx:138-149` |
+| Embedded Decision Blocks | `projects/{tId}/{sId}/{projectId}` | Page load (SSR) | 0 extra reads | N/A | N/A | Public decision blocks are read from `projectData.publicDecisionBlocks` after the project doc is loaded. File: `src/app/client/[[...slug]]/page.tsx:185-193` |
+| Store details (full) | `stores` | Page load (SSR) | 0 extra reads after host lookup | N/A | N/A | Menu rendering reuses the store object returned by the subdomain/custom-domain lookup instead of calling `getStoreById()`. File: `src/app/client/[[...slug]]/page.tsx:1684-1686` |
+| Outlet lookup | `stores` | Multi-outlet project or outlet path | Only when first slug may be an outlet | 0-1 | Yes (`tenantId` + `outletSlug` / `previousOutletSlugs` + `active`) | `getStoreByOutletSlug()` is cached and only runs for master stores when `ENABLE_MULTI_OUTLET` is on. File: `src/app/client/[[...slug]]/page.tsx:1614-1644` |
+| Master project (multi-outlet) | `projects/{tId}/{sId}/{masterProjectId}` | Page load (SSR) | Only for outlet projects linked to a master project | 1 | Direct doc read | Required to merge master truth with outlet overrides before public render. File: `src/app/client/[[...slug]]/page.tsx:312-333` |
+| Active special menu project | `projects/{tId}/{sId}/{activeSpecialMenuId}` | Store has active special menu | Only when `activeSpecialMenuId` exists | 1 | Direct doc read | Zero extra reads for normal menus; active special menus replace or overlay the base project. File: `src/app/client/[[...slug]]/page.tsx:356-420` |
+| SEO metadata / viewport store lookup | `stores` | Metadata and viewport generation | Per unique cache miss | 0-1 | Same cached helper as page render | Uses shared `getStoreBySubdomain()` / `getStoreByCustomDomain()` helpers with `unstable_cache` and `client-stores` tag. File: `src/lib/firestore/clientStoreLookup.ts:45-116` |
 
 ### Writes
 
@@ -65,7 +67,7 @@
 
 - Store documents: public read for active stores (no auth required for customer menu)
 - Project documents: public read for active, non-deleted projects (filtered server-side)
-- Decision blocks: public read (precomputed, no sensitive data)
+- Decision blocks: embedded in the public project payload (`publicDecisionBlocks`), no separate public read
 - Analytics: write-only from client (no read access for customers)
 - `sanitizeForClient()` strips internal metadata before sending to browser (line 237-300)
 
@@ -76,22 +78,25 @@
 ### Current Optimizations
 - **Vercel Data Cache** (`unstable_cache`): 60s TTL on all reads — same store/project served from cache for 60s
 - **React `cache()`**: Within-request deduplication — generateMetadata + page render share same store lookup
-- **Parallel reads**: `Promise.all([storeDetails, decisionBlocks])` — concurrent, not sequential
 - **`withTimeout(5s)`**: Prevents infinite SSR hangs on Firestore failures
 - **`withRetry(1)`**: One retry with 1s delay handles transient failures
 - **Per-store cache tags**: `menu-store-${sId}` enables precise invalidation on owner save
+- **Shared store lookup helpers**: OBP/menu/compliance share cached `getStoreBySubdomain()` and `getStoreByCustomDomain()` under the `client-stores` tag.
+- **Summary-first slug routing**: `platformSummary/projects_{storeId}` replaces the old metadata subcollection scan for project slug/default resolution.
+- **Embedded decision blocks**: Public menu recommendation blocks come from the loaded project doc; the menu path no longer performs a separate decision-block document read.
+- **Validated cache revalidation**: `/api/revalidate/menu` accepts only primitive `storeId` values or bounded valid tag arrays before calling `revalidateTag()`, and authenticated app callers can revalidate only stores present in their session unless they are platform admins.
 - **Special note rendering is payload-only**: Public menus resolve special notes from the already-fetched project/store payload (`menuSettings.specialNote`, legacy project note fields, then `publicPresence.specialNote`). This adds no Firestore reads or writes.
 - **PDP item sharing is no-write**: Public item sharing uses the Web Share API or clipboard fallback from the already-open PDP URL. Its generic `share` analytics event is GA4-only and does not add Firestore analytics writes.
 
 ### Potential Optimizations
 - **Increase cache TTL**: 60s → 300s for low-change menus (trade-off: stale data for 5 min)
 - **Edge caching**: Vercel Edge Middleware could cache entire HTML for ultra-low latency
-- **Summary document**: If project count per store is always <10, skip metadata query and use summary doc
+- **Tenant block denormalization**: Store lookup currently verifies inherited tenant block state. If tenant block state is fully denormalized onto store docs, public store-cache misses can avoid the extra tenant check without weakening safety.
 
 ### Warnings: Expensive Patterns
 - **Multi-outlet resolution**: Adds +1 read per page load for outlet stores (reads master project)
-- **Metadata listing**: Reads ALL active projects, even though only 1 is used. If a store has 50 projects, that's 50 doc reads per cache miss
 - **Heavy project docs**: ~50KB per project doc. Firestore charges per document, not per byte, but large docs increase transfer time
+- **Tenant block enforcement**: Inherited tenant-block checks protect public truth but can add a tenant-doc read on store-cache misses.
 
 ---
 
@@ -100,10 +105,10 @@
 | Resource | Operations/month | Unit Cost | Monthly Cost |
 |----------|-----------------|-----------|-------------|
 | Firestore Reads (store lookup) | 100,000 ÷ cache factor (~10x) = 10,000 | $0.06/100K | $0.01 |
-| Firestore Reads (metadata) | 10,000 × avg 5 docs = 50,000 | $0.06/100K | $0.03 |
+| Firestore Reads (project summary) | 10,000 | $0.06/100K | $0.01 |
 | Firestore Reads (project data) | 10,000 | $0.06/100K | $0.01 |
-| Firestore Reads (decision blocks) | 10,000 | $0.06/100K | $0.01 |
-| Firestore Reads (store details) | 10,000 | $0.06/100K | $0.01 |
+| Firestore Reads (decision blocks) | 0 extra reads | $0.06/100K | $0.00 |
+| Firestore Reads (store details) | 0 extra reads after host lookup | $0.06/100K | $0.00 |
 | Firestore Writes (analytics) | Up to 100,000 sessions before queue coalescing | $0.18/100K | <= $0.18 |
 | Cloud Functions (scoring) | 1,000 (1/day × 1000 stores) | $0.40/million | $0.00 |
 | **Total** | | | **~$0.25/month** |
@@ -116,18 +121,18 @@
 
 | Function | File | Operation Type |
 |----------|------|---------------|
-| `getStoreBySubdomain` | `src/app/client/[[...slug]]/page.tsx:83` | Read (cached query) |
-| `getStoreByCustomDomain` | `src/app/client/[[...slug]]/page.tsx:104` | Read (cached query) |
-| `getProjectData` | `src/app/client/[[...slug]]/page.tsx:125` | Read (getDoc) |
-| `getPrecomputedDecisionBlocks` | `src/app/client/[[...slug]]/page.tsx:138` | Read (getDoc) |
-| `getProjectBySlugOrDefault` | `src/app/client/[[...slug]]/page.tsx:157` | Read (getDocs + getDoc) |
-| `getStoreById` | `src/database/stores/index.ts` | Read (getDoc) |
+| `getStoreBySubdomain` | `src/lib/firestore/clientStoreLookup.ts` | Read (cached query) |
+| `getStoreByCustomDomain` | `src/lib/firestore/clientStoreLookup.ts` | Read (cached query) |
+| `getStoreByOutletSlug` | `src/lib/firestore/clientStoreLookup.ts` | Read (cached query, multi-outlet only) |
+| `getProjectData` | `src/app/client/[[...slug]]/page.tsx` | Read (direct project doc by immutable ID) |
+| `getProjectBySlugOrDefault` | `src/app/client/[[...slug]]/page.tsx` | Read (`platformSummary/projects_{storeId}` + resolved project doc) |
 | `resolveProjectForRender` | `src/lib/multiOutlet/index.ts` | Read (getDoc for master) |
 
 ## API Routes & Their Firebase Impact
 
 | Route | Method | Firebase Ops | Rate Limited? | Notes |
 |-------|--------|-------------|---------------|-------|
-| `/client/[[...slug]]` (SSR) | GET | 4-6R + 0-1W | No (public) | Server-rendered page. Reads cached. Analytics write on client. |
-| `/client/sitemap.ts` | GET | 1-2R | No (public) | Reads store + projects for sitemap XML |
+| `/client/[[...slug]]` (SSR) | GET | 3-5 cached reads on menu path; fewer on OBP root; +1 when outlet/master/special-menu branches apply | No (public) | Server-rendered page. Reads are cached and invalidated by store/project tags. Analytics writes happen from client tracking only. |
+| `/client/sitemap.ts` | GET | 2+ cached reads depending on outlet/project count | No (public) | Reads store seed, project summaries, and outlet summaries. Weak, blocked, starter, or incomplete records stay out of sitemap. |
 | `/client/robots.ts` | GET | 0R | No (public) | Static response, no Firestore |
+| `/api/revalidate/menu` | POST | 0 Firestore reads/writes | Yes for app callers; secret for server callers | Validates `storeId`/tags, checks authenticated store access for app callers, revalidates `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data`, and clears owner-business-assistant packet cache. |

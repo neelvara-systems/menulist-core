@@ -3,7 +3,7 @@
 **Feature:** Owner Business Assistant / Business Health
 **Product:** MenuList
 **Status:** Enabled for owner testing behind separate safety flags
-**Validated:** June 10, 2026
+**Validated:** June 11, 2026
 
 ---
 
@@ -14,6 +14,12 @@ Business Health and Action Support are implemented as separate runtime tracks:
 - Business Health flags control dashboard/page/mobile/API read-only health behavior.
 - Action Support flags control navigation, drafts, check workflow writes, provider text/image actions, existing-screen handoffs, and public-truth guardrails.
 - Separate flags let Business Health stay read-only if Action Support is disabled, and let Action Support stay limited to navigation/drafts/check workflow while public-truth confirmed writes remain guarded.
+
+June 11 audit guardrails:
+
+- `/api/owner-business-assistant/action` now requires the parent Business Health flag as well as Action Support.
+- `/api/owner-business-assistant/locations` now requires the multi-location flag.
+- Action payloads are capped at 12,000 JSON characters before draft/action storage.
 
 ## June 10 Owner Signal Presentation Pass
 

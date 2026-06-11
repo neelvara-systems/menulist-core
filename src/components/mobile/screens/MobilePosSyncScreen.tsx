@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { updateStore } from '@database/stores';
 import { logPosSyncSecretRotationAudit } from '@lib/posSync/secretAudit';
 import { formatWebhookSecretPreview } from '@lib/posSync/secretDisplay';
+import { validatePosSyncWebhookUrl } from '@lib/posSync/webhookUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Modal, theme } from 'antd';
 import { useSession } from 'next-auth/react';
@@ -131,13 +132,14 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
 
     const handleSave = async () => {
         const trimmedWebhookUrl = webhookUrl.trim();
+        let normalizedWebhookUrl = trimmedWebhookUrl;
         if (enabled && trimmedWebhookUrl) {
-            try {
-                new URL(trimmedWebhookUrl);
-            } catch {
-                Toast.show({ content: 'Enter a valid provider connection URL.', duration: 1500 });
+            const validation = validatePosSyncWebhookUrl(trimmedWebhookUrl);
+            if (!validation.valid || !validation.normalizedUrl) {
+                Toast.show({ content: validation.error || 'Enter a valid provider connection URL.', duration: 1500 });
                 return;
             }
+            normalizedWebhookUrl = validation.normalizedUrl;
         }
 
         const nextPosSync = {
@@ -148,7 +150,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             menuVersion: enabled ? currentPosSync.menuVersion : 0,
             ...(pendingSecretRotationAudit ?? {}),
             status: enabled ? (currentPosSync.status === 'disabled' ? 'healthy' : currentPosSync.status) : 'disabled',
-            webhookUrl: trimmedWebhookUrl,
+            webhookUrl: normalizedWebhookUrl,
         };
 
         const saved = await persistPosSync(nextPosSync);
@@ -157,7 +159,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             setOriginalDraft({
                 enabled,
                 webhookSecret,
-                webhookUrl: trimmedWebhookUrl,
+                webhookUrl: normalizedWebhookUrl,
             });
             if (pendingSecretRotationAudit) {
                 logPosSyncSecretRotationAudit({

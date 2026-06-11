@@ -11,8 +11,19 @@
  */
 
 import { Project } from "@template/main-app/projects/types";
-import { ExtractedDataCategory, ExtractedDataItem } from "@template/main-app/projects/types/extractedData.types";
+import { ExtractedData, ExtractedDataCategory, ExtractedDataItem } from "@template/main-app/projects/types/extractedData.types";
 import { PosSyncCategory, PosSyncItem, PosSyncPayload } from "./types";
+
+type ProjectWithTopLevelExtractedData = Project & {
+    extractedData?: ExtractedData | {
+        categories?: ExtractedDataCategory[];
+        items?: ExtractedDataItem[];
+        data?: {
+            categories?: ExtractedDataCategory[];
+            items?: ExtractedDataItem[];
+        };
+    } | null;
+};
 
 /**
  * Build a full menu snapshot payload from project data.
@@ -27,20 +38,16 @@ export function buildMenuSnapshot(
     menuVersion: number,
     currency: string,
 ): PosSyncPayload {
-    const allCategories: ExtractedDataCategory[] = [];
-    const allItems: ExtractedDataItem[] = [];
+    const projectWithExtractedData = project as ProjectWithTopLevelExtractedData;
+    const topLevelMenuData = readMenuData(projectWithExtractedData.extractedData);
+    const fileMenuData = collectFileMenuData(project);
 
-    project.files?.forEach(file => {
-        if (file.extractedData?.data) {
-            const data = file.extractedData.data;
-            if (data.categories) {
-                allCategories.push(...data.categories);
-            }
-            if (data.items) {
-                allItems.push(...data.items);
-            }
-        }
-    });
+    const allCategories = topLevelMenuData.categories.length > 0
+        ? topLevelMenuData.categories
+        : fileMenuData.categories;
+    const allItems = topLevelMenuData.items.length > 0
+        ? topLevelMenuData.items
+        : fileMenuData.items;
 
     const uniqueCategories = Array.from(
         new Map(allCategories.map(cat => [cat.id, cat])).values()
@@ -70,6 +77,35 @@ export function buildMenuSnapshot(
             items: uniqueItems.map(formatItem),
         },
     };
+}
+
+function collectFileMenuData(project: Project): { categories: ExtractedDataCategory[]; items: ExtractedDataItem[] } {
+    const categories: ExtractedDataCategory[] = [];
+    const items: ExtractedDataItem[] = [];
+
+    project.files?.forEach((file) => {
+        const fileData = readMenuData(file.extractedData);
+        categories.push(...fileData.categories);
+        items.push(...fileData.items);
+    });
+
+    return { categories, items };
+}
+
+function readMenuData(
+    source: ProjectWithTopLevelExtractedData['extractedData'] | ExtractedData | null | undefined,
+): { categories: ExtractedDataCategory[]; items: ExtractedDataItem[] } {
+    if (!source) return { categories: [], items: [] };
+
+    const nestedData = 'data' in source ? source.data : undefined;
+    const categories = Array.isArray(nestedData?.categories)
+        ? nestedData.categories
+        : ('categories' in source && Array.isArray(source.categories) ? source.categories : []);
+    const items = Array.isArray(nestedData?.items)
+        ? nestedData.items
+        : ('items' in source && Array.isArray(source.items) ? source.items : []);
+
+    return { categories, items };
 }
 
 /**

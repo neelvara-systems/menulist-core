@@ -28,6 +28,61 @@ const contentLengthSchema = z.enum(['Standard', 'Detailed']);
 
 const actionSchema = z.enum(['generate', 'translate', 'describe']);
 const billingProductIdSchema = z.enum(['ML', 'AL']).optional();
+const MAX_AI_REFERENCE_IMAGE_URL_LENGTH = 15 * 1024 * 1024;
+const imageAspectRatioSchema = z.enum(['1:1', '16:9', '9:16', '4:3', '3:4']);
+const imageStringArraySchema = z.array(z.string().min(1).max(100)).max(20);
+const aiImageMimeTypeSchema = z.string()
+    .regex(/^image\/(jpeg|jpg|png|webp)$/i, 'Unsupported image type')
+    .max(20)
+    .optional()
+    .nullable();
+const aiImageUrlSchema = z.string()
+    .min(1)
+    .max(MAX_AI_REFERENCE_IMAGE_URL_LENGTH)
+    .refine(
+        (url) => url.startsWith('data:image/') || url.startsWith('https://firebasestorage.googleapis.com/'),
+        'Image URL must be a Firebase Storage URL or image data URL'
+    );
+const aiReferenceImageSchema = z.object({
+    mediaId: z.string().max(160).optional(),
+    name: z.string().max(255).optional(),
+    size: z.number().int().min(0).max(15 * 1024 * 1024).optional(),
+    type: aiImageMimeTypeSchema,
+    uid: z.string().max(160).optional(),
+    url: aiImageUrlSchema,
+});
+const imageGenerationItemDetailsSchema = z.object({
+    id: z.string().max(100).optional(),
+    name: z.string().max(500).optional(),
+    itemName: z.string().max(500).optional(),
+    description: z.string().max(2000).optional(),
+    descriptionLine: z.string().max(2000).optional(),
+    attributes: z.array(z.string().max(500)).max(50).optional(),
+    attributesList: z.array(z.string().max(500)).max(50).optional(),
+    category: z.string().max(200).optional(),
+    categoryName: z.string().max(200).optional(),
+    fileId: z.string().max(100).optional(),
+});
+const imageGenerationConfigSchema = z.object({
+    prompt: z.string().max(2000).optional().default(''),
+    referanceImage: aiReferenceImageSchema.nullable().optional(),
+    stylesCategory: z.string().max(100).optional(),
+    styles: imageStringArraySchema.optional(),
+    aspectRatio: imageAspectRatioSchema.optional(),
+    environments: imageStringArraySchema.optional(),
+    lighting: imageStringArraySchema.optional(),
+    colors: imageStringArraySchema.optional(),
+    moods: imageStringArraySchema.optional(),
+    compositions: imageStringArraySchema.optional(),
+    backgroundColor: z.string().max(50).optional(),
+    transparentBg: z.boolean().optional(),
+    negativePrompt: z.string().max(2000).optional(),
+    foregroundColor: z.string().max(50).optional(),
+    selectedImageTypes: imageStringArraySchema.optional(),
+    isMultiMode: z.boolean().optional(),
+    numberOfImages: z.number().int().min(1).max(4).optional(),
+    agreeToTerms: z.boolean().optional(),
+});
 
 // ═══════════════════════════════════════════════════════════
 // DESCRIPTION API
@@ -198,15 +253,10 @@ export type NewItemMetadataRequest = z.infer<typeof NewItemMetadataRequestSchema
 // ═══════════════════════════════════════════════════════════
 
 export const ImageGenerationRequestSchema = z.object({
-    generationConfig: z.object({
-        prompt: z.string().min(1).max(2000),
-        negativePrompt: z.string().max(2000).optional(),
-        aspectRatio: z.enum(['1:1', '16:9', '9:16', '4:3', '3:4']).optional(),
-        numberOfImages: z.number().int().min(1).max(4).optional()
-    }),
+    generationConfig: imageGenerationConfigSchema,
     projectId: z.string().max(100),
     fileId: z.string().max(100).optional(),
-    itemDetails: z.record(z.string(), z.any()).optional(),
+    itemDetails: imageGenerationItemDetailsSchema.optional(),
     businessType: z.string().max(100).optional()
 });
 
@@ -218,13 +268,14 @@ export type ImageGenerationRequest = z.infer<typeof ImageGenerationRequestSchema
 
 export const ImageEditingRequestSchema = z.object({
     generationConfig: z.object({
-        prompt: z.string().min(1).max(2000),
-        maskImageUrl: z.string().url().max(2000).optional(),
-        mode: z.enum(['edit', 'inpaint', 'outpaint']).optional()
+        prompt: z.string().max(2000).optional().default(''),
+        referanceImage: aiReferenceImageSchema,
+        feature: z.string().max(100).optional(),
+        promptImages: z.array(aiReferenceImageSchema).max(3).optional().nullable(),
     }),
     projectId: z.string().max(100),
     fileId: z.string().max(100),
-    itemDetails: z.record(z.string(), z.any()).optional(),
+    itemDetails: imageGenerationItemDetailsSchema.optional(),
     businessType: z.string().max(100).optional()
 });
 
@@ -241,7 +292,6 @@ export const CreateSubscriptionRequestSchema = z.object({
     currency: z.enum(['INR', 'USD']),
     userType: z.enum(['B2C', 'B2B']).optional(),
     quantity: z.number().int().min(1).max(31).optional(),
-    rc: z.number().min(0).max(1_000_000).optional()
 });
 
 export type CreateSubscriptionRequest = z.infer<typeof CreateSubscriptionRequestSchema>;
@@ -265,7 +315,7 @@ export const VerifyPaymentRequestSchema = z.object({
     razorpay_payment_id: z.string().regex(/^pay_[a-zA-Z0-9]+$/),
     razorpay_subscription_id: z.string().regex(/^sub_[a-zA-Z0-9]+$/),
     razorpay_order_id: z.string().regex(/^order_[a-zA-Z0-9]+$/).optional(),
-    razorpay_signature: z.string().optional()
+    razorpay_signature: z.string().regex(/^[a-fA-F0-9]{64}$/)
 });
 
 export type VerifyPaymentRequest = z.infer<typeof VerifyPaymentRequestSchema>;
@@ -314,7 +364,7 @@ export type ResumeSubscriptionRequest = z.infer<typeof ResumeSubscriptionRequest
 
 export const UpgradeSubscriptionRequestSchema = z.object({
     productId: billingProductIdSchema,
-    rc: z.number().min(0).max(1_000_000),
+    rc: z.number().min(0).max(1_000_000).optional(),
     nSi: z.string().regex(/^sub_[a-zA-Z0-9]+$/),
     oSi: z.string().regex(/^sub_[a-zA-Z0-9]+$/)
 });
@@ -326,18 +376,30 @@ export type UpgradeSubscriptionRequest = z.infer<typeof UpgradeSubscriptionReque
 // ═══════════════════════════════════════════════════════════
 
 export const BatchImageGenerationRequestSchema = z.object({
-    generationConfig: z.object({
-        prompt: z.string().min(1).max(2000),
-        negativePrompt: z.string().max(2000).optional(),
-        numberOfImages: z.number().int().min(1).max(4).optional()
-    }),
+    generationConfig: imageGenerationConfigSchema,
     projectId: z.string().max(100),
-    itemsList: z.array(z.record(z.string(), z.any())).min(1).max(50),
+    itemsList: z.array(imageGenerationItemDetailsSchema.extend({
+        id: z.string().min(1).max(100),
+        name: z.string().min(1).max(500),
+    })).min(1).max(50),
     businessType: z.string().max(100).optional(),
     jobId: z.string().max(100)
 });
 
 export type BatchImageGenerationRequest = z.infer<typeof BatchImageGenerationRequestSchema>;
+
+export const BatchImageGenerationWorkerRequestSchema = z.object({
+    generationConfig: imageGenerationConfigSchema,
+    projectId: z.string().max(100),
+    businessType: z.string().max(100).optional(),
+    itemDetails: imageGenerationItemDetailsSchema.extend({
+        id: z.string().min(1).max(100),
+        name: z.string().min(1).max(500),
+    }),
+    jobId: z.string().max(100)
+});
+
+export type BatchImageGenerationWorkerRequest = z.infer<typeof BatchImageGenerationWorkerRequestSchema>;
 
 // ═══════════════════════════════════════════════════════════
 // FILE UPLOAD
@@ -479,7 +541,7 @@ export const guestFeedbackSubmitSchema = z.object({
     // Optional fields
     message: z.string().max(300).optional(),
     customerName: z.string().max(60).optional(),
-    customerPhone: z.string().max(20).optional(),
+    customerPhone: z.string().max(20).regex(/^[0-9+\-\s()]*$/, 'Invalid phone number.').optional(),
     customerEmail: z.string().email().max(120).optional(),
 
     // Honeypot field (for bot detection)

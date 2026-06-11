@@ -2,8 +2,8 @@
 
 > **Feature:** AI-Powered Menu Translation  
 > **Status:** ✅ Production Ready  
-> **Last Updated:** March 14, 2026  
-> **Version:** 3.3
+> **Last Updated:** June 11, 2026
+> **Version:** 3.8
 
 ---
 
@@ -72,9 +72,23 @@ src/
 ├── data/
 │   └── languages.ts              # GlobalLanguagesList (90+ languages, 95 lines)
 │
+├── constants/
+│   └── common.ts                 # APP_LANGUAGES for owner app UI locale selection
+│
+├── i18n/
+│   └── request.ts                # next-intl app locale fallback merge over en-US
+│
 └── lib/validation/
     └── apiSchemas.ts             # TranslationRequestSchema (Zod)
 ```
+
+### Owner App UI Locales
+
+`APP_LANGUAGES` is the owner app UI language registry, not the menu-content language registry. As of June 11, 2026 it includes:
+
+`en-US`, `en-GB`, `hi-IN`, `ar-SA`, `es-ES`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `gu-IN`, `kn-IN`, `ml-IN`, `pa-IN`, `ur-IN`, `or-IN`, `as-IN`, `ne-NP`, `mai-IN`, `kok-IN`, `sd-IN`, `ks-IN`, `doi-IN`, `mni-IN`, `sat-IN`, `brx-IN`, `fr-FR`, `pt-BR`, `de-DE`, `it-IT`, `ja-JP`, `zh-CN`, `id-ID`, `vi-VN`, `th-TH`, `ko-KR`, `tr-TR`, `ms-MY`, `nl-NL`, `pl-PL`, `uk-UA`, `cs-CZ`, `ro-RO`, `el-GR`, `hu-HU`, `sv-SE`, `da-DK`, `fi-FI`, `fil-PH`, `zh-TW`, `he-IL`, `fa-IR`, and `sw-KE`.
+
+The UI locale files live under `public/locales/menulist.ai/`. `src/i18n/request.ts` deep-merges every selected locale over `en-US`, so partial locale packs render with English fallback instead of missing-key output. `ks-IN` and `brx-IN` intentionally use fallback-safe English runtime coverage until native Kashmiri and Bodo copy is reviewed. `fil-PH` and `sw-KE` use English Ant Design component chrome where Ant Design does not ship native locale packs. Public website/resource locales remain separately gated by `src/config/websiteLanguages.ts` and reviewed resource packs.
 
 ---
 
@@ -93,6 +107,8 @@ POST /api/translations
 | Authentication   | `withAuth()` middleware                   |
 | Rate Limiting    | `checkAIOperationLimit()` - 20 req/min    |
 | Input Validation | Zod schema (`TranslationRequestSchema`)   |
+| Project Scope    | Project-scoped requests verify tenant/store access and project existence |
+| Outlet Policy    | Linked outlets cannot translate inherited master item/category content locally |
 | Security Logging | `logger.security()` on validation failure |
 
 ### Request Schema

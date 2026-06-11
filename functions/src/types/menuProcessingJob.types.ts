@@ -79,6 +79,9 @@ export interface MenuImageProcessingJob {
     forceReview?: boolean;
     /** Optional source marker for cross-flow diagnostics. */
     source?: string;
+    /** Server-computed trusted fingerprint for safe completed-job reuse. */
+    sourceFingerprint?: string;
+    sourceFingerprintVersion?: number;
     /** Server-owned destination for the extracted output. */
     destination?: MenuExtractionJobDestination;
     /** Denormalized destination label for ops dashboards and cheap filtering. */
@@ -98,7 +101,7 @@ export interface MenuImageProcessingJob {
     // OUTPUT (Populated on completion)
     // ─────────────────────────────────────────────────────────────
     result?: {
-        combinedData: {
+        combinedData?: {
             categories: Array<{
                 id: string | number;
                 sourceFileIndex: number;
@@ -140,6 +143,9 @@ export interface MenuImageProcessingJob {
             fileMessages?: FileMessage[];
         };
         extractedBusinessProfile?: ExtractedBusinessProfile;
+        summary?: Record<string, unknown>;
+        dataPrunedAt?: any;
+        dataPrunedReason?: string;
         qualityScore: number;
         qualityDetails: {
             categoryQuality: number;
@@ -174,6 +180,7 @@ export interface MenuImageProcessingJob {
         /** Per-file extracted data for flows that skip project writes and persist elsewhere. */
         redistributedFiles?: Record<string, unknown>;
     };
+    timings?: Record<string, unknown>;
 
     // Per-file results (after redistribution)
     fileResults?: {

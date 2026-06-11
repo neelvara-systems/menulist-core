@@ -17,27 +17,76 @@ type LanguageValue = {
 } | string | null | undefined;
 
 export type AiOperationTone = "content" | "extraction" | "image" | "language" | "system";
+export type AiOperationPresentationValues = Record<string, string | number>;
+export type AiOperationPresentationTranslator = (
+    key: string,
+    values?: AiOperationPresentationValues,
+) => string;
 
 const countArray = (value: unknown): number => (Array.isArray(value) ? value.length : 0);
 
-const formatCount = (count: number, singular: string, plural = `${singular}s`) => (
+const baseFormatCount = (count: number, singular: string, plural = `${singular}s`) => (
     `${count.toLocaleString()} ${count === 1 ? singular : plural}`
 );
 
-export const formatAiOperationActionLabel = (action?: string | null): string => {
-    if (!action) return "Menu enhancement";
-    if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER) return "Business Health answer";
-    if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT) return "Business Health draft";
-    return action
+const translate = (
+    translator: AiOperationPresentationTranslator | undefined,
+    key: string,
+    fallback: string,
+    values?: AiOperationPresentationValues,
+): string => {
+    if (!translator) return fallback;
+
+    try {
+        const translated = translator(key, values);
+        return translated && translated !== key ? translated : fallback;
+    } catch {
+        return fallback;
+    }
+};
+
+const formatCount = (
+    count: number,
+    singular: string,
+    plural = `${singular}s`,
+    translator?: AiOperationPresentationTranslator,
+    translationKey?: string,
+) => {
+    const fallback = baseFormatCount(count, singular, plural);
+    return translationKey ? translate(translator, translationKey, fallback, { count }) : fallback;
+};
+
+const formatActionFallback = (action: string): string => (
+    action
         .split("_")
         .filter(Boolean)
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
+        .join(" ")
+);
+
+export const formatAiOperationActionLabel = (
+    action?: string | null,
+    translator?: AiOperationPresentationTranslator,
+): string => {
+    if (!action) return translate(translator, "actions.menuEnhancement", "Menu enhancement");
+    if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER) {
+        return translate(translator, `actions.${action}`, "Business Health answer");
+    }
+    if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT) {
+        return translate(translator, `actions.${action}`, "Business Health draft");
+    }
+
+    return translate(translator, `actions.${action}`, formatActionFallback(action));
 };
 
-export const formatAiOperationCredits = (units?: number | null): string => {
+export const formatAiOperationCredits = (
+    units?: number | null,
+    translator?: AiOperationPresentationTranslator,
+): string => {
     const consumed = Number(units || 0);
-    return consumed > 0 ? formatCount(consumed, "credit") : "No credits used";
+    return consumed > 0
+        ? formatCount(consumed, "credit", "credits", translator, "counts.credits")
+        : translate(translator, "counts.noCreditsUsed", "No credits used");
 };
 
 export const getAiOperationTone = (action?: string | null): AiOperationTone => {
@@ -114,22 +163,49 @@ const formatTargetLanguages = (operation: AiOperationPresentationInput): string 
     return `${languages.slice(0, 2).join(", ")} and ${languages.length - 2} more`;
 };
 
-export const getAiOperationOwnerSummary = (operation: AiOperationPresentationInput): string => {
+export const getAiOperationOwnerSummary = (
+    operation: AiOperationPresentationInput,
+    translator?: AiOperationPresentationTranslator,
+): string => {
     const action = operation.action;
 
     if (action === AI_ACTIONS_TYPES.IMAGE_PROCESSING || action === AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION) {
         const items = countArray(operation.clientResponse?.data?.items);
         const categories = countArray(operation.clientResponse?.data?.categories);
         if (items > 0 || categories > 0) {
-            return `Extracted ${formatCount(items, "item")} and ${formatCount(categories, "category", "categories")}.`;
+            return translate(
+                translator,
+                "summary.extractedItemsAndCategories",
+                `Extracted ${baseFormatCount(items, "item")} and ${baseFormatCount(categories, "category", "categories")}.`,
+                {
+                    items: formatCount(items, "item", "items", translator, "counts.items"),
+                    categories: formatCount(categories, "category", "categories", translator, "counts.categories"),
+                },
+            );
         }
-        return "Menu extraction output saved.";
+        return translate(translator, "summary.menuExtractionSaved", "Menu extraction output saved.");
     }
 
     if (action === AI_ACTIONS_TYPES.ADD_DESCRIPTION || action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION) {
         const rows = countDescriptionRows(operation);
-        const verb = action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION ? "Revised" : "Prepared";
-        return rows > 0 ? `${verb} ${formatCount(rows, "description")}.` : `${verb} descriptions.`;
+        if (action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION) {
+            return rows > 0
+                ? translate(
+                    translator,
+                    "summary.revisedDescriptionsCount",
+                    `Revised ${baseFormatCount(rows, "description")}.`,
+                    { count: rows },
+                )
+                : translate(translator, "summary.revisedDescriptions", "Revised descriptions.");
+        }
+        return rows > 0
+            ? translate(
+                translator,
+                "summary.preparedDescriptionsCount",
+                `Prepared ${baseFormatCount(rows, "description")}.`,
+                { count: rows },
+            )
+            : translate(translator, "summary.preparedDescriptions", "Prepared descriptions.");
     }
 
     if (
@@ -139,58 +215,78 @@ export const getAiOperationOwnerSummary = (operation: AiOperationPresentationInp
     ) {
         const rows = countTranslationRows(operation);
         const targets = formatTargetLanguages(operation);
-        const rowText = rows > 0 ? formatCount(rows, "row") : "translation rows";
-        return targets ? `Translated ${rowText} to ${targets}.` : `Translated ${rowText}.`;
+        const rowText = rows > 0
+            ? formatCount(rows, "row", "rows", translator, "counts.rows")
+            : translate(translator, "counts.translationRows", "translation rows");
+        return targets
+            ? translate(translator, "summary.translatedRowsToTargets", `Translated ${rowText} to ${targets}.`, { rowText, targets })
+            : translate(translator, "summary.translatedRows", `Translated ${rowText}.`, { rowText });
     }
 
     if (action === AI_ACTIONS_TYPES.IMAGE_GENERATION || action === AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION) {
         const images = countArray(operation.clientResponse);
         const itemName = operation.itemDetails?.name;
-        if (images > 0 && itemName) return `Generated ${formatCount(images, "image")} for ${itemName}.`;
-        if (images > 0) return `Generated ${formatCount(images, "image")}.`;
-        return "Generated menu image output.";
+        if (images > 0 && itemName) {
+            return translate(
+                translator,
+                "summary.generatedImagesForItem",
+                `Generated ${baseFormatCount(images, "image")} for ${itemName}.`,
+                { count: images, itemName },
+            );
+        }
+        if (images > 0) {
+            return translate(
+                translator,
+                "summary.generatedImages",
+                `Generated ${baseFormatCount(images, "image")}.`,
+                { count: images },
+            );
+        }
+        return translate(translator, "summary.generatedMenuImage", "Generated menu image output.");
     }
 
     if (action === AI_ACTIONS_TYPES.IMAGE_EDITING) {
         const itemName = operation.itemDetails?.name;
-        return itemName ? `Edited image for ${itemName}.` : "Edited menu image output.";
+        return itemName
+            ? translate(translator, "summary.editedImageForItem", `Edited image for ${itemName}.`, { itemName })
+            : translate(translator, "summary.editedMenuImage", "Edited menu image output.");
     }
 
     if (action === AI_ACTIONS_TYPES.NEW_ITEM_METADATA) {
-        return "Prepared item details.";
+        return translate(translator, "summary.preparedItemDetails", "Prepared item details.");
     }
 
     if (action === AI_ACTIONS_TYPES.SEO_AEO_GENERATION) {
-        return "Prepared menu discovery text.";
+        return translate(translator, "summary.preparedMenuDiscoveryText", "Prepared menu discovery text.");
     }
 
     if (action === AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION) {
-        return "Prepared business copy.";
+        return translate(translator, "summary.preparedBusinessCopy", "Prepared business copy.");
     }
 
     if (action === AI_ACTIONS_TYPES.CAMPAIGN_CAPTION) {
-        return "Prepared campaign caption.";
+        return translate(translator, "summary.preparedCampaignCaption", "Prepared campaign caption.");
     }
 
     if (action === AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION) {
-        return "Prepared review reply draft.";
+        return translate(translator, "summary.preparedReviewReplyDraft", "Prepared review reply draft.");
     }
 
     if (action === AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR) {
-        return "Prepared menu card export guidance.";
+        return translate(translator, "summary.preparedMenuCardExportGuidance", "Prepared menu card export guidance.");
     }
 
     if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER) {
-        return "Answered a Business Health question.";
+        return translate(translator, "summary.businessHealthQuestionAnswered", "Answered a Business Health question.");
     }
 
     if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT) {
-        return "Prepared a Business Health draft.";
+        return translate(translator, "summary.businessHealthDraftPrepared", "Prepared a Business Health draft.");
     }
 
     if (action === AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY) {
-        return "Checked menu upload details.";
+        return translate(translator, "summary.checkedMenuUploadDetails", "Checked menu upload details.");
     }
 
-    return "Activity recorded.";
+    return translate(translator, "summary.activityRecorded", "Activity recorded.");
 };

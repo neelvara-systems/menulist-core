@@ -7,13 +7,14 @@ import { checkAICapacity } from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getPreviewText } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
+import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
 import { checkAIOperationLimit } from "@lib/rateLimit/helpers";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
 import { TranslationRequestSchema } from "@lib/validation/apiSchemas";
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
-import { withAuth } from "../../../middleware/auth";
+import { verifyTenantAccess, withAuth } from "../../../middleware/auth";
 import getPrompt, { systemInstruction } from "./prompt";
 
 const AI_MODEL = "gemini-2.5-flash"//"gemini-2.0-flash-001";
@@ -26,6 +27,32 @@ const normalizeTranslatedField = (value: unknown, fallbackValue: string) => {
     if (typeof value !== 'string') return fallbackValue;
     const trimmedValue = value.trim();
     return trimmedValue.length > 0 ? trimmedValue : fallbackValue;
+};
+
+const extractTranslationTargetIds = (inputJson: Record<string, string>) => {
+    const itemIds = new Set<string>();
+    const categoryIds = new Set<string>();
+
+    Object.keys(inputJson || {}).forEach((key) => {
+        if (key.endsWith('_c')) {
+            categoryIds.add(key.slice(0, -2));
+            return;
+        }
+
+        if (key.endsWith('_i') || key.endsWith('_d')) {
+            itemIds.add(key.slice(0, -2));
+            return;
+        }
+
+        if (key.endsWith('_a')) {
+            itemIds.add(key);
+        }
+    });
+
+    return {
+        categoryIds: Array.from(categoryIds).filter(Boolean),
+        itemIds: Array.from(itemIds).filter(Boolean),
+    };
 };
 
 const normalizeSingleTranslationResponse = ({
@@ -181,6 +208,35 @@ export const POST = withAuth(async (request, session) => {
             tenantId: session.tId,
             userId,
         });
+
+        if (projectId) {
+            if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
+                logger.security('Tenant Access Violation - Translation API', {
+                    ...buildSecurityContext(session, request),
+                    endpoint: '/api/translations',
+                    attemptedProjectId: projectId,
+                }, 'critical');
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+
+            const translationTargets = extractTranslationTargetIds(inputJson as Record<string, string>);
+            const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
+                action: "translation",
+                categoryIds: translationTargets.categoryIds,
+                itemIds: translationTargets.itemIds,
+                projectId,
+                session,
+            });
+            if (outletPolicyBlockReason) {
+                logger.security('Outlet Policy Violation - Translation API', {
+                    ...buildSecurityContext(session, request),
+                    endpoint: '/api/translations',
+                    projectId,
+                    reason: outletPolicyBlockReason,
+                }, 'medium');
+                return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
+            }
+        }
 
         // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity
         const capacityCheck = await checkAICapacity(

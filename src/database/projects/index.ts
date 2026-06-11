@@ -68,6 +68,7 @@ import {
     SpecialMenuStatus,
 } from "@template/main-app/projects/types";
 import { UserUploadedFileType } from "@type/common";
+import { TimeSlotPreset } from "@type/platform/store";
 
 const DATA_COLLECTION = DB_COLLECTIONS.PROJECTS;
 const PLATFORM_SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
@@ -387,6 +388,14 @@ const normalizeProjectReadState = <T extends Partial<Project>>(projectData: T): 
         }
         : {}),
 });
+
+const stripUndefinedProjectSummaryFields = (
+    summary: Partial<ProjectSummaryData>,
+): Partial<ProjectSummaryData> => (
+    Object.fromEntries(
+        Object.entries(summary).filter(([, value]) => value !== undefined),
+    ) as Partial<ProjectSummaryData>
+);
 
 // ═══════════════════════════════════════════════════════════════
 // SLUG RESERVATION (T1-N-04 / A-12 PUBLIC-ROUTING-DOCTRINE)
@@ -1131,6 +1140,72 @@ export const removePresetFromAllCategories = async (presetId: string) => {
     );
 };
 
+/**
+ * Update copied category time windows for every category referencing a preset.
+ * Categories store `presetId` plus a time snapshot so public rendering stays
+ * independent of an extra store read. When the owner edits the preset, this
+ * bounded cascade keeps public category visibility aligned with the preset.
+ */
+export const updatePresetInAllCategories = async (preset: TimeSlotPreset) => {
+    return await apiCallComposer(
+        async () => {
+            const presetId = String(preset?.id || '').trim();
+            if (!presetId) return { success: false, updatedProjects: 0 };
+
+            const dataRef = await getDataCollectionRef();
+            const snapshot = await getDocs(dataRef);
+            let updatedCount = 0;
+
+            for (const docSnap of snapshot.docs) {
+                const project = docSnap.data() as Project;
+                let projectModified = false;
+
+                if (project.files?.length) {
+                    for (const file of project.files) {
+                        const categories = file.extractedData?.data?.categories;
+                        if (!categories?.length) continue;
+
+                        for (const category of categories) {
+                            if (!Array.isArray(category.timeSlots)) continue;
+
+                            let categoryModified = false;
+                            const nextTimeSlots = category.timeSlots.map((slot) => {
+                                if (slot?.presetId !== presetId) return slot;
+                                const nextSlot = {
+                                    ...slot,
+                                    endTime: preset.endTime,
+                                    startTime: preset.startTime,
+                                };
+                                if (slot.endTime !== nextSlot.endTime || slot.startTime !== nextSlot.startTime) {
+                                    categoryModified = true;
+                                }
+                                return nextSlot;
+                            });
+
+                            if (categoryModified) {
+                                category.timeSlots = nextTimeSlots;
+                                projectModified = true;
+                            }
+                        }
+                    }
+                }
+
+                if (projectModified) {
+                    await setDoc(await getDataDocRef(project.projectId), project, {
+                        merge: true,
+                    });
+                    await revalidatePublicClientCacheForProject(project.projectId, "updatePresetInAllCategories");
+                    updatedCount++;
+                }
+            }
+
+            return { success: true, updatedProjects: updatedCount };
+        },
+        { presetId: preset?.id },
+        "updatePresetInAllCategories",
+    );
+};
+
 export const publishProject = async (data: Partial<Project>) => {
     return await apiCallComposer(
         async () => {
@@ -1187,6 +1262,30 @@ export const publishProject = async (data: Partial<Project>) => {
             // Uses Firestore increment() for atomic, conflict-safe versioning
             // @see __docs__/canonical-truth-infrastructure/
             // ═══════════════════════════════════════════════════════════════
+            if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && data.masterProjectId) {
+                const response = await fetch('/api/projects/outlet-save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    body: JSON.stringify({
+                        project: {
+                            ...updatedData,
+                            projectId: data.projectId,
+                            masterProjectId: data.masterProjectId,
+                        },
+                        publish: true,
+                    }),
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(result.error || `Linked outlet publish failed: ${response.status}`);
+                }
+
+                await revalidatePublicClientCacheForProject(data.projectId, "publishProject");
+                return result.project || updatedData;
+            }
+
             const { increment } = await import("@firebase/firestore");
             updatedData.menuVersion = increment(1);
             updatedData.lastPublishedAt = Timestamp.now();
@@ -1612,10 +1711,14 @@ export const deleteProject = async (
                 }
             }
 
+            const deletedSummary = currentSummary
+                ? stripUndefinedProjectSummaryFields(currentSummary)
+                : {};
             const updateData = {
                 deleted: true,
                 deletedAt: Timestamp.now(),
                 active: false,
+                ...(Object.keys(deletedSummary).length ? { deletedSummary } : {}),
             };
             const dataDocRef = await getDataDocRef(projectId);
             const summaryDocRef = await getProjectsSummaryDocRef();
@@ -1669,33 +1772,72 @@ export const restoreProject = async (projectId: string) => {
     return await apiCallComposer(
         async () => {
             // Get project data to restore summary info
-            const projectDoc = await getDoc(await getDataDocRef(projectId));
+            const [projectDoc, summaryDoc] = await Promise.all([
+                getDoc(await getDataDocRef(projectId)),
+                getDoc(await getProjectsSummaryDocRef()),
+            ]);
             if (!projectDoc.exists()) {
                 throw new Error("Project not found");
             }
 
+            const summaryProjects = summaryDoc.exists()
+                ? extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>)
+                : {};
+
             // Restore project flags
-            const updateData = { deleted: false, deletedAt: null, active: true };
+            const updateData = {
+                deleted: false,
+                deletedAt: null,
+                active: true,
+                deletedSummary: deleteField(),
+            };
             await setDoc(await getDataDocRef(projectId), updateData, { merge: true });
 
-            // Re-add to projectsSummary
-            // Note: Firestore rejects undefined values — omit fields that may be undefined
             const projectData = projectDoc.data();
-            await syncProjectToSummary(projectId, {
-                name: projectData.name || "Restored Project",
-                ...(projectData.description != null ? { description: projectData.description } : {}),
+            const deletedSummary = (
+                projectData.deletedSummary &&
+                typeof projectData.deletedSummary === 'object' &&
+                !Array.isArray(projectData.deletedSummary)
+            )
+                ? projectData.deletedSummary as Partial<ProjectSummaryData>
+                : {};
+            const restoreSource: Partial<ProjectSummaryData> = Object.keys(deletedSummary).length
+                ? deletedSummary
+                : projectData as Partial<ProjectSummaryData>;
+            const hasCurrentDefaultProject = Object.entries(summaryProjects).some(
+                ([candidateProjectId, candidateSummary]) => (
+                    candidateProjectId !== projectId &&
+                    candidateSummary?.isDefault === true &&
+                    candidateSummary?.active !== false &&
+                    candidateSummary?.isSpecialMenu !== true
+                ),
+            );
+            const shouldRestoreAsDefault = restoreSource.isDefault === true && !hasCurrentDefaultProject;
+
+            // Re-add to projectsSummary from the delete tombstone. Older deleted
+            // docs may not have it, so fall back to fields present on project data.
+            const restoredSummary = stripUndefinedProjectSummaryFields({
+                ...restoreSource,
+                name: restoreSource.name || projectData.name || "Restored Project",
                 active: true,
-                isDefault: projectData.isDefault ?? false,
+                isDefault: shouldRestoreAsDefault,
             });
+            await syncProjectToSummary(projectId, restoredSummary as ProjectSummaryData);
 
             // Security Audit: Log project restoration
             logger.security('Project Restored', {
                 projectId,
                 action: 'RESTORE_PROJECT',
-                projectName: projectData.name || 'unknown',
+                projectName: restoreSource.name || projectData.name || 'unknown',
             }, 'low');
 
-            return { projectId, ...updateData };
+            return {
+                projectId,
+                active: true,
+                deleted: false,
+                deletedAt: null,
+                summaryData: restoredSummary,
+            };
         },
         projectId,
         "restoreProject",

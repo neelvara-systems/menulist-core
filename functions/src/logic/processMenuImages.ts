@@ -933,7 +933,9 @@ export async function processMenuImagesLogic(
         }
 
         // Step 1: Upload all files in parallel
+        const uploadStartedAt = Date.now();
         const uploadedFiles = await uploadFilesInParallel(files);
+        const uploadCompletedAt = Date.now();
 
         if (uploadedFiles.length === 0) {
             throw new Error('No files were uploaded successfully');
@@ -968,6 +970,7 @@ export async function processMenuImagesLogic(
         const batchMessages: string[] = [];
         let sourceFileOffset = 0;
 
+        const batchProcessingStartedAt = Date.now();
         for (let batchIndex = 0; batchIndex < fileBatches.length; batchIndex++) {
             const batch = fileBatches[batchIndex];
 
@@ -1027,6 +1030,7 @@ export async function processMenuImagesLogic(
 
             sourceFileOffset += batch.length;
         }
+        const batchProcessingCompletedAt = Date.now();
 
         const processingTime = Date.now() - startTime;
 
@@ -1147,6 +1151,8 @@ export async function processMenuImagesLogic(
             });
         }
 
+        const operationLoggedAt = Date.now();
+
         // Step 8: Log success
         logger.info(`[processMenuImages] Request completed`, {
             requestId,
@@ -1189,6 +1195,17 @@ export async function processMenuImagesLogic(
                 promptTokenCount: transactionObject.promptTokenCount,
                 candidatesTokenCount: transactionObject.candidatesTokenCount,
                 totalTokenCount: transactionObject.totalTokenCount,
+            },
+            timings: {
+                requestStartedAt: startTime,
+                uploadStartedAt,
+                uploadCompletedAt,
+                batchProcessingStartedAt,
+                batchProcessingCompletedAt,
+                operationLoggedAt,
+                uploadMs: uploadCompletedAt - uploadStartedAt,
+                batchProcessingMs: batchProcessingCompletedAt - batchProcessingStartedAt,
+                totalProcessingMs: processingTime,
             },
             // Extraction provenance (P0 hardening)
             provenance: {

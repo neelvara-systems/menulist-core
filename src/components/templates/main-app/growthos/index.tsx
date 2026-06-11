@@ -1,7 +1,7 @@
 "use client";
 
 import { FEATURE_FLAGS } from "@config/features";
-import { getProjectsListWithoutLoader } from "@database/projects";
+import { getExistingProjectsListWithoutLoader } from "@database/projects";
 import {
     createGrowthOSKitForProject,
     prepareGrowthOSReviewReply,
@@ -117,7 +117,7 @@ const GrowthOSPage = () => {
     const { data: projects = [] } = useSWR<ProjectSummary[]>(
         !isCheckingEntitlement && entitlement.allowed ? "growthos-projects" : null,
         async () => {
-            const result = await getProjectsListWithoutLoader(true);
+            const result = await getExistingProjectsListWithoutLoader(true);
             return (result?.projects || []) as ProjectSummary[];
         },
         {

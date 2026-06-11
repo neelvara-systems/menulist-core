@@ -1,4 +1,5 @@
 import { Descriptions, Divider, Table, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { TransactionDetails } from '../TransactionDetailsModal'; // Adjust import path if needed
 
@@ -7,6 +8,7 @@ interface LanguageDetailsViewProps {
 }
 
 const LanguageDetailsView: React.FC<LanguageDetailsViewProps> = ({ transaction }) => {
+    const t = useTranslations('Transactions');
     const { sourceLang, targetLang, inputStrings, clientResponse } = transaction;
 
     // Type guard for single target language
@@ -14,11 +16,11 @@ const LanguageDetailsView: React.FC<LanguageDetailsViewProps> = ({ transaction }
 
     return (
         <>
-            <Descriptions title="Language Information" column={1}>
-                <Descriptions.Item label="Source Language">
+            <Descriptions title={t('languageInformation')} column={1}>
+                <Descriptions.Item label={t('sourceLanguage')}>
                     {sourceLang && `${sourceLang.name} (${sourceLang.code})`}
                 </Descriptions.Item>
-                <Descriptions.Item label="Target Language">
+                <Descriptions.Item label={t('targetLanguage')}>
                     {singleTargetLang && `${singleTargetLang.name} (${singleTargetLang.code})`}
                 </Descriptions.Item>
             </Descriptions>
@@ -26,19 +28,19 @@ const LanguageDetailsView: React.FC<LanguageDetailsViewProps> = ({ transaction }
             {inputStrings && Object.keys(inputStrings).length > 0 && (
                 <>
                     <Divider />
-                    <Typography.Title level={5}>Translation Details</Typography.Title>
+                    <Typography.Title level={5}>{t('translationDetails')}</Typography.Title>
                     <div style={{ maxHeight: 400, overflow: 'auto' }}>
                         <Table
                             dataSource={Object.entries(inputStrings).map(([key, value]) => ({
                                 key,
                                 sourceKey: key,
                                 sourceText: value,
-                                translatedText: clientResponse?.translations?.[key] || 'N/A'
+                                translatedText: clientResponse?.translations?.[key] || t('notAvailable')
                             }))}
                             columns={[
-                                { title: 'Key', dataIndex: 'sourceKey', key: 'sourceKey' },
-                                { title: 'Source Text', dataIndex: 'sourceText', key: 'sourceText' },
-                                { title: 'Translated Text', dataIndex: 'translatedText', key: 'translatedText' }
+                                { title: t('key'), dataIndex: 'sourceKey', key: 'sourceKey' },
+                                { title: t('sourceText'), dataIndex: 'sourceText', key: 'sourceText' },
+                                { title: t('translatedText'), dataIndex: 'translatedText', key: 'translatedText' }
                             ]}
                             pagination={false}
                             size="small"

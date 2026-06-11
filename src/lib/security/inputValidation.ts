@@ -179,7 +179,7 @@ export function isValidQueryOperator(key: string): boolean {
  * Comprehensive input validator for API routes
  */
 export function validateAPIInput<T>(
-    schema: z.ZodSchema<T>,
+    schema: z.ZodType<T, z.ZodTypeDef, unknown>,
     data: unknown
 ): { success: true; data: T } | { success: false; error: string } {
     try {

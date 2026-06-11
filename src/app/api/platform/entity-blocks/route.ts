@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { FEATURE_FLAGS } from "@config/features";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
@@ -115,7 +116,11 @@ async function syncUserBlockAuthState({
 }
 
 export const POST = withPlatformAuth(async (request: NextRequest, session) => {
-    const body = await request.json();
+    if (!FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS) {
+        return NextResponse.json({ error: "Platform entity blocks are disabled" }, { status: 404 });
+    }
+
+    const body = await request.json().catch(() => ({}));
     const validation = EntityBlockRequestSchema.safeParse(body);
 
     if (!validation.success) {

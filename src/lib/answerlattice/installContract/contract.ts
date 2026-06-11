@@ -78,6 +78,7 @@ export const ANSWERLATTICE_ALLOWED_CONTEXT_FIELDS = [
 ] as const;
 
 export const ANSWERLATTICE_SAFE_CONTEXT_FIELDS = ANSWERLATTICE_ALLOWED_CONTEXT_FIELDS;
+export const ANSWERLATTICE_FULL_WIDGET_KEY_PLACEHOLDER = 'al_full_widget_key_shown_once';
 
 export const ANSWERLATTICE_FORBIDDEN_CONTEXT_FIELDS = [
     'tenantId',
@@ -145,11 +146,7 @@ const normalizeLines = (value: string) => value.trim().replace(/\n{3,}/g, '\n\n'
 
 export function getAnswerlatticeWidgetKeyForPacket(input: AnswerlatticeAgentPacketInput = {}) {
     if (input.includeRawWidgetKey && input.widgetKey?.trim()) return input.widgetKey.trim();
-    if (input.widgetKeyPrefix?.trim()) return `${input.widgetKeyPrefix.trim()}...`;
-    if (input.widgetKey?.trim()) {
-        const value = input.widgetKey.trim();
-        return `${value.slice(0, Math.min(value.length, 10))}...`;
-    }
+    if (input.widgetKeyPrefix?.trim() || input.widgetKey?.trim()) return ANSWERLATTICE_FULL_WIDGET_KEY_PLACEHOLDER;
     return '{{ANSWERLATTICE_WIDGET_KEY}}';
 }
 
@@ -199,6 +196,7 @@ export function buildAnswerlatticeSafeContextSnippet() {
 
 export function renderAnswerlatticeAgentPrompt(input: AnswerlatticeAgentPacketInput = {}) {
     const widgetKey = getAnswerlatticeWidgetKeyForPacket(input);
+    const widgetKeyPrefix = input.widgetKeyPrefix?.trim();
     const allowedOrigins = getAnswerlatticeAllowedOriginsForPacket(input);
     const blockedRoutes = getAnswerlatticeBlockedRoutesForPacket(input);
     const framework = input.framework || '{{FRAMEWORK}}';
@@ -212,7 +210,8 @@ Goal:
 Install the AnswerLattice v1 support widget, pass safe page context, respect AnswerLattice dashboard route rules, and prove the installation works.
 
 Use these AnswerLattice values:
-- Widget key: ${widgetKey}
+- Widget key for install: ${widgetKey}
+- Saved key identifier, for dashboard lookup only: ${widgetKeyPrefix || '(none saved yet)'}
 - Dashboard-saved allowed origins, for verification only:
 ${formatList(allowedOrigins, ['(none saved yet)'])}
 - Dashboard-saved blocked routes:
@@ -233,21 +232,23 @@ Implementation rules:
 1. Find the app root, global layout, document shell, or main client entry point.
 2. Install the AnswerLattice script exactly once.
 3. Prefer an environment variable for the widget key when the framework supports it.
-4. Do not install the widget separately on each page.
-5. Do not expose tenantId, storeId, internal user IDs, emails, billing data, tokens, cookies, secrets, or private account metadata.
-6. Pass only safe page context: path, title, feature, workflow, role, and locale.
-7. Update AnswerLattice context after client-side route changes.
-8. Do not create app settings for allowed origins or blocked routes. AnswerLattice dashboard owns those values.
-9. If this repository has a central third-party-script guard, use the dashboard-saved blocked routes above to avoid mounting AnswerLattice on sensitive screens.
-10. Also avoid routes containing token, invite, reset-password, payment, secret, api-key, or webhook setup screens.
-11. Add a short code comment explaining that this is the AnswerLattice v1 widget contract.
-12. Run lint, typecheck, and build commands available in the repository.
-13. Report changed files, where the script was installed, how route context updates, test commands run, and assumptions.
+4. If the packet shows ${ANSWERLATTICE_FULL_WIDGET_KEY_PLACEHOLDER}, replace it with the full one-time al_* value saved from key creation. Do not use the saved key identifier or identifier + ellipsis as the widget key.
+5. Do not install the widget separately on each page.
+6. Do not expose tenantId, storeId, internal user IDs, emails, billing data, tokens, cookies, secrets, or private account metadata.
+7. Pass only safe page context: path, title, feature, workflow, role, and locale.
+8. Update AnswerLattice context after client-side route changes.
+9. Do not create app settings for allowed origins or blocked routes. AnswerLattice dashboard owns those values.
+10. If this repository has a central third-party-script guard, use the dashboard-saved blocked routes above to avoid mounting AnswerLattice on sensitive screens.
+11. Also avoid routes containing token, invite, reset-password, payment, secret, api-key, or webhook setup screens.
+12. Add a short code comment explaining that this is the AnswerLattice v1 widget contract.
+13. Run lint, typecheck, and build commands available in the repository.
+14. Report changed files, where the script was installed, how route context updates, test commands run, and assumptions.
 
 Acceptance criteria:
 - The app builds.
 - The AnswerLattice script is loaded once.
 - The widget key is not hardcoded when env vars are available.
+- The saved key identifier is not used as the install key.
 - Dashboard-owned allowed origins and blocked routes are not duplicated as product settings.
 - The widget is absent on blocked routes when a local route guard is present; otherwise AnswerLattice dashboard route rules control runtime visibility.
 - Safe page context updates on route changes.
@@ -659,7 +660,8 @@ export const ANSWERLATTICE_INSTALL_DOCS: AnswerlatticeInstallDoc[] = [
             {
                 heading: 'Configure AnswerLattice first',
                 bullets: [
-                    'Create or copy the al_* widget key in the dashboard.',
+                    'Create the al_* widget key in the dashboard and save the full one-time value in the client app environment.',
+                    'If the full key was lost, create a replacement key. Saved key identifiers are only for identifying existing keys.',
                     'Save allowed production and staging origins in the dashboard.',
                     'Save blocked routes in the dashboard.',
                     'Then copy the dashboard-generated packet so the agent receives the current setup.',
@@ -682,7 +684,7 @@ export const ANSWERLATTICE_INSTALL_DOCS: AnswerlatticeInstallDoc[] = [
             {
                 heading: 'Install once',
                 body: 'Paste the v1 script in the app shell or shared document. Do not paste it into individual pages.',
-                code: buildAnswerlatticeWidgetEmbedSnippet('al_your_widget_key'),
+                code: buildAnswerlatticeWidgetEmbedSnippet(ANSWERLATTICE_FULL_WIDGET_KEY_PLACEHOLDER),
             },
             {
                 heading: 'Send safe page context',
@@ -851,7 +853,7 @@ export function renderAnswerlatticeMarkdownDoc(key: AnswerlatticeInstallDocKey, 
 
 ## Configure AnswerLattice first
 
-- Create or copy the al_* widget key in the dashboard.
+- Create the al_* widget key in the dashboard and save the full one-time value.
 - Save allowed origins in the dashboard.
 - Save blocked routes in the dashboard.
 - Copy the dashboard-generated packet when you want current workspace values included.

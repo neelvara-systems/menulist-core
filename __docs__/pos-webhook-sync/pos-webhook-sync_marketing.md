@@ -3,8 +3,8 @@
 > **Document Type:** Internal Sales/Marketing Strategy
 > **Audience:** Sales team, marketing, founder
 > **Status:** Implemented
-> **Last Updated:** May 18, 2026
-> **Version:** 2.1
+> **Last Updated:** June 11, 2026
+> **Version:** 2.2
 
 > Current marketing governance note: Use this document for strategic context, not as literal main-website copy. POS Sync should support MenuList's upstream menu-truth positioning. Main website copy must stay conservative: connected store POS webhook, signed full-menu snapshot, approved changes after publish. Avoid universal POS, real-time sync, seamless integration, POS connector-suite, and unsupported "always updated" claims.
 
@@ -32,7 +32,7 @@ For chains with multiple outlets — each potentially using a different POS vend
 
 MenuList POS Sync eliminates this entirely. When you change your menu in MenuList, the full updated menu is automatically sent to your POS system. No manual work. No mismatches. No forgotten updates.
 
-It works with any POS system that accepts webhooks — which is most modern POS systems. MenuList sends, POS receives. That's it.
+It works with connected systems that provide a public HTTPS webhook endpoint and can accept MenuList's signed full-menu snapshot. MenuList sends, the connected system receives. That's it.
 
 ### Why This Matters
 
@@ -101,7 +101,7 @@ No more calling each outlet to update prices. No more spreadsheet-based menu dis
 2. Enter your POS webhook URL
 3. Click "Test" → Done
 
-Don't know the URL? Click "Send Instructions to POS Provider" — we email them everything they need.
+Don't know the URL? Prepare an email draft from MenuList with the setup details, sample payload, and documentation, then send it to your provider or developer.
 
 ### Slide 7: CTA
 
@@ -158,7 +158,7 @@ Start using POS Sync today. No extra cost. No integration project. Just enter a 
 
 ### "Our POS doesn't support this."
 
-**Response:** "Any modern POS that accepts webhooks works with MenuList. Most do. We also send setup instructions directly to your POS provider — they handle the technical side."
+**Response:** "MenuList can send approved menu updates to a connected system that accepts a signed HTTPS webhook. If your provider needs help, MenuList prepares a setup email draft with the details they need."
 
 ### "What if our POS is offline?"
 

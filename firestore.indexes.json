@@ -770,6 +770,10 @@
         {
           "fieldPath": "blockActive",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "autoExpiresAt",
+          "order": "ASCENDING"
         }
       ]
     },
@@ -787,6 +791,10 @@
         },
         {
           "fieldPath": "escalationActive",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "autoExpiresAt",
           "order": "ASCENDING"
         }
       ]

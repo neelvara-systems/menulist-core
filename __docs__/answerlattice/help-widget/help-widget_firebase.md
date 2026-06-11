@@ -28,15 +28,15 @@
 | `answerlattice_signal_events` | 0-1 WRITE | Negative feedback → signal event (if ENABLE_ANSWERLATTICE_SIGNAL_MUTATION ON) | $0.000054      |
 | `stores`                 | 0-1 READ  | Runtime config lookup through `/api/widget/config`; browser/server caches use the public 60-second TTL | Existing read pricing |
 | `stores`                 | 0-1 WRITE | Explicit dashboard save in `/answerlattice/widget`; unchanged saves skip the write | Existing write pricing |
-| `stores`                 | 1 READ + 1 WRITE | Widget key create/rename/delete updates `answerlatticeWidgetApi` only | Existing read/write pricing |
-| `stores`                 | 1 READ | Widget key copy decrypts existing encrypted widget key material; no write | Existing read pricing |
+| `stores`                 | 1 READ + 1 WRITE | Widget key create/rename/delete updates `answerlatticeWidgetApi` only; create returns the raw key once | Existing read/write pricing |
+| `stores`                 | 0 READ / 0 WRITE | Widget key copy after creation is intentionally unavailable; operators create a replacement key if the raw value is lost | $0.00 |
 | `aiSearchHistory`        | up to 12 READS | `/api/answerlattice/widget-activity` recent widget questions panel in `/answerlattice/widget`; protected tenant/store read | Existing read pricing |
 
 ## No New Collections
 
 Widget v2 reuses ALL existing Answerlattice collections. Zero new Firestore collections created. The feedback route writes to `aiSearchHistory` (existing) and `answerlattice_signal_events` (existing).
 
-The `widgetConfig`, `widgetAllowedOrigins`, `widgetConfigVersion`, and `answerlatticeWidgetApi` fields are stored on the existing `stores` document — no new document or collection. Widget keys use `answerlatticeWidgetApi.keyHashes` for one-query runtime lookup and `answerlatticeWidgetApi.keysByHash` for key names, prefixes/suffixes, scopes, status, and optional encrypted copy recovery. Stored origin values are normalized to origin format (`scheme://host[:port]`), and configured allowlists reject missing or unlisted request origins. Route blocklists are stored inside `widgetConfig.blockedRoutes` and evaluated locally by the loader script.
+The `widgetConfig`, `widgetAllowedOrigins`, `widgetConfigVersion`, and `answerlatticeWidgetApi` fields are stored on the existing `stores` document — no new document or collection. Widget keys use `answerlatticeWidgetApi.keyHashes` for one-query runtime lookup and `answerlatticeWidgetApi.keysByHash` for key names, prefixes/suffixes, scopes, and status. Raw keys are not stored for dashboard recovery after creation. Stored origin values are normalized to origin format (`scheme://host[:port]`), and configured allowlists reject missing or unlisted request origins. Route blocklists are stored inside `widgetConfig.blockedRoutes` and evaluated locally by the loader script.
 
 ## Widget Activity Index
 
@@ -45,6 +45,7 @@ The dashboard recent-questions panel uses this composite index in Answerlattice 
 | Collection | Fields | Purpose |
 | ---------- | ------ | ------- |
 | `aiSearchHistory` | `tId ASC, sId ASC, mountContext ASC, createdOn DESC` | Recent widget questions for `/answerlattice/widget` |
+| `aiSearchHistory` | `cacheKey ASC, tId ASC, sId ASC, createdOn DESC` | Deterministic newest-first cached owner search lookup |
 
 ---
 
@@ -99,6 +100,8 @@ Note: Canonical hit rate directly reduces Gemini API costs (canonical hits = $0 
 18. **Duplicate feedback guard** — repeated identical thumbs feedback returns success without another `aiSearchHistory` write or duplicate negative signal event.
 19. **Route blocklist is local** — blocked routes ride the existing runtime config response and use `window.location.pathname`; route changes do not create Firebase reads, writes, or listeners.
 20. **Branding rides runtime config** — header title, accent color, greeting, and powered-by visibility use the existing `/api/widget/config` response; no separate white-label collection or listener is needed for the launch-grade widget controls.
+21. **Interval-only runtime status writes** — widget config writes runtime status at most once per warm 15-minute interval instead of writing on page-path/context changes.
+22. **One-time key display** — widget keys are never decrypted or recovered later, so copy attempts after creation do not add Firestore reads.
 
 ## Cache Strategy Decision
 
@@ -129,7 +132,8 @@ The mutation engine (signal events from widget feedback → mutation proposals �
 
 | Date       | Version | Change                                                                                                                                  |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-05-25 | 2.4.9   | Added store-doc multi-key cost model: no new collections, runtime validation stays one indexed store lookup, key create/rename/delete are bounded writes, and copy is a protected read/decrypt path. |
+| 2026-06-11 | 2.5.1   | Hardened widget key and cache cost model: raw widget keys are one-time only, runtime status writes are interval-throttled, and owner search cache lookup uses newest-first indexed ordering. |
+| 2026-05-25 | 2.4.9   | Added store-doc multi-key cost model: no new collections, runtime validation stays one indexed store lookup, and key create/rename/delete are bounded writes. The old copy/decrypt path is superseded by 2.5.1. |
 | 2026-05-24 | 2.4.6   | Restored predictive support cost docs with summary-backed capability gating: one extra trigger-summary read only on widget config cache misses, and no predictive API calls when active triggers are absent. |
 | 2026-05-24 | 2.4.5   | Temporary rollback note superseded by 2.4.6 after predictive support was restored and hardened. |
 | 2026-05-22 | 2.4.4   | Added widget branding cost note: launch-grade branding rides existing runtime config and adds no Firestore reads/listeners. |

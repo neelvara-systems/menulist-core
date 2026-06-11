@@ -2,7 +2,7 @@
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
 **Status:** Implementation-Complete — WhatsApp runtime gated until real provider credentials are configured
-**Last Updated:** May 17, 2026
+**Last Updated:** June 11, 2026
 **Priority:** HIGH — Every onboarding session triggers multiple operations. Scales with acquisition volume.
 
 ---
@@ -36,7 +36,7 @@
 | Find fix acknowledgements to send  | `messagingOnboardingSessions`   | Intake processor (every 2 min) | 720/day          | 0-10      | Yes (`state` + `fixMessagePending`)           | Sends provider acknowledgement after preview fix request |
 | Find expired sessions              | `messagingOnboardingSessions`   | Cleanup scheduler (daily)      | 1/day            | 0-100     | Yes (`state` + `expiresAt`)                   | Daily batch cleanup                                       |
 | Find sessions needing reminder     | `messagingOnboardingSessions`   | Cleanup scheduler (daily)      | 1/day            | 0-50      | Yes (`state` + `reminderSentAt`)              | 12h after preview with no approval                        |
-| Read session for preview page      | `messagingOnboardingSessions`   | Preview page load              | Per preview view | 1         | Direct doc                                    | Server-side read in Next.js                               |
+| Read session for preview page      | `messagingOnboardingSessions`   | Preview page load              | Per preview view | 1         | Direct doc                                    | Server-side read in Next.js; rate-limited per session/IP before the read |
 | Read extraction job result         | `menuImageProcessingJobs`       | After extraction completes     | Per extraction   | 1         | Direct doc                                    | Polls/listens for job completion                          |
 | Read platformSummary for counters  | `platformSummary/summary`       | Publish pipeline               | Per publish      | 1         | Direct doc                                    | Inside Firestore transaction                              |
 | Health snapshot control            | `systemHealth/messaging_onboarding_control` | Intake processor | Every 2 min cheap guard; expensive scans hourly | 1 | Direct doc | Prevents the 2-minute scheduler from doing expensive health scans every run |
@@ -54,6 +54,7 @@
 | Update session (validation result) | `messagingOnboardingSessions`   | After asset intelligence         | Per session     | 1            | validMenuFiles, invalidFiles, extractedBusinessInfo, etc. | Medium write (~1 KB)                                          |
 | Update session (extraction result) | `messagingOnboardingSessions`   | After extraction completes       | Per session     | 1            | extractedMenuData, extractedProjectFiles, qualityScore     | Heavy write (~10-80 KB depending on menu size and per-file extraction data) |
 | Update session (published result)  | `messagingOnboardingSessions`   | After publish                    | Per publish     | 1            | publishedResult, state=LIVE, delete extractedProjectFiles  | Final update happens inside the publish transaction           |
+| Mark preview viewed                | `messagingOnboardingSessions` + `messagingOnboardingEvents` | First preview view only | 0-1 per session | 1 session merge + 1 event | `previewViewedAt`, `PREVIEW_VIEWED` | Repeated page refreshes do not create repeated preview-view events |
 | Create/update rate limit           | `messagingOnboardingRateLimits` | Session creation                 | Per new session | 1            | Counters increment                                        | Small doc. Key = SHA-256 of `{provider}:{userId}`             |
 | Create extraction job              | `menuImageProcessingJobs`       | After asset validation           | Per extraction  | 1            | Full job doc, `source`, `skipProjectSave`                 | Triggers existing processMenuImagesJob CF without temp project save |
 | Create tenant                      | `tenants`                       | Publish pipeline                 | Per publish     | 1            | Full doc                                                  | Inside Firestore transaction                                  |
@@ -71,7 +72,7 @@
 | ------------------------- | ------------------------------- | ------------------ | --------- | ---------------------- | ----------------------------------- | --------------------------------------- |
 | Cleanup expired sessions  | `messagingOnboardingSessions`   | Daily scheduler    | Daily     | 0-50                   | Hard delete (after 30 days archive) | Sessions older than 30 days past expiry |
 | Reset rate limit counters | `messagingOnboardingRateLimits` | Daily/weekly reset | Daily     | 0 (update, not delete) | N/A                                 | Reset counters, keep doc                |
-| Expire inbound queue docs | `messagingOnboardingInboundMessages` | Firestore TTL on `expiresAt` | Continuous | N/A | TTL delete | 30-day retention for processed/failed queue docs |
+| Expire inbound queue docs | `messagingOnboardingInboundMessages` | Firestore TTL on `expiresAt` plus daily scheduler fallback | Continuous + daily | 0-100/day via scheduler fallback | TTL/hard delete | 30-day retention for processed/failed queue docs; scheduler fallback prevents buildup if TTL is delayed |
 | Expire tracking events    | `messagingOnboardingEvents`     | Firestore TTL on `expiresAt` | Continuous | N/A | TTL delete | 30-day retention for lifecycle events written by shared logger and API routes |
 
 ---
@@ -99,7 +100,7 @@
 | Claim queued message   | `messagingOnboardingInboundMessages`  | Immediate/scheduled drain | Per message | 1            | PENDING → PROCESSING with attempt increment. |
 | Finalize queued message | `messagingOnboardingInboundMessages` | Success/failure         | Per message  | 1            | PROCESSED or retry/FAILED with backoff. |
 
-**Retention:** queue docs set `expiresAt` for 30-day TTL. Enable Firestore TTL on `messagingOnboardingInboundMessages.expiresAt` via `scripts/setup-firestore-ttl.sh`.
+**Retention:** queue docs set `expiresAt` for 30-day TTL. Enable Firestore TTL on `messagingOnboardingInboundMessages.expiresAt` via `scripts/setup-firestore-ttl.sh`. `menulistMaintenanceScheduler.messaging_session_cleanup` also deletes up to 100 expired inbound docs per daily run as a bounded fallback.
 
 ---
 

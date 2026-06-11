@@ -88,7 +88,7 @@ const normalizeLocationStore = (value: unknown): OwnerBusinessMultiLocationStore
 };
 
 export const GET = withAuth(async (request: NextRequest, session) => {
-  if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH) {
+  if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION) {
     return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
   }
 

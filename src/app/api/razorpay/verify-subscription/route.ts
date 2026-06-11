@@ -19,6 +19,7 @@ import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from "crypto";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
@@ -45,6 +46,23 @@ const summarizeSubscriptionForLog = (subscription: any) => ({
     planId: subscription?.notes?.planId,
     interval: subscription?.notes?.interval,
 });
+
+const verifyRazorpaySubscriptionSignature = (
+    paymentId: string,
+    subscriptionId: string,
+    signature: string,
+) => {
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) return false;
+
+    const expectedSignature = createHmac('sha256', keySecret)
+        .update(`${paymentId}|${subscriptionId}`)
+        .digest('hex');
+    const expected = Buffer.from(expectedSignature, 'hex');
+    const actual = Buffer.from(signature, 'hex');
+
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+};
 
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
@@ -77,7 +95,20 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 400 });
         }
 
-        const { razorpay_payment_id, razorpay_subscription_id } = validation.data;
+        const { razorpay_payment_id, razorpay_subscription_id, razorpay_signature } = validation.data;
+        if (!verifyRazorpaySubscriptionSignature(razorpay_payment_id, razorpay_subscription_id, razorpay_signature)) {
+            logger.security('Invalid Subscription Payment Signature', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-subscription',
+                error: 'Razorpay checkout signature mismatch',
+                subscriptionId: razorpay_subscription_id,
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: 'Forbidden - payment verification failed' },
+                { status: 403 }
+            );
+        }
 
         // 3. --- SERVER-SIDE VERIFICATION ---
         // This is the crucial security step. We do not trust the client.
@@ -139,6 +170,38 @@ export const POST = withAuth(async (request, session) => {
                 quantity: internalSub?.quantity,
             },
         });
+
+        if (providerSubscription?.id !== razorpay_subscription_id) {
+            logger.security('Subscription Verification Provider Mismatch', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-subscription',
+                error: 'Fetched provider subscription id mismatch',
+                requestedSubscriptionId: razorpay_subscription_id,
+                fetchedSubscriptionId: providerSubscription?.id,
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: 'Forbidden - payment mismatch' },
+                { status: 403 }
+            );
+        }
+
+        const paymentSubscriptionId = String(payment?.subscription_id || '');
+        if (payment.status !== 'captured' || paymentSubscriptionId !== razorpay_subscription_id) {
+            logger.security('Subscription Payment Verification Failed', {
+                ...buildSecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-subscription',
+                error: 'Payment is not captured or does not belong to subscription',
+                paymentStatus: payment.status,
+                paymentSubscriptionId,
+                requestedSubscriptionId: razorpay_subscription_id,
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: 'Payment could not be verified.' },
+                { status: 402 }
+            );
+        }
 
         if (!internalSub) {
             logger.error('Internal subscription not found', undefined, {

@@ -39,13 +39,26 @@ export interface MenuAnalyticsDetailSection {
     rows: MenuAnalyticsDetailRow[];
 }
 
-const MENU_ACTION_LABELS: Record<keyof MenuActionBreakdown, string> = {
+type DashboardTranslationValues = Record<string, string | number>;
+
+export type OwnerDashboardTranslator = (key: string, values?: DashboardTranslationValues) => string;
+
+const MENU_ACTION_LABEL_KEYS: Record<keyof MenuActionBreakdown, string> = {
     call: 'Call',
     whatsapp: 'WhatsApp',
     directions: 'Directions',
     reserve: 'Reserve',
     order: 'Order',
 };
+
+function dashboardLabel(
+    t: OwnerDashboardTranslator | undefined,
+    key: string,
+    fallback: string,
+    values?: DashboardTranslationValues,
+): string {
+    return t ? t(key, values) : fallback;
+}
 
 function formatCount(value?: number): string {
     return Math.max(0, Number(value) || 0).toLocaleString();
@@ -87,96 +100,122 @@ function pushSection(sections: MenuAnalyticsDetailSection[], section: MenuAnalyt
     }
 }
 
-function buildMetricRows(metrics: OwnerDashboardMetrics): MenuAnalyticsDetailRow[] {
+function buildMetricRows(metrics: OwnerDashboardMetrics, t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     const rows = [
-        { key: 'menu-visits', label: 'Menu views', value: formatCount(metrics.menuVisits) },
-        { key: 'item-clicks', label: 'Item taps', value: formatCount(metrics.itemClicks) },
-        { key: 'menu-sessions', label: 'Menu sessions', value: formatCount(metrics.menuSessions) },
+        { key: 'menu-visits', label: dashboardLabel(t, 'details.metrics.menuViews', 'Menu views'), value: formatCount(metrics.menuVisits) },
+        { key: 'item-clicks', label: dashboardLabel(t, 'details.metrics.itemTaps', 'Item taps'), value: formatCount(metrics.itemClicks) },
+        { key: 'menu-sessions', label: dashboardLabel(t, 'details.metrics.menuSessions', 'Menu sessions'), value: formatCount(metrics.menuSessions) },
         {
             key: 'engaged-sessions',
-            label: 'Engaged sessions',
+            label: dashboardLabel(t, 'details.metrics.engagedSessions', 'Engaged sessions'),
             value: formatCount(metrics.engagedSessions),
-            detail: `${formatRate(metrics.engagedSessionRate)} of menu sessions`,
+            detail: dashboardLabel(t, 'details.metricDetails.ofMenuSessions', `${formatRate(metrics.engagedSessionRate)} of menu sessions`, {
+                rate: formatRate(metrics.engagedSessionRate),
+            }),
         },
         {
             key: 'action-sessions',
-            label: 'Action sessions',
+            label: dashboardLabel(t, 'details.metrics.actionSessions', 'Action sessions'),
             value: formatCount(metrics.actionSessions),
-            detail: `${formatRate(metrics.actionRate)} of menu sessions`,
+            detail: dashboardLabel(t, 'details.metricDetails.ofMenuSessions', `${formatRate(metrics.actionRate)} of menu sessions`, {
+                rate: formatRate(metrics.actionRate),
+            }),
         },
-        { key: 'customer-actions', label: 'Customer actions', value: formatCount(metrics.menuActionClicks) },
-        { key: 'searches', label: 'Searches', value: formatCount(metrics.searches) },
-        { key: 'zero-result-searches', label: 'No-result searches', value: formatCount(metrics.zeroResultSearches) },
-        { key: 'unavailable-interest', label: 'Unavailable interest', value: formatCount(metrics.unavailableItemTaps) },
-        { key: 'smart-picks-shown', label: 'Smart Picks shown', value: formatCount(metrics.smartPicksRendered) },
-        { key: 'smart-picks-clicks', label: 'Smart Picks taps', value: formatCount(metrics.smartPicksClicks) },
+        { key: 'customer-actions', label: dashboardLabel(t, 'metrics.customerActions', 'Customer actions'), value: formatCount(metrics.menuActionClicks) },
+        { key: 'searches', label: dashboardLabel(t, 'metrics.searches', 'Searches'), value: formatCount(metrics.searches) },
+        { key: 'zero-result-searches', label: dashboardLabel(t, 'metrics.noResultSearches', 'No-result searches'), value: formatCount(metrics.zeroResultSearches) },
+        { key: 'unavailable-interest', label: dashboardLabel(t, 'metrics.unavailableInterest', 'Unavailable interest'), value: formatCount(metrics.unavailableItemTaps) },
+        { key: 'smart-picks-shown', label: dashboardLabel(t, 'metrics.smartPicksShown', 'Smart Picks shown'), value: formatCount(metrics.smartPicksRendered) },
+        { key: 'smart-picks-clicks', label: dashboardLabel(t, 'metrics.smartPicksTaps', 'Smart Picks taps'), value: formatCount(metrics.smartPicksClicks) },
     ];
 
     return rows.filter((row) => Number(row.value.replace(/,/g, '')) > 0);
 }
 
-function buildSourceRows(sourceQuality?: SourceQuality[]): MenuAnalyticsDetailRow[] {
+function buildSourceRows(sourceQuality?: SourceQuality[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     return (sourceQuality || [])
         .filter((source) => hasPositiveValue([source.menuSessions, source.actionSessions, source.actionClicks]))
         .map((source) => ({
             key: `source-${source.source}`,
             label: source.label || source.source,
-            value: `${formatCount(source.menuSessions)} sessions`,
-            detail: `${formatCount(source.actionSessions)} action sessions - ${formatCount(source.actionClicks)} action clicks - ${formatRate(source.actionRate)} action rate`,
+            value: dashboardLabel(t, 'details.units.sessions', `${formatCount(source.menuSessions)} sessions`, {
+                count: formatCount(source.menuSessions),
+            }),
+            detail: dashboardLabel(t, 'details.sourceRowDetail', `${formatCount(source.actionSessions)} action sessions - ${formatCount(source.actionClicks)} action clicks - ${formatRate(source.actionRate)} action rate`, {
+                sessions: formatCount(source.actionSessions),
+                clicks: formatCount(source.actionClicks),
+                rate: formatRate(source.actionRate),
+            }),
         }));
 }
 
-function buildTrafficRows(label: string, values?: TrafficBreakdown[]): MenuAnalyticsDetailRow[] {
+function buildTrafficRows(label: string, values?: TrafficBreakdown[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     return (values || [])
         .filter((entry) => Number(entry.views || 0) > 0)
         .map((entry) => ({
             key: `${label.toLowerCase()}-${entry.key}`,
-            label: `${label}: ${entry.label || entry.key}`,
-            value: `${formatCount(entry.views)} views`,
+            label: dashboardLabel(t, 'details.trafficLabel', `${label}: ${entry.label || entry.key}`, {
+                label,
+                value: entry.label || entry.key,
+            }),
+            value: dashboardLabel(t, 'details.units.views', `${formatCount(entry.views)} views`, {
+                count: formatCount(entry.views),
+            }),
         }));
 }
 
-function buildTopItemRows(items?: TopItem[]): MenuAnalyticsDetailRow[] {
+function buildTopItemRows(items?: TopItem[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     return (items || [])
         .filter((item) => Number(item.clicks || 0) > 0)
         .map((item, index) => ({
             key: `item-${item.itemId}`,
             label: `${index + 1}. ${item.name || item.itemId}`,
-            value: `${formatCount(item.clicks)} taps`,
+            value: dashboardLabel(t, 'details.units.taps', `${formatCount(item.clicks)} taps`, {
+                count: formatCount(item.clicks),
+            }),
         }));
 }
 
-function buildCategoryRows(categories?: TopCategory[]): MenuAnalyticsDetailRow[] {
+function buildCategoryRows(categories?: TopCategory[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     return (categories || [])
         .filter((category) => hasPositiveValue([category.views, category.clicks]))
         .map((category) => ({
             key: `category-${category.categoryId}`,
             label: category.name || category.categoryId,
-            value: `${formatCount(category.views)} views`,
-            detail: `${formatCount(category.clicks)} taps`,
+            value: dashboardLabel(t, 'details.units.views', `${formatCount(category.views)} views`, {
+                count: formatCount(category.views),
+            }),
+            detail: dashboardLabel(t, 'details.units.taps', `${formatCount(category.clicks)} taps`, {
+                count: formatCount(category.clicks),
+            }),
         }));
 }
 
-function buildActionRows(actions?: MenuActionBreakdown): MenuAnalyticsDetailRow[] {
+function buildActionRows(actions?: MenuActionBreakdown, t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     if (!actions) return [];
 
-    return (Object.keys(MENU_ACTION_LABELS) as Array<keyof MenuActionBreakdown>)
+    return (Object.keys(MENU_ACTION_LABEL_KEYS) as Array<keyof MenuActionBreakdown>)
         .map((key) => ({
             key: `action-${key}`,
-            label: MENU_ACTION_LABELS[key],
+            label: dashboardLabel(t, `actions.${key}`, MENU_ACTION_LABEL_KEYS[key]),
             value: formatCount(actions[key]),
         }))
         .filter((row) => Number(row.value.replace(/,/g, '')) > 0);
 }
 
-function buildSearchRows(metrics: OwnerDashboardMetrics, topTerms?: SearchTerm[], zeroResultTerms?: SearchTerm[]): MenuAnalyticsDetailRow[] {
+function buildSearchRows(
+    metrics: OwnerDashboardMetrics,
+    topTerms?: SearchTerm[],
+    zeroResultTerms?: SearchTerm[],
+    t?: OwnerDashboardTranslator,
+): MenuAnalyticsDetailRow[] {
     const rows: MenuAnalyticsDetailRow[] = [];
 
     if (Number(metrics.searches || 0) > 0) {
-        rows.push({ key: 'search-total', label: 'Total searches', value: formatCount(metrics.searches) });
+        rows.push({ key: 'search-total', label: dashboardLabel(t, 'details.metrics.totalSearches', 'Total searches'), value: formatCount(metrics.searches) });
     }
     if (Number(metrics.zeroResultSearches || 0) > 0) {
-        rows.push({ key: 'search-zero-total', label: 'No-result searches', value: formatCount(metrics.zeroResultSearches) });
+        rows.push({ key: 'search-zero-total', label: dashboardLabel(t, 'metrics.noResultSearches', 'No-result searches'), value: formatCount(metrics.zeroResultSearches) });
     }
 
     (topTerms || [])
@@ -186,7 +225,7 @@ function buildSearchRows(metrics: OwnerDashboardMetrics, topTerms?: SearchTerm[]
                 key: `search-${term.term}`,
                 label: term.term,
                 value: formatCount(term.count),
-                detail: 'Search term',
+                detail: dashboardLabel(t, 'details.searchTerm', 'Search term'),
             });
         });
 
@@ -197,25 +236,29 @@ function buildSearchRows(metrics: OwnerDashboardMetrics, topTerms?: SearchTerm[]
                 key: `zero-search-${term.term}`,
                 label: term.term,
                 value: formatCount(term.count),
-                detail: 'No-result term',
+                detail: dashboardLabel(t, 'details.noResultTerm', 'No-result term'),
             });
         });
 
     return rows;
 }
 
-function buildLanguageRows(languages?: LanguageUsage[]): MenuAnalyticsDetailRow[] {
+function buildLanguageRows(languages?: LanguageUsage[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     return (languages || [])
         .filter((language) => hasPositiveValue([language.menuSessions, language.menuViews, language.adoptions]))
         .map((language) => ({
             key: `language-${language.language}`,
             label: language.label || language.language.toUpperCase(),
-            value: `${formatCount(language.menuSessions || language.menuViews)} sessions/views`,
-            detail: `${formatCount(language.adoptions)} stayed after switching`,
+            value: dashboardLabel(t, 'details.units.sessionsViews', `${formatCount(language.menuSessions || language.menuViews)} sessions/views`, {
+                count: formatCount(language.menuSessions || language.menuViews),
+            }),
+            detail: dashboardLabel(t, 'details.languageStayedAfterSwitching', `${formatCount(language.adoptions)} stayed after switching`, {
+                count: formatCount(language.adoptions),
+            }),
         }));
 }
 
-function buildFilterRows(filters?: AttributeFilterInterest[]): MenuAnalyticsDetailRow[] {
+function buildFilterRows(filters?: AttributeFilterInterest[], t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     return (filters || [])
         .filter((filter) => hasPositiveValue([
             filter.interactions,
@@ -228,30 +271,41 @@ function buildFilterRows(filters?: AttributeFilterInterest[]): MenuAnalyticsDeta
         .map((filter) => ({
             key: `filter-${filter.filterId}`,
             label: filter.label || filter.filterId,
-            value: `${formatCount(filter.interactions)} interactions`,
-            detail: `${formatCount(filter.itemTaps)} item taps - ${formatCount(filter.searches)} searches - ${formatCount(filter.actionClicks)} actions`,
+            value: dashboardLabel(t, 'details.units.interactions', `${formatCount(filter.interactions)} interactions`, {
+                count: formatCount(filter.interactions),
+            }),
+            detail: dashboardLabel(t, 'details.filterRowDetail', `${formatCount(filter.itemTaps)} item taps - ${formatCount(filter.searches)} searches - ${formatCount(filter.actionClicks)} actions`, {
+                taps: formatCount(filter.itemTaps),
+                searches: formatCount(filter.searches),
+                actions: formatCount(filter.actionClicks),
+            }),
         }));
 }
 
-function buildSmartPickRows(blockPerformance?: BlockPerformance): MenuAnalyticsDetailRow[] {
+function buildSmartPickRows(blockPerformance?: BlockPerformance, t?: OwnerDashboardTranslator): MenuAnalyticsDetailRow[] {
     if (!blockPerformance) return [];
 
     return [
-        { key: 'smart-popular', label: 'Popular Items', data: blockPerformance.popular },
-        { key: 'smart-quick-pick', label: 'Quick Pick', data: blockPerformance.quickPick },
-        { key: 'smart-best-value', label: 'Best Value', data: blockPerformance.bestValue },
+        { key: 'smart-popular', label: dashboardLabel(t, 'smartPicks.popularItems', 'Popular Items'), data: blockPerformance.popular },
+        { key: 'smart-quick-pick', label: dashboardLabel(t, 'smartPicks.quickPick', 'Quick Pick'), data: blockPerformance.quickPick },
+        { key: 'smart-best-value', label: dashboardLabel(t, 'smartPicks.bestValue', 'Best Value'), data: blockPerformance.bestValue },
     ]
         .filter((row) => hasPositiveValue([row.data.rendered, row.data.clicks]))
         .map((row) => ({
             key: row.key,
             label: row.label,
-            value: `${formatCount(row.data.clicks)} taps`,
-            detail: `${formatCount(row.data.rendered)} views`,
+            value: dashboardLabel(t, 'details.units.taps', `${formatCount(row.data.clicks)} taps`, {
+                count: formatCount(row.data.clicks),
+            }),
+            detail: dashboardLabel(t, 'details.units.views', `${formatCount(row.data.rendered)} views`, {
+                count: formatCount(row.data.rendered),
+            }),
         }));
 }
 
 export function buildMenuAnalyticsDetailSections(
     data: OwnerMenuAnalyticsDetailData | null | undefined,
+    t?: OwnerDashboardTranslator,
 ): MenuAnalyticsDetailSection[] {
     if (!data) return [];
 
@@ -260,75 +314,75 @@ export function buildMenuAnalyticsDetailSections(
 
     pushSection(sections, {
         key: 'signals',
-        title: 'Menu Signals',
-        rows: buildMetricRows(metrics),
+        title: dashboardLabel(t, 'details.sections.signals', 'Menu Signals'),
+        rows: buildMetricRows(metrics, t),
     });
 
     pushSection(sections, {
         key: 'source-quality',
-        title: 'Visitor Sources',
-        description: 'Sessions and final actions by entry source.',
-        rows: buildSourceRows(data.sourceQuality),
+        title: dashboardLabel(t, 'details.sections.visitorSources', 'Visitor Sources'),
+        description: dashboardLabel(t, 'details.descriptions.visitorSources', 'Sessions and final actions by entry source.'),
+        rows: buildSourceRows(data.sourceQuality, t),
     });
 
     pushSection(sections, {
         key: 'campaigns',
-        title: 'Campaign Tracking',
-        description: 'UTM traffic saved from links and QR placements.',
+        title: dashboardLabel(t, 'details.sections.campaignTracking', 'Campaign Tracking'),
+        description: dashboardLabel(t, 'details.descriptions.campaignTracking', 'UTM traffic saved from links and QR placements.'),
         rows: [
-            ...buildTrafficRows('Source', data.utmSources),
-            ...buildTrafficRows('Medium', data.utmMediums),
-            ...buildTrafficRows('Campaign', data.utmCampaigns),
-            ...buildTrafficRows('Content', data.utmContent),
+            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.source', 'Source'), data.utmSources, t),
+            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.medium', 'Medium'), data.utmMediums, t),
+            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.campaign', 'Campaign'), data.utmCampaigns, t),
+            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.content', 'Content'), data.utmContent, t),
         ],
     });
 
     pushSection(sections, {
         key: 'top-items',
-        title: 'Top Items',
-        rows: buildTopItemRows(data.topItems),
+        title: dashboardLabel(t, 'details.sections.topItems', 'Top Items'),
+        rows: buildTopItemRows(data.topItems, t),
     });
 
     pushSection(sections, {
         key: 'categories',
-        title: 'Categories',
-        rows: buildCategoryRows(data.topCategories),
+        title: dashboardLabel(t, 'details.sections.categories', 'Categories'),
+        rows: buildCategoryRows(data.topCategories, t),
     });
 
     pushSection(sections, {
         key: 'actions',
-        title: 'Customer Actions',
-        rows: buildActionRows(data.menuActions),
+        title: dashboardLabel(t, 'details.sections.customerActions', 'Customer Actions'),
+        rows: buildActionRows(data.menuActions, t),
     });
 
     pushSection(sections, {
         key: 'search',
-        title: 'Search Demand',
-        rows: buildSearchRows(metrics, data.topSearchTerms, data.topZeroResultSearchTerms),
+        title: dashboardLabel(t, 'details.sections.searchDemand', 'Search Demand'),
+        rows: buildSearchRows(metrics, data.topSearchTerms, data.topZeroResultSearchTerms, t),
     });
 
     pushSection(sections, {
         key: 'unavailable',
-        title: 'Unavailable Interest',
-        rows: buildTopItemRows(data.unavailableItems),
+        title: dashboardLabel(t, 'details.sections.unavailableInterest', 'Unavailable Interest'),
+        rows: buildTopItemRows(data.unavailableItems, t),
     });
 
     pushSection(sections, {
         key: 'languages',
-        title: 'Languages',
-        rows: buildLanguageRows(data.topLanguages),
+        title: dashboardLabel(t, 'details.sections.languages', 'Languages'),
+        rows: buildLanguageRows(data.topLanguages, t),
     });
 
     pushSection(sections, {
         key: 'filters',
-        title: 'Filters',
-        rows: buildFilterRows(data.topAttributeFilters),
+        title: dashboardLabel(t, 'details.sections.filters', 'Filters'),
+        rows: buildFilterRows(data.topAttributeFilters, t),
     });
 
     pushSection(sections, {
         key: 'smart-picks',
-        title: 'Smart Picks',
-        rows: buildSmartPickRows(data.blockPerformance),
+        title: dashboardLabel(t, 'details.sections.smartPicks', 'Smart Picks'),
+        rows: buildSmartPickRows(data.blockPerformance, t),
     });
 
     return sections;

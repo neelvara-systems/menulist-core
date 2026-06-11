@@ -1,0 +1,9 @@
+{
+  "firestore": {
+    "rules": "firestore-campaigncue.rules",
+    "indexes": "firestore-campaigncue.indexes.json"
+  },
+  "storage": {
+    "rules": "storage-campaigncue.rules"
+  }
+}

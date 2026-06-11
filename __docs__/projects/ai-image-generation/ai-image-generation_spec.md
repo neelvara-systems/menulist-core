@@ -1,8 +1,8 @@
 # AI Image Generation — Specification
 
-**Feature:** AI-Powered Image Generation & Editing  
-**Status:** ✅ Production Ready  
-**Last Updated:** January 28, 2026  
+**Feature:** Menu Image Generation & Editing
+**Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
+**Last Updated:** June 11, 2026
 **Audience:** CEO, PM, Clients, Non-developers
 
 ---

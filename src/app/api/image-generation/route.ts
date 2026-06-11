@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, CHARGE_PER_IMAGEN_IMAGE, TOKENS_PER_CREDIT, TOKENS_PER_IMAGEN_IMAGE } from "@constant/common";
-import { GenerateContentResponse } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
+import { sanitizeImageGenerationConfigForLogging, summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { logger } from "@lib/monitoring/logger";
 import { getLinkedOutletPolicyBlockReason } from "@lib/multiOutlet/serverOutletPolicy";
 import { checkExpensiveAILimit } from "@lib/rateLimit/helpers";
@@ -14,7 +14,7 @@ import { GenerateImageViaApiPayloadType } from "@template/main-app/projects/type
 import { writeErrorLogEntry, writeLogEntry, writeMissingParamsLogEntry } from 'logs/utils';
 import { NextResponse } from 'next/server';
 import { withAuth } from "../../../middleware/auth";
-import { AI_MODEL_TYPE, selectImageGenerator } from "./generators";
+import { AI_MODEL_TYPE, runImageGenerationPrompts } from "./generators";
 import { getImagePrompts } from "./prompt";
 
 const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
@@ -58,14 +58,22 @@ export const POST = withAuth(async (request, session) => {
                 },
             }, 'high'); // HIGH severity - very expensive operation
 
-            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, rawData);
+            await writeMissingParamsLogEntry(LOG_FILE, userId, undefined, undefined, {
+                error: errorMsg,
+                hasGenerationConfig: !!rawData?.generationConfig,
+                hasPrompt: !!rawData?.generationConfig?.prompt,
+                hasReferenceImage: !!rawData?.generationConfig?.referanceImage?.url,
+                projectId: rawData?.projectId,
+                fileId: rawData?.fileId,
+                businessType: rawData?.businessType,
+            });
             return NextResponse.json({
                 error: 'Invalid input',
                 details: errorMsg
             }, { status: 400 });
         }
 
-        const jsonData = rawData as GenerateImageViaApiPayloadType;
+        const jsonData = validation.data as unknown as GenerateImageViaApiPayloadType;
         const { generationConfig, projectId, fileId, itemDetails, businessType } = jsonData;
 
         const outletPolicyBlockReason = await getLinkedOutletPolicyBlockReason({
@@ -84,11 +92,23 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: outletPolicyBlockReason }, { status: 403 });
         }
 
-        // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity
+        const promptsToExecute = getImagePrompts({ generationConfig, projectId, fileId, itemDetails, businessType }, AI_MODEL);
+        if (!promptsToExecute.length) {
+            return NextResponse.json({ error: 'Image generation needs a prompt or item details' }, { status: 400 });
+        }
+
+        const estimatedImageQuantity = Math.max(
+            promptsToExecute.length,
+            Number(generationConfig?.numberOfImages || 1),
+            1,
+        );
+
+        // 🔋 AI CAPACITY CHECK: Verify store has sufficient capacity before provider work
         const capacityCheck = await checkAICapacity(
             session.tId,
             session.sId,
             AI_ACTIONS_TYPES.IMAGE_GENERATION,
+            estimatedImageQuantity,
         );
         if (!capacityCheck.allowed) {
             return NextResponse.json({
@@ -100,33 +120,36 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const startTime = new Date().getTime();
-        const promptsToExecute = getImagePrompts({ generationConfig, projectId, fileId, itemDetails, businessType }, AI_MODEL);
-        const imageGenerator = selectImageGenerator(AI_MODEL, generationConfig);
 
         logger.debug('Prompts to execute', { count: promptsToExecute.length })
 
-        let genratedImages: any[] | null = [];
-        let generatedImagesResponse: any[] | null = [];
-        if (promptsToExecute.length > 1) {
-            // Multiple specific prompts -> Separate calls, n=1 each
-            for (const specificPrompt of promptsToExecute) {
-                const result = await imageGenerator(specificPrompt, generationConfig, LOG_FILE);
-                if (result) {
-                    genratedImages.push(...result?.images);
-                    generatedImagesResponse.push(result?.response);
-                }
-            }
-        } else {
-            // Single generic prompt -> One call, n can be > 1
-            const result = await imageGenerator(promptsToExecute[0], generationConfig, LOG_FILE);
-            if (result) {
-                genratedImages = result?.images;
-                generatedImagesResponse = [result?.response];
-            }
-        }
+        const promptRun = await runImageGenerationPrompts({
+            aiModel: AI_MODEL,
+            generationConfig,
+            logFile: LOG_FILE,
+            prompts: promptsToExecute,
+        });
+        const genratedImages = promptRun.images;
+        const generatedImagesResponse = promptRun.responses;
 
         const endTime = new Date().getTime();
         const processingTime = endTime - startTime;
+
+        if (!genratedImages?.length) {
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                projectId,
+                fileId,
+                logType: 'NO_IMAGE_GENERATED',
+                data: {
+                    generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
+                    itemDetails,
+                    response: generatedImagesResponse?.map(summarizeImageProviderResponse),
+                },
+            });
+            return NextResponse.json({ error: 'Image generation produced no image' }, { status: 502 });
+        }
 
         // Initialize transaction object outside the if block
         let remainingBalance = null;
@@ -143,11 +166,12 @@ export const POST = withAuth(async (request, session) => {
 
             if (AI_MODEL === "GEMINI") {
                 // Process Gemini usage metadata
-                generatedImagesResponse.forEach((response: GenerateContentResponse) => {
-                    if (response.usageMetadata) {
-                        transactionObject.promptTokenCount += response.usageMetadata.promptTokenCount || 0;
-                        transactionObject.candidatesTokenCount += response.usageMetadata.candidatesTokenCount || 0;
-                        transactionObject.totalTokenCount += response.usageMetadata.totalTokenCount || 0;
+                generatedImagesResponse.forEach((response) => {
+                    const usageMetadata = 'usageMetadata' in response ? response.usageMetadata : undefined;
+                    if (usageMetadata) {
+                        transactionObject.promptTokenCount += usageMetadata.promptTokenCount || 0;
+                        transactionObject.candidatesTokenCount += usageMetadata.candidatesTokenCount || 0;
+                        transactionObject.totalTokenCount += usageMetadata.totalTokenCount || 0;
                     }
                 });
 
@@ -155,33 +179,44 @@ export const POST = withAuth(async (request, session) => {
                 transactionObject.totalCredits = transactionObject.totalTokenCount / TOKENS_PER_CREDIT;
                 transactionObject.totalCharge = CHARGE_PER_CREDIT * transactionObject.totalCredits; // in paise
             } else {
-                transactionObject.totalCredits = generatedImagesResponse.length * TOKENS_PER_IMAGEN_IMAGE;
+                const generatedImageCount = genratedImages.length;
+                transactionObject.totalCredits = generatedImageCount * TOKENS_PER_IMAGEN_IMAGE;
                 transactionObject.totalCharge = CHARGE_PER_IMAGEN_IMAGE * transactionObject.totalCredits;
             }
+
+            const billableImageCount = Math.max(genratedImages.length, promptRun.promptCount, 1);
+            const realCostPaise = getRealCostPaise(AI_ACTIONS_TYPES.IMAGE_GENERATION) * billableImageCount;
+            const ourChargePaise = getOurChargePaise(AI_ACTIONS_TYPES.IMAGE_GENERATION) * billableImageCount;
 
             // Update the transaction object with calculated values and other details
             transactionObject = {
                 ...transactionObject,
                 itemDetails,
-                generationConfig,
+                generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
                 projectId,
                 fileId,
                 action: AI_ACTIONS_TYPES.IMAGE_GENERATION,
+                failedPromptCount: promptRun.failedPromptCount,
+                imageCount: genratedImages.length,
+                promptCount: promptRun.promptCount,
                 processingTime,
                 clientResponse: genratedImages.map((image: { base64: string; mimeType: string }) => image.mimeType),
                 model: AI_MODEL,
-                geminiResponse: generatedImagesResponse, // Store all responses
+                geminiResponse: generatedImagesResponse.map(summarizeImageProviderResponse),
                 tokenPerCredit: TOKENS_PER_CREDIT,
                 chargePerCredit: CHARGE_PER_CREDIT,
                 // Deep tracking: real Google cost vs our charge vs margin (all in paise)
-                realCostPaise: getRealCostPaise(AI_ACTIONS_TYPES.IMAGE_GENERATION),
-                ourChargePaise: getOurChargePaise(AI_ACTIONS_TYPES.IMAGE_GENERATION),
-                marginPaise: getOurChargePaise(AI_ACTIONS_TYPES.IMAGE_GENERATION) - getRealCostPaise(AI_ACTIONS_TYPES.IMAGE_GENERATION),
+                realCostPaise,
+                ourChargePaise,
+                marginPaise: ourChargePaise - realCostPaise,
             };
 
             // Add the operation to the database
             try {
-                transactionObject.unitsConsumed = getUnitCost(transactionObject.action);
+                transactionObject.unitsConsumed = Math.max(
+                    capacityCheck.unitsRequired,
+                    getUnitCost(transactionObject.action) * Math.max(genratedImages.length, promptRun.promptCount, 1),
+                );
                 const accounting = await finalizeAiOperationAccounting({
                     capacitySubscription: capacityCheck.subscription,
                     context: { userId, projectId, fileId, action: transactionObject.action },
@@ -203,8 +238,11 @@ export const POST = withAuth(async (request, session) => {
         await writeLogEntry({
             logFileName: LOG_FILE, userId: userId, projectId, fileId, logType: 'SUCCESS_RESPONSE',
             data: {
-                request: { generationConfig, itemDetails },
-                response: generatedImagesResponse,
+                request: {
+                    generationConfig: sanitizeImageGenerationConfigForLogging(generationConfig as unknown as Record<string, unknown>),
+                    itemDetails,
+                },
+                response: generatedImagesResponse.map(summarizeImageProviderResponse),
                 transaction: transactionObject
             }
         });

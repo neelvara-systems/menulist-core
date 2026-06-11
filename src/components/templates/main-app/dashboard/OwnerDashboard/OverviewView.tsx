@@ -19,6 +19,7 @@ import {
     OverviewData,
 } from '@template/main-app/projects/types';
 import { Card, Col, Empty, Progress, Row, Tag, Typography, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuAlertTriangle, LuCheckCircle, LuClock, LuHistory, LuZap } from 'react-icons/lu';
 import styles from './OwnerDashboard.module.scss';
@@ -35,6 +36,7 @@ interface OverviewViewProps {
 
 const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot }) => {
     const { token } = useToken();
+    const t = useTranslations('Dashboard.owner');
     const primaryTagStyle = {
         backgroundColor: token.colorPrimaryBg,
         borderColor: token.colorPrimaryBorder,
@@ -48,7 +50,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                     <Empty
                         description={
                             <Text type="secondary">
-                                No data yet. Your analytics will appear once customers start viewing.
+                                {t('empty.noAnalyticsYet')}
                             </Text>
                         }
                     />
@@ -115,7 +117,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                                 </Text>
                                 {week.isCurrentWeek && (
                                     <Tag style={{ ...primaryTagStyle, marginLeft: 4, fontSize: 10 }}>
-                                        Current
+                                        {t('overview.current')}
                                     </Tag>
                                 )}
                             </div>
@@ -140,9 +142,9 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                     </div>
                     <div className={styles.heroText}>
                         <Title level={3} style={{ marginBottom: 4 }}>
-                            {status === 'working' && 'Your menu is working!'}
-                            {status === 'low_activity' && 'Getting started'}
-                            {status === 'no_data' && 'Waiting for first scan'}
+                            {status === 'working' && t('overview.menuWorking')}
+                            {status === 'low_activity' && t('overview.gettingStarted')}
+                            {status === 'no_data' && t('overview.waitingForFirstScan')}
                         </Title>
                         <Paragraph type="secondary" style={{ marginBottom: 0 }}>
                             {statusMessage}
@@ -155,41 +157,41 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                     <Row gutter={16} className={styles.quickStats}>
                         <Col xs={6}>
                             <div className={styles.quickStat}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>This Week</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>{t('periods.thisWeek')}</Text>
                                 <Title level={4} style={{ margin: 0 }}>
                                     {wtd.metrics.menuVisits.toLocaleString()}
                                 </Title>
-                                <Text type="secondary" style={{ fontSize: 11 }}>scans</Text>
+                                <Text type="secondary" style={{ fontSize: 11 }}>{t('units.scans')}</Text>
                             </div>
                         </Col>
                         <Col xs={6}>
                             <div className={styles.quickStat}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>This Month</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>{t('periods.thisMonth')}</Text>
                                 <Title level={4} style={{ margin: 0 }}>
                                     {mtd?.metrics.menuVisits.toLocaleString() || '—'}
                                 </Title>
-                                <Text type="secondary" style={{ fontSize: 11 }}>scans</Text>
+                                <Text type="secondary" style={{ fontSize: 11 }}>{t('units.scans')}</Text>
                             </div>
                         </Col>
                         <Col xs={6}>
                             <div className={styles.quickStat}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Top Item</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>{t('metrics.topItem')}</Text>
                                 <Title level={5} style={{ margin: 0, fontSize: 14 }}>
                                     {wtd.topItems?.[0]?.name || '—'}
                                 </Title>
                                 <Text type="secondary" style={{ fontSize: 11 }}>
-                                    {wtd.topItems?.[0]?.clicks ? `${wtd.topItems[0].clicks} taps` : ''}
+                                    {wtd.topItems?.[0]?.clicks ? t('units.taps', { count: wtd.topItems[0].clicks }) : ''}
                                 </Text>
                             </div>
                         </Col>
                         <Col xs={6}>
                             <div className={styles.quickStat}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Top Category</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>{t('metrics.topCategory')}</Text>
                                 <Title level={5} style={{ margin: 0, fontSize: 14 }}>
                                     {wtd.topCategories?.[0]?.name || '—'}
                                 </Title>
                                 <Text type="secondary" style={{ fontSize: 11 }}>
-                                    {wtd.topCategories?.[0] ? `${wtd.topCategories[0].views} views` : ''}
+                                    {wtd.topCategories?.[0] ? t('units.views', { count: wtd.topCategories[0].views }) : ''}
                                 </Text>
                             </div>
                         </Col>
@@ -204,7 +206,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                 confidence={ownerConfidence}
                 sourceQuality={sourceQuality}
                 analyticsAiEntitlement={analyticsAiEntitlement}
-                title="Menu Intelligence Action Plan"
+                title={t('actionPlan.menuIntelligenceTitle')}
             />
 
             {/* AI Summary (if available) */}
@@ -214,7 +216,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                     title={
                         <span>
                             <LuZap style={{ marginRight: 8 }} />
-                            Weekly Insights
+                            {t('overview.weeklyInsights')}
                         </span>
                     }
                     variant="borderless"
@@ -229,15 +231,18 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                 </Card>
             )}
 
-            <MenuAnalyticsDetailsCard data={wtd} title="Last 7 Days Menu Details" />
-            <MenuAnalyticsDetailsCard data={mtd} title={`${mtd?.monthName || 'This Month'} Menu Details`} />
+            <MenuAnalyticsDetailsCard data={wtd} title={t('details.last7DaysMenuDetails')} />
+            <MenuAnalyticsDetailsCard
+                data={mtd}
+                title={t('details.monthMenuDetails', { month: mtd?.monthName || t('periods.thisMonth') })}
+            />
 
             <Card
                 className={styles.detailCard}
                 title={(
                     <span>
                         <LuHistory style={{ marginRight: 8 }} />
-                        Last 4 Weeks Comparison
+                        {t('overview.last4WeeksComparison')}
                     </span>
                 )}
                 variant="borderless"
@@ -245,7 +250,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot })
                 {historicalWeeks && historicalWeeks.length > 0 ? (
                     renderHistoricalWeeksChart(historicalWeeks)
                 ) : (
-                    <Text type="secondary">Historical data will appear after a few weeks</Text>
+                    <Text type="secondary">{t('overview.historicalDataWillAppear')}</Text>
                 )}
             </Card>
         </div>

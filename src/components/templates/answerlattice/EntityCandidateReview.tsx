@@ -151,7 +151,15 @@ export default function EntityCandidateReview() {
             <List
                 dataSource={candidates}
                 loading={loading}
-                locale={{ emptyText: <Empty description="No pending entity candidates" /> }}
+                locale={{
+                    emptyText: (
+                        <Empty description="No pending entity candidates">
+                            <Text type="secondary">
+                                New candidates appear after intake or support signals mention product features, plans, roles, workflows, states, integrations, or errors.
+                            </Text>
+                        </Empty>
+                    ),
+                }}
                 renderItem={(candidate) => (
                     <CandidateItem
                         candidate={candidate}

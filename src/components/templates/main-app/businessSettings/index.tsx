@@ -461,6 +461,9 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     </Card>
                     <DomainSettingsTab
                         storeDetails={storeDetails}
+                        onStoreStateUpdate={(updates) => {
+                            setStoreDetails({ ...storeDetails, ...updates });
+                        }}
                         onStoreUpdate={(updates) => {
                             const storeUpdate = { storeId: storeDetails.storeId, ...updates };
                             updateStore(storeUpdate).then(() => {
@@ -1026,6 +1029,9 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             );
             if (Object.keys(updatedChanges).length > 0) {
                 updatedChanges.storeId = storeDetails.storeId;
+                if ("workingHours" in updatedChanges) {
+                    updatedChanges.hoursLastUpdatedAt = new Date().toISOString();
+                }
                 if ("name" in updatedChanges) {
                     updatedChanges.storeKey = updatedChanges.name
                         .toLowerCase()

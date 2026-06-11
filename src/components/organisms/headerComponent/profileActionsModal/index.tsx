@@ -7,6 +7,7 @@ import KeyboardShortcutsModal from '@organisms/keyboardShortcutsModal';
 import { toggleAppSettingsPanel } from '@reduxSlices/clientThemeConfig';
 import { showSuccessToast } from '@reduxSlices/toast';
 import { Avatar, Badge, Modal, Popconfirm, Space, theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { Fragment, useState } from 'react';
 import { LuKeyboard, LuLogOut, LuSettings2, LuUser } from 'react-icons/lu';
@@ -21,6 +22,7 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
     const { token } = theme.useToken();
     const router = useRouter();
     const dispatch = useAppDispatch()
+    const t = useTranslations('ProfileActions');
     const userLoginLabel = (userData as any)?.staffAuthMode === 'owner_passcode'
         ? `Staff ID: ${(userData as any)?.staffLoginId || (userData as any)?.loginUsername || ''}`
         : (userData as any)?.displayEmail || (userData as any)?.phone || (userData as any)?.phoneUsername || userData.email;
@@ -28,19 +30,19 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
     const MENU_SECTIONS = [
         {
             items: [
-                { title: "My Profile", icon: <LuUser />, onClick: () => FEATURE_FLAGS.ENABLE_USER_PROFILE && setShowProfileModal(true), description: "View and edit your profile" },
+                { key: "profile", title: t('myProfile'), icon: <LuUser />, onClick: () => FEATURE_FLAGS.ENABLE_USER_PROFILE && setShowProfileModal(true), description: t('myProfileDesc') },
             ]
         },
         {
-            title: "Preferences",
+            title: t('preferences'),
             items: [
-                { title: "Appearance", icon: <LuSettings2 />, onClick: () => onOpenAppearance ? onOpenAppearance() : dispatch(toggleAppSettingsPanel(true)), description: "Theme, colors & layout" },
-                { title: "Keyboard Shortcuts", icon: <LuKeyboard />, onClick: () => setShowShortcutsModal(true), description: "View all shortcuts" },
+                { key: "appearance", title: t('appearance'), icon: <LuSettings2 />, onClick: () => onOpenAppearance ? onOpenAppearance() : dispatch(toggleAppSettingsPanel(true)), description: t('appearanceDesc') },
+                { key: "keyboardShortcuts", title: t('keyboardShortcuts'), icon: <LuKeyboard />, onClick: () => setShowShortcutsModal(true), description: t('keyboardShortcutsDesc') },
             ]
         },
         {
             items: [
-                { title: "Sign Out", icon: <LuLogOut />, onClick: () => logoutUser(), danger: true },
+                { key: "signOut", title: t('signOut'), icon: <LuLogOut />, onClick: () => logoutUser(), danger: true },
             ]
         }
     ]
@@ -56,7 +58,7 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
 
     const onClickAction = (action) => {
         // Check if this is the logout action
-        if (action.title === "Sign Out") {
+        if (action.key === "signOut") {
             setShowLogoutConfirm(true);
             // Don't close modal yet - wait for confirmation
         } else {
@@ -70,11 +72,11 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
         setIsLoading(true);
         signOutSession()
             .then(() => {
-                dispatch(showSuccessToast("User logged out successfully"))
+                dispatch(showSuccessToast(t('logoutSuccess')))
                 setIsLoading(false);
             }).catch((error) => {
                 console.error("Error while signing out:", error);
-                dispatch(showSuccessToast("Something went wrong, try again later"))
+                dispatch(showSuccessToast(t('logoutFailed')))
                 setIsLoading(false);
             })
     }
@@ -170,7 +172,7 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
             </Popconfirm>
             {/* Logout confirmation modal */}
             <Modal
-                title="Confirm Logout"
+                title={t('confirmLogout')}
                 open={showLogoutConfirm}
                 onOk={() => {
                     logoutUser();
@@ -180,11 +182,11 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
                 onCancel={() => {
                     setShowLogoutConfirm(false);
                 }}
-                okText="Logout"
-                cancelText="Cancel"
+                okText={t('logout')}
+                cancelText={t('cancel')}
                 confirmLoading={isLoading}
             >
-                <p>Are you sure you want to log out?</p>
+                <p>{t('logoutConfirm')}</p>
             </Modal>
 
             {/* Keyboard Shortcuts Modal */}

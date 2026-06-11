@@ -126,7 +126,7 @@ Ant Design Drawer (right side, 600px wide).
 Tabs:
 
 1. **Overview** — Job metadata, per-file results, error details
-2. **AI Response** — Raw `result.combinedData` as JSON tree (using `react18-json-view`)
+2. **AI Response** — Raw `result.combinedData` when retained, or `result.summary` when an older auto-saved project job has been pruned
 3. **Cost** — Token usage, credits, charge, batch results
 
 Actions:
@@ -258,7 +258,10 @@ export interface ExtractionJobDetails extends ExtractionJobSummary {
   files: Array<{ uid: string; name: string; type: string; size: number }>;
   targetLanguages: Array<{ code: string; name: string }>;
   result: {
-    combinedData: any;
+    combinedData?: any;
+    summary?: Record<string, unknown>;
+    dataPrunedAt?: any;
+    dataPrunedReason?: string;
     qualityScore: number;
     qualityDetails: {
       categoryQuality: number;

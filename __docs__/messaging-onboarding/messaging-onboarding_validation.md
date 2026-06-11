@@ -240,8 +240,15 @@
 5. Register webhook URL with Meta: `https://us-central1-{project}.cloudfunctions.net/messagingOnboarding/whatsapp`
 6. Deploy Firestore indexes: `firebase deploy --only firestore:indexes`
 7. Deploy Firestore rules: `firebase deploy --only firestore:rules`
-8. Enable Firestore TTL policies: `scripts/setup-firestore-ttl.sh` (must include `messagingOnboardingEvents.expiresAt` and `messagingOnboardingInboundMessages.expiresAt`)
+8. Enable Firestore TTL policies: `scripts/setup-firestore-ttl.sh` (must include `messagingOnboardingEvents.expiresAt` and `messagingOnboardingInboundMessages.expiresAt`); the daily `menulistMaintenanceScheduler` cleanup also deletes a capped batch of expired inbound queue docs as a fallback.
 9. Send a test message from WhatsApp to the registered number
 10. Monitor sessions in Firebase Console: `messagingOnboardingSessions`
 11. Open preview URL in browser, verify menu rendering, approve & publish
 12. Verify tenant/store/project/project summary created and public cache tags revalidated
+
+## June 11, 2026 Production-Readiness Audit Notes
+
+- Preview API reads are now rate-limited per session/IP before the session document read.
+- Preview-view tracking writes at most one `PREVIEW_VIEWED` event per session by setting `previewViewedAt`.
+- Preview fix requests are rate-limited per session/IP before Firestore reads or writes.
+- Expired durable inbound queue documents are cleaned by Firestore TTL and by a capped daily scheduler fallback.

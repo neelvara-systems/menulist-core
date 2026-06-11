@@ -2140,6 +2140,7 @@ function MenuPageNew({
                             menuLayout={resolvedLayout}
                             showItemPrices={showItemPrices}
                             showCategoryIcons={showCategoryIcons}
+                            storeTimeZone={storeDetails?.timeZone}
                             analyticsIds={{
                                 tenantId: storeDetails?.tenantId,
                                 storeId: String(storeDetails?.storeId || ''),
@@ -2630,6 +2631,7 @@ function MenuPageNew({
                                 locationArea={storeDetails?.area || null}
                                 city={storeDetails?.city || null}
                                 workingHours={storeDetails?.workingHours}
+                                hoursLastUpdatedAt={(storeDetails as { hoursLastUpdatedAt?: unknown; modifiedOn?: unknown } | undefined)?.hoursLastUpdatedAt || (storeDetails as { modifiedOn?: unknown } | undefined)?.modifiedOn}
                                 timeZone={storeDetails?.timeZone}
                                 theme={bottomMetaTheme}
                                 showBorder={false}

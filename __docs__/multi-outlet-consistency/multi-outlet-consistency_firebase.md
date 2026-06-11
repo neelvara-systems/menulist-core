@@ -2,7 +2,7 @@
 
 **Feature:** Multi-Store Menu Consistency (Master/Outlet Pattern) + Store Onboarding (Feature #4C)  
 **Status:** ✅ Production Ready  
-**Last Updated:** May 27, 2026
+**Last Updated:** June 11, 2026
 
 **Priority:** HIGH — Real-time listeners + signal docs + outlet creation transactions.
 
@@ -30,7 +30,7 @@
 | Resolve project for render | `projects/{tId}/{sId}/{masterProjectId}`   | Customer views outlet menu | Per menu view (cached 60s) | 1            | Direct doc | `resolveProjectForRender()` merges master + outlet. File: `src/app/_client/[[...slug]]/page.tsx:216` |
 | Listen to signal doc       | `masterOperationalState/{masterProjectId}` | Outlet editor open         | Real-time (onSnapshot)     | 1 per change | Direct doc | `onSnapshot` listener for `operationalVersion` changes. Fires when master saves operational changes. |
 | Read master job status     | `menuImageProcessingJobs` + linked outlet project guard | Desktop outlet project editor | Every 15s while outlet editor is open | 0-2 | Query capped at 1 | `/api/projects/master-job-status` validates session, tenant, store permission, and linked outlet project before querying active master extraction jobs. No Upstash rate-limit call because this is a read-only polling endpoint; avoids an external network dependency per poll. |
-| Enforce linked-outlet AI policy | `projects/{tId}/{sId}/{projectId}` + `stores/{masterStoreId}` | Description/image API request from linked outlet | Per linked outlet AI request | 0-2 | Direct docs | `getLinkedOutletPolicyBlockReason()` checks the project linkage and master `outletPolicy` before AI capacity/provider calls. Single-store and master-store requests add no extra read. |
+| Enforce linked-outlet AI policy | `projects/{tId}/{sId}/{projectId}` + `stores/{masterStoreId}` | Description/image/translation API request from linked outlet | Per linked outlet AI request | 0-2 | Direct docs | `getLinkedOutletPolicyBlockReason()` checks the project linkage and master `outletPolicy` before AI capacity/provider calls. Single-store and master-store requests add no extra read. Translation requests tied to linked outlet projects reject inherited item/category keys before Gemini work. |
 | Enforce linked-outlet extraction policy | `projects/{tId}/{sId}/{projectId}` + `stores/{masterStoreId}` | `processMenuImagesJob` starts for a linked outlet project | Per linked outlet extraction job | 1-2 | Direct docs | The function loads the project before provider processing, detects `masterProjectId`, reads the master store policy, and fails the job with `OUTLET_POLICY_BLOCKED` when `canUseMenuExtraction=false`. The project read is reused later in the same job. |
 | Load store config          | `stores/{storeId}`                         | Multi-outlet setup         | Per setup                  | 1            | Direct doc | Check `isMaster` flag, linked outlets.                                                               |
 
@@ -41,6 +41,7 @@
 | Increment operational version | `masterOperationalState/{masterProjectId}` | Master saves with item/price/category changes | Per master operational save | 1            | operationalVersion (atomic increment), lastUpdatedAt | Only fires for operational changes (items, prices, categories), NOT UI config. File: `src/database/projects/index.ts:451-468`                     |
 | Log MOL event                 | `multiOutletEvents/{tId}/{sId}`            | Any menu edit (master, outlet, standalone)    | Per save                    | 1            | Event type, metadata, actor                          | `logMultiOutletEvent()`. Tracks MASTER_MENU_UPDATED, OUTLET_MENU_UPDATED, STANDALONE_MENU_UPDATED. File: `src/database/projects/index.ts:489-529` |
 | Save outlet local data/overrides | `projects/{tId}/{sId}/{outletProjectId}` | Outlet saves local changes | Per outlet save | 1 | Local `L_I_` / `L_C_` records, policy-allowed overrides, `outletLocalState` | Linked outlet saves route through `/api/projects/outlet-save`; server rejects copied master records, invalid override payloads/prices, and disabled OutletPolicy changes before writing. `outletLocalState` is stamped in the same write, so there is no extra Firebase write. |
+| Publish linked outlet design/local state | `projects/{tId}/{sId}/{outletProjectId}` | Desktop B2C or mobile design publish on linked outlet | Per linked outlet publish | 1 | Policy-allowed local fields, `lastPublishedAt`, `menuVersion` | `publishProject()` routes linked outlets through `/api/projects/outlet-save` with `publish: true`, so theme/brand/layout policy is enforced before publish metadata and public cache invalidation. |
 
 ### Deletes
 
@@ -64,7 +65,8 @@
 - **Outlet-local state piggybacks on existing writes**: `outletLocalState.localVersion`, `lastLocalChangeAt`, `lastLocalChangeBy`, and `lastLocalChangeReason` are written only when the outlet project already saves local data/overrides. No master fan-out and no additional write operation.
 - **Stable extraction ID aliases**: `extractionIdAliases` are stored on the existing item/category during approved extraction saves. This avoids copying or remapping outlet overrides and keeps future matching client-side.
 - **Server-side OutletPolicy enforcement**: `/api/projects/outlet-save` rejects disabled price, availability, description, image, language-addition, local item/category, project-deactivation, theme, brand, and layout changes before the project write. Existing disabled overrides can remain unchanged or be removed back toward master values.
-- **AI spend guard before provider calls**: Linked outlet description/image APIs read the linked project and master store policy first. Disabled actions return `403` before Gemini/Imagen calls or AI-capacity consumption.
+- **AI spend guard before provider calls**: Linked outlet description/image/translation APIs read the linked project and master store policy first. Disabled or inherited-content actions return `403` before Gemini/Imagen calls or AI-capacity consumption.
+- **Linked outlet publish guard**: desktop B2C and mobile design publish use the same `/api/projects/outlet-save` policy checks as editor saves, so outlets cannot bypass disabled theme, brand, or layout overrides by publishing from the design surface.
 - **Extraction spend guard before provider calls**: `processMenuImagesJob` reuses the existing project read before extraction, reads the master policy for linked outlet projects, and fails disabled outlet extraction jobs before calling the extractor.
 - **Extraction job tenant/store guard**: Firestore rules require `menuImageProcessingJobs.sId` to match the authenticated Firebase token `storeId`, so an outlet cannot queue extraction jobs under another store's ID.
 
@@ -118,22 +120,25 @@ Assumption for INR estimate: ₹83/USD.
 | Fetch master projects        | `projects/{tId}/{sId}` (query) | POST /api/outlets/create     | N         | `src/app/api/outlets/create/route.ts:94`     |
 | Get storesList (create)      | `tenants/{tId}`                | POST /api/outlets/create     | 1         | `src/app/api/outlets/create/route.ts:100`    |
 | Get store count (in tx)      | `platformSummary/summary`      | POST /api/outlets/create     | 1         | `src/app/api/outlets/create/route.ts:105`    |
-| Check isMaster (deactivate)  | `stores/{sId}`                 | POST /api/outlets/deactivate | 1         | `src/app/api/outlets/deactivate/route.ts:39` |
-| Get storesList (deactivate)  | `tenants/{tId}`                | POST /api/outlets/deactivate | 1         | `src/app/api/outlets/deactivate/route.ts:45` |
+| Check isMaster (deactivate)  | `stores/{sId}`                 | POST /api/outlets/deactivate | 1         | `src/app/api/outlets/deactivate/route.ts` |
+| Get storesList (deactivate)  | `tenants/{tId}`                | POST /api/outlets/deactivate | 1         | `src/app/api/outlets/deactivate/route.ts` |
+| Validate target outlet doc (deactivate) | `stores/{outletSId}` | POST /api/outlets/deactivate | 1 | Canonical tenant/master check before Admin writes. |
+| Recheck target and storesList (deactivate tx) | `stores/{outletSId}` + `tenants/{tId}` | POST /api/outlets/deactivate | 2 | Transaction recheck prevents stale-list cross-store writes. |
 | Check caller store permission (switch) | `stores/{sId}`        | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts`     |
 | Get storesList (switch)      | `tenants/{tId}`                | POST /api/auth/switch-store  | 1         | `src/app/api/auth/switch-store/route.ts`     |
 | Read outlet for rename       | `stores/{outletSId}`           | POST /api/outlets/rename     | 1         | `src/app/api/outlets/rename/route.ts`        |
 | Read tenant list for rename  | `tenants/{tId}`                | POST /api/outlets/rename tx  | 1         | `src/app/api/outlets/rename/route.ts`        |
 | Outlet sub fallback          | `tenants/{tId}`                | Outlet loads billing         | 1         | `src/database/subscriptions/index.ts:127`    |
 | Master sub fetch (fallback)  | `subscriptions` (query)        | Outlet loads billing         | 1-2       | `src/database/subscriptions/index.ts:137`    |
-| Get storesList (propagation) | `tenants/{tId}`                | Master creates project       | 1         | `src/database/multiOutlet/propagation.ts:34` |
+| Get storesList (propagation) | `tenants/{tId}`                | Master creates project       | 1         | `src/database/multiOutlet/propagation.ts`; filters active non-master outlets only. |
+| Master delete linked-outlet guard | `tenants/{tId}` + active outlet project collections | Master project delete | 1 + active outlet count | `src/database/multiOutlet/index.ts`; inactive outlets are skipped to avoid stale cleanup blockers and extra reads. |
 
 ### Writes (Feature #4C)
 
 | Operation                      | Collection                             | Trigger                      | Docs Written         | File                                      |
 | ------------------------------ | -------------------------------------- | ---------------------------- | -------------------- | ----------------------------------------- |
 | Acquire lock (in tx)           | `tenants/{tId}`                        | POST /api/outlets/create     | 1                    | `route.ts:76`                             |
-| Update sub quantity            | `subscriptions/{subId}`                | POST /api/outlets/create     | 0-1                  | Runs only when Razorpay-backed quantity must increase and provider update succeeds. Manual/offline subscriptions consume already-paid capacity and do not write quantity during outlet creation. UPI-backed provider-update failures route to Billing replacement checkout before store creation. |
+| Update sub quantity            | `subscriptions/{subId}`                | POST /api/outlets/create     | 0-1                  | Runs only when `ENABLE_OUTLET_BILLING` is enabled and Razorpay-backed quantity must increase after provider update succeeds. Manual/offline subscriptions consume already-paid capacity and do not write quantity during outlet creation. UPI-backed provider-update failures route to Billing replacement checkout before store creation. |
 | Create outlet store (in tx)    | `stores/{newSId}`                      | POST /api/outlets/create     | 1                    | `route.ts:114`                            |
 | Sync storesSummary (in tx)     | `platformSummary/storesSummary`        | POST /api/outlets/create     | 1                    | `route.ts:132`                            |
 | Legacy master repair (in tx)   | `stores/{sId}` + `tenants/{tId}` + `platformSummary/storesSummary` | First outlet or policy save on legacy single-store tenant | 3 | `src/app/api/outlets/create/route.ts`, `src/app/api/outlets/policy/route.ts` |
@@ -151,8 +156,8 @@ Assumption for INR estimate: ₹83/USD.
 | Rename outlet (in tx)          | `stores/{outletSId}`                   | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
 | Sync renamed outlet (in tx)    | `platformSummary/storesSummary`        | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
 | Update renamed storesList (in tx) | `tenants/{tId}`                     | POST /api/outlets/rename     | 1                    | `src/app/api/outlets/rename/route.ts`     |
-| Propagate project              | `projects/{tId}/{outletSId}/{id}`      | Master creates project       | 1 per outlet         | `propagation.ts:60`                       |
-| Sync propagated summary        | `platformSummary/projects_{outletSId}` | Master creates project       | 1 per outlet         | `propagation.ts:77`                       |
+| Propagate project              | `projects/{tId}/{outletSId}/{id}`      | Master creates project       | 1 per active outlet  | `propagation.ts`; inactive outlets are skipped. |
+| Sync propagated summary        | `platformSummary/projects_{outletSId}` | Master creates project       | 1 per active outlet  | `propagation.ts`; inactive outlets are skipped. |
 | Set isMaster (onboarding)      | `stores/{sId}` + `tenants/{tId}`       | Onboarding                   | 2                    | `onboarding/create-subscription/route.ts` |
 | Set sub quantity               | `subscriptions/{subId}`                | Subscription creation        | 1                    | Onboarding creates `quantity=1`; `/api/razorpay/create-subscription` accepts `quantity` for plan changes and paid-location replacement checkouts. |
 
@@ -177,3 +182,11 @@ UPI-backed Razorpay subscriptions can be active but still reject provider quanti
 | `updateSubscription`                                   | `src/database/subscriptions/index.ts:168` | Write (setDoc merge)         |
 | `propagateNewProjectToOutlets`                         | `src/database/multiOutlet/propagation.ts` | Read tenant + Write projects |
 | `calculateProration`                                   | `src/utils/razorpay.ts:52`                | In-memory (no Firebase)      |
+
+### June 11, 2026 Audit Notes
+
+- Deactivation now verifies the canonical outlet store document before Admin writes and rechecks target/tenant state inside the transaction. This adds up to three reads but prevents stale `storesList` from becoming the only cross-store authority.
+- Project and master brand propagation skip inactive outlets. This reduces writes, summary writes, and cache revalidation after deactivation.
+- Master delete protection scans active non-master outlet project collections only. Inactive outlet archives no longer block master cleanup or create unnecessary N+1 reads.
+- Desktop and mobile Locations count active outlets, not historical inactive outlets, in billing/location summaries.
+- Inactive outlet rename is rejected by the server route.

@@ -1,9 +1,9 @@
 # Menu Correctness Engine — Implementation Blueprint
 
-**Version:** 3.1  
-**Status:** ✅ IMPLEMENTED — Flag OFF (ENABLE_MCE: false)  
-**Audience:** Developers  
-**Last Updated:** February 14, 2026
+**Version:** 3.1
+**Status:** ✅ IMPLEMENTED — Active (`ENABLE_MCE: true`)
+**Audience:** Developers
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -197,7 +197,7 @@ MCE adds zero new Firestore collections. Verification metadata is stored on the 
 
 ### `_mce` Field on Existing Project Document
 
-**Collection:** `projects/{tId}/{sId}` (existing)  
+**Collection:** `projects/{tId}/{sId}` (existing)
 **Field:** `_mce` (new field added to existing document)
 
 ```typescript
@@ -446,16 +446,16 @@ Master saves → _mce stamped on master project
  * - No _mce field written
  * - No validation overhead
  */
-ENABLE_MCE: false,
+ENABLE_MCE: true,
 ```
 
-### Rollout Plan
+### Rollout Status
 
 | Phase   | Scope                | Duration | Success Criteria                             |
 | ------- | -------------------- | -------- | -------------------------------------------- |
-| Phase 0 | Internal stores only | 1 week   | Zero false positives, < 5% warning rate      |
-| Phase 1 | 10% of active stores | 2 weeks  | No owner-reported issues, validation < 100ms |
-| Phase 2 | 100% rollout         | 1 week   | Stable, all metrics green                    |
+| Phase 0 | Internal stores only | Complete | No architecture change required              |
+| Phase 1 | 10% of active stores | Complete | No extra Firebase cost                       |
+| Phase 2 | 100% rollout         | Active   | Runtime flag is `true` in `src/config/features.ts` |
 
 ---
 
@@ -548,7 +548,7 @@ describe("CSR — Law 5: Structural Integrity", () => {
 
 ```typescript
 // Manual verification:
-// 1. Enable ENABLE_MCE flag
+// 1. Confirm ENABLE_MCE flag is true
 // 2. Save a valid menu → check _mce.verified === true
 // 3. Save menu with empty item name → check _mce.verified === false
 // 4. Disable flag → verify no _mce field written
@@ -620,5 +620,5 @@ describe("CSR — Law 5: Structural Integrity", () => {
 
 ---
 
-_Document Classification: Internal — Engineering Team_  
+_Document Classification: Internal — Engineering Team_
 _Prerequisite: Read `menu-correctness-engine_spec.md` first_

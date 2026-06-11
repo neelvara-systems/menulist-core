@@ -46,13 +46,14 @@ const DEFAULT_QUALITY_READ_LIMIT = 150;
 
 function jobDocToSummary(id: string, data: any): ExtractionJobSummary {
     const result = data.result;
+    const summary = result?.summary || {};
     return {
         id,
         projectId: data.projectId || '',
         status: data.status || 'unknown',
         filesCount: data.files?.length || 0,
-        itemsExtracted: result?.combinedData?.items?.length || 0,
-        categoriesExtracted: result?.combinedData?.categories?.length || 0,
+        itemsExtracted: result?.combinedData?.items?.length || summary.itemsCount || 0,
+        categoriesExtracted: result?.combinedData?.categories?.length || summary.categoriesCount || 0,
         qualityScore: result?.qualityScore ?? null,
         processingTime: result?.processingTime ?? null,
         createdAt: data.createdAt,
@@ -266,7 +267,10 @@ export async function getExtractionJobDetails(
             targetLanguages: data.targetLanguages || [],
             skipProjectSave: data.skipProjectSave === true,
             source: data.source || null,
+            sourceFingerprint: data.sourceFingerprint || null,
+            sourceFingerprintVersion: data.sourceFingerprintVersion || null,
             sourceMetadata: data.sourceMetadata || null,
+            timings: data.timings || null,
             result: data.result || null,
             error: data.error || null,
             fileResults: data.fileResults || null,

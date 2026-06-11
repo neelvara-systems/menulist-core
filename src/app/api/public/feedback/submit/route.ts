@@ -13,12 +13,48 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
-import { submitGuestFeedback } from '@database/guestFeedback';
+import { logFeedbackMOLEventAdmin, submitGuestFeedbackAdmin } from '@database/guestFeedback/server';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { secureError } from '@lib/security/secureLogger';
 import { guestFeedbackSubmitSchema } from '@lib/validation/apiSchemas';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPublicRateLimit, sanitizeString, validateHoneypot } from 'src/middleware/publicApi';
+
+type EffectiveFeedbackDefaults = {
+    collectComment: boolean;
+    collectCommentRequired: boolean;
+    collectName: boolean;
+    collectNameRequired: boolean;
+    collectPhone: boolean;
+    collectPhoneRequired: boolean;
+    collectEmail: boolean;
+    collectEmailRequired: boolean;
+};
+
+function resolveFeedbackDefaults(raw: any): EffectiveFeedbackDefaults {
+    return {
+        collectComment: raw?.collectComment !== false,
+        collectCommentRequired: raw?.collectCommentRequired === true,
+        collectName: raw?.collectName === true,
+        collectNameRequired: raw?.collectNameRequired === true,
+        collectPhone: raw?.collectPhone !== false,
+        collectPhoneRequired: raw?.collectPhoneRequired === true,
+        collectEmail: raw?.collectEmail !== false,
+        collectEmailRequired: raw?.collectEmailRequired === true,
+    };
+}
+
+function requiredFieldError(field: string, message: string) {
+    return NextResponse.json(
+        {
+            success: false,
+            error: 'Validation failed.',
+            details: [{ field, message }],
+        },
+        { status: 400 },
+    );
+}
 
 /**
  * POST /api/public/feedback/submit
@@ -79,7 +115,7 @@ export async function POST(req: NextRequest) {
 
     // 6. Verify project exists and has feedback enabled
     // Uses correct nested path: projects/{tId}/{sId}/{projectId}
-    let storeFeedbackDefaults: { collectComment?: boolean; collectCommentRequired?: boolean } | null = null;
+    let storeFeedbackDefaults: EffectiveFeedbackDefaults | null = null;
     let reviewUrl: string | null = null;
 
     try {
@@ -105,6 +141,12 @@ export async function POST(req: NextRequest) {
         }
 
         const projectData = projectDoc.data();
+        if (projectData?.active === false || projectData?.deleted === true) {
+            return NextResponse.json(
+                { success: false, error: 'Invalid project.' },
+                { status: 400 }
+            );
+        }
 
         // Check if feedback is disabled for this project
         if (projectData?.menuSettings?.feedback === false) {
@@ -122,6 +164,21 @@ export async function POST(req: NextRequest) {
         }
 
         const storeData = storeDoc.data();
+        const storeTenantId = Number(storeData?.tenantId ?? storeData?.tId ?? 0);
+        if (storeTenantId !== Number(data.tId)) {
+            return NextResponse.json(
+                { success: false, error: 'Invalid store.' },
+                { status: 400 }
+            );
+        }
+
+        if (storeData?.active === false || storeData?.deleted === true || isPlatformEntityBlocked(storeData)) {
+            return NextResponse.json(
+                { success: false, error: 'Invalid store.' },
+                { status: 400 }
+            );
+        }
+
         if (storeData?.feedbackEnabled === false) {
             return NextResponse.json(
                 { success: false, error: 'Feedback is disabled for this business.' },
@@ -129,7 +186,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        storeFeedbackDefaults = storeData?.feedbackDefaults || null;
+        storeFeedbackDefaults = resolveFeedbackDefaults(storeData?.feedbackDefaults || null);
         reviewUrl = storeData?.reviewUrl || storeData?.publicPresence?.googleReviewUrl || null;
     } catch (error) {
         secureError(
@@ -145,35 +202,36 @@ export async function POST(req: NextRequest) {
 
     // 7. Sanitize message (XSS prevention)
     const sanitizedMessage = sanitizeString(data.message);
+    const sanitizedName = sanitizeString(data.customerName);
+    const sanitizedPhone = sanitizeString(data.customerPhone);
+    const sanitizedEmail = sanitizeString(data.customerEmail)?.toLowerCase();
 
     // 8. Validate store-level feedback defaults
-    const commentEnabled = storeFeedbackDefaults?.collectComment !== false;
-    const effectiveMessage = commentEnabled ? sanitizedMessage : undefined;
+    const defaults = storeFeedbackDefaults || resolveFeedbackDefaults(null);
+    const effectiveMessage = defaults.collectComment ? sanitizedMessage : undefined;
+    const effectiveName = defaults.collectName ? sanitizedName : undefined;
+    const effectivePhone = defaults.collectPhone ? sanitizedPhone : undefined;
+    const effectiveEmail = defaults.collectEmail ? sanitizedEmail : undefined;
 
-    if (commentEnabled && storeFeedbackDefaults?.collectCommentRequired && !effectiveMessage) {
-        return NextResponse.json(
-            {
-                success: false,
-                error: 'Validation failed.',
-                details: [{ field: 'message', message: 'Comment is required.' }],
-            },
-            { status: 400 }
-        );
-    }
+    if (defaults.collectCommentRequired && !effectiveMessage) return requiredFieldError('message', 'Comment is required.');
+    if (defaults.collectNameRequired && !effectiveName) return requiredFieldError('customerName', 'Name is required.');
+    if (defaults.collectPhoneRequired && !effectivePhone) return requiredFieldError('customerPhone', 'Phone is required.');
+    if (defaults.collectEmailRequired && !effectiveEmail) return requiredFieldError('customerEmail', 'Email is required.');
 
     // 9. Submit feedback
     try {
-        const feedback = await submitGuestFeedback({
+        const feedback = await submitGuestFeedbackAdmin({
             tId: data.tId,
             sId: data.sId,
             projectId: data.projectId,
             rating: data.rating as 1 | 2 | 3 | 4 | 5,
             source: data.source,
             message: effectiveMessage,
-            customerName: sanitizeString(data.customerName),
-            customerPhone: data.customerPhone,
-            customerEmail: data.customerEmail?.toLowerCase(),
+            customerName: effectiveName,
+            customerPhone: effectivePhone,
+            customerEmail: effectiveEmail,
         });
+        void logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', data.tId, data.sId, data.projectId, data.rating);
 
         return NextResponse.json(
             {

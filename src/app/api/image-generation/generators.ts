@@ -10,18 +10,24 @@
  */
 
 import { GenerateContentResponse, GenerateImagesResponse, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
+import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { getImageAsBase64 } from "@lib/apiUtils";
+import { mapWithConcurrency } from "@lib/async/boundedConcurrency";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
 import { GenerateImageViaApiPayloadGenerationConfiType } from "@template/main-app/projects/types";
 import { writeLogEntry } from 'logs/utils';
 
 export type AI_MODEL_TYPE = "GEMINI" | "IMAGEN";
+export type GeneratedImagePayload = { base64: string; mimeType: string; uploadedUrl?: string };
+export type ImageProviderResponse = GenerateContentResponse | GenerateImagesResponse;
 
 export const IMAGE_AI_MODELS = {
     GEMINI: "gemini-2.5-flash-image",
     IMAGEN: "imagen-3.0-generate-002"
 } as const;
+
+const IMAGE_PROMPT_CONCURRENCY = 2;
 
 const SYSTEM_INSTRUCTION = `You are a professional image generation assistant for businesses (restaurants, spas, salons, etc.).
 
@@ -102,7 +108,14 @@ export async function generateGeminiImageViaFlash(
         }
 
         logger.info('Image generation completed (Gemini Flash)', { imageCount: generatedImages.length });
-        await writeLogEntry({ logFileName: logFile, logType: 'GEMINI_FLASH_SUCCESS', data: { prompt, response } });
+        await writeLogEntry({
+            logFileName: logFile,
+            logType: 'GEMINI_FLASH_SUCCESS',
+            data: {
+                promptLength: prompt.length,
+                response: summarizeImageProviderResponse(response),
+            },
+        });
         return { images: generatedImages, response };
     } catch (error) {
         logger.error('Error generating image (Gemini Flash)', error);
@@ -136,7 +149,14 @@ export async function generateGeminiImageViaImagen3(
             }));
         }
         logger.info('Image generation completed (Imagen 3)', { imageCount: generatedImages.length });
-        await writeLogEntry({ logFileName: logFile, logType: 'IMAGEN3_SUCCESS', data: { prompt, response } });
+        await writeLogEntry({
+            logFileName: logFile,
+            logType: 'IMAGEN3_SUCCESS',
+            data: {
+                promptLength: prompt.length,
+                response: summarizeImageProviderResponse(response),
+            },
+        });
         return { images: generatedImages, response };
     } catch (error) {
         logger.error('Error generating image (Imagen 3)', error);
@@ -156,4 +176,52 @@ export function selectImageGenerator(
     return (aiModel === "GEMINI" || Boolean(generationConfig?.referanceImage?.url))
         ? generateGeminiImageViaFlash
         : generateGeminiImageViaImagen3;
+}
+
+export async function runImageGenerationPrompts({
+    aiModel,
+    generationConfig,
+    logFile,
+    prompts,
+}: {
+    aiModel: AI_MODEL_TYPE;
+    generationConfig: GenerateImageViaApiPayloadGenerationConfiType;
+    logFile: string;
+    prompts: string[];
+}): Promise<{
+    failedPromptCount: number;
+    images: GeneratedImagePayload[];
+    promptCount: number;
+    responses: ImageProviderResponse[];
+}> {
+    if (!prompts.length) {
+        return {
+            failedPromptCount: 0,
+            images: [],
+            promptCount: 0,
+            responses: [],
+        };
+    }
+
+    const imageGenerator = selectImageGenerator(aiModel, generationConfig);
+    const runPrompt = async (prompt: string) => {
+        const result = await imageGenerator(prompt, generationConfig, logFile);
+        return result || null;
+    };
+
+    const results = prompts.length === 1
+        ? [await runPrompt(prompts[0])]
+        : await mapWithConcurrency(prompts, IMAGE_PROMPT_CONCURRENCY, runPrompt);
+
+    const successfulResults = results.filter(Boolean) as Array<{
+        images: GeneratedImagePayload[];
+        response: ImageProviderResponse;
+    }>;
+
+    return {
+        failedPromptCount: prompts.length - successfulResults.length,
+        images: successfulResults.flatMap((result) => result.images || []),
+        promptCount: prompts.length,
+        responses: successfulResults.map((result) => result.response),
+    };
 }

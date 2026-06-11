@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { PRODUCT_IDS } from '@constant/product';
+import { FEATURE_FLAGS } from '@config/features';
 import {
   getOwnerNotificationRegistryEntry,
   OWNER_NOTIFICATION_COLLECTIONS,
@@ -556,6 +557,10 @@ async function recordManualHandoff(params: {
 }
 
 export const GET = withAuth(async (request, session) => {
+  if (!FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS || !FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD) {
+    return NextResponse.json({ error: 'Owner notification ops dashboard is disabled' }, { status: 404 });
+  }
+
   const params = validateAPIInput(GetQuerySchema, Object.fromEntries(request.nextUrl.searchParams.entries()));
   if (params.success === false) {
     logger.security('Owner Notification Ops Query Validation Failed', {
@@ -623,6 +628,10 @@ export const GET = withAuth(async (request, session) => {
 }, { requiredPlatformRole: 'PLATFORM' });
 
 export const POST = withAuth(async (request, session) => {
+  if (!FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS || !FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATION_OPS_DASHBOARD) {
+    return NextResponse.json({ error: 'Owner notification ops dashboard is disabled' }, { status: 404 });
+  }
+
   const body = await request.json().catch(() => ({}));
   const validation = validateAPIInput(PostActionSchema, body);
   if (validation.success === false) {

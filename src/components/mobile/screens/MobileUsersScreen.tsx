@@ -19,6 +19,14 @@ type StaffLoginDetailsPopupState = StaffLoginDetailsShareInput & {
     title: string;
 };
 
+const userHasCurrentStore = (user: any, storeId: number | string | undefined) => (
+    Boolean(storeId)
+    && (
+        user?.storeIds?.some((id: any) => Number(id) === Number(storeId))
+        || user?.stores?.some((store: any) => Number(store?.storeId) === Number(storeId))
+    )
+);
+
 function StaffLoginCopyRow({
     label,
     onCopy,
@@ -276,7 +284,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 tenantId: storeDetails?.tenantId,
                 userId: user.id,
             });
-            setUsersList(response.user?.deleted
+            setUsersList(response.user?.deleted || !userHasCurrentStore(response.user, storeDetails?.storeId)
                 ? users.filter((item: any) => item.id !== user.id)
                 : users.map((item: any) => item.id === user.id ? response.user : item));
             setSelectedUser(null);

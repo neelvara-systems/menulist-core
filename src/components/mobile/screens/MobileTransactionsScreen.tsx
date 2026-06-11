@@ -57,14 +57,14 @@ type LanguageValue = {
 
 const PAGE_SIZE = 15;
 
-const formatLanguage = (language: LanguageValue) => {
-    if (!language) return 'Not recorded';
+const formatLanguage = (language: LanguageValue, notRecorded: string) => {
+    if (!language) return notRecorded;
     if (typeof language === 'string') return language;
     if (language.name && language.code) return `${language.name} (${language.code})`;
-    return language.name || language.code || 'Not recorded';
+    return language.name || language.code || notRecorded;
 };
 
-const getDescriptionRows = (tx: TransactionItem) => {
+const getDescriptionRows = (tx: TransactionItem, unknownItem: string) => {
     const rows: Array<{ description: string; itemId: string; itemName: string; language: string }> = [];
     if (!tx.clientResponse || typeof tx.clientResponse !== 'object') return rows;
 
@@ -76,7 +76,7 @@ const getDescriptionRows = (tx: TransactionItem) => {
             rows.push({
                 description: typeof description === 'string' ? description : JSON.stringify(description),
                 itemId,
-                itemName: item?.name || 'Unknown item',
+                itemName: item?.name || unknownItem,
                 language,
             });
         });
@@ -85,12 +85,12 @@ const getDescriptionRows = (tx: TransactionItem) => {
     return rows;
 };
 
-const getTranslationRows = (tx: TransactionItem) => {
+const getTranslationRows = (tx: TransactionItem, notRecorded: string) => {
     if (!tx.inputStrings || typeof tx.inputStrings !== 'object') return [];
     return Object.entries(tx.inputStrings).map(([key, sourceText]) => ({
         key,
         sourceText,
-        translatedText: tx.clientResponse?.translations?.[key] || 'Not recorded',
+        translatedText: tx.clientResponse?.translations?.[key] || notRecorded,
     }));
 };
 
@@ -164,10 +164,10 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
 
     const actionOptions = useMemo(() => (
         Object.values(AI_ACTIONS_TYPES as Record<string, string>).map((value) => ({
-            label: formatAiOperationActionLabel(value),
+            label: formatAiOperationActionLabel(value, t),
             value,
         }))
-    ), []);
+    ), [t]);
 
     const hasActiveFilters = Boolean(actionFilter || dateRange);
     const loadedCreditsUsed = useMemo(() => (
@@ -185,11 +185,11 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
     };
 
     const formatCreditsUsed = (tx: TransactionItem) => {
-        return formatAiOperationCredits(Number(tx.unitsConsumed || 0));
+        return formatAiOperationCredits(Number(tx.unitsConsumed || 0), t);
     };
 
     const formatOptionalPaise = (value?: number) => (
-        value === undefined || value === null ? 'Not recorded' : formatInrPaise(value)
+        value === undefined || value === null ? t('notRecorded') : formatInrPaise(value)
     );
 
     const openFilterSheet = () => {
@@ -201,12 +201,12 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
 
     const applyFilters = () => {
         if ((draftStartDate && !draftEndDate) || (!draftStartDate && draftEndDate)) {
-            Toast.show({ content: 'Choose both start and end dates.', duration: 1800 });
+            Toast.show({ content: t('chooseBothDates'), duration: 1800 });
             return;
         }
 
         if (draftStartDate && draftEndDate && dayjs(draftEndDate).isBefore(dayjs(draftStartDate), 'day')) {
-            Toast.show({ content: 'End date must be after the start date.', duration: 1800 });
+            Toast.show({ content: t('endDateAfterStart'), duration: 1800 });
             return;
         }
 
@@ -230,21 +230,21 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
 
     const renderDetailRows = (tx: TransactionItem) => {
         if (tx.action === AI_ACTIONS_TYPES.ADD_DESCRIPTION || tx.action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION) {
-            const rows = getDescriptionRows(tx);
+            const rows = getDescriptionRows(tx, t('unknownItem'));
 
             return (
                 <Card>
                     <Flex gap={12} vertical>
-                        <Title level={5} style={{ margin: 0 }}>Descriptions</Title>
+                        <Title level={5} style={{ margin: 0 }}>{t('descriptions')}</Title>
                         <Flex gap={8} wrap="wrap">
-                            <Tag>Source: {formatLanguage(tx.sourceLang)}</Tag>
+                            <Tag>{t('sourceWithValue', { value: formatLanguage(tx.sourceLang, t('notRecorded')) })}</Tag>
                             {Array.isArray(tx.targetLang) ? tx.targetLang.map((language) => (
-                                <Tag key={formatLanguage(language)}>{formatLanguage(language)}</Tag>
+                                <Tag key={formatLanguage(language, t('notRecorded'))}>{formatLanguage(language, t('notRecorded'))}</Tag>
                             )) : null}
                             {tx.contentLength ? <Tag>{tx.contentLength}</Tag> : null}
                         </Flex>
                         {rows.length === 0 ? (
-                            <Text type="secondary">No descriptions recorded.</Text>
+                            <Text type="secondary">{t('noDescriptionsRecorded')}</Text>
                         ) : rows.slice(0, 8).map((row) => (
                             <Card key={`${row.itemId}-${row.language}`} style={{ backgroundColor: token.colorFillQuaternary }}>
                                 <Flex gap={4} vertical>
@@ -254,26 +254,28 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                                 </Flex>
                             </Card>
                         ))}
-                        {rows.length > 8 ? <Text type="secondary">{rows.length - 8} more descriptions are saved in desktop details.</Text> : null}
+                        {rows.length > 8 ? <Text type="secondary">{t('moreDescriptionsSaved', { count: rows.length - 8 })}</Text> : null}
                     </Flex>
                 </Card>
             );
         }
 
         if (tx.action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION || tx.action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION) {
-            const rows = getTranslationRows(tx);
-            const targetLanguage = Array.isArray(tx.targetLang) ? tx.targetLang.map(formatLanguage).join(', ') : formatLanguage(tx.targetLang);
+            const rows = getTranslationRows(tx, t('notRecorded'));
+            const targetLanguage = Array.isArray(tx.targetLang)
+                ? tx.targetLang.map((language) => formatLanguage(language, t('notRecorded'))).join(', ')
+                : formatLanguage(tx.targetLang, t('notRecorded'));
 
             return (
                 <Card>
                     <Flex gap={12} vertical>
-                        <Title level={5} style={{ margin: 0 }}>Language Details</Title>
+                        <Title level={5} style={{ margin: 0 }}>{t('languageDetails')}</Title>
                         <Flex gap={8} wrap="wrap">
-                            <Tag>Source: {formatLanguage(tx.sourceLang)}</Tag>
-                            <Tag>Target: {targetLanguage}</Tag>
+                            <Tag>{t('sourceWithValue', { value: formatLanguage(tx.sourceLang, t('notRecorded')) })}</Tag>
+                            <Tag>{t('targetWithValue', { value: targetLanguage })}</Tag>
                         </Flex>
                         {rows.length === 0 ? (
-                            <Text type="secondary">No translation rows recorded.</Text>
+                            <Text type="secondary">{t('noTranslationRowsRecorded')}</Text>
                         ) : rows.slice(0, 8).map((row) => (
                             <Card key={row.key} style={{ backgroundColor: token.colorFillQuaternary }}>
                                 <Flex gap={4} vertical>
@@ -283,7 +285,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                                 </Flex>
                             </Card>
                         ))}
-                        {rows.length > 8 ? <Text type="secondary">{rows.length - 8} more rows are saved in desktop details.</Text> : null}
+                        {rows.length > 8 ? <Text type="secondary">{t('moreRowsSaved', { count: rows.length - 8 })}</Text> : null}
                     </Flex>
                 </Card>
             );
@@ -296,21 +298,21 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
             return (
                 <Card>
                     <Flex gap={12} vertical>
-                        <Title level={5} style={{ margin: 0 }}>Image Processing</Title>
+                        <Title level={5} style={{ margin: 0 }}>{t('imageProcessing')}</Title>
                         {tx.files?.length ? (
                             <Flex gap={8} vertical>
-                                <Text strong>Input files</Text>
+                                <Text strong>{t('inputFiles')}</Text>
                                 {tx.files.slice(0, 4).map((file, index) => (
-                                    <Text key={`${file.uid || file.name || index}`} type="secondary">{file.name || `File ${index + 1}`}</Text>
+                                    <Text key={`${file.uid || file.name || index}`} type="secondary">{file.name || t('fileNumber', { number: index + 1 })}</Text>
                                 ))}
                             </Flex>
                         ) : null}
                         {tx.targetLanguages?.length ? (
                             <Flex gap={8} wrap="wrap">
-                                {tx.targetLanguages.map((language) => <Tag key={formatLanguage(language)}>{formatLanguage(language)}</Tag>)}
+                                {tx.targetLanguages.map((language) => <Tag key={formatLanguage(language, t('notRecorded'))}>{formatLanguage(language, t('notRecorded'))}</Tag>)}
                             </Flex>
                         ) : null}
-                        <Text>{items.length.toLocaleString()} items and {categories.length.toLocaleString()} categories were extracted.</Text>
+                        <Text>{t('itemsCategoriesExtracted', { items: items.length.toLocaleString(), categories: categories.length.toLocaleString() })}</Text>
                     </Flex>
                 </Card>
             );
@@ -319,8 +321,8 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
         return (
             <Card>
                 <Flex gap={6} vertical>
-                    <Title level={5} style={{ margin: 0 }}>Operation Details</Title>
-                    <Text type="secondary">No extra details are recorded for this action.</Text>
+                    <Title level={5} style={{ margin: 0 }}>{t('operationDetails')}</Title>
+                    <Text type="secondary">{t('noExtraDetails')}</Text>
                 </Flex>
             </Card>
         );
@@ -333,19 +335,19 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
         return (
             <Popup bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setSelectedTransaction(null)} visible={!!selectedTransaction}>
                 <NavBar backIcon={<LuX size={18} />} onBack={() => setSelectedTransaction(null)}>
-                    Transaction details
+                    {t('transactionDetails')}
                 </NavBar>
                 <Flex gap={12} style={{ maxHeight: 'calc(88vh - 57px)', overflowY: 'auto', padding: 16 }} vertical>
                     <Card>
                         <Flex gap={12} vertical>
                             <Flex align="center" gap={8} justify="space-between">
-                                <Tag color="primary">{formatAiOperationActionLabel(tx.action)}</Tag>
+                                <Tag color="primary">{formatAiOperationActionLabel(tx.action, t)}</Tag>
                                 <Text strong style={{ color: Number(tx.unitsConsumed || 0) > 0 ? token.colorSuccess : token.colorTextSecondary }}>{formatCreditsUsed(tx)}</Text>
                             </Flex>
-                            <Text>{getAiOperationOwnerSummary(tx)}</Text>
+                            <Text>{getAiOperationOwnerSummary(tx, t)}</Text>
                             <List>
-                                <List.Item title="Created on" extra={<Text>{getFormatedDateAndTime(formatter, tx.createdOn)}</Text>} />
-                                <List.Item title="Processing time" extra={<Text>{formatProcessingTime(tx.processingTime)}</Text>} />
+                                <List.Item title={t('createdOn')} extra={<Text>{getFormatedDateAndTime(formatter, tx.createdOn)}</Text>} />
+                                <List.Item title={t('processingTime')} extra={<Text>{formatProcessingTime(tx.processingTime)}</Text>} />
                             </List>
                         </Flex>
                     </Card>
@@ -353,19 +355,19 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                     {isPlatform ? (
                         <Card>
                             <Flex gap={10} vertical>
-                                <Title level={5} style={{ margin: 0 }}>Platform Debug</Title>
+                                <Title level={5} style={{ margin: 0 }}>{t('platformDebug')}</Title>
                                 <List>
-                                    <List.Item title="Owner charge recorded" extra={<Text>{formatOptionalPaise(tx.totalCharge)}</Text>} />
-                                    <List.Item title="Actual provider cost" extra={<Text>{formatOptionalPaise(tx.realCostPaise)}</Text>} />
-                                    <List.Item title="Configured owner charge" extra={<Text>{formatOptionalPaise(tx.ourChargePaise)}</Text>} />
-                                    <List.Item title="Configured margin" extra={<Text>{formatOptionalPaise(tx.marginPaise)}</Text>} />
-                                    <List.Item title="Token credits" extra={<Text>{Number(tx.totalCredits || 0).toLocaleString()}</Text>} />
-                                    <List.Item title="Tokens" extra={<Text>{Number(tx.totalTokenCount || 0).toLocaleString()}</Text>} />
-                                    <List.Item title="Prompt tokens" extra={<Text>{Number(tx.promptTokenCount || 0).toLocaleString()}</Text>} />
-                                    <List.Item title="Output tokens" extra={<Text>{Number(tx.candidatesTokenCount || 0).toLocaleString()}</Text>} />
-                                    {tx.model ? <List.Item title="Model" extra={<Text>{tx.model}</Text>} /> : null}
-                                    {tx.projectId ? <List.Item title="Project ID" extra={<Text>{tx.projectId}</Text>} /> : null}
-                                    {tx.fileId ? <List.Item title="File ID" extra={<Text>{tx.fileId}</Text>} /> : null}
+                                    <List.Item title={t('ownerChargeRecorded')} extra={<Text>{formatOptionalPaise(tx.totalCharge)}</Text>} />
+                                    <List.Item title={t('actualProviderCost')} extra={<Text>{formatOptionalPaise(tx.realCostPaise)}</Text>} />
+                                    <List.Item title={t('configuredOwnerCharge')} extra={<Text>{formatOptionalPaise(tx.ourChargePaise)}</Text>} />
+                                    <List.Item title={t('configuredMargin')} extra={<Text>{formatOptionalPaise(tx.marginPaise)}</Text>} />
+                                    <List.Item title={t('tokenCredits')} extra={<Text>{Number(tx.totalCredits || 0).toLocaleString()}</Text>} />
+                                    <List.Item title={t('tokens')} extra={<Text>{Number(tx.totalTokenCount || 0).toLocaleString()}</Text>} />
+                                    <List.Item title={t('promptTokens')} extra={<Text>{Number(tx.promptTokenCount || 0).toLocaleString()}</Text>} />
+                                    <List.Item title={t('outputTokens')} extra={<Text>{Number(tx.candidatesTokenCount || 0).toLocaleString()}</Text>} />
+                                    {tx.model ? <List.Item title={t('model')} extra={<Text>{tx.model}</Text>} /> : null}
+                                    {tx.projectId ? <List.Item title={t('projectId')} extra={<Text>{tx.projectId}</Text>} /> : null}
+                                    {tx.fileId ? <List.Item title={t('fileId')} extra={<Text>{tx.fileId}</Text>} /> : null}
                                 </List>
                                 <pre style={{ backgroundColor: token.colorFillQuaternary, borderRadius: 6, fontSize: 11, margin: 0, maxHeight: 260, overflow: 'auto', padding: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                     {JSON.stringify(tx, null, 2)}
@@ -401,7 +403,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                     <Card>
                         <Flex align="center" justify="space-between">
                             <Flex gap={6} wrap="wrap">
-                                {actionFilter ? <Tag color="primary">{formatAiOperationActionLabel(actionFilter)}</Tag> : null}
+                                {actionFilter ? <Tag color="primary">{formatAiOperationActionLabel(actionFilter, t)}</Tag> : null}
                                 {dateRange ? <Tag>{formatDateRange(dateRange[0]?.toDate(), dateRange[1]?.toDate(), formatter)}</Tag> : null}
                             </Flex>
                             <Button fill="none" onClick={resetFilters} size="small" style={{ minHeight: 44 }}>
@@ -419,7 +421,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                     <Card>
                         <Flex align="center" gap={12} vertical>
                             <LuReceipt color={token.colorTextTertiary} size={36} />
-                            <Title level={5} style={{ margin: 0 }}>No enhancement activity yet.</Title>
+                            <Title level={5} style={{ margin: 0 }}>{t('noEnhancementActivityYet')}</Title>
                         </Flex>
                     </Card>
                 ) : (
@@ -427,15 +429,15 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                         <Card>
                             <Flex gap={8} vertical>
                                 <Flex justify="space-between">
-                                    <Text type="secondary">Loaded</Text>
+                                    <Text type="secondary">{t('loaded')}</Text>
                                     <Text strong>{transactions.length.toLocaleString()}</Text>
                                 </Flex>
                                 <Flex justify="space-between">
-                                    <Text type="secondary">Credits used</Text>
+                                    <Text type="secondary">{t('creditsUsed')}</Text>
                                     <Text strong>{loadedCreditsUsed.toLocaleString()}</Text>
                                 </Flex>
                                 <Flex justify="space-between">
-                                    <Text type="secondary">No-credit actions</Text>
+                                    <Text type="secondary">{t('noCreditActions')}</Text>
                                     <Text strong>{loadedNoCreditActions.toLocaleString()}</Text>
                                 </Flex>
                             </Flex>
@@ -447,7 +449,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                                         arrow
                                         description={(
                                             <Flex gap={4} vertical>
-                                                <Text type="secondary">{getAiOperationOwnerSummary(tx)}</Text>
+                                                <Text type="secondary">{getAiOperationOwnerSummary(tx, t)}</Text>
                                                 <Flex gap={8} wrap="wrap">
                                                     <Text type="secondary">{getFormatedDateAndTime(formatter, tx.createdOn)}</Text>
                                                     <Text type="secondary">{formatProcessingTime(tx.processingTime)}</Text>
@@ -460,7 +462,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                                         title={(
                                             <Flex align="center" gap={8}>
                                                 <span style={{ backgroundColor: getActionColor(tx.action), borderRadius: '50%', display: 'inline-block', height: 8, minWidth: 8, width: 8 }} />
-                                                <Text strong>{formatAiOperationActionLabel(tx.action)}</Text>
+                                                <Text strong>{formatAiOperationActionLabel(tx.action, t)}</Text>
                                             </Flex>
                                         )}
                                     />
@@ -474,7 +476,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
 
             <Popup bodyStyle={{ maxHeight: '88vh', overflow: 'hidden', padding: 0 }} destroyOnClose onMaskClick={() => setFilterOpen(false)} visible={filterOpen}>
                 <NavBar backIcon={<LuX size={18} />} onBack={() => setFilterOpen(false)}>
-                    Filter transactions
+                    {t('filterTransactions')}
                 </NavBar>
                 <Flex gap={12} style={{ maxHeight: 'calc(88vh - 57px)', overflowY: 'auto', padding: 16, paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }} vertical>
                     <Card>
@@ -482,7 +484,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                             <Title level={5} style={{ margin: 0 }}>{t('filterByAction')}</Title>
                             <Flex gap={8} wrap="wrap">
                                 <Button color={!draftActionFilter ? 'primary' : undefined} fill={!draftActionFilter ? 'solid' : 'outline'} onClick={() => setDraftActionFilter(null)} size="small">
-                                    All actions
+                                    {t('allActions')}
                                 </Button>
                                 {actionOptions.map((option) => (
                                     <Button
@@ -500,14 +502,14 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                     </Card>
                     <Card>
                         <Flex gap={12} vertical>
-                            <Title level={5} style={{ margin: 0 }}>Date range</Title>
+                            <Title level={5} style={{ margin: 0 }}>{t('dateRange')}</Title>
                             <Flex gap={10} vertical>
                                 <Flex gap={6} vertical>
-                                    <Text strong>Start date</Text>
+                                    <Text strong>{t('startDate')}</Text>
                                     <Input onChange={setDraftStartDate} type="date" value={draftStartDate} />
                                 </Flex>
                                 <Flex gap={6} vertical>
-                                    <Text strong>End date</Text>
+                                    <Text strong>{t('endDate')}</Text>
                                     <Input min={draftStartDate || undefined} onChange={setDraftEndDate} type="date" value={draftEndDate} />
                                 </Flex>
                             </Flex>
@@ -518,7 +520,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                             {t('reset')}
                         </Button>
                         <Button block onClick={applyFilters}>
-                            Apply
+                            {t('apply')}
                         </Button>
                     </Flex>
                 </Flex>

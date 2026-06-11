@@ -283,6 +283,7 @@ const linkSchema = z.object({
 
 **Auth:** `withAuth()` — only `draft.createdByUId` may poll the draft
 **Purpose:** Poll extraction status for the signed-in owner
+**Cost guard:** backend rate limit `public-menu-entry-status:{userId}:{draftId}` caps refresh/poll loops before reading the draft.
 
 **Response (200):**
 
@@ -306,6 +307,7 @@ const linkSchema = z.object({
 
 **Auth:** `withAuth()` — user must be authenticated before claim/publish
 **Purpose:** Convert draft to real store + project
+**Default-project guard:** for existing owners, the transaction demotes existing non-deleted default project summaries before writing the claimed project as default, preserving one `/menu` authority.
 
 **Request:**
 

@@ -618,6 +618,7 @@ export const GET = withAuth(async (req: NextRequest, session) => {
 
     const { searchParams } = new URL(req.url);
     const draftId = searchParams.get('draftId');
+    const statusOnly = searchParams.get('statusOnly') === '1' || searchParams.get('statusOnly') === 'true';
     const userId = String(session?.user?.id || '');
 
     if (!draftId) {
@@ -628,6 +629,23 @@ export const GET = withAuth(async (req: NextRequest, session) => {
     }
 
     try {
+        const statusRateLimit = await checkRateLimit({
+            key: `public-menu-entry-status:${userId}:${draftId}`,
+            limit: 90,
+            window: 300,
+        });
+        if (!statusRateLimit.allowed) {
+            return NextResponse.json(
+                { success: false, error: 'Too many preview checks. Please wait a moment.' },
+                {
+                    status: 429,
+                    headers: {
+                        'Retry-After': String(Math.ceil((statusRateLimit.resetAt - Date.now()) / 1000)),
+                    },
+                },
+            );
+        }
+
         const draftDoc = await firestoreAdmin.collection(COLLECTION).doc(draftId).get();
 
         if (!draftDoc.exists) {
@@ -653,10 +671,9 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             );
         }
 
-        return NextResponse.json({
+        const responseBody: Record<string, unknown> = {
             success: true,
             status: draft.extractionStatus,
-            extractedData: draft.extractedData || null,
             detectedBusinessName: draft.detectedBusinessName || null,
             detectedBusinessType: draft.detectedBusinessType || null,
             detectedBusinessCategory: draft.detectedBusinessCategory || null,
@@ -668,7 +685,14 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             imageUrl: draft.imageUrl,
             sourceType: draft.sourceType || 'image_upload',
             error: draft.extractionError || null,
-        });
+            resultReady: draft.extractionStatus === 'completed' && Boolean(draft.extractedData),
+        };
+
+        if (!statusOnly) {
+            responseBody.extractedData = draft.extractedData || null;
+        }
+
+        return NextResponse.json(responseBody);
     } catch (error) {
         secureError('[PublicMenuEntry] Poll failed', error instanceof Error ? error : new Error(String(error)));
         return NextResponse.json(

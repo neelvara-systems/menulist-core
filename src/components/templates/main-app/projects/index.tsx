@@ -797,11 +797,12 @@ function ProjectsPage() {
             const result = activeJob?.result;
             if (result) {
                 const extractedProfile = result.extractedBusinessProfile || result.combinedData?.extractedBusinessProfile;
+                const resultSummary = result.summary || {};
                 setExtractionStats({
                     qualityScore: result.qualityScore,
                     qualityDetails: result.qualityDetails,
-                    categoriesCount: result.combinedData?.categories?.length || 0,
-                    itemsCount: result.combinedData?.items?.length || 0,
+                    categoriesCount: result.combinedData?.categories?.length || Number(resultSummary.categoriesCount || 0),
+                    itemsCount: result.combinedData?.items?.length || Number(resultSummary.itemsCount || 0),
                     profileHighlights: buildExtractedProfileHighlights(extractedProfile),
                 });
                 void maybeAutoGenerateProjectImage({

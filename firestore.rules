@@ -71,10 +71,18 @@ service cloud.firestore {
       allow write: if isTenantAdmin(tId, sId);
     }
     
-    // User profiles - Users can read/write their own data
+    // User profiles - profile changes, password metadata, staff mappings,
+    // roles, and access state are written through server APIs. Direct
+    // self-writes are denied so a user cannot edit role/store fields.
     match /users/{userId} {
-      allow read: if isAuthenticated() && (isPlatformAdmin() || request.auth.uid == userId);
-      allow write: if isAuthenticated() && (isPlatformAdmin() || request.auth.uid == userId);
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || request.auth.uid == userId
+          || request.auth.token.uId == userId
+        );
+      allow create, update: if isAuthenticated() && isPlatformAdmin();
+      allow delete: if false;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -138,7 +146,7 @@ service cloud.firestore {
       // Platform admins can read every platform summary document.
       // Answerlattice tenant users can read/write only the known Answerlattice summary docs
       // that carry matching tId/sId fields. All other writes remain server-only.
-      allow read: if isPublicScreenSummaryDoc(document)
+      allow read: if isPublicScreenStateDoc(document)
                   || (
                     isAuthenticated()
                     && (
@@ -151,6 +159,7 @@ service cloud.firestore {
                     && (
                       isPlatformAdmin()
                       || canWriteCurrentStoreSummaryDoc(document)
+                      || canWriteCurrentStorePublicScreenDoc(document)
                       || (
                         isAnswerlatticePlatformSummaryDoc(document)
                         && isAnswerlatticeTenantMember(request.resource.data)
@@ -160,6 +169,7 @@ service cloud.firestore {
                     && (
                       isPlatformAdmin()
                       || canWriteCurrentStoreSummaryDoc(document)
+                      || canWriteCurrentStorePublicScreenDoc(document)
                       || canWriteStoresSummaryDoc(document)
                       || (
                         isAnswerlatticePlatformSummaryDoc(document)
@@ -205,10 +215,35 @@ service cloud.firestore {
         && request.resource.data.stores.diff(resource.data.stores).affectedKeys().hasOnly([string(request.auth.token.storeId)]);
     }
 
-    function isPublicScreenSummaryDoc(document) {
-      return document.matches('^campaigns_.*$')
-        && resource.data.screen.enabled == true
-        && resource.data.screen.screenToken is string;
+    function isPublicScreenStateDoc(document) {
+      return isValidPublicScreenState(resource.data, document)
+        && resource.data.enabled == true;
+    }
+
+    function isValidPublicScreenState(data, document) {
+      return document.matches('^screen_[^_]+$')
+        && data.keys().hasOnly([
+          'contentVersion',
+          'enabled',
+          'lastContentChangeAt',
+          'screenToken',
+          'storeId',
+          'updatedAt'
+        ])
+        && data.storeId == summaryDocStoreId(document)
+        && data.enabled is bool
+        && data.screenToken is string
+        && data.screenToken.matches('^[A-Za-z0-9_-]{6,24}$')
+        && data.contentVersion is int
+        && data.contentVersion >= 1
+        && data.lastContentChangeAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function canWriteCurrentStorePublicScreenDoc(document) {
+      return request.auth != null
+        && isValidPublicScreenState(request.resource.data, document)
+        && isTenantAdmin(string(request.auth.token.tenantId), summaryDocStoreId(document));
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -369,26 +404,37 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
     
     match /guestFeedback/{feedbackId} {
-      // PUBLIC CREATE: Allow guest submissions (no auth required)
-      // Rate limiting is handled at API layer, not Firestore rules
-      allow create: if
-        request.resource.data.rating is int &&
-        request.resource.data.rating >= 1 &&
-        request.resource.data.rating <= 5 &&
-        request.resource.data.tId is int &&
-        request.resource.data.sId is int &&
-        request.resource.data.status == 'new' &&
-        request.resource.data.createdBy == 'guest';
+      // Public submissions must go through /api/public/feedback/submit so
+      // rate limiting, tenant/store validation, and store-owned field defaults
+      // are enforced before the Admin SDK write.
+      allow create: if false;
       
-      // AUTHENTICATED READ: Only tenant members can read their feedback
+      // AUTHENTICATED READ: Only tenant members can read their feedback.
+      // Store-scoped users read only their assigned stores.
       allow read: if isAuthenticated()
-                  && belongsToTenantById(resource.data.tId);
+                  && (
+                    isPlatformAdmin()
+                    || (
+                      belongsToTenantById(resource.data.tId)
+                      && (
+                        request.auth.token.storeIds == null
+                        || belongsToStoreById(resource.data.sId)
+                      )
+                    )
+                  );
       
-      // AUTHENTICATED UPDATE: Only tenant admins can update status
+      // AUTHENTICATED UPDATE: Only tenant/store writers can resolve or reopen.
       allow update: if isAuthenticated()
-                    && belongsToTenantById(resource.data.tId)
+                    && (isPlatformAdmin() || isTenantAdmin(resource.data.tId, resource.data.sId))
                     && request.resource.data.tId == resource.data.tId
-                    && request.resource.data.sId == resource.data.sId;
+                    && request.resource.data.sId == resource.data.sId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'status',
+                      'needsAttention',
+                      'modifiedOn',
+                      'modifiedBy',
+                      'ownerNote'
+                    ]);
       
       // DELETE: Not allowed from client (cleanup via retention function)
       allow delete: if false;

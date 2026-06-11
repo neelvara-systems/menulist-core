@@ -1,438 +1,100 @@
-# Project Management — Implementation
-
-**Feature:** Project CRUD Operations & Lifecycle  
-**Status:** ✅ Production Ready  
-**Last Updated:** January 2026
-
----
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ TWO-COLLECTION PATTERN                                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  projectsMetadata/{tId}/{sId}/{projectId}                       │
-│       │                                                          │
-│       └── Lightweight: name, thumbnail, active, deleted         │
-│           Used for: List views, quick loading                   │
-│                                                                  │
-│  projectsData/{tId}/{sId}/{projectId}                           │
-│       │                                                          │
-│       └── Full data: files, languages, theme, settings          │
-│           Used for: Editor, full project operations             │
-│                                                                  │
-│  Benefits:                                                       │
-│   • Fast list loading (small documents)                         │
-│   • Lazy loading of heavy data                                  │
-│   • Efficient Firestore reads                                   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## File Structure
-
-```
-src/database/projects/
-└── index.ts                    # Project DAL (281 lines)
-
-src/components/templates/main-app/projects/
-├── index.tsx                   # Main projects page
-├── projectsList/               # Project listing
-└── editorView/                 # Project editing
-```
-
----
-
-## Database Operations
-
-### Add Project
-
-```typescript
-export const addProject = async (projectData: Partial<Project>) => {
-  return await apiCallComposer(
-    async () => {
-      const session = await getActiveSession();
-
-      // Generate project ID
-      const projectId = doc(collection(db, "temp")).id;
-
-      // Prepare metadata
-      const metadata = requestBodyComposer(
-        {
-          projectId,
-          name: projectData.name,
-          description: projectData.description || "",
-          thumbnail: projectData.thumbnail || "",
-          active: true,
-          deleted: false,
-        },
-        session
-      );
-
-      // Prepare full data
-      const data = requestBodyComposer(
-        {
-          projectId,
-          files: projectData.files || [],
-          languages: projectData.languages || [],
-          themeConfig: projectData.themeConfig || {},
-          menuSettings: projectData.menuSettings || {},
-        },
-        session
-      );
-
-      // Write both documents
-      const batch = writeBatch(db);
-
-      batch.set(
-        doc(db, "projectsMetadata", session.tId, session.sId, projectId),
-        metadata
-      );
-
-      batch.set(
-        doc(db, "projectsData", session.tId, session.sId, projectId),
-        data
-      );
-
-      await batch.commit();
-
-      return { projectId };
-    },
-    {},
-    "addProject"
-  );
-};
-```
-
-### Get Projects List
-
-```typescript
-export const getMetadataProjectsList = async (
-  pageSize = 20,
-  lastDoc?: DocumentSnapshot
-) => {
-  return await apiCallComposer(
-    async () => {
-      const session = await getActiveSession();
-
-      let q = query(
-        collection(db, "projectsMetadata", session.tId, session.sId),
-        where("deleted", "==", false),
-        orderBy("modifiedOn", "desc"),
-        limit(pageSize)
-      );
-
-      if (lastDoc) {
-        q = query(q, startAfter(lastDoc));
-      }
-
-      const snapshot = await getDocs(q);
-
-      return {
-        projects: snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })),
-        lastDoc: snapshot.docs[snapshot.docs.length - 1],
-        hasMore: snapshot.docs.length === pageSize,
-      };
-    },
-    {},
-    "getMetadataProjectsList"
-  );
-};
-```
-
-### Get Single Project
-
-```typescript
-export const getProjectData = async (projectId: string) => {
-  return await apiCallComposer(
-    async () => {
-      const session = await getActiveSession();
-
-      const docRef = doc(
-        db,
-        "projectsData",
-        session.tId,
-        session.sId,
-        projectId
-      );
-
-      const snapshot = await getDoc(docRef);
-
-      if (!snapshot.exists()) {
-        throw new Error("Project not found");
-      }
-
-      return { id: snapshot.id, ...snapshot.data() };
-    },
-    {},
-    "getProjectData"
-  );
-};
-```
-
-### Update Project
-
-```typescript
-export const updateProject = async (
-  projectId: string,
-  updates: Partial<Project>
-) => {
-  return await apiCallComposer(
-    async () => {
-      const session = await getActiveSession();
-
-      const dataRef = doc(
-        db,
-        "projectsData",
-        session.tId,
-        session.sId,
-        projectId
-      );
-
-      await updateDoc(dataRef, {
-        ...updates,
-        modifiedOn: serverTimestamp(),
-      });
-
-      // Update metadata if name/description changed
-      if (updates.name || updates.description) {
-        const metaRef = doc(
-          db,
-          "projectsMetadata",
-          session.tId,
-          session.sId,
-          projectId
-        );
-
-        await updateDoc(metaRef, {
-          ...(updates.name && { name: updates.name }),
-          ...(updates.description && { description: updates.description }),
-          modifiedOn: serverTimestamp(),
-        });
-      }
-
-      return { success: true };
-    },
-    {},
-    "updateProject"
-  );
-};
-```
-
-### Soft Delete
-
-```typescript
-export const deleteProject = async (projectId: string) => {
-  return await apiCallComposer(
-    async () => {
-      const session = await getActiveSession();
-
-      const metaRef = doc(
-        db,
-        "projectsMetadata",
-        session.tId,
-        session.sId,
-        projectId
-      );
-
-      await updateDoc(metaRef, {
-        deleted: true,
-        deletedAt: Date.now(),
-        modifiedOn: serverTimestamp(),
-      });
-
-      return { success: true };
-    },
-    {},
-    "deleteProject"
-  );
-};
-```
-
-### Restore Project
-
-```typescript
-export const restoreProject = async (projectId: string) => {
-  return await apiCallComposer(
-    async () => {
-      const session = await getActiveSession();
-
-      const metaRef = doc(
-        db,
-        "projectsMetadata",
-        session.tId,
-        session.sId,
-        projectId
-      );
-
-      await updateDoc(metaRef, {
-        deleted: false,
-        deletedAt: null,
-        modifiedOn: serverTimestamp(),
-      });
-
-      return { success: true };
-    },
-    {},
-    "restoreProject"
-  );
-};
-```
-
-### List Deleted Projects
-
-```typescript
-export const getDeletedProjectsList = async () => {
-  return await apiCallComposer(
-    async () => {
-      const session = await getActiveSession();
-
-      const q = query(
-        collection(db, "projectsMetadata", session.tId, session.sId),
-        where("deleted", "==", true),
-        orderBy("deletedAt", "desc")
-      );
-
-      const snapshot = await getDocs(q);
-
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-    },
-    {},
-    "getDeletedProjectsList"
-  );
-};
-```
-
----
-
-## Firestore Security Rules
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function belongsToTenant(tId) {
-      return request.auth.token.tId == tId;
-    }
-
-    function isTenantAdmin(tId, sId) {
-      return isAuthenticated()
-             && request.auth.token.tId == tId
-             && request.auth.token.sId == sId;
-    }
-
-    // Projects Metadata
-    match /projectsMetadata/{tId}/{sId}/{projectId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow write: if isTenantAdmin(tId, sId);
-    }
-
-    // Projects Data
-    match /projectsData/{tId}/{sId}/{projectId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow write: if isTenantAdmin(tId, sId);
-    }
-  }
-}
-```
-
----
-
-## Validation Checklist
-
-| Requirement        | Implementation            | Location          | Status |
-| ------------------ | ------------------------- | ----------------- | ------ |
-| Create project     | addProject()              | projects/index.ts | ✅     |
-| List projects      | getMetadataProjectsList() | projects/index.ts | ✅     |
-| Get single project | getProjectData()          | projects/index.ts | ✅     |
-| Update project     | updateProject()           | projects/index.ts | ✅     |
-| Soft delete        | deleteProject()           | projects/index.ts | ✅     |
-| Restore            | restoreProject()          | projects/index.ts | ✅     |
-| List deleted       | getDeletedProjectsList()  | projects/index.ts | ✅     |
-| Tenant isolation   | Firestore rules           | firestore.rules   | ✅     |
-| Confirmation modal | UI component              | projectsList      | ✅     |
-
----
-
-## Related Documents
-
-| Document                                             | Purpose               |
-| ---------------------------------------------------- | --------------------- |
-| `_spec.md`                                           | Product specification |
-| `../Assessments/ASSESSMENT-12-PROJECT-MANAGEMENT.md` | Original assessment   |
-
----
-
-## Recommendations & Future Improvements
-
-### Code Quality Observations
-
-| Finding                    | Current State                         | Recommendation           | Priority |
-| -------------------------- | ------------------------------------- | ------------------------ | -------- |
-| **Two-Collection Pattern** | Metadata + Data separation            | ✅ Efficient for listing | -        |
-| **Summary Document**       | `projectsSummary` for 1-read listings | ✅ Cost-optimized        | -        |
-| **Soft Delete**            | `deleted` + `deletedAt` flags         | ✅ Recoverable deletion  | -        |
-| **Firestore Rules**        | Multi-tenant isolation                | ✅ Proper security       | -        |
-| **Session Caching**        | `session` variable reused             | ✅ Reduces auth calls    | -        |
-
-### Suggested Improvements
-
-1. **Project Archiving**
-
-   - **Current**: Only active/deleted states
-   - **Suggested**: Add "archived" state for old but not deleted projects
-   - **File**: `projects/index.ts`
-   - **Priority**: P2
-
-2. **Project Duplication with Options**
-
-   - **Current**: Full project copy
-   - **Suggested**: Options to include/exclude images, translations, theme
-   - **File**: `duplicateProject()`
-   - **Priority**: P2
-
-3. **Trash Auto-Cleanup**
-
-   - **Current**: Deleted projects stay in trash indefinitely
-   - **Suggested**: Cloud Function to permanently delete after 30 days
-   - **File**: New Cloud Function
-   - **Priority**: P2
-
-4. **Project Templates**
-
-   - **Current**: Start from scratch or duplicate
-   - **Suggested**: Pre-built templates (Coffee Shop, Pizza, Fine Dining)
-   - **Priority**: P3
-
-5. **Bulk Project Operations**
-   - **Current**: One project at a time
-   - **Suggested**: Multi-select for bulk delete, archive, export
-   - **Priority**: P3
-
-### Technical Debt
-
-| Item                 | Description                                       | Effort |
-| -------------------- | ------------------------------------------------- | ------ |
-| Session variable     | Global `session` could cause issues in edge cases | Low    |
-| Summary sync         | Ensure summary stays in sync on all operations    | Medium |
-| Restore notification | No notification after successful restore          | Low    |
-
----
-
-_Document Status: ✅ PRODUCTION READY_
+# Project Management - Implementation
+
+**Feature:** Project CRUD and Menu Builder Lifecycle
+**Status:** Production implementation exists; audited June 11, 2026
+**Last Updated:** June 11, 2026
+
+## Architecture
+
+Project Management uses a summary-first pattern:
+
+1. Full menu truth lives in `projects/{tId}/{sId}/{projectId}`.
+2. Lightweight list/public-routing truth lives in `platformSummary/projects_{sId}` under a `projects` map.
+3. Owner editor flows read the summary first, then read the selected full project.
+4. Public routes read the summary to resolve stable slugs/defaults, then read the selected full project.
+5. Any owner write that can affect public output calls the public cache revalidation path.
+
+The historical `projectsMetadata` / `projectsData` split is no longer the active implementation.
+
+## Core Files
+
+| File | Role |
+| --- | --- |
+| `src/database/projects/index.ts` | DAL for CRUD, publish, summary sync, cache revalidation, special menus, and preset cascades. |
+| `src/components/templates/main-app/projects/index.tsx` | Desktop menu builder shell, project list, metadata modal, duplicate/delete actions. |
+| `src/components/templates/main-app/projects/editorView/Editor.tsx` | Desktop editor save/publish path. |
+| `src/components/mobile/providers/MobileProjectsProvider.tsx` | Mobile project list and selected-project cache. |
+| `src/components/mobile/components/MobileProjectSelectorSheet.tsx` | Mobile project metadata, duplicate, active toggle, and delete actions. |
+| `src/components/mobile/screens/MobileMenuScreen.tsx` | Mobile menu editing entry point. |
+
+## Read Models
+
+### Management Reads
+
+`getProjectsList()` and `getProjectsListWithoutLoader()` read `platformSummary/projects_{sId}` and auto-create a default project when the store has no projects. This is intentional only for owner menu-management entry points.
+
+Current intentional auto-create callers:
+
+- `src/components/templates/main-app/projects/index.tsx`
+- `src/components/mobile/providers/MobileProjectsProvider.tsx`
+
+### Read-Only Reads
+
+`getExistingProjectsListWithoutLoader()` reads the same summary doc but never writes. It must be used where an empty project list is a valid empty state.
+
+Current audited read-only callers:
+
+- Dashboard project selector
+- Use MenuList output center
+- OBP link card
+- Past Activity
+- GrowthOS project selector
+- Menu Card Export / print/export surfaces
+- Business Health project selector
+- Transactions
+
+## Write Flow
+
+### Create
+
+`addProject()` creates the full project doc, derives a permanent slug, writes the summary entry through `syncProjectToSummary()`, and optionally triggers multi-outlet propagation. Summary sync revalidates public cache.
+
+### Metadata Update
+
+`updateProjectMetadata()` updates summary-only fields such as name, description, default flag, image, slug, and special-menu display data. It preserves previous slugs for redirects and blocks reserved/recently deleted slug reuse.
+
+### Full Project Save
+
+`updateProject()` / `updateProjectWithoutLoader()` save full project data and then call `revalidatePublicClientCacheForProject()`. The path also runs optional feature-flagged hooks:
+
+- Menu Observation Layer change logging
+- Menu Correctness Engine metadata
+- master-update awareness signal writes
+- multi-outlet outlet-save API handoff for inherited outlet projects
+
+### Publish
+
+`publishProject()` writes publish data, increments `menuVersion`, stamps `lastPublishedAt`, revalidates public cache, and optionally creates snapshots/events when enabled.
+
+### Delete And Restore
+
+`deleteProject()` soft-deletes the project doc, stores `deletedSummary` on that doc, removes the project from `platformSummary/projects_{sId}`, promotes a fallback default if needed, and revalidates public cache.
+
+`restoreProject()` restores lifecycle flags and rebuilds the summary from `deletedSummary` when available. If another active default already exists, the restored project is not restored as default. This prevents duplicate default public routing.
+
+## Public Cache Contract
+
+Project writes must call `revalidatePublicClientCacheForProject(projectId, context)`. That helper:
+
+- derives the store ID from the project ID
+- invalidates Owner Business Assistant browser cache
+- posts to `/api/revalidate/menu` for public Vercel cache tags
+- touches the digital screen content version
+
+Server routes that write store-level truth use `revalidateMenuCache(storeId, { tId, projectId })`.
+
+## Mobile Parity
+
+Mobile project management uses the same DAL functions as desktop. Mobile-specific code is limited to shell state, project selection, touch UI, and optimistic cache updates.
+
+The mobile provider intentionally auto-creates the first default project when the owner enters the menu-management shell. Mobile read-only output surfaces should use `getExistingProjectsListWithoutLoader()`.

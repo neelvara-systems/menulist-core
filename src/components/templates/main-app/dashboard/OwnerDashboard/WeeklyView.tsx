@@ -14,6 +14,7 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { EMPTY_STATE_MESSAGES, WeeklyViewData } from '@template/main-app/projects/types';
 import { Card, Col, Empty, Row, Typography } from 'antd';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { LuEye, LuFlame, LuSmartphone, LuZap } from 'react-icons/lu';
 import AISummaryCard from './AISummaryCard';
@@ -29,6 +30,7 @@ interface WeeklyViewProps {
 
 const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
     const labels = useOfferingLabels();
+    const t = useTranslations('Dashboard.owner');
 
     if (!data) {
         return (
@@ -65,69 +67,72 @@ const WeeklyView: React.FC<WeeklyViewProps> = ({ data }) => {
                         value={metrics.menuVisits}
                         icon={<LuEye />}
                         subtitle={metricsChange?.menuVisitsChange !== undefined
-                            ? `${metricsChange.menuVisitsChange > 0 ? '+' : ''}${metricsChange.menuVisitsChange}% vs last week`
+                            ? t('weekly.vsLastWeek', {
+                                sign: metricsChange.menuVisitsChange > 0 ? '+' : '',
+                                change: metricsChange.menuVisitsChange,
+                            })
                             : undefined}
                         tooltip={labels.scansTooltip}
                     />
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
-                        title="Item Clicks"
+                        title={t('metrics.itemClicks')}
                         value={metrics.itemClicks}
                         icon={<LuSmartphone />}
-                        tooltip="Number of times customers tapped on items"
+                        tooltip={t('tooltips.itemClicks')}
                     />
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
-                        title="Engaged Sessions"
+                        title={t('metrics.engagedSessions')}
                         value={`${metrics.engagedSessionRate || 0}%`}
-                        tooltip="Sessions where customers showed real menu interest"
+                        tooltip={t('tooltips.engagedSessions')}
                     />
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
-                        title="Action Rate"
+                        title={t('metrics.actionRate')}
                         value={`${metrics.actionRate || 0}%`}
-                        tooltip="Sessions that led to a final customer action"
+                        tooltip={t('tooltips.actionRate')}
                     />
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
-                        title="Smart Picks Shown"
+                        title={t('metrics.smartPicksShown')}
                         value={metrics.smartPicksRendered}
                         icon={<LuZap />}
-                        tooltip="How many times Smart Picks appeared on your page"
+                        tooltip={t('tooltips.smartPicksShown')}
                     />
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
-                        title="Smart Picks Used"
+                        title={t('metrics.smartPicksUsed')}
                         value={`${smartPicksEngagementRate}%`}
                         icon={<LuFlame />}
-                        subtitle={`${metrics.smartPicksClicks} clicks`}
-                        tooltip="Percentage of customers who used Smart Picks"
+                        subtitle={t('units.clicks', { count: metrics.smartPicksClicks })}
+                        tooltip={t('tooltips.smartPicksUsed')}
                     />
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
-                        title="Customer Actions"
+                        title={t('metrics.customerActions')}
                         value={metrics.menuActionClicks || 0}
-                        tooltip="Final actions like call, WhatsApp, directions, reserve, and order"
+                        tooltip={t('tooltips.customerActions')}
                     />
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
-                        title="Searches"
+                        title={t('metrics.searches')}
                         value={metrics.searches || 0}
-                        tooltip="De-duplicated search demand from the menu"
+                        tooltip={t('tooltips.searches')}
                     />
                 </Col>
                 <Col xs={12} sm={12} lg={6}>
                     <MetricCard
-                        title="Unavailable Interest"
+                        title={t('metrics.unavailableInterest')}
                         value={metrics.unavailableItemTaps || 0}
-                        tooltip="Taps on unavailable items"
+                        tooltip={t('tooltips.unavailableInterest')}
                     />
                 </Col>
             </Row>

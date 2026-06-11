@@ -1,6 +1,6 @@
 # Roles & Permissions — Technical Implementation
 
-**Status:** ✅ Staff CRUD + permissions wired end-to-end | **Last Updated:** May 27, 2026
+**Status:** ✅ Staff CRUD + permissions wired end-to-end | **Last Updated:** June 11, 2026
 
 > **Scope:** This document covers Layer 1 (staff-level RBAC). For Layer 2 (OutletPolicy chain restrictions) and the two-layer interaction model, see [Multi-Chain Permissions](../multi-chain-permissions/multi-chain-permissions_impl.md).
 
@@ -237,11 +237,13 @@ Categories:
 - Tenant ID must match the authenticated session unless the session is platform admin.
 - Non-master store users can only manage their own store.
 - Master store users can manage staff mappings inside the same tenant.
+- Staff list payloads are current-store scoped. Non-master managers receive only the current store mapping for each staff member; cross-location staff mappings stay hidden unless the acting user has master authority.
 - Store mappings are validated against real store documents and active role definitions.
 - Staff list/create repairs legacy stores that are missing default `owner` / `manager` / `staff` role definitions and normalizes missing permission keys on existing default roles. Custom roles keep missing permission keys denied.
 - The `owner` role definition is locked from edits/deactivation.
 - Last active owner protection prevents removing/demoting/deactivating the only owner for a store.
 - Protected API routes reject sessions whose user is inactive, unverified, deleted, or platform-blocked.
+- `users/{userId}` Firestore writes are not a normal client path. Owner/staff profile edits, password changes, role changes, staff mappings, and revocation metadata go through authenticated server APIs; direct Firestore user writes are platform-admin only.
 - The app shell runs `SessionExpiryMonitor`, which checks `/api/auth/access-status` on focus and every 30 seconds while visible. It signs out the browser when `sessionRevokedAt`, `active`, `deleted`, direct user block, tenant block, or store block invalidates access.
 
 ### Staff Access Revocation Contract
@@ -259,11 +261,11 @@ Categories:
 
 | Surface | Files | Contract |
 | --- | --- | --- |
-| Desktop staff | `src/components/templates/main-app/users/usersList/*` | `/users/list` loads staff through `fetchStaffUsers()`, creates through `createStaffUser()`, updates through `updateStaffUser()`, removes through `removeStaffFromStore()`, signs out active staff through `forceSignOutStaffUser()`. Details drawer opens the profile directly. Add/edit drawer only exposes current staff fields: Staff Details, Store Access, and Permissions. |
+| Desktop staff | `src/components/templates/main-app/users/usersList/*` | `/users/list` loads current-store staff through `fetchStaffUsers()`, creates through `createStaffUser()`, updates through `updateStaffUser()`, removes through `removeStaffFromStore()`, signs out active staff through `forceSignOutStaffUser()`. Removing staff from the current store removes the row from the current-store list even if the account remains assigned elsewhere. Details drawer opens the profile directly. Add/edit drawer only exposes current staff fields: Staff Details, Store Access, and Permissions. |
 | Desktop roles | `src/components/templates/main-app/users/permissions/*` | `/users/permissions` saves through `saveRoleDefinition()` and deactivates roles through `deleteRoleDefinition()`. Custom role creation starts with all permissions off until the owner enables them. |
 | Desktop app guard | `src/components/auth/OwnerPermissionGuard.tsx` | Blocks direct route access for protected owner pages after permissions resolve |
 | Desktop navigation | `src/constants/navigations.ts`, `src/components/organisms/sidebar/*` | `Users` is a parent navigation item. `Users List` routes to `/users/list`; `Roles` routes to `/users/permissions`. Child items are permission-filtered with the same `permissionRequirements.ts` contract used by direct route guards. |
-| Mobile staff | `src/components/mobile/screens/MobileUsersScreen.tsx` | Uses the same staff client helpers as desktop, including force sign-out |
+| Mobile staff | `src/components/mobile/screens/MobileUsersScreen.tsx` | Uses the same staff client helpers as desktop, including add staff, passcode reset, force sign-out, role change, deactivate/reactivate, and current-store removal |
 | Mobile roles | `src/components/mobile/screens/MobileRolesScreen.tsx` | Uses the same role client helpers as desktop |
 | Mobile app shell | `src/components/mobile/MobileShell.tsx`, `MobileNavigation.tsx` | Filters bottom tabs by role permissions and falls back to More when a tab is not available |
 | Mobile More | `src/components/mobile/screens/MobileMoreScreen.tsx` | Filters sub-screens by the same permission taxonomy and blocks direct hash/sub-screen access |

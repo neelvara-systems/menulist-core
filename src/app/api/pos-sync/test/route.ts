@@ -15,6 +15,7 @@ import { admin } from "@lib/firebase/firebaseAdmin";
 import { requireAnyStorePermission } from "@lib/permissions/server";
 import { buildTestPayload } from "@lib/posSync/payloadFormatter";
 import { generateDeliveryId, signPayload } from "@lib/posSync/signature";
+import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
 import { checkRateLimit } from "@lib/rateLimit";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError, secureLog } from "@lib/security/secureLogger";
@@ -28,6 +29,10 @@ const schema = z.object({
 });
 
 const WEBHOOK_TIMEOUT_MS = 5_000;
+
+function isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
+}
 
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_POS_SYNC) {
@@ -63,8 +68,29 @@ export const POST = withAuth(async (request, session) => {
 
         const store = storeDoc.data();
         const posSync = store?.posSync;
-        if (!posSync?.webhookUrl || !posSync?.webhookSecret) {
+        if (!posSync?.enabled || !posSync?.webhookUrl || !posSync?.webhookSecret) {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+        }
+
+        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(storeId));
+        const markConnectionIssue = async (lastError: string) => {
+            await storeRef.update({
+                'posSync.status': 'connection_issue',
+                'posSync.lastStatus': 'failed',
+                'posSync.lastError': lastError,
+            });
+        };
+
+        const webhookValidation = validatePosSyncWebhookUrl(String(posSync.webhookUrl));
+        if (!webhookValidation.valid || !webhookValidation.normalizedUrl) {
+            const errorMessage = webhookValidation.error || 'Invalid provider connection URL';
+            await markConnectionIssue(errorMessage);
+            return NextResponse.json({
+                success: false,
+                statusCode: null,
+                responseTime: 0,
+                error: errorMessage,
+            });
         }
 
         const testPayload = buildTestPayload(storeId, tenantId, store?.currencyCode || store?.currency || 'INR');
@@ -79,7 +105,7 @@ export const POST = withAuth(async (request, session) => {
         const timeoutId = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
 
         try {
-            const response = await fetch(posSync.webhookUrl, {
+            const response = await fetch(webhookValidation.normalizedUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -97,7 +123,7 @@ export const POST = withAuth(async (request, session) => {
             const responseTime = Date.now() - startTime;
 
             if (response.ok) {
-                await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).update({
+                await storeRef.update({
                     'posSync.status': 'healthy',
                     'posSync.lastStatus': 'success',
                     'posSync.lastError': '',
@@ -112,22 +138,26 @@ export const POST = withAuth(async (request, session) => {
                 });
             }
 
+            const errorMessage = `Webhook returned ${response.status}`;
+            await markConnectionIssue(errorMessage);
             return NextResponse.json({
                 success: false,
                 statusCode: response.status,
                 responseTime,
-                error: `Webhook returned ${response.status}`,
+                error: errorMessage,
             });
-        } catch (fetchError: any) {
+        } catch (fetchError: unknown) {
             clearTimeout(timeoutId);
             const responseTime = Date.now() - startTime;
 
-            const isTimeout = fetchError?.name === 'AbortError';
+            const isTimeout = isAbortError(fetchError);
+            const errorMessage = isTimeout ? 'Webhook timed out (5s)' : 'Could not reach webhook URL';
+            await markConnectionIssue(errorMessage);
             return NextResponse.json({
                 success: false,
                 statusCode: null,
                 responseTime,
-                error: isTimeout ? 'Webhook timed out (5s)' : 'Could not reach webhook URL',
+                error: errorMessage,
             });
         }
     } catch (error) {

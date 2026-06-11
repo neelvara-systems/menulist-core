@@ -2,18 +2,28 @@
  * Product Domain Registry — Single Source of Truth
  *
  * Maps external domains to internal product website route groups.
- * Each product in the MenuList ecosystem gets its own domain and
- * isolated website route group under src/app/sites/[productId]/.
+ * Each product in the MenuList ecosystem gets its own domain and isolated
+ * public website route group under src/app/sites/[productId]/.
+ *
+ * Public product websites belong under src/app/sites/[productId].
+ * Product owner apps must live in their own route groups such as
+ * src/app/(answerlattice)/answerlattice or src/app/(campaigncue)/campaigncue.
+ * Middleware may expose clean product-domain app URLs, but sites/ remains
+ * public-facing only.
  *
  * Routing Flow:
  *   1. Middleware reads hostname
  *   2. resolveProductSite() matches hostname against the active deployment target
- *   3. Middleware rewrites: answerlattice.com/pricing → /sites/answerlattice/pricing
- *   4. Next.js renders sites/answerlattice/pricing/page.tsx
+ *   3. Middleware rewrites public URLs:
+ *      answerlattice.com/pricing → /sites/answerlattice/pricing
+ *   4. Middleware rewrites product app URLs:
+ *      campaigncue.ai/app → /campaigncue/app
+ *   5. Next.js renders the matching public site or product app route group.
  *
  * Local Dev:
  *   - Default (localhost:3000) → MenuList website
  *   - localhost:3000/__answerlattice/pricing → Answerlattice website
+ *   - localhost:3000/__campaigncue/ → CampaignCue website
  *   - No /etc/hosts configuration needed
  *
  * @see src/middleware.ts — Uses this for hostname-based routing
@@ -26,12 +36,21 @@ import {
     getProductDeploymentTarget,
 } from './deploymentTargets';
 import { FEATURE_FLAGS } from '@config/features';
+import {
+    ACTIVE_CAMPAIGNCUE_PRODUCT_DOMAINS,
+    CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX,
+    CAMPAIGNCUE_SITE_INTERNAL_BASE_PATH,
+} from '@constant/campaigncue/domains';
+import {
+    CAMPAIGNCUE_PRODUCT_ID,
+    CAMPAIGNCUE_PRODUCT_NAME,
+} from '@constant/campaigncue/product';
 
 // ═══════════════════════════════════════════════════════════════
 // Product Identifiers
 // ═══════════════════════════════════════════════════════════════
 
-export type ProductId = 'menulist' | 'answerlattice' | 'surfaceos' | 'growthOS' | 'kitstamp' | 'mycodex';
+export type ProductId = 'menulist' | 'answerlattice' | 'campaigncue' | 'surfaceos' | 'growthOS' | 'kitstamp' | 'mycodex';
 
 // ═══════════════════════════════════════════════════════════════
 // Product Domain Configuration
@@ -72,6 +91,14 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
         devPathPrefix: getProductDeploymentTarget('answerlattice', 'local').devPathPrefix,
         internalBasePath: '/sites/answerlattice',
         enabled: true,
+    },
+    {
+        id: CAMPAIGNCUE_PRODUCT_ID,
+        name: CAMPAIGNCUE_PRODUCT_NAME,
+        domains: ACTIVE_CAMPAIGNCUE_PRODUCT_DOMAINS,
+        devPathPrefix: CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX,
+        internalBasePath: CAMPAIGNCUE_SITE_INTERNAL_BASE_PATH,
+        enabled: FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PUBLIC_SITE,
     },
     {
         id: 'surfaceos',

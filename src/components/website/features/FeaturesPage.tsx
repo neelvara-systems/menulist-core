@@ -17,7 +17,7 @@ const groupIcons = [
   [LuQrCode, LuLayoutGrid, LuMonitor, LuLink, LuFileText, LuList],
   [LuPalette, LuPackage, LuPrinter],
   [LuSparkles, LuUsers, LuBarChart3, LuTrendingUp],
-  [LuActivity, LuRefreshCw, LuZap, LuBriefcase, LuEye, LuMessageSquare, LuList, LuLink, LuSmartphone, LuUsers, LuMessageSquare],
+  [LuActivity, LuRefreshCw, LuZap, LuBriefcase, LuEye, LuMessageSquare, LuList, LuLink, LuSmartphone, LuUsers, LuMessageSquare, LuLanguages],
   [LuShield, LuCheck, LuBadgeCheck],
 ];
 

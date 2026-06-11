@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** June 10, 2026
+**Last Updated:** June 11, 2026
 
 ---
 
@@ -330,7 +330,8 @@ Use `src/components/website/shared/WebsiteFeatureCard.tsx` for public website pr
 Rules:
 
 - Icon placement is top-right, not sometimes left and sometimes inline.
-- Grid defaults to `ws-feature-card-grid`: `repeat(auto-fit, minmax(320px, 1fr))`, `gap: var(--ws-space-6)`, `max-width: 1120px`.
+- Grid defaults to `ws-feature-card-grid`: `repeat(auto-fit, minmax(min(100%, 320px), 1fr))`, `gap: var(--ws-space-6)`, `max-width: 1120px`.
+- Inline website grids should use `minmax(min(100%, Npx), 1fr)` rather than a fixed pixel minimum so section padding cannot create mobile horizontal overflow.
 - Card body uses `ws-feature-card`: spacious padding, content-led row height, calm border/background, no hover movement, and compact stacked spacing so the subtitle and description read as one proof unit.
 - Titles use 18px / 800 weight in normal cards and 16px in compact cards.
 - Subtitles can use brand blue only when they clarify the card role; body copy stays `--ws-text-secondary`.
@@ -378,7 +379,7 @@ Rules:
 - Keep each page focused on one owner outcome, not a complete feature checklist.
 - Use the same split hero, proof preview, compact signal strip, sticky journey, support blocks, four proof cards, and final CTA rhythm across these pages.
 - Use `src/components/website/features/FeatureDetailVisual.tsx` for the hero proof visual on generic dedicated feature pages. The visual must be code-native, theme-aware, responsive, and grounded in each page's existing locale copy and feature config. Do not add generic stock images, fake dashboards, or hardcoded English labels.
-- Feature hero visuals must read as one composed proof canvas, not a card inside a card inside a browser mockup. Avoid duplicate marketing headlines inside the visual, avoid redundant bottom pill rows when the inner visual already communicates the same surfaces, and keep microcopy at readable label size on mobile.
+- Feature hero visuals must read as one composed proof canvas, not a card inside a card inside a browser mockup. Avoid duplicate marketing headlines inside the visual, do not add a generic trailing pill row under the visual, avoid redundant tags when the inner visual or page signal strip already communicates the same surfaces, and keep microcopy at readable label size on mobile.
 - Use `src/components/website/features/FeatureDetailJourney.tsx` for the shared sticky story section. Desktop uses a left rail with stacked story cards; each story panel is one parent card with a top narrative row and a bottom full-width proof-card row so proof cards are not compressed. Desktop story height should stay viewport-aware but restrained with the shared `32rem -> 72vh -> 39rem` clamp; avoid oversized empty panels on tall displays. Avoid internal copy/proof dividers inside the story card. Mobile uses a sticky horizontal pill rail with one-column cards.
 - Use the shared `AnimateOnScroll` reveal wrappers for the hero, preview, section headings, support blocks, proof cards, footer, and final CTA so dedicated feature pages match the homepage motion system. Prefer the named `hero`, `media`, `card`, `footer`, and `fade` presets over one-off reveal values unless a section has a clear interaction reason.
 - Resource hubs, resource article bodies, related-resource blocks, industry proof grids, industry fit cards, industry resource links, and industry final CTAs must also use the shared reveal wrappers so long-form discovery pages do not feel static beside the homepage and feature pages.

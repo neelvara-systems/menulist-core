@@ -37,6 +37,10 @@ const PredictiveHelpRequestSchema = z.object({
 });
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 
+const emptyCorsResponse = (request: NextRequest, init?: ResponseInit): NextResponse => (
+    withPublicApiCors(new NextResponse(null, init), request)
+);
+
 export function OPTIONS(request: NextRequest) {
     return handlePublicApiCorsPreflight(request);
 }
@@ -45,16 +49,16 @@ export async function POST(request: NextRequest) {
     try {
         // Feature flag gate
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
 
         // API key authentication (same pattern as widget search)
         const apiKey = request.headers.get('x-api-key')?.trim();
         if (!apiKey) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
         if (!apiKey.startsWith('al_')) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
 
         const apiKeyRateLimitId = hashApiKey(apiKey).slice(0, 16);
@@ -64,7 +68,7 @@ export async function POST(request: NextRequest) {
             ...rateLimitConfig,
         });
         if (!rateLimitResult.allowed) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
 
         const authResult = await validatePublicApiKey(apiKey, {
@@ -75,17 +79,17 @@ export async function POST(request: NextRequest) {
             preferAnswerlatticeWidgetApi: true,
         });
         if (!authResult) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
         const credential = authResult.credential || {};
         if (credential.productId && credential.productId !== 'AL') {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
         if (credential.purpose && !String(credential.purpose).startsWith('answerlattice')) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:predictive')) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
 
         // Extract tenant context from authenticated API key (never trust body for tId/sId)
@@ -98,17 +102,17 @@ export async function POST(request: NextRequest) {
                 new Error('Authenticated API key does not resolve to a valid tenant/store'),
                 { storeId }
             );
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
 
         const requestOrigin = request.headers.get('origin');
         if (!isRequestOriginAllowed(requestOrigin, storeData.widgetAllowedOrigins)) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
 
         const validation = PredictiveHelpRequestSchema.safeParse(await request.json());
         if (!validation.success) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
         const { page, feature, workflow, plan, userRole, entityHints, userId } = validation.data;
 
@@ -121,7 +125,7 @@ export async function POST(request: NextRequest) {
             entityHints,
         }) as AnswerlatticeContextPayload;
         if (!context.page) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
 
         // Evaluate triggers
@@ -133,7 +137,7 @@ export async function POST(request: NextRequest) {
         );
 
         if (!suggestion) {
-            return new NextResponse(null, { status: 204 });
+            return emptyCorsResponse(request, { status: 204 });
         }
 
         return withPublicApiCors(NextResponse.json({ suggestion }), request);
@@ -141,6 +145,6 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         secureError('[Answerlattice Predictive Help] Error', error as Error);
         // Graceful degradation — never return errors to widget
-        return new NextResponse(null, { status: 204 });
+        return emptyCorsResponse(request, { status: 204 });
     }
 }

@@ -1,19 +1,19 @@
 # Digital Screens — Firebase Cost Tracking
 
 **Feature:** In-Store Digital Menu Screens (TV/Tablet Display)  
-**Status:** 🔒 **v2.2 LOCKED** (readability/reliability/owner-trust hardening only)
-**Last Updated:** June 6, 2026
+**Status:** 🔒 **v2.3 LOCKED** (readability/reliability/owner-trust/listener-isolation hardening only)
+**Last Updated:** June 11, 2026
 **Source:** Codebase analysis (not spec — actual implementation)
 
 ---
 
 ## Summary
 
-- **Collections Used:** `platformSummary` (existing — `screen` field in `campaigns_{sId}` doc), `stores` (existing), `projects` (existing — fallback/source menu item data)
-- **NO new collections created** — screen state and generated available-item menu projection live inside existing `CampaignsSummaryDocument.screen`
+- **Collections Used:** `platformSummary` (existing — canonical `campaigns_{sId}.screen` plus public-safe `screen_{sId}` listener mirror), `stores` (existing), `projects` (existing — fallback/source menu item data)
+- **NO new collections created** — screen state and generated available-item menu projection live inside existing `CampaignsSummaryDocument.screen`; only a small safe `platformSummary/screen_{sId}` mirror is maintained for public client listeners.
 - **Storage Buckets:** `MenuListAi/platform_summary/screen_slides/` (owner uploads only)
 - **Cloud Functions:** None — all screen logic is SSR + client-side
-- **Real-time:** Firebase `onSnapshot` doc listener (not polling)
+- **Real-time:** Firebase `onSnapshot` doc listener on `platformSummary/screen_{sId}` (not polling, no internal owner summary exposure)
 - **Screen invalidation:** Public client cache invalidation touches `screen.contentVersion` only when an initialized screen token exists, and refreshes `screen.menuProjection` from the automatic default menu when available.
 - **Content normalization:** Text, price, category, tag, caption, and dedupe logic is shared by projection generation and fallback DAL/render paths.
 - **Estimated Monthly Cost:** **~$0.27-$0.41/month for 1000 screens** depending on projection hit rate and menu-save frequency.
@@ -32,8 +32,8 @@
 | Project summary lookup | `platformSummary` | Missing/stale projection context, special menu active, or legacy projection without slug | As needed | 0-1 (skipped when valid projection includes base menu slug) | `database/campaigns/serverScreen.ts`  |
 | Menu projection hit    | `platformSummary` | Same as above         | ~4x/day/screen | 0 extra reads after screen doc | `screen/[token]/page.tsx`, `database/campaigns/serverScreen.ts` |
 | Menu items fallback    | `projects`        | Missing/stale projection, special menu active, or old screen state | As needed | Usually 1 default project read after `baseProjectId`; special overlay can read 2 project docs | `database/campaigns/serverScreen.ts` |
-| onSnapshot initial     | `platformSummary` | Screen connect        | 1x/day/screen  | 1                             | `ScreenDisplay.tsx:180`               |
-| onSnapshot updates     | `platformSummary` | Content changes       | ~1-5x/day      | 1 per change                  | `ScreenDisplay.tsx:181-191`           |
+| onSnapshot initial     | `platformSummary/screen_{storeId}` | Screen connect        | 1x/day/screen  | 1                             | `ScreenDisplay.tsx`, `MenuBoardDisplay.tsx` |
+| onSnapshot updates     | `platformSummary/screen_{storeId}` | Content changes       | ~1-5x/day      | 1 per change                  | `publicScreenState.ts`, display clients |
 | Daily seen signal      | `platformSummary` | 1x/day/screen         | 1x/day         | 1 (direct doc get)            | `api/screen/seen/route.ts:44-53`      |
 | Owner: getScreenState  | `platformSummary` | Settings view         | Occasional     | 1                             | `database/campaigns/index.ts:599`     |
 | Owner: addPinnedSlide  | `platformSummary` | Upload image          | Rare           | 2 (read + check)              | `database/campaigns/index.ts:677`     |
@@ -44,12 +44,12 @@
 | Operation                    | Collection        | Trigger                  | Frequency | Writes                        | Code Evidence                     |
 | ---------------------------- | ----------------- | ------------------------ | --------- | ----------------------------- | --------------------------------- |
 | Daily seen signal            | `platformSummary` | 1x/day/screen            | 1/day     | 1 (update `screenLastSeenAt`) | `api/screen/seen/route.ts:52`     |
-| Owner: initializeScreenState | `platformSummary` | First-time setup         | 1x ever   | 1                             | `database/campaigns/index.ts:638` |
-| Owner: addPinnedSlide        | `platformSummary` | Upload image             | Rare      | 1 (update pinnedSlides array) | `database/campaigns/index.ts:693` |
-| Owner: removePinnedSlide     | `platformSummary` | Delete upload            | Rare      | 1                             | `database/campaigns/index.ts:725` |
-| Owner: updateScreenSettings  | `platformSummary` | Toggle override          | Rare      | 1                             | `database/campaigns/index.ts:659` |
-| bumpScreenContentVersion     | `platformSummary` | Menu/availability change | ~1-5x/day | 1                             | `database/campaigns/index.ts:757` |
-| touchDigitalScreenContentVersion | `platformSummary` | Public cache invalidation after project/menu changes | ~1-5x/day when screen exists | 1 update; may include refreshed `screen.menuProjection` | `lib/screen/screenInvalidation.ts` |
+| Owner: initializeScreenState | `platformSummary` | First-time setup         | 1x ever   | 2 (`campaigns_{sId}` + safe `screen_{sId}` mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
+| Owner: addPinnedSlide        | `platformSummary` | Upload image             | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
+| Owner: removePinnedSlide     | `platformSummary` | Delete upload            | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
+| Owner: updateScreenSettings  | `platformSummary` | Toggle override          | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
+| bumpScreenContentVersion     | `platformSummary` | Menu/availability change | ~1-5x/day | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
+| touchDigitalScreenContentVersion | `platformSummary` | Public cache invalidation after project/menu changes | ~1-5x/day when screen exists | 2 writes; may include refreshed `screen.menuProjection` | `lib/screen/screenInvalidation.ts`, `publicScreenState.ts` |
 
 ### Deletes
 
@@ -70,7 +70,7 @@ None.
 Instead of polling, each screen maintains a Firebase `onSnapshot` doc listener:
 
 ```
-ScreenDisplay.tsx → onSnapshot(doc(firebaseClient, 'platformSummary', `campaigns_${storeId}`))
+ScreenDisplay.tsx / MenuBoardDisplay.tsx → onSnapshot(doc(firebaseClient, 'platformSummary', `screen_${storeId}`))
 ```
 
 **Cost model:**
@@ -80,6 +80,8 @@ ScreenDisplay.tsx → onSnapshot(doc(firebaseClient, 'platformSummary', `campaig
 - NO per-interval reads (unlike polling)
 
 **Why this matters:** Original spec planned 30-60s polling = 43M reads/month for 1000 screens ($25.80). Actual implementation uses onSnapshot = ~150K reads/month for 1000 screens ($0.09). **99.6% cost reduction.**
+
+**Public-read hardening:** The listener document contains only `storeId`, `screenToken`, `enabled`, `contentVersion`, `lastContentChangeAt`, and `updatedAt`. Firestore rules no longer allow unauthenticated reads of `platformSummary/campaigns_{storeId}`, which also contains Today, campaign, staff-prompt, and physical-surface owner data.
 
 ---
 
@@ -137,12 +139,15 @@ ScreenDisplay.tsx → onSnapshot(doc(firebaseClient, 'platformSummary', `campaig
 | 6-hour refresh (not 5-min)          | 4 SSR/day vs 288/day             | `ScreenDisplay.tsx:225-233`             |
 | **Vercel `unstable_cache` (OPT-6)** | **SSR reads cached 60s at edge** | `screen/[token]/page.tsx:31-41`         |
 | Generated screen menu projection | Avoids full project fallback reads on valid cold public renders; stores available display items plus base menu slug context | `CampaignsSummaryDocument.screen.menuProjection`, `screen/[token]/page.tsx` |
+| Public-safe screen listener mirror | Preserves 1-doc listener cost while avoiding public reads of owner/internal campaign summary data | `lib/screen/publicScreenState.ts`, `firestore.rules` |
 | Public cache linked screen touch | Keeps connected TVs fresh after ordinary menu saves | `lib/cache/publicClientCache.ts`, `lib/screen/screenInvalidation.ts` |
 | Content normalization | Prevents weak public screen copy without extra reads/writes | `lib/screen/screenContent.ts` |
 
 > **OPT-6 (Added Feb 19, 2026; updated Jun 6, 2026):** Screen SSR data reads (`getScreenDataByToken` + generated `screen.menuProjection` or `getMenuItemsForScreen` fallback) are wrapped in `unstable_cache` with 60s TTL. Multiple screens hitting the same token within 60s share cached Firestore results instead of repeating raw reads. A valid projection with base menu slug context reduces the default cold raw public path from 4 reads to 2 reads before cache hits.
 
 > **June 2026 invalidation note:** `touchDigitalScreenContentVersion()` first reads `platformSummary/campaigns_{storeId}` and returns without writing if `screen.screenToken` is missing. This avoids creating partial screen state for stores that have never opened Digital Screens. When a screen exists, the helper increments `screen.contentVersion`, updates `screen.lastContentChangeAt`, and attempts to refresh `screen.menuProjection` from the automatic default project. Projection refresh can add up to 2 owner-side reads per invalidation, but removes repeated project reads from later cold public screen renders. If projection refresh fails, the public route falls back to the old project read path.
+
+> **June 11, 2026 listener-isolation note:** public display clients listen to `platformSummary/screen_{storeId}`. Owner/session DAL writes and public cache invalidation update that mirror after the canonical `campaigns_{storeId}.screen` change. This adds one tiny write per screen-content mutation, but it removes unauthenticated access to internal campaign summary fields.
 
 ---
 
@@ -219,3 +224,4 @@ If a store uses TWO screens (one Menu Board + one Highlights):
 | 4.2     | 2026-06-02 | Codex   | Added public-cache-linked screen content-version touch and screen SSR cache tag invalidation. No new collections, functions, rules, indexes, schedulers, or Storage paths.              |
 | 4.3     | 2026-06-02 | Codex   | Added content normalization for screen text, prices, categories, tags, captions, and dedupe. CPU-only; no Firebase cost impact.                                                           |
 | 4.4     | 2026-06-06 | Codex   | Added generated screen menu projection inside existing `screen` summary state. No new collection/index/function; public cold path uses projection when valid and falls back to project reads when stale. |
+| 4.5     | 2026-06-11 | Codex   | Added public-safe `screen_{storeId}` listener mirror, removed unauthenticated reads of `campaigns_{storeId}` from Firestore rules, and documented the one-extra-write mutation cost. |

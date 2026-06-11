@@ -17,6 +17,11 @@ import {
     getExpectedFirebaseProjectId,
     getProductDeploymentTarget,
 } from '@constant/deploymentTargets';
+import {
+    CAMPAIGNCUE_ADMIN_CREDENTIAL_ENV_KEYS,
+    CAMPAIGNCUE_FIREBASE_ENV,
+    CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS,
+} from '@constant/campaigncue/firebase';
 
 interface EnvValidationResult {
     valid: boolean;
@@ -67,6 +72,10 @@ const OPTIONAL_VARS: readonly string[] = [
     'TELEGRAM_CHAT_ID',             // Ops alerts
     'GA_CLIENT_EMAIL',              // Analytics
     'GA_PRIVATE_KEY',               // Analytics
+    'BATCH_IMAGE_GENERATION_QUEUE_ID',      // Batch menu image generation
+    'BATCH_IMAGE_GENERATION_WORKER_SECRET', // Batch menu image generation worker auth
+    'BATCH_IMAGE_GENERATION_WORKER_URL',    // Batch menu image generation worker
+    'FIREBASE_PROJECT_LOCATION',            // Google Cloud Tasks queue location
 ] as const;
 
 const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
@@ -78,6 +87,7 @@ const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
         'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID',
         'ANSWERLATTICE_FIREBASE_PROJECT_ID',
     ],
+    campaigncue: CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS,
     mycodex: [],
 } as const;
 
@@ -90,6 +100,7 @@ const MYCODEX_AUTH_VARS = [
 const describeProduct = (productId: DeploymentProductId) => {
     if (productId === 'menulist') return 'MenuList';
     if (productId === 'answerlattice') return 'Answerlattice';
+    if (productId === 'campaigncue') return 'CampaignCue';
     return 'MyCodex';
 };
 
@@ -141,15 +152,17 @@ export function validateEnvironment(): EnvValidationResult {
         }
     }
 
-    (['menulist', 'answerlattice'] as DeploymentProductId[]).forEach((productId) => {
+    (['menulist', 'answerlattice', 'campaigncue'] as DeploymentProductId[]).forEach((productId) => {
         const expectedProjectId = getExpectedFirebaseProjectId(productId, stage);
         PRODUCT_PROJECT_VARS[productId].forEach((varName) => {
             const actualProjectId = getEnvValue(varName);
             const message = `${varName} must be ${expectedProjectId} for ${stage} ${describeProduct(productId)}`;
 
             if (!actualProjectId) {
-                if (productId === 'answerlattice') {
-                    warnings.push(`${message} — Answerlattice will not use the required ${stage} Firebase project`);
+                if (productId === 'answerlattice' || productId === 'campaigncue') {
+                    const missingMessage = `${message} — ${describeProduct(productId)} will not use the required ${stage} Firebase project`;
+                    if (isVercel) missing.push(missingMessage);
+                    else warnings.push(missingMessage);
                 }
                 return;
             }
@@ -163,6 +176,16 @@ export function validateEnvironment(): EnvValidationResult {
             }
         });
     });
+
+    const campaignCueAdminCredentialReady = Boolean(
+        getEnvValue(CAMPAIGNCUE_FIREBASE_ENV.GOOGLE_APPLICATION_CREDENTIALS)
+        || CAMPAIGNCUE_ADMIN_CREDENTIAL_ENV_KEYS.every((key) => getEnvValue(key))
+    );
+    if (!campaignCueAdminCredentialReady) {
+        const message = 'CampaignCue Admin SDK credentials are missing — CampaignCue APIs cannot access the dedicated Firebase project';
+        if (isVercel) missing.push(message);
+        else warnings.push(message);
+    }
 
     const platformDomain = getEnvValue('NEXT_PUBLIC_PLATFORM_DOMAIN');
     const expectedPlatformDomain = getProductDeploymentTarget('menulist', stage).domains[0];

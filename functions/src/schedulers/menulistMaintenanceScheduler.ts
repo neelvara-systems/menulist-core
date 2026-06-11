@@ -23,6 +23,7 @@ import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotif
 import {
     cleanupExpiredPreviewJobsLogic,
     cleanupOldJobsLogic,
+    pruneCompletedProjectJobPayloadsLogic,
     cleanupStuckCancellingJobsLogic,
     cleanupStuckJobsLogic,
     monitorExtractionHealthLogic,
@@ -448,10 +449,14 @@ async function runMenuStuckCleanup(): Promise<MaintenanceTaskResult> {
 }
 
 async function runMenuOldCleanup(): Promise<MaintenanceTaskResult> {
+    const pruneResult = await pruneCompletedProjectJobPayloadsLogic();
     const result = await cleanupOldJobsLogic();
     return {
-        activity: result.deleted > 0,
-        details: result,
+        activity: pruneResult.pruned > 0 || result.deleted > 0,
+        details: {
+            ...result,
+            prunedProjectPayloads: pruneResult.pruned,
+        },
     };
 }
 
@@ -461,7 +466,11 @@ async function runMessagingSessionCleanup(): Promise<MaintenanceTaskResult> {
         throw new Error(`Messaging session cleanup completed with ${result.errors} error(s)`);
     }
     return {
-        activity: result.expired > 0 || result.reminders > 0 || result.cleaned > 0 || result.errors > 0,
+        activity: result.expired > 0 ||
+            result.reminders > 0 ||
+            result.cleaned > 0 ||
+            result.inboundCleaned > 0 ||
+            result.errors > 0,
         details: result,
     };
 }
