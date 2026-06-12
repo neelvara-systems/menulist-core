@@ -91,7 +91,7 @@ export default function AnswerlatticePreOnboardingPage() {
                                 Prepare AnswerLattice before setup starts.
                             </h1>
                             <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                                Give your AI coding agent one prompt. It turns the product sources you actually have - repo, docs, website links, API specs, support exports, owner notes, policies, recordings, or screenshots - into an AnswerLattice-ready upload package.
+                                Give your AI coding agent one prompt. It turns the product material you actually have - repo, docs, website links, API specs, support exports, owner notes, policies, recordings, or screenshots - into an AnswerLattice-ready upload package.
                             </p>
                             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                                 <AnswerlatticeLink
@@ -159,7 +159,7 @@ export default function AnswerlatticePreOnboardingPage() {
                     <div className="mx-auto max-w-7xl">
                         <SectionHeader
                             eyebrow="What it prepares"
-                            title="Structured source truth before AnswerLattice intake."
+                            title="Structured product material before AnswerLattice intake."
                             description="The prompt does the preparation work outside AnswerLattice, then leaves the owner with a reviewed package to upload."
                         />
                         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -260,9 +260,9 @@ export default function AnswerlatticePreOnboardingPage() {
                 </section>
 
                 <section className="px-4 py-20 sm:px-6">
-                    <div className="mx-auto max-w-5xl rounded-[2rem] border border-teal-500/20 bg-teal-500/[0.055] p-6 text-center sm:p-10">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-200">Start before onboarding</p>
-                        <h2 className="text-3xl font-bold text-white sm:text-4xl">Give AnswerLattice better source truth on day one.</h2>
+                        <div className="mx-auto max-w-5xl rounded-[2rem] border border-teal-500/20 bg-teal-500/[0.055] p-6 text-center sm:p-10">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-200">Start before onboarding</p>
+                            <h2 className="text-3xl font-bold text-white sm:text-4xl">Give AnswerLattice better product material on day one.</h2>
                         <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-[#d6d6ef]">
                             Use the prompt first, review the output, then upload the selected sources into AnswerLattice Knowledge Intake.
                         </p>

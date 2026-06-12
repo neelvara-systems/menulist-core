@@ -1,4 +1,8 @@
 import type { CAMPAIGNCUE_CHANNELS } from "@constant/campaigncue/channels";
+import type {
+    CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS,
+    CAMPAIGNCUE_EXPORT_ACTIONS,
+} from "@constant/campaigncue/delivery";
 
 export type CampaignCueChannel = typeof CAMPAIGNCUE_CHANNELS[number];
 
@@ -19,18 +23,11 @@ export type CampaignCueCampaignStatus = "draft" | "generated" | "scheduled" | "u
 export type CampaignCueTrustGate = "clear" | "warning" | "needs_fix" | "blocked";
 export type CampaignCueTrustSeverity = "info" | "warning" | "needs_fix" | "blocked";
 export type CampaignCueMetricConfidence = "observed" | "imported" | "manual" | "estimated";
-export type CampaignCueProviderMode = "manual_export" | "manual_fallback" | "manual_handoff" | "brief_only" | "disabled";
+export type CampaignCueProviderMode = "manual_export" | "manual_handoff" | "brief_only" | "disabled";
 export type CampaignCueOutputMode = "draft" | "manual_export" | "manual_handoff" | "brief" | "schedule_task";
 
-export type CampaignCueActionType =
-    | "copy"
-    | "download"
-    | "export"
-    | "mark_used"
-    | "request_approval"
-    | "schedule"
-    | "direct_publish"
-    | "direct_send";
+export type CampaignCueActionType = typeof CAMPAIGNCUE_EXPORT_ACTIONS[number];
+export type CampaignCueDisabledProviderActionType = typeof CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS[number];
 
 export interface CampaignCueTimestamped {
     createdAt?: unknown;
@@ -52,8 +49,7 @@ export interface CampaignCueWorkspace extends CampaignCueTimestamped {
     settings: {
         timezone: string;
         locale: string;
-        directPublishingEnabled: boolean;
-        providerGenerationEnabled: boolean;
+        deliveryMode: "export_download_only";
         billingEnabled: boolean;
     };
     members: Record<string, {
@@ -125,6 +121,9 @@ export interface CampaignCueSourceSnapshot extends CampaignCueTimestamped {
     confidence: number;
     freshness: "fresh" | "stale" | "unknown";
     summary: string;
+    facts: CampaignCueSourceFact[];
+    missingFacts: string[];
+    verticalRisks: string[];
 }
 
 export interface CampaignCueSourceInput extends CampaignCueTimestamped {
@@ -136,6 +135,19 @@ export interface CampaignCueSourceInput extends CampaignCueTimestamped {
     status: "active" | "needs_review" | "archived";
     confidence: CampaignCueMetricConfidence;
     sourceRefs: string[];
+    facts: CampaignCueSourceFact[];
+    expiresAt?: unknown;
+}
+
+export interface CampaignCueSourceFact {
+    id: string;
+    label: string;
+    value: string;
+    sourceRef: string;
+    sourceType: "business_profile" | "contact" | "menu_or_service" | "offer" | "event" | "asset" | "policy" | "manual";
+    confidence: CampaignCueMetricConfidence;
+    freshness: "fresh" | "stale" | "unknown";
+    risk: "low" | "needs_review" | "blocked";
 }
 
 export interface CampaignCueOpportunity extends CampaignCueTimestamped {
@@ -144,12 +156,40 @@ export interface CampaignCueOpportunity extends CampaignCueTimestamped {
     businessBrainId: string;
     title: string;
     reason: string;
-    type: "menu_push" | "booking_fill" | "source_fix" | "weekly_pack" | "video_prompt" | "ad_handoff";
+    type:
+        | "menu_push"
+        | "booking_fill"
+        | "source_fix"
+        | "weekly_pack"
+        | "video_prompt"
+        | "ad_handoff"
+        | "stale_profile"
+        | "asset_rights"
+        | "local_variant"
+        | "outcome_followup";
     priority: number;
     channels: CampaignCueChannel[];
     sourceReferences: string[];
     status: CampaignCueOpportunityStatus;
+    actionLabel: string;
+    ownerBenefit: string;
+    evidence: string[];
     locationId?: string;
+}
+
+export interface CampaignCueOutputFields {
+    headline: string;
+    body: string;
+    cta: string;
+    imageBrief: string;
+    dimensions: string;
+    postType: "whatsapp_message" | "google_update" | "social_post" | "reel_brief" | "creator_script" | "ad_handoff" | "manual_task";
+    consentNote: string;
+    policyNote: string;
+    destination: string;
+    utm: string;
+    approvalNote: string;
+    manualSteps: string[];
 }
 
 export interface CampaignCueOutput {
@@ -161,6 +201,7 @@ export interface CampaignCueOutput {
     sourceReferences: string[];
     providerMode: CampaignCueProviderMode;
     trustGate: CampaignCueTrustGate;
+    fields: CampaignCueOutputFields;
     metadata?: Record<string, unknown>;
 }
 
@@ -218,8 +259,10 @@ export interface CampaignCueAsset extends CampaignCueTimestamped {
     rights: {
         status: "confirmed" | "needs_review" | "restricted";
         note?: string;
+        consentType?: "not_applicable" | "owner_confirmed" | "creator_release" | "customer_release" | "unknown";
         expiresAt?: unknown;
     };
+    tags: string[];
     file?: {
         storagePath?: string;
         downloadUrl?: string;
@@ -239,7 +282,7 @@ export interface CampaignCueSchedule extends CampaignCueTimestamped {
     campaignId: string;
     outputId?: string;
     channel: CampaignCueChannel;
-    mode: "manual_task" | "direct_publish_disabled";
+    mode: "manual_task";
     status: "scheduled" | "due" | "completed" | "failed" | "cancelled";
     scheduledAt: unknown;
     timezone: string;
@@ -254,8 +297,28 @@ export interface CampaignCueAnalyticsSummary extends CampaignCueTimestamped {
     exportCount: number;
     approvalRequestCount: number;
     manualFallbackCount: number;
+    ownerReportedOutcomeCount: number;
     latestEventAt?: unknown;
     confidence: CampaignCueMetricConfidence;
+}
+
+export interface CampaignCueLaunchReadiness {
+    status: "ready_in_repo" | "blocked_external_setup";
+    checks: Array<{
+        id: string;
+        label: string;
+        status: "ready" | "blocked" | "manual";
+        detail: string;
+    }>;
+}
+
+export interface CampaignCueDeliveryPolicy {
+    activeMode: "export_download_only";
+    allowedActions: CampaignCueActionType[];
+    disabledProviderActions: CampaignCueDisabledProviderActionType[];
+    dayOneSummary: string;
+    futureProviderSummary: string;
+    activationGate: string[];
 }
 
 export interface CampaignCueProviderStatus {
@@ -289,6 +352,9 @@ export interface CampaignCueOverview {
     analytics: CampaignCueAnalyticsSummary;
     providers: CampaignCueProviderStatus[];
     providerConnections: CampaignCueProviderConnection[];
+    deliveryPolicy: CampaignCueDeliveryPolicy;
+    launchReadiness: CampaignCueLaunchReadiness;
+    sourceFacts: CampaignCueSourceFact[];
     cost: {
         readsPerLoad: number;
         writesPerCampaignCreate: number;

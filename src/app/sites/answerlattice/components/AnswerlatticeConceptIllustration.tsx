@@ -31,7 +31,7 @@ const CONCEPT_COPY: Record<AnswerlatticeConceptIllustrationVariant, {
     'source-to-answer': {
         eyebrow: 'Answer layer',
         title: 'Sources become reviewed support paths.',
-        description: 'Docs, FAQs, releases, tickets, and feedback feed a governed answer layer before users see widget or hosted-help output.',
+        description: 'Docs, tickets, releases, screenshots, recordings, notes, and feedback become approved answers before users see widget or hosted-help output.',
     },
     'governance-loop': {
         eyebrow: 'Governance loop',
@@ -57,9 +57,9 @@ const MOBILE_STEPS: Record<AnswerlatticeConceptIllustrationVariant, Array<{ titl
         { title: 'Launch widget', detail: 'Go live only after the runtime checks pass.' },
     ],
     'source-to-answer': [
-        { title: 'Collect sources', detail: 'Docs, FAQs, releases, tickets, and feedback enter as evidence.' },
-        { title: 'Govern answers', detail: 'AnswerLattice keeps approved support truth in the middle.' },
-        { title: 'Serve support', detail: 'Widget, hosted help, and review queue stay connected.' },
+        { title: 'Add sources', detail: 'Docs, tickets, releases, screenshots, recordings, notes, and feedback enter as evidence.' },
+        { title: 'Approve answers', detail: 'AnswerLattice keeps reviewed support truth in the middle.' },
+        { title: 'Serve support', detail: 'Widget, hosted help, and the review queue use that approved truth.' },
     ],
     'governance-loop': [
         { title: 'Fallback appears', detail: 'A missing answer becomes visible support work.' },

@@ -18,7 +18,7 @@ Creative Trust Center is the review layer that checks campaign outputs before ex
 | Source check | Price, date, location, item/service, availability, and CTA are compared against source facts. |
 | Claim check | Performance, health/beauty, testimonial, urgency, scarcity, and review-like claims are flagged. |
 | Channel check | Platform-specific restrictions are reported per output. |
-| Approval gate | Blocked outputs cannot be published or exported until fixed or allowed by policy. |
+| Approval gate | Blocked outputs cannot be exported, scheduled, or handed off until fixed or allowed by policy. |
 | Evidence view | Owner can see which source facts support a claim. |
 | Version-specific | A trust result applies to a specific output version only. |
 

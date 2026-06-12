@@ -6,7 +6,7 @@ Analytics Learning captures campaign outcomes from exports, publish events, repl
 
 ## Current Runtime
 
-The active runtime captures observed CampaignCue actions and reads a dashboard summary. Provider publish events, replies, clicks, post insights, ad metrics, manual outcome forms, and channel callbacks are not active until direct integrations or explicit owner outcome entry are configured.
+The active runtime captures observed CampaignCue actions and reads a dashboard summary. Provider publish events, replies, clicks, post insights, ad metrics, and channel callbacks are not active until a separate future provider layer is configured; explicit owner outcome entry is active.
 
 ## Goals
 
@@ -33,17 +33,17 @@ CampaignCue success is measured by trust-safe campaign usage, not raw asset gene
 | Metric family | Examples | Guardrail |
 | --- | --- | --- |
 | North Star | Trust-safe campaign packs used after generation. | Count used packs, not drafts created. |
-| Activation | Source connected or uploaded, first cue accepted, first pack generated, first export/publish/manual task completed. | Do not count setup-only users as activated. |
+| Activation | Source added, first cue accepted, first pack generated, first export/manual task completed. | Do not count setup-only users as activated. |
 | Restaurant | Menu-item campaigns, top-item campaigns, public menu link usage, WhatsApp order packs, Google menu posts, price/source trust pass rate. | Do not claim orders unless source data proves them. |
 | Salon | Service campaigns, booking campaigns, before/after consent confirmations, WhatsApp booking messages, claim-warning resolution. | Do not claim transformations or results without evidence. |
 | WhatsApp | Packs generated, messages copied/shared/exported, status images/videos downloaded, opt-out/consent blocks. | Copied message is not a confirmed booking or order. |
-| Google/local | Google packs generated, posts copied/exported/published where connected, local-post insights where authorized. | No ranking or SEO improvement claims. |
-| Ads | Ad packs generated/exported, click-to-WhatsApp variants, policy warnings, spend approvals, connected platform metrics. | No lead, ROI, or lower-cost claim without measured source. |
+| Google/local | Google packs generated, posts copied/exported, and future local-post insights only where a future provider layer is authorized. | No ranking or SEO improvement claims. |
+| Ads | Ad packs generated/exported, click-to-WhatsApp variants, policy warnings, spend approvals, and future provider metrics only where authorized. | No lead, ROI, or lower-cost claim without measured source. |
 | Agency | Client setup, weekly pack delivery, approval completion, revision count, report shares, trust issues resolved, credits by client. | Never mix metrics across clients. |
 | Multi-location | Location variants generated, local trust pass rate, approval/export by location, partial success, local source mapping. | Do not double-count master campaign plus location variants. |
 | Billing/credits | Estimate accuracy, credits per used campaign, failed-generation refunds, credits by client/location/module. | Failed provider attempts need visible reconciliation. |
 | Trust | Trust checks run, blockers created/fixed, warning acknowledgements, override requests, latency, source-conflict rate. | Trust status must be version-specific. |
-| Manual fallback | Fallback shown, fallback completed, fallback after integration failure, fallback after plan/API limitation. | Manual fallback is normal, not failure by itself. |
+| Manual export | Export/download shown, manual task completed, approval requested, and owner outcome recorded. | Manual export is the active delivery path, not a failure. |
 | Source/data quality | Missing WhatsApp number, Google profile mismatch, stale source, low-confidence extraction, asset gaps. | Source confidence must remain visible. |
 
 ## Non-Goals

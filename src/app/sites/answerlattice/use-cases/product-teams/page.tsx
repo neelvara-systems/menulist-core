@@ -21,9 +21,9 @@ export default function ProductTeamsUseCasePage() {
         <UseCaseLandingPage
             basePath={getBasePath()}
             canonicalPath="/use-cases/product-teams"
-            eyebrow="For product teams"
-            title="See where product changes break support."
-            description="AnswerLattice connects releases, product pages, support gaps, and approved answers so stale support becomes visible after changes."
+                eyebrow="For product teams"
+                title="See where product changes break support."
+                description="AnswerLattice turns releases, product pages, support gaps, and approved answers into review work so stale support becomes visible after changes."
             problem="Fast releases change workflows, limits, roles, and states. Without stale-answer review, old docs and old answers keep misleading users after the product changes."
             question="Did usage limits change?"
             genericAnswer="Read the latest release notes for usage limits."
@@ -31,7 +31,7 @@ export default function ProductTeamsUseCasePage() {
             ownerReview="Product changes become support-review work through stale-answer checks, coverage, and signal queues. Proposals still require human approval before they become authoritative answers."
             setupSteps={[
                 'Define surfaces for release-heavy areas such as billing, limits, and settings.',
-                'Connect changelog entries to affected surfaces and answers.',
+                    'Map changelog entries to affected surfaces and answers.',
                 'Review stale-answer and coverage signals after releases.',
                 'Approve proposed answer updates.',
                 'Track which surfaces still need support.',

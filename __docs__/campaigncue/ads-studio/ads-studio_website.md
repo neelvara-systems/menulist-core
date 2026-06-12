@@ -12,7 +12,7 @@ Explain ad-pack preparation without creating false expectations about platform a
 
 - Creates ad-ready variants from approved campaign facts.
 - Keeps owner approval before spend-changing actions.
-- Supports manual export and connected workflows.
+- Supports manual export and owner or agency handoff; connected ad workflows are not active.
 - Helps teams see policy risk before launch.
 
 ## Do Not Say
@@ -20,4 +20,3 @@ Explain ad-pack preparation without creating false expectations about platform a
 - Do not guarantee ad approval.
 - Do not promise lower cost per lead.
 - Do not say CampaignCue will spend money automatically.
-

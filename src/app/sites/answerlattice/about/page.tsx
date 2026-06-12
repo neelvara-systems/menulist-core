@@ -8,7 +8,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'About',
-    description: 'AnswerLattice helps founder-led SaaS teams support users with an in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and reviewable support gaps.',
+    description: 'AnswerLattice helps founder-led SaaS teams turn docs, tickets, releases, screenshots, recordings, notes, and product context into approved support for users.',
     alternates: { canonical: '/about' },
 };
 
@@ -38,7 +38,7 @@ export default function AnswerlatticeAboutPage() {
                             AnswerLattice exists because solo founders and small product teams now launch faster than traditional docs and helpdesks can keep up. We give them a first support layer built around in-app help, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and reviewable gaps.
                         </p>
                         <p className="mb-8 text-lg leading-relaxed text-[#a0a0c0]">
-                            AnswerLattice keeps support knowledge connected to product surfaces. Founders get launch setup, hosted help, widget support, changelog support, ticket fallback, and a review queue without having to run a large support operation.
+                            AnswerLattice turns existing support knowledge into product-surface support outputs. Founders get launch setup, hosted help, widget support, changelog support, ticket fallback, and a review queue without having to run a large support operation.
                         </p>
                         <div className="flex flex-col justify-center gap-3 sm:flex-row">
                             <AnswerlatticeLink
@@ -60,7 +60,7 @@ export default function AnswerlatticeAboutPage() {
                             className="mt-8 text-left"
                             items={[
                                 { label: 'Audience', value: 'Live, beta, and near-launch product teams preparing support' },
-                                { label: 'Belief', value: 'A connected support layer beats scattered support channels' },
+                                { label: 'Belief', value: 'Reviewed support truth beats scattered support channels' },
                                 { label: 'Boundary', value: 'Not a helpdesk replacement or autopilot' },
                             ]}
                         />
@@ -91,7 +91,7 @@ export default function AnswerlatticeAboutPage() {
                     <div className="mx-auto max-w-3xl">
                         <h2 className="mb-4 text-2xl font-bold">Built for teams shipping fast</h2>
                         <p className="mb-6 text-lg text-[#a0a0c0]">
-                            AnswerLattice is built for SaaS teams that need support accuracy without building a full support team. It treats product pages, help content, fallback tickets, feedback, changelog updates, and approved answers as one connected support layer.
+                            AnswerLattice is built for SaaS teams that need support accuracy without building a full support team. It turns product pages, help content, fallback tickets, feedback, changelog updates, screenshots, recordings, notes, and approved answers into one reviewed support layer.
                         </p>
                         <AnswerlatticeLink
                             basePath={basePath}

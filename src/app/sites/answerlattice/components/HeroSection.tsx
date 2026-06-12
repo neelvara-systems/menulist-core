@@ -36,7 +36,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                     </h1>
 
                     <p className="al-page-hero__description relative mx-auto w-full lg:mx-0">
-                        AnswerLattice turns docs, FAQs, release notes, product pages, tickets, feedback, and repeated replies into one trusted support layer with approved answers, ticket fallback, and a review loop that keeps support current.
+                        Your product knowledge already exists, but it is scattered across docs, tickets, releases, screenshots, recordings, notes, and repeated replies. AnswerLattice turns it into approved answers for your help widget, help center, and future AI agents.
                     </p>
 
                     <div className="al-page-hero__actions relative mx-auto w-full sm:max-w-none lg:mx-0 lg:justify-start">
@@ -66,7 +66,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                         className="relative mt-4 inline-flex max-w-[16rem] items-center justify-center gap-2 rounded-full border border-teal-300/20 bg-teal-400/[0.055] px-4 py-2 text-center text-xs font-semibold text-teal-100 transition hover:border-teal-200/30 hover:text-white sm:max-w-none"
                     >
                         <LuFileInput aria-hidden size={14} />
-                        Prepare product sources first
+                        Prepare product material first
                         <LuArrowRight aria-hidden size={14} />
                     </AnswerlatticeLink>
 

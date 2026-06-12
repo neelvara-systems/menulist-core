@@ -7,7 +7,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'Help Center and Tickets',
-    description: 'Operate AnswerLattice hosted help, docs, FAQ, custom owner answers, changelog, tickets, feedback, conversations, Support Board, weekly support review, and workflow notifications from one connected support layer.',
+    description: 'Turn scattered product knowledge into hosted help, docs, FAQ, custom owner answers, changelog support, tickets, feedback, Support Board follow-up, weekly review, and notifications.',
     alternates: { canonical: '/product/support-control' },
 };
 
@@ -29,16 +29,16 @@ export default function SupportControlProductPage() {
                 basePath={basePath}
                 canonicalPath="/product/support-control"
                 eyebrow="Help center and tickets"
-                title="Keep docs, FAQs, owner answers, releases, widget answers, tickets, and feedback connected."
-                description="AnswerLattice gives you a practical support layer for hosted help, in-app answers, custom owner answers, ticket fallback, feedback review, conversations, private Support Board follow-up, weekly review output, and owner notifications."
+                title="Turn scattered support knowledge into hosted help, widget answers, tickets, and feedback review."
+                description="AnswerLattice gives you a practical support layer for scattered product docs, notes, tickets, replies, releases, feedback, and screenshots: hosted help, in-app answers, custom owner answers, ticket fallback, private Support Board follow-up, weekly review output, and owner notifications."
                 activeTab="Help center and tickets"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
-                bentoTitle="Your support surfaces stay connected."
-                bentoDescription="Instead of a standalone docs site, isolated ticket inbox, and separate release notes, AnswerLattice keeps customer support connected by product surface."
+                bentoTitle="Your support surfaces come from the same structured knowledge."
+                bentoDescription="Instead of a standalone docs site, isolated ticket inbox, and separate release notes, AnswerLattice turns scattered product material into customer support by product surface."
                 bentoCards={[
                     { title: 'Knowledge base', description: 'Long-form articles remain available for reviewed support content and hosted help.' },
                     { title: 'FAQ management', description: 'Owner-written answers and article-backed FAQs give users short answers and keep related article context nearby.' },
-                    { title: 'Changelog support', description: 'Release notes can stay connected to product surfaces and affected support answers.' },
+                    { title: 'Changelog support', description: 'Release notes can become product-surface review triggers for affected support answers.' },
                     { title: 'Feedback signals', description: 'Help Center feedback can be reviewed by owners, grouped by Product Surface, and synced into Support Board when it reveals a support gap.' },
                     { title: 'Safe ticket context', description: 'Tickets can include capped, sanitized debugging context to reduce back-and-forth.' },
                     { title: 'Support Board', description: 'Owners can track selected support gaps, private notes, status history, and answer proposal follow-up.' },
@@ -47,8 +47,8 @@ export default function SupportControlProductPage() {
                 workflowTitle="Publish help, answer users, collect feedback, track follow-up, and turn fallbacks into review work."
                 workflowDescription="Support Control is practical: publish help, answer users, accept fallback tickets, collect feedback, track selected follow-up on Support Board, notify owners when attention is needed, and turn unresolved issues into review work."
                 workflowSteps={[
-                    { title: 'Publish help content', description: 'Create or import docs, FAQs, custom answers, and release notes for the hosted help center.' },
-                    { title: 'Connect product surfaces', description: 'Assign content to the routes and workflows where users need it.' },
+                    { title: 'Publish help content', description: 'Turn scattered docs, FAQs, custom answers, release notes, and product material into hosted help center content.' },
+                    { title: 'Map product surfaces', description: 'Assign content to the routes and workflows where users need it.' },
                     { title: 'Let widget answer first', description: 'Serve approved answers, owner FAQ answers, and related support before fallback.' },
                     { title: 'Capture fallback tickets', description: 'When coverage is missing, route the user to a ticket with safe context.' },
                     { title: 'Review feedback', description: 'Use feedback, ratings, requests, and suggestions by Product Surface to spot support content gaps.' },

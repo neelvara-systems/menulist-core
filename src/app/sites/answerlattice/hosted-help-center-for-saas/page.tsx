@@ -6,7 +6,7 @@ import SeoLandingPage from '../components/SeoLandingPage';
 
 export const metadata: Metadata = {
     title: 'Hosted Help Center for SaaS',
-    description: 'Hosted help center for AI-built SaaS with reviewed docs, owner FAQs, changelog content, and the same knowledge powering the app widget.',
+    description: 'Hosted help center for AI-built SaaS that turns reviewed docs, FAQs, release notes, screenshots, recordings, and owner notes into public help and widget answers.',
     alternates: { canonical: '/hosted-help-center-for-saas' },
 };
 
@@ -26,18 +26,18 @@ export default function HostedHelpCenterForSaasPage() {
             <AnswerlatticeHeader basePath={basePath} />
             <SeoLandingPage
                 basePath={basePath}
-                canonicalPath="/hosted-help-center-for-saas"
-                eyebrow="Hosted help center for SaaS"
-                title="Hosted help center for AI-built SaaS."
-                description="Publish reviewed docs, owner FAQs, and changelog content on a branded support domain while the same knowledge powers your app widget."
+                    canonicalPath="/hosted-help-center-for-saas"
+                    eyebrow="Hosted help center for SaaS"
+                    title="Hosted help center for AI-built SaaS."
+                    description="Turn reviewed docs, owner FAQs, release notes, screenshots, recordings, and owner notes into branded hosted help while the same approved truth powers your app widget."
                 problem="Small SaaS teams often split docs, changelog, widget answers, and tickets across separate tools. The result is duplicate content, stale answers, and users who still open tickets."
                 question="Where can users read support without logging in?"
                 genericAnswer="Create a public docs site and link it from your app."
                 answerlatticeAnswer="Publish reviewed articles, owner FAQs, and changelog entries on help.yourapp.com while tickets, conversations, and workspace internals stay private."
-                ownerReview="Hosted help content stays part of the same reviewed support knowledge. Owners can connect articles to custom owner answers, surfaces, changelogs, and approved answers instead of maintaining a separate support site."
-                setupSteps={[
-                    'Create your AnswerLattice workspace.',
-                    'Import docs, FAQs, custom answers, and release notes.',
+                    ownerReview="Hosted help content comes from the same reviewed support knowledge. Owners can turn articles, custom owner answers, surfaces, changelogs, and approved answers into one support site instead of maintaining a separate docs island."
+                    setupSteps={[
+                        'Create your AnswerLattice workspace.',
+                        'Import docs, FAQs, tickets, custom answers, release notes, screenshots, recordings, and notes.',
                     'Map content to product surfaces.',
                     'Configure hosted help domain settings.',
                     'Publish reviewed help content and keep answer gaps visible.',

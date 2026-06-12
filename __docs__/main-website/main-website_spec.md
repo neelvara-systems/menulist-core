@@ -91,7 +91,7 @@ ChatGPT had zero awareness of these built features:
 17. **Menu Presence Monitor** — Checklist showing where menu is visible across surfaces
 18. **Customer Communication Kit** — Pre-written messages with menu link, address, hours
 19. **Business Health** — Owner-dashboard check that combines latest menu/public-surface state, cached customer attention, freshness, multi-location status, safe action routing, and No action needed state. It appears on the homepage, as the first `/features` Operations card, and as the dedicated public campaign page at `/features/business-health`.
-20. **Header-level feature campaigns** — Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, Business Health, and Public Discovery are the current header dropdown feature set because they map directly to SMB owner purchase confidence: start from the current menu, publish one public source, share it, manage it from a phone, know what needs attention, and provide a clearer public source.
+20. **Header-level feature campaigns** — Menu Import, Official Business Page, QR Menu and Links, Owner PWA Dashboard, Business Health, and Public Discovery are the current header dropdown feature set because they map directly to SMB owner purchase confidence: start from the current menu, publish one public source, share it, manage core owner workflows from phone or PWA, know what needs attention, and provide a clearer public source.
 
 **Rule:** Do not forget these capabilities in the website ecosystem. They are competitive advantages, but they do not all need to sit on the homepage at once.
 

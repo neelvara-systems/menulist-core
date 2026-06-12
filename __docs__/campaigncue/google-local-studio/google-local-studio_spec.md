@@ -6,7 +6,7 @@ Google Local Studio prepares campaign content for Google Business Profile: updat
 
 ## Current Runtime
 
-The implemented runtime prepares Google-ready manual drafts and keeps direct publish disabled. Connected location mapping, OAuth/API access status, quota checks, local-post publish jobs, and insight imports are architecture requirements that remain inactive until Google provider setup is complete.
+The implemented runtime prepares Google-ready manual drafts and keeps direct publish disabled. Connected location mapping, OAuth/API access status, quota checks, local-post publish jobs, and insight imports are architecture requirements that remain inactive until a separate Google provider layer is built.
 
 ## External API Reality
 
@@ -19,7 +19,7 @@ The implemented runtime prepares Google-ready manual drafts and keeps direct pub
 ## Goals
 
 - Turn campaign cues into Google-ready local updates.
-- Keep manual fallback for unsupported post types, disabled locations, or API access gaps.
+- Keep manual export for unsupported post types, disabled locations, or API access gaps.
 - Avoid unsupported Product Post assumptions.
 - Capture post and location performance where APIs allow.
 
@@ -28,12 +28,12 @@ The implemented runtime prepares Google-ready manual drafts and keeps direct pub
 | Requirement | Acceptance |
 | --- | --- |
 | Post type fit | Update, offer, event, and CTA post formats are separate. |
-| Product-post fallback | Product-post style content uses manual instructions unless Google API support is available. |
-| Location eligibility | Workspace must show connected location, API access status, and post availability. |
+| Product-post fallback | Product-post style content uses manual instructions. |
+| Location eligibility | Workspace must show location context and manual-only provider posture. |
 | Media rules | Images and videos must pass size/type/provider validation before handoff. |
 | Owner approval | Owner approves final Google post copy and media. |
-| Performance capture | Insights are imported only where authorized and available. |
-| Quota/access status | Workspace shows whether GBP API access is connected, unavailable, quota-blocked, or manual-only. |
+| Performance capture | Insights import is future-only and must be authorized before activation. |
+| Quota/access status | Workspace shows manual-only provider posture until a future GBP provider layer exists. |
 
 ## Non-Goals
 
@@ -44,5 +44,5 @@ The implemented runtime prepares Google-ready manual drafts and keeps direct pub
 ## Risks
 
 - Google API access and quotas can change.
-- Product Post limitations require honest manual fallback.
+- Product Post limitations require honest manual export.
 - Multi-location businesses need strict location mapping.

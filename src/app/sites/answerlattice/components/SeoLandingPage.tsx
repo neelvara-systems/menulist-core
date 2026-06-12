@@ -110,7 +110,7 @@ export default function SeoLandingPage({
                     <SectionHeader
                         eyebrow="Setup path"
                         title="Reviewed support stays the authority."
-                        description="The setup path keeps source material, page context, and owner approval connected before answers become official."
+                        description="The setup path turns scattered product material, page context, and owner approval into official answers only after review."
                     />
                     <div className="al-linear-proof__grid al-linear-proof__grid--compact">
                         <article className="al-linear-proof__copy" data-answerlattice-reveal>
@@ -133,11 +133,11 @@ export default function SeoLandingPage({
                                         <span className="al-linear-proof__card-index">{String(index + 1).padStart(2, '0')}</span>
                                         <div>
                                             <h3>{step}</h3>
-                                            <p>
-                                                {index === 0
-                                                    ? 'Create the support workspace and connect it to the product.'
-                                                    : index === visibleSetupSteps.length - 1
-                                                      ? 'Use missing answers and feedback to improve the next support pass.'
+                                                <p>
+                                                    {index === 0
+                                                        ? 'Create the support workspace and map it to the product.'
+                                                        : index === visibleSetupSteps.length - 1
+                                                          ? 'Use missing answers and feedback to improve the next support pass.'
                                                       : 'Keep this setup step tied to reviewed support material and product pages.'}
                                             </p>
                                         </div>
@@ -178,7 +178,7 @@ export default function SeoLandingPage({
                     Turn this support gap into a reviewed AnswerLattice setup.
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
-                    Start with the demo, then prepare source material so the first workspace has pages, docs, FAQs, and owner-approved answers to review.
+                    Start with the demo, then prepare scattered product material so the first workspace has pages, docs, FAQs, and owner-approved answers to review.
                 </p>
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                     <AnswerlatticeLink

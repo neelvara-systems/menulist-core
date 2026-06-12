@@ -7,7 +7,7 @@ API Boundaries are mostly engineering-facing, but mobile screens must show conne
 ## Mobile Requirements
 
 - Show whether an action is connected, manual, unsupported, failed, or blocked by approval.
-- Keep retry/manual fallback actions explicit.
+- Keep export/download and retry actions explicit.
 - Avoid provider credential setup as the primary phone flow.
 - Show provider error summary without exposing raw technical payloads.
 - Keep permission failures understandable.
@@ -22,4 +22,3 @@ API Boundaries are mostly engineering-facing, but mobile screens must show conne
 
 - Owner can understand why a channel action is unavailable from mobile.
 - Owner can continue with manual export when API publish is blocked.
-

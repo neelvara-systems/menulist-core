@@ -95,9 +95,9 @@ export default function AnswerlatticeIntegrationsPage() {
                             <h1 className="max-w-3xl text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
                                 Notify owners when support truth needs attention.
                             </h1>
-                            <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
-                                AnswerLattice connects support review to Slack and email with digest-first notifications, critical alerts, test delivery, and compact delivery health.
-                            </p>
+                                <p className="mt-6 max-w-2xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
+                                    AnswerLattice routes support-review work to Slack and email with digest-first notifications, critical alerts, test delivery, and compact delivery health.
+                                </p>
                             <PageProofStrip
                                 className="mt-8 max-w-2xl"
                                 items={[
@@ -242,9 +242,9 @@ export default function AnswerlatticeIntegrationsPage() {
                     <h2 className="mx-auto max-w-3xl text-3xl font-bold leading-tight sm:text-4xl">
                         Keep owners aware without building notification plumbing yourself.
                     </h2>
-                    <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
-                        Start with Slack or email, verify delivery, and keep support review work connected to the AnswerLattice dashboard.
-                    </p>
+                        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
+                            Start with Slack or email, verify delivery, and route support review work back to the AnswerLattice dashboard.
+                        </p>
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
                             basePath={basePath}

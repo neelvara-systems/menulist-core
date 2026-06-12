@@ -8,13 +8,13 @@ CampaignCue API code should live under CampaignCue-scoped modules and route grou
 
 | Family | Purpose |
 | --- | --- |
-| Internal app APIs | Campaign, generation, trust, export, schedule, analytics actions. |
-| Provider adapters | Google, Meta, WhatsApp, generation, video, billing, and email/webhook providers. |
+| Internal app APIs | Campaign, generation, trust, export/download, schedule, analytics actions. |
+| Provider adapters | Separate future layer for Google, Meta, WhatsApp, generation, video, billing, and email/webhook providers. |
 | Webhooks | Provider callbacks for publish status, replies, metrics, billing, and opt-out events. |
 | Export APIs | Download/copy/share package creation. |
 | Partner APIs | Future agency/client integrations, disabled unless explicitly enabled. |
 
-Current runtime exposes only the internal app APIs listed below. Provider adapter routes, webhook endpoints, export file generation APIs, partner APIs, and billing/provider callbacks are architecture contracts and remain inactive until explicit provider setup exists.
+Current runtime exposes only the internal app APIs listed below. Provider adapter routes, webhook endpoints, partner APIs, social account connection, and billing/provider callbacks are architecture contracts and remain inactive until a separate provider-posting layer is explicitly built.
 
 ## Required Patterns
 
@@ -38,18 +38,17 @@ Use product-scoped paths such as:
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
-| `/api/campaigncue/workspace` | `GET` | Bootstrap/load workspace, Business Brain, cues, campaigns, assets, schedules, provider posture, and analytics summary. |
+| `/api/campaigncue/workspace` | `GET` | Bootstrap/load workspace, Business Brain, source facts, cues, campaigns, assets, schedules, launch readiness, provider posture, and analytics summary. |
 | `/api/campaigncue/workspace` | `PATCH` | Update CampaignCue Business Brain fields. |
 | `/api/campaigncue/campaigns` | `GET` | Bounded campaign list through a direct workspace-only collection read. |
-| `/api/campaigncue/campaigns` | `POST` | Create deterministic manual/export-first campaign pack with trust report and atomic idempotency key support. |
-| `/api/campaigncue/campaigns/[campaignId]/actions` | `POST` | Record copy, download, export, schedule, approval, or manual-use action with atomic idempotency. Direct publish/send actions return manual fallback. |
+| `/api/campaigncue/campaigns` | `POST` | Create deterministic structured export/download-first campaign pack with trust report, cue evidence, bounded source context, and atomic idempotency key support. |
+| `/api/campaigncue/campaigns/[campaignId]/actions` | `POST` | Record copy, download, pack export, schedule, approval, manual-use, or owner-reported outcome action with atomic idempotency. Direct publish/send actions are not part of the accepted schema. |
 | `/api/campaigncue/assets` | `GET` | Bounded asset metadata list through a direct workspace-only collection read. |
-| `/api/campaigncue/assets` | `POST` | Register asset metadata, rights status, and usage refs. |
+| `/api/campaigncue/assets` | `POST` | Register asset metadata, rights status, consent type, rights note, tags, and usage refs. |
 | `/api/campaigncue/analytics` | `GET` | Read one workspace doc, one dashboard summary doc, provider posture, and cost model. |
 | `/api/campaigncue/sources` | `GET` | Bounded owner source input list through a direct workspace-only collection read. |
-| `/api/campaigncue/sources` | `POST` | Save owner source input and refresh source snapshot. |
-| `/api/campaigncue/integrations` | `GET` | Provider posture and setup request records through a direct workspace-only collection read. |
-| `/api/campaigncue/integrations` | `POST` | Record provider setup request or manual-mode confirmation. |
+| `/api/campaigncue/sources` | `POST` | Save owner source input with optional expiry, derive source facts, and refresh source snapshot. |
+| `/api/campaigncue/integrations` | `GET` | Read-only future provider posture. The active runtime does not read provider connection records or write setup requests. |
 | `/api/campaigncue/locations` | `GET` | Bounded location list through a direct workspace-only collection read. |
 | `/api/campaigncue/locations` | `POST` | Add active/draft location record. |
 
@@ -72,6 +71,6 @@ The workspace app must map `CAMPAIGNCUE_FIREBASE_UNAVAILABLE` to a setup-blocked
 
 ## Acceptance
 
-- Provider failure does not erase draft or approved campaign output.
-- Provider and webhook paths remain disabled until signature validation and idempotency are implemented for that provider.
+- Export/download actions do not depend on provider availability.
+- Provider and webhook paths remain disabled until signature validation, idempotency, credentials, consent, quota, and fallback controls are implemented for that provider.
 - API actions cannot read or write MenuList or Answerlattice product data.

@@ -16,10 +16,10 @@ The active runtime uses the signed-in MenuList store profile as a read-only boot
 | Upload | PDF/image/CSV menus, service lists, photos, videos. |
 | Website URL | Basic business facts and available public content, with review. |
 | MenuList | Official restaurant/store/menu/photos/public-link source snapshots. |
-| Google Business Profile | Location/post/publish context where connected. |
-| WhatsApp Business | Send/template/status context where connected. |
-| Meta social/ads | Draft/publish/ad account context where connected. |
-| Booking/POS/order | Outcome data only when explicitly connected. |
+| Google Business Profile | Manual Google-ready drafts; connected publish context is reserved for a separate future layer. |
+| WhatsApp Business | Manual message copy/export; direct-send and template status are reserved for a separate future layer. |
+| Meta social/ads | Manual social/ad handoff packs; no ad-account or social-account mutation in the active runtime. |
+| Booking/POS/order | Owner-entered links and outcomes now; imports only after a future connector contract exists. |
 
 ## Integration Posture
 
@@ -27,7 +27,7 @@ The active runtime uses the signed-in MenuList store profile as a read-only boot
 | --- | --- | --- |
 | MenuList | Read-only source snapshots. | Protect MenuList public truth and cache/write contracts. |
 | Website/public pages | Low-confidence extraction with owner review. | Public content can be stale, partial, or legally unsuitable for marketing claims. |
-| Google Business Profile | Capability-detected connection plus manual fallback. | API access, quotas, location eligibility, and post type support vary. |
+| Google Business Profile | Manual Google-ready export now; capability-detected connection only in a separate future layer. | API access, quotas, location eligibility, and post type support vary. |
 | WhatsApp Business | Consent/template/preference-aware connection only. | Marketing messages require opt-in, pricing, policy, and preference handling. |
 | Meta/Instagram/TikTok/YouTube | Export-first until app review and provider rules are satisfied. | Posting APIs require account eligibility, scopes, quotas, domain rules, and platform-specific UX. |
 | POS/booking/order systems | Outcome import only until write-back contract exists. | Avoid accidental changes to operational systems. |
@@ -43,11 +43,11 @@ The active runtime uses the signed-in MenuList store profile as a read-only boot
 
 ## Requirements
 
-- Every connection has explicit scopes.
-- Every sync creates or reuses a source snapshot.
+- Every future connection has explicit scopes.
+- Every future sync creates or reuses a source snapshot.
 - Source freshness is visible.
 - Conflicts are shown, not silently resolved.
-- Disconnection stops future sync but preserves campaign snapshots per retention policy.
+- Future disconnection stops future sync but preserves campaign snapshots per retention policy.
 - Direct MenuList writes are blocked by default.
 
 ## Risks

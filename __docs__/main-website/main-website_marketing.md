@@ -39,7 +39,7 @@
 
 > Business Health campaign-page note (June 8, 2026): use `/features/business-health` as the public campaign URL for Business Health. Do not use `/business-health` in ads or public sales material because it is the logged-in owner app route. Campaign copy may lead with "Know what needs attention," but must stay inside the owner-dashboard-check boundary and avoid AI assistant, chatbot, realtime sales, revenue, prediction, competitor, or autonomous edit claims.
 
-> Feature navigation note (June 8, 2026): the header Features dropdown should stay limited to the feature pages that help SMB owners self-sell fastest: Menu Import, Official Business Page, QR Menu and Links, Owner Phone Dashboard, Business Health, and Public Discovery. Do not add every Features-page card to the dropdown. POS sync, staff roles, analytics depth, print-file detail, and advanced governance should stay in supporting pages until buyer demand justifies header placement.
+> Feature navigation note (June 8, 2026): the header Features dropdown should stay limited to the feature pages that help SMB owners self-sell fastest: Menu Import, Official Business Page, QR Menu and Links, Owner PWA Dashboard, Business Health, and Public Discovery. Do not add every Features-page card to the dropdown. POS sync, staff roles, analytics depth, print-file detail, and advanced governance should stay in supporting pages until buyer demand justifies header placement.
 
 ---
 

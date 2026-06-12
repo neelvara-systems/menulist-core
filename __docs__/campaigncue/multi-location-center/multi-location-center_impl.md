@@ -19,7 +19,8 @@ Every CampaignCue entity that can vary by location must support `locationId` or 
 - `GET /api/campaigncue/locations` reads a bounded location list.
 - `POST /api/campaigncue/locations` adds active or draft location records under the CampaignCue workspace.
 - Location records are server-written, scoped by the signed-in tenant/store session, and designed to avoid scanning MenuList stores at page load.
-- Group campaign automation and provider/location sync remain disabled until external provider setup exists.
+- Active location records now influence the Opportunity Engine so the owner can create local-variant cues without provider/location sync.
+- Group campaign automation and provider/location sync remain disabled until a separate future provider layer exists.
 
 ## Data Objects
 

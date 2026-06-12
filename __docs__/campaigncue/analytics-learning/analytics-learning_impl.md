@@ -6,17 +6,17 @@ Analytics Learning must store channel events and compact metric snapshots separa
 
 ## Flow
 
-1. Campaign output is copied, downloaded, exported, scheduled as a manual task, marked used, or sent for approval.
+1. Campaign output is copied, downloaded, exported, scheduled as a manual task, marked used, sent for approval, or recorded with an owner-reported result.
 2. Current server mutations record observed workspace events.
 3. Bounded mutation-time updates write dashboard summaries.
 4. Reports display source and confidence of each metric.
-5. Provider-imported metrics and learning signals stay inactive until direct integrations are configured.
+5. Provider-imported metrics and learning signals stay inactive until a separate future provider layer is configured.
 
 ## Data Objects
 
 | Object | Purpose |
 | --- | --- |
-| `campaignEvents` | Observed CampaignCue actions such as campaign creation, copy, download, export, schedule, approval, manual fallback, asset registration, source input, integration setup request, and location draft. |
+| `campaignEvents` | Observed CampaignCue actions such as campaign creation, copy, download, pack export, schedule, approval, manual use, trust-gate export blocking, asset registration, source input, and location draft. |
 | `metricSnapshots` | Imported channel metric snapshots; not active in the current runtime. |
 | `campaignSummaries` | Precomputed campaign result summaries. |
 | `learningSignals` | Signals used by Opportunity Engine. |
@@ -28,7 +28,7 @@ Analytics Learning must store channel events and compact metric snapshots separa
 - Campaign creation and campaign actions write observed workspace events.
 - The dashboard summary is updated with atomic Firestore increments during mutations so reporting does not scan raw events and concurrent owner actions do not lose counts.
 - Successful owner mutations merge API responses into the workspace UI locally, so analytics and lists do not trigger a full overview reload after each action.
-- Provider-imported metrics, credit ledger events, send/delivery/reply callbacks, and direct publish status are not active until direct integrations are configured.
+- Owner-reported outcomes are stored as manual-confidence events and dashboard counters. Provider-imported metrics, credit ledger events, send/delivery/reply callbacks, social account connection, and direct publish status are not active until a separate future provider layer is configured.
 
 ## Event Contract
 
@@ -42,15 +42,14 @@ Every important campaign action should emit a scoped event with `workspaceId`, `
 | `campaign_export` | Pack output was exported. |
 | `campaign_schedule` | Manual task schedule was created. |
 | `campaign_request_approval` | Approval request was created. |
-| `manual_fallback_shown` | User was shown a manual path because API/channel action was unavailable or failed. |
-| `manual_fallback_completed` | User marked manual action complete. |
+| `export_action_blocked` | Trust gate blocked an export/download/manual-use action. |
+| `manual_export_used` | Owner marked an exported or manually posted/shared pack as used. |
+| `owner_outcome_recorded` | Owner recorded replies, bookings, walk-ins, orders, or useful comments manually. |
 | `asset_registered` | Asset metadata was registered. |
 | `source_input_added` | Owner added a source input. |
-| `integration_setup_requested` | Owner requested provider setup. |
-| `integration_manual_confirmed` | Owner kept a provider in manual mode. |
 | `location_draft_added` | Owner added a location record. |
 
-The broader events for provider sends, provider publish status, replies, clicks, imported metrics, approval completion, and credit lifecycle remain planned contracts and are not emitted by the current manual/export-first runtime.
+The broader events for provider sends, provider publish status, replies, clicks, imported metrics, provider setup requests, approval completion, and credit lifecycle remain future contracts and are not emitted by the current export/download-first runtime.
 
 ## Metric Confidence
 

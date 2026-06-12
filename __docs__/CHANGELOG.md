@@ -6,6 +6,79 @@
 
 ---
 
+## June 12, 2026 - CampaignCue Export Delivery Boundary
+
+### Changed
+
+- **CampaignCue delivery is export/download-first** - Owner workflow now centers on copy, single-output download, full-pack download, manual scheduling, approval, mark-used, and owner-reported results.
+- **Social/provider posting is separated** - Direct WhatsApp send, Google publish, social posting, ad mutations, and provider account connection are not active day-one workflows. The future provider layer is documented separately in `__docs__/campaigncue/campaigncue-delivery-boundary.md`.
+- **CampaignCue Connections became Exports** - Owner navigation now shows Export and Download instead of Posting Connections. Settings no longer exposes connected-posting or provider-generation toggles.
+
+### Cost
+
+- **Provider connection reads removed from workspace load** - CampaignCue overview no longer reads provider connection records in the active runtime, lowering documented overview reads from 9 to 8.
+- **Provider setup writes removed** - `/api/campaigncue/integrations` is read-only posture; no setup-request or manual-confirmation write runs from the owner UI.
+- **No provider cost introduced** - No direct posting, social account connection, ad spend, paid generation, rendered media, webhook, or provider metric import is active.
+
+### Validation
+
+- **Verifier updated** - `npm run verify:campaigncue` now enforces export-only campaign actions, read-only integration posture, delivery-boundary docs, and absence of owner integration mutation calls.
+
+## June 12, 2026 - CampaignCue Main Gap Hardening
+
+### Improved
+
+- **CampaignCue now uses source facts instead of only source notes** - Business details and owner inputs derive saved facts, missing fact prompts, vertical risks, and source snapshot hashes for campaign creation and owner review.
+- **Campaign ideas are more actionable** - Cues now include owner benefit, evidence, and action labels, and they account for source inputs, asset rights, scheduled manual tasks, location records, and owner-reported outcomes.
+- **Campaign packs are structured** - Outputs now include headline, CTA, destination, format, consent note, policy note, approval note, UTM hint, and channel-specific manual handoff steps while keeping copy/download text available.
+- **Trust checks are deeper** - Checks now cover missing destinations, blocked/unreviewed facts, WhatsApp consent, Google manual verification, salon consent/result risk, restaurant menu verification, missing asset proof, and ad spend handoff.
+- **Results are more honest** - Owners can record manual outcomes such as replies, bookings, walk-ins, orders, or useful comments without treating them as provider-proven metrics.
+- **Asset records are safer** - Asset metadata now includes consent type, rights notes, and tags before reuse in campaign packs.
+- **Launch readiness is visible** - Plan/Access now shows CampaignCue Firebase/env/Admin readiness and keeps connected sending/spend in manual mode until external setup is complete.
+
+### Cost
+
+- **No provider or paid generation cost introduced** - Direct publishing, WhatsApp direct send, ad spend mutation, rendered media, paid generation, and billing checkout remain disabled.
+- **Firestore reads remain bounded** - Workspace load still uses bounded subcollection reads and summary documents. Campaign creation now reads bounded source, asset, schedule, location, and summary context so cue resolution stays server-authoritative without raw event scans.
+- **No realtime listeners added** - Owner UI continues to merge mutation responses locally instead of keeping live listeners open.
+
+### Validation
+
+- **CampaignCue verifier and typecheck passed** - `npm run verify:campaigncue` passed with 245 checks and `npx tsc --noEmit --incremental false` passed after the source-fact, structured-pack, and outcome contracts were added.
+- **Next expansion list added** - Future provider, billing, upload, render, agency portal, multi-location automation, and imported-metric work is parked in `__docs__/campaigncue/campaigncue-next-expansion-list.md`.
+
+## June 12, 2026 - MenuList Owner PWA Website Copy Correction
+
+### Improved
+
+- **Owner PWA Dashboard positioning is clearer** - The main website Features dropdown, `/features` Operations card, and `/features/owner-phone-dashboard` now describe phone/PWA access as core owner workflow access, not just daily menu updates.
+- **Owner mobile claim stays practical** - Copy now names menu edits, publishing, QR/link sharing, Business Health, feedback, screens, status, hours, and key settings while still leaving desktop useful for heavier review or precision setup.
+
+### Cost
+
+- **No Firebase cost change** - This is public website locale and documentation copy only. It adds no Firestore reads, writes, listeners, indexes, Cloud Functions, Storage paths, provider calls, scheduler work, cache invalidation, billing behavior, or Firebase deploy target changes.
+
+### Validation
+
+- **Website copy checks passed** - English and Hindi website locale JSON parsed successfully with matching `ownerPhoneDashboard` key coverage, `npm run lint` passed, `git diff --check` passed, and local smoke returned `200` for `/features/owner-phone-dashboard` and `/llms.txt` with the new Owner PWA wording present.
+- **TypeScript is blocked by unrelated CampaignCue worktree errors** - `npx tsc --noEmit --incremental false` currently fails in `src/lib/campaigncue/server.ts` because dirty CampaignCue types are out of sync (`CampaignCueMetricConfidence`, missing `CampaignCueOpportunity` fields, missing `CampaignCueOverview` fields, missing `CampaignCueOutput.fields`, and missing `CampaignCueAsset.tags`). This website-copy pass did not modify those CampaignCue files.
+
+## June 11, 2026 - CampaignCue Routing Domain Cross-Check
+
+### Fixed
+
+- **CampaignCue local dev prefix matching is stricter** - Product dev prefixes now match only the exact prefix or a slash-boundary child path, so `/__campaigncue` and `/__campaigncue/app` route to CampaignCue while `/__campaigncuex` does not.
+- **CampaignCue URL architecture comments are current** - `src/constants/urls.ts` and `src/lib/multiTenant/domainResolver.ts` now list CampaignCue as an active local, preview, and production product-domain surface.
+
+### Cost
+
+- **No Firebase cost change** - This is route matching, source comments, verifier, and documentation alignment only. It adds no Firestore reads, writes, listeners, indexes, Cloud Functions, Storage paths, provider calls, scheduler work, billing behavior, or Firebase deploy target changes.
+
+### Validation
+
+- **Routing checks passed** - `npm run verify:campaigncue` passed with 228 checks, including exact dev-prefix matching, URL-domain comments, and CampaignCue namespace reservation.
+- **Build and domain smoke passed** - `npx tsc --noEmit --incremental false`, `npm run lint`, `git diff --check`, and `npm run build` passed. Built-server smoke covered local `/__campaigncue`, `/__campaigncue/app`, `/campaigncue/app`, `/__campaigncuex`, production `campaigncue.ai` and `www.campaigncue.ai`, preview `campaigncue.menulist.online`, inactive-host redirects, direct `/sites/campaigncue/app` blocking/absence, and unauthenticated API `401`.
+
 ## June 11, 2026 - CampaignCue Route Boundary Alignment
 
 ### Fixed

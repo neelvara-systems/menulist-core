@@ -8,10 +8,13 @@
  *   Local: localhost:3000     — MenuList marketing/app shell
  *   Local tenant URL host: menulist.online — local generated customer links mirror staging
  *   Local: /__answerlattice        — Answerlattice website
+ *   Local: /__campaigncue          — CampaignCue website
  *   QA: menulist.online       — MenuList preview/staging
  *   QA: ecomsai.com           — Answerlattice preview/staging
+ *   QA: campaigncue.menulist.online — CampaignCue preview/staging
  *   Prod: menulist.ai         — MenuList production
  *   Prod: answerlattice.com        — Answerlattice production
+ *   Prod: campaigncue.ai      — CampaignCue production
  *   [future product domains] — SurfaceOS / GrowthOS / KitStamp websites
  *   app.menulist.ai          — Owner/staff dashboard (authenticated)
  *   {subdomain}.menulist.online — Customer-facing digital menu in local/staging
@@ -238,7 +241,7 @@ export const PLATFORM_DOMAINS = [
     `msg.${PLATFORM_DOMAIN}`,
     // Alias domains (staging/testing environments)
     ...PLATFORM_DOMAIN_ALIASES,
-    // All product website domains (answerlattice.com, surfaceos.app, etc.)
+    // All product website domains (answerlattice.com, campaigncue.ai, surfaceos.app, etc.)
     ...ALL_PRODUCT_DOMAINS,
 ];
 

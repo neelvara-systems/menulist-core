@@ -67,7 +67,7 @@ export default function ComparisonSection() {
                     className="mb-12"
                     eyebrow="Why AnswerLattice"
                     title="Widget, help center, tickets, and docs should not disagree."
-                    description="AnswerLattice sits behind your help center, widget, tickets, and release notes as a reviewed support layer."
+                    description="AnswerLattice turns scattered product knowledge into the standard support knowledge behind your help center, widget, tickets, release notes, and future AI agents."
                 />
 
                 {/* Comparison table */}

@@ -17,7 +17,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Product surfaces',
-                detail: 'Routes, pages, workflows, tags, and entities connect help to the exact product area where users are stuck.',
+                detail: 'Routes, pages, workflows, tags, and entities map help to the exact product area where users are stuck.',
             },
             {
                 title: 'Widget install',
@@ -31,7 +31,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
     },
     {
         mode: 'Support Control',
-        summary: 'Customer-facing support surfaces stay connected instead of becoming separate content silos.',
+        summary: 'Customer-facing support surfaces share reviewed truth instead of becoming separate content silos.',
         items: [
             {
                 title: 'Help center and hosted docs',

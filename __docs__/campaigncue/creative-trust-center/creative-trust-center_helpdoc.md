@@ -2,14 +2,14 @@
 
 ## What This Does
 
-Creative Trust Center checks campaign outputs before they are exported, scheduled, or published.
+Creative Trust Center checks campaign outputs before they are exported, scheduled, or used.
 
 ## Statuses
 
 - `Clear`: no issue found for the selected version.
 - `Warning`: review before use.
 - `Needs fix`: change the output before use.
-- `Blocked`: cannot continue through the connected workflow.
+- `Blocked`: cannot export, schedule, or hand off until the issue is fixed.
 
 ## What It Checks
 
@@ -25,4 +25,3 @@ Creative Trust Center checks campaign outputs before they are exported, schedule
 ## What To Do
 
 Open each finding, check the source fact, and either fix the output, remove the claim, or record an allowed acknowledgement where the workflow permits it.
-

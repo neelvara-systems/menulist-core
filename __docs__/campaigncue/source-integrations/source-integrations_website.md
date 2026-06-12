@@ -25,5 +25,5 @@
 ## SEO Meta
 
 - **Page Title:** CampaignCue source integrations
-- **Meta Description:** Connect or upload business data for CampaignCue campaigns with source review and manual fallback.
+- **Meta Description:** Add or upload business data for CampaignCue campaigns with source review and export-ready outputs.
 - **Target Keywords:** campaign source integration, MenuList connector, menu upload campaign tool

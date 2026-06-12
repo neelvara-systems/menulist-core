@@ -2,7 +2,7 @@ export const ANSWERLATTICE_PRODUCT_AREAS = [
     {
         label: 'Set up support',
         href: '/product/launch-setup',
-        description: 'Create your workspace, add team access, teach AnswerLattice from starter sources, and map the pages where users need help.',
+        description: 'Create your workspace, add team access, turn starter sources into reviewed support drafts, and map the pages where users need help.',
     },
     {
         label: 'In-app help widget',
@@ -12,7 +12,7 @@ export const ANSWERLATTICE_PRODUCT_AREAS = [
     {
         label: 'Help center and tickets',
         href: '/product/support-control',
-        description: 'Publish docs, FAQs, custom owner answers, and release notes; manage fallback tickets, feedback, ratings, and feature requests from one connected support layer.',
+        description: 'Turn scattered product knowledge into docs, FAQs, owner answers, release notes, fallback tickets, feedback, ratings, and feature-request follow-up.',
     },
     {
         label: 'Review approved answers',

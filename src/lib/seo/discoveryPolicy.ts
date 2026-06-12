@@ -97,9 +97,9 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 0.86,
     },
     {
-        label: 'Owner Phone Dashboard',
+        label: 'Owner PWA Dashboard',
         path: '/features/owner-phone-dashboard',
-        description: 'Mobile owner dashboard for reviewing, publishing, sharing QR links, checking Business Health, and managing daily menu operations without a desktop',
+        description: 'Owner PWA dashboard for menu edits, publishing, QR links, feedback review, Business Health, screens, status, hours, and key settings from phone or PWA',
         changeFrequency: 'monthly',
         priority: 0.84,
     },

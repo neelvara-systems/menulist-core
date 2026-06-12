@@ -12,9 +12,8 @@ Google Local Studio prepares content for Google Business Profile updates, offers
 4. Choose update, offer, event, or CTA post.
 5. Review the copy, date, media, and CTA.
 6. Approve the draft.
-7. Publish if connected and supported, or follow the manual posting steps.
+7. Follow the manual posting steps.
 
 ## Why Manual Steps May Appear
 
-Some Google actions depend on account approval, location status, API capability, or post type. CampaignCue keeps the approved copy and media ready so the owner can still use the campaign.
-
+Some Google actions depend on account approval, location status, API capability, or post type. CampaignCue keeps the approved copy and media ready so the owner can use the campaign manually.

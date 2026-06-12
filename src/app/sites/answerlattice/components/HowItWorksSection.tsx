@@ -41,7 +41,7 @@ export default function HowItWorksSection() {
                 <SectionHeader
                     className="mb-16"
                     eyebrow="How it works"
-                    title="From product sources to a working support layer in five steps."
+                    title="From scattered product material to a working support layer in five steps."
                     description="The flow stays practical for founders: map the product, import the first sources, review answers, install the widget, then improve from support gaps."
                 />
 

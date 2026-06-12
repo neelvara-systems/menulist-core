@@ -8,7 +8,7 @@ type SupportKnowledgeMapSectionProps = {
 const SOURCE_INPUTS = [
     {
         label: 'What you add',
-        detail: 'Selected product links, docs, files, FAQs, custom owner answers, changelogs, screenshots, short recordings, and common answers.',
+        detail: 'Scattered product links, docs, files, tickets, FAQs, custom owner answers, changelogs, screenshots, short recordings, notes, and common answers.',
     },
     {
         label: 'Where users ask',
@@ -27,7 +27,7 @@ const OUTPUT_SURFACES = [
     },
     {
         label: 'Hosted help and owner answers',
-        detail: 'Public docs, FAQs, release notes, custom owner answers, and approved answers stay connected.',
+        detail: 'Public docs, FAQs, release notes, custom owner answers, and approved answers come from structured support knowledge.',
     },
     {
         label: 'Review and approval queue',
@@ -51,8 +51,8 @@ export default function SupportKnowledgeMapSection({
                     eyebrow="Support knowledge map"
                     title={isProduct
                         ? 'One reviewed source behind every support surface.'
-                        : 'Connect sources, app screens, and support answers in one map.'}
-                    description="Add selected public pages, docs, files, FAQs, custom owner answers, release notes, screenshots, short support recordings, and common answers. AnswerLattice maps those sources to the pages where users ask for help, then serves approved answers or owner answers before fallback."
+                        : 'Turn sources, app screens, and support answers into one map.'}
+                    description="Add the product knowledge already scattered across public pages, docs, files, tickets, FAQs, custom owner answers, release notes, screenshots, short support recordings, notes, and common answers. AnswerLattice maps it to the pages where users ask for help, then serves approved answers or owner answers before fallback."
                 />
 
                 <div className="al-support-map" data-answerlattice-reveal>

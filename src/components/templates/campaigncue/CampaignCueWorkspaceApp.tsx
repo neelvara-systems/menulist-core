@@ -25,14 +25,12 @@ import type {
     CampaignCueLocation,
     CampaignCueOutput,
     CampaignCueOverview,
-    CampaignCueProviderConnection,
     CampaignCueProviderStatus,
     CampaignCueSourceInput,
 } from "@type/campaigncue";
 import type { ComponentType } from "react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
-    LuAlertTriangle,
     LuArrowRight,
     LuBuilding2,
     LuCalendarDays,
@@ -44,7 +42,6 @@ import {
     LuImage,
     LuMapPin,
     LuPackageCheck,
-    LuPlug,
     LuRefreshCw,
     LuSend,
     LuShieldCheck,
@@ -83,10 +80,10 @@ const noticeTone = (notice: string) => (
 
 const providerOwnerSummary = (provider: CampaignCueProviderStatus) => {
     if (provider.status === "manual_only") {
-        return "Copy and download are ready now. Ask to connect posting only when this account is ready.";
+        return "No account connection is needed. Download the pack and paste it manually.";
     }
     if (provider.status === "disabled") {
-        return "This connection is off for now. Use the manual copy or download path.";
+        return "This future provider layer is off. Use copy or download.";
     }
     return provider.reason;
 };
@@ -129,10 +126,39 @@ const outputFilename = (campaign: CampaignCueCampaign, output: CampaignCueOutput
     `${campaign.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${output.channel}.txt`
 );
 
-const providerConnectionFor = (
-    provider: CampaignCueProviderStatus,
-    connections: CampaignCueProviderConnection[],
-) => connections.find((connection) => connection.provider === provider.provider);
+const campaignPackFilename = (campaign: CampaignCueCampaign) => (
+    `${campaign.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-campaigncue-pack.md`
+);
+
+const buildCampaignPackExport = (campaign: CampaignCueCampaign) => {
+    const lines = [
+        `# ${campaign.title}`,
+        campaign.brief,
+        `Status: ${displayLabel(campaign.status)}`,
+        `Trust: ${displayLabel(campaign.trustGate)}`,
+        "",
+        "## Outputs",
+        ...campaign.outputs.flatMap((output) => [
+            "",
+            `### ${output.label}`,
+            `Mode: ${displayLabel(output.mode)}`,
+            `Trust: ${displayLabel(output.trustGate)}`,
+            "",
+            output.text,
+            "",
+            `CTA: ${output.fields.cta}`,
+            `Destination: ${output.fields.destination || "Not set"}`,
+            `Format: ${output.fields.dimensions}`,
+            `Consent: ${output.fields.consentNote}`,
+            `Policy: ${output.fields.policyNote}`,
+            output.fields.utm ? `UTM: ${output.fields.utm}` : "",
+            "",
+            "Manual steps:",
+            ...output.fields.manualSteps.map((step, index) => `${index + 1}. ${step}`),
+        ]),
+    ];
+    return `${lines.filter((line) => line !== "").join("\n")}\n`;
+};
 
 const bumpAnalytics = (
     data: CampaignCueOverview,
@@ -149,9 +175,10 @@ const bumpAnalytics = (
         approvalRequestCount: action === "request_approval"
             ? analytics.approvalRequestCount + 1
             : analytics.approvalRequestCount,
-        manualFallbackCount: action === "direct_publish" || action === "direct_send"
-            ? analytics.manualFallbackCount + 1
-            : analytics.manualFallbackCount,
+        manualFallbackCount: analytics.manualFallbackCount,
+        ownerReportedOutcomeCount: action === "record_outcome"
+            ? (analytics.ownerReportedOutcomeCount || 0) + 1
+            : analytics.ownerReportedOutcomeCount || 0,
         latestEventAt: new Date().toISOString(),
     };
 };
@@ -298,6 +325,41 @@ function OwnerStepCard({
     );
 }
 
+function OutputFieldSummary({ output }: { output: CampaignCueOutput }) {
+    const fields = output.fields;
+    if (!fields) return null;
+    return (
+        <div className={styles.detailStack}>
+            <div className={styles.detailGrid}>
+                <div>
+                    <span>CTA</span>
+                    <strong>{fields.cta}</strong>
+                </div>
+                <div>
+                    <span>Destination</span>
+                    <strong>{fields.destination || "Needs link or phone"}</strong>
+                </div>
+                <div>
+                    <span>Format</span>
+                    <strong>{fields.dimensions}</strong>
+                </div>
+                <div>
+                    <span>Approval note</span>
+                    <strong>{fields.approvalNote}</strong>
+                </div>
+            </div>
+            <div className={styles.noteBox}>
+                <strong>Manual handoff</strong>
+                <ol>
+                    {fields.manualSteps.map((step) => (
+                        <li key={step}>{step}</li>
+                    ))}
+                </ol>
+            </div>
+        </div>
+    );
+}
+
 export default function CampaignCueWorkspaceApp() {
     const [state, setState] = useState<ApiState>({ loading: true });
     const [tab, setTab] = useState<CampaignCueWorkspaceTabKey>("home");
@@ -308,7 +370,6 @@ export default function CampaignCueWorkspaceApp() {
         agencyMode: false,
         bookingUrl: "",
         businessType: "restaurant",
-        directPublishingEnabled: false,
         locale: CAMPAIGNCUE_DEFAULT_LOCALE,
         locality: "",
         logoUrl: "",
@@ -316,7 +377,6 @@ export default function CampaignCueWorkspaceApp() {
         name: "",
         phone: "",
         primaryColor: CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR,
-        providerGenerationEnabled: true,
         publicMenuUrl: "",
         timezone: CAMPAIGNCUE_DEFAULT_TIMEZONE,
         voice: "friendly",
@@ -324,6 +384,7 @@ export default function CampaignCueWorkspaceApp() {
         whatsapp: "",
     });
     const [sourceDraft, setSourceDraft] = useState({
+        expiresAt: "",
         label: "",
         sourceType: "manual_note",
         status: "needs_review",
@@ -337,8 +398,12 @@ export default function CampaignCueWorkspaceApp() {
     const [assetDraft, setAssetDraft] = useState({
         name: "",
         assetType: "image",
+        consentType: "unknown",
+        rightsNote: "",
         rightsStatus: "needs_review",
+        tags: "",
     });
+    const [outcomeDraft, setOutcomeDraft] = useState("Got replies, bookings, walk-ins, orders, or useful comments.");
 
     const load = async () => {
         setState((current) => ({ ...current, loading: true, error: undefined }));
@@ -388,7 +453,6 @@ export default function CampaignCueWorkspaceApp() {
             agencyMode: data.workspace.agencyMode,
             bookingUrl: data.businessBrain.contacts.bookingUrl || "",
             businessType: data.businessBrain.businessType,
-            directPublishingEnabled: data.workspace.settings.directPublishingEnabled,
             locale: data.workspace.settings.locale || data.businessBrain.locale || CAMPAIGNCUE_DEFAULT_LOCALE,
             locality: data.businessBrain.locality || "",
             logoUrl: data.businessBrain.brandKit.logoUrl || "",
@@ -396,7 +460,6 @@ export default function CampaignCueWorkspaceApp() {
             name: data.businessBrain.name,
             phone: data.businessBrain.contacts.phone || "",
             primaryColor: data.businessBrain.brandKit.primaryColor || CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR,
-            providerGenerationEnabled: data.workspace.settings.providerGenerationEnabled,
             publicMenuUrl: data.businessBrain.contacts.publicMenuUrl || "",
             timezone: data.workspace.settings.timezone || data.businessBrain.timezone || CAMPAIGNCUE_DEFAULT_TIMEZONE,
             voice: data.businessBrain.brandKit.voice,
@@ -490,55 +553,23 @@ export default function CampaignCueWorkspaceApp() {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(sourceDraft),
+                body: JSON.stringify({
+                    ...sourceDraft,
+                    expiresAt: sourceDraft.expiresAt || undefined,
+                }),
             });
             const payload = await res.json().catch(() => ({}));
             if (!res.ok) {
                 setNotice(payload?.error || "Source input could not be saved.");
                 return;
             }
-            setSourceDraft({ label: "", sourceType: "manual_note", status: "needs_review", value: "" });
+            setSourceDraft({ expiresAt: "", label: "", sourceType: "manual_note", status: "needs_review", value: "" });
             setNotice("Source input saved.");
             const sourceInput = payload?.data as CampaignCueSourceInput | undefined;
             if (sourceInput?.id) {
                 updateOverview((current) => ({
                     ...current,
                     sourceInputs: prependBounded(current.sourceInputs, sourceInput, CAMPAIGNCUE_PAGE_SIZE),
-                }));
-            }
-        } finally {
-            setBusyKey(null);
-        }
-    };
-
-    const recordIntegration = async (
-        provider: CampaignCueProviderStatus,
-        action: "keep_manual" | "request_setup",
-    ) => {
-        setBusyKey(`integration:${provider.provider}:${action}`);
-        setNotice("");
-        try {
-            const res = await fetch(CAMPAIGNCUE_API_ROUTES.INTEGRATIONS, {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action,
-                    provider: provider.provider,
-                    note: provider.reason,
-                }),
-            });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Integration state could not be saved.");
-                return;
-            }
-            setNotice(action === "request_setup" ? "Integration setup requested." : "Manual mode saved.");
-            const connection = payload?.data as CampaignCueProviderConnection | undefined;
-            if (connection?.id) {
-                updateOverview((current) => ({
-                    ...current,
-                    providerConnections: replaceBounded(current.providerConnections, connection, CAMPAIGNCUE_PAGE_SIZE),
                 }));
             }
         } finally {
@@ -596,7 +627,11 @@ export default function CampaignCueWorkspaceApp() {
                     channel: output?.channel || campaign.channels[0],
                     outputId: output?.id,
                     scheduledAt,
-                    note: action === "schedule" ? "Manual CampaignCue task" : undefined,
+                    note: action === "schedule"
+                        ? "Manual CampaignCue task"
+                        : action === "record_outcome"
+                            ? outcomeDraft
+                            : undefined,
                     idempotencyKey: buildIdempotencyKey(action),
                 }),
             });
@@ -611,6 +646,11 @@ export default function CampaignCueWorkspaceApp() {
             } else if (action === "download" && output) {
                 downloadText(outputFilename(campaign, output), output.text);
                 setNotice("Downloaded and recorded.");
+            } else if (action === "export") {
+                downloadText(campaignPackFilename(campaign), buildCampaignPackExport(campaign));
+                setNotice("Campaign pack downloaded and recorded.");
+            } else if (action === "record_outcome") {
+                setNotice("Result recorded.");
             } else {
                 setNotice("Action recorded.");
             }
@@ -641,6 +681,10 @@ export default function CampaignCueWorkspaceApp() {
                 body: JSON.stringify({
                     ...assetDraft,
                     source: "manual",
+                    tags: assetDraft.tags
+                        .split(",")
+                        .map((tag) => tag.trim())
+                        .filter(Boolean),
                 }),
             });
             const payload = await res.json().catch(() => ({}));
@@ -648,7 +692,14 @@ export default function CampaignCueWorkspaceApp() {
                 setNotice(payload?.error || "Asset could not be registered.");
                 return;
             }
-            setAssetDraft({ name: "", assetType: "image", rightsStatus: "needs_review" });
+            setAssetDraft({
+                name: "",
+                assetType: "image",
+                consentType: "unknown",
+                rightsNote: "",
+                rightsStatus: "needs_review",
+                tags: "",
+            });
             setNotice("Asset registered.");
             const asset = payload?.data as CampaignCueAsset | undefined;
             if (asset?.id) {
@@ -691,6 +742,7 @@ export default function CampaignCueWorkspaceApp() {
                                 </span>
                             </div>
                             <div className={styles.outputText}>{output.text}</div>
+                            <OutputFieldSummary output={output} />
                             <div className={styles.chips}>
                                 <button className={styles.ghostButton} onClick={() => recordAction(campaign, "copy", output)} type="button">
                                     <LuClipboard size={16} />
@@ -856,6 +908,48 @@ export default function CampaignCueWorkspaceApp() {
                             <section className={styles.section}>
                                 <div className={styles.sectionHeader}>
                                     <div>
+                                        <span className={styles.eyebrow}>Saved facts</span>
+                                        <h2>What CampaignCue can safely use</h2>
+                                        <p>
+                                            These facts come from business details and owner inputs. Review anything marked needs review before using a pack.
+                                        </p>
+                                    </div>
+                                    <button className={styles.ghostButton} onClick={() => setTab("sources")} type="button">
+                                        <LuFileText size={16} />
+                                        Add input
+                                    </button>
+                                </div>
+                                <div className={styles.grid}>
+                                    {data.sourceFacts.slice(0, 6).map((fact) => (
+                                        <article className={styles.provider} key={fact.id}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}>
+                                                    <LuShieldCheck size={18} />
+                                                </div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{fact.label}</h3>
+                                                    <p>{fact.value}</p>
+                                                </div>
+                                            </div>
+                                            <div className={styles.chips}>
+                                                <span className={styles.chip}>{displayLabel(fact.sourceType)}</span>
+                                                <span className={styles.chip} data-tone={fact.risk === "low" ? "green" : fact.risk === "blocked" ? "red" : "amber"}>
+                                                    {fact.risk === "low" ? "ready" : displayLabel(fact.risk)}
+                                                </span>
+                                            </div>
+                                        </article>
+                                    ))}
+                                    {!data.sourceFacts.length ? (
+                                        <div className={styles.empty}>
+                                            <p>Add business details or an owner input so CampaignCue has facts to use.</p>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </section>
+
+                            <section className={styles.section}>
+                                <div className={styles.sectionHeader}>
+                                    <div>
                                         <span className={styles.eyebrow}>Start here</span>
                                         <h2>What to do first</h2>
                                         <p>Follow these steps when opening CampaignCue for a business or location.</p>
@@ -882,7 +976,9 @@ export default function CampaignCueWorkspaceApp() {
                                     <div>
                                         <span className={styles.eyebrow}>Next idea</span>
                                         <h2>{firstOpportunity?.title || "Add an input to get a campaign idea"}</h2>
-                                        <p>{firstOpportunity?.reason || "CampaignCue needs business details or a current offer, service, or event before it can prepare a useful pack."}</p>
+                                        <p>
+                                            {firstOpportunity?.ownerBenefit || firstOpportunity?.reason || "CampaignCue needs business details or a current offer, service, or event before it can prepare a useful pack."}
+                                        </p>
                                     </div>
                                     <button
                                         className={styles.button}
@@ -891,7 +987,7 @@ export default function CampaignCueWorkspaceApp() {
                                         type="button"
                                     >
                                         <LuPackageCheck size={16} />
-                                        Create pack
+                                        {firstOpportunity?.actionLabel || "Create pack"}
                                     </button>
                                 </div>
                                 <div className={styles.twoGrid}>
@@ -1012,6 +1108,16 @@ export default function CampaignCueWorkspaceApp() {
                                             <option value="active">Ready to use</option>
                                         </select>
                                     </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="source-expires">Valid until</label>
+                                        <input
+                                            className={styles.input}
+                                            id="source-expires"
+                                            onChange={(event) => setSourceDraft((draft) => ({ ...draft, expiresAt: event.target.value ? new Date(event.target.value).toISOString() : "" }))}
+                                            type="datetime-local"
+                                            value={sourceDraft.expiresAt ? sourceDraft.expiresAt.slice(0, 16) : ""}
+                                        />
+                                    </div>
                                     <div className={styles.fieldWide}>
                                         <label htmlFor="source-value">Details to use in campaigns</label>
                                         <textarea className={styles.textarea} id="source-value" onChange={(event) => setSourceDraft((draft) => ({ ...draft, value: event.target.value }))} placeholder="Example: 20% off hair spa this Friday, valid from 4 PM to 7 PM, booking link..." value={sourceDraft.value} />
@@ -1040,49 +1146,49 @@ export default function CampaignCueWorkspaceApp() {
                         </section>
                     ) : null}
 
-                    {tab === "integrations" ? (
+                    {tab === "delivery" ? (
                         <section className={styles.section}>
                             <div className={styles.sectionHeader}>
                                 <div>
-                                    <span className={styles.eyebrow}>Connections</span>
-                                    <h2>Posting connections</h2>
-                                    <p>Use manual copy and download now, or ask to connect a posting account when it is ready.</p>
+                                    <span className={styles.eyebrow}>Exports</span>
+                                    <h2>Export and download</h2>
+                                    <p>{data.deliveryPolicy.dayOneSummary}</p>
+                                </div>
+                            </div>
+                            <div className={styles.statusGrid}>
+                                <StatCard label="Active mode" value={displayLabel(data.deliveryPolicy.activeMode)} />
+                                <StatCard label="Direct posting" value="Off" />
+                                <StatCard label="Provider accounts" value="Not connected" />
+                            </div>
+                            <div className={styles.panel}>
+                                <div className={styles.rowStart}>
+                                    <div className={styles.iconBox}>
+                                        <LuDownload size={18} />
+                                    </div>
+                                    <div className={styles.titleBlock}>
+                                        <h3>Day-one delivery</h3>
+                                        <p>Use Copy, Download text, Download pack, Schedule task, Request approval, Mark used, and Record result. CampaignCue does not post to social platforms.</p>
+                                    </div>
                                 </div>
                             </div>
                             <div className={styles.grid}>
-                                {data.providers.map((provider) => {
-                                    const connection = providerConnectionFor(provider, data.providerConnections);
-                                    return (
-                                        <article className={styles.provider} key={provider.provider}>
-                                            <div className={styles.rowStart}>
-                                                <div className={styles.iconBox}>
-                                                    <LuPlug size={18} />
-                                                </div>
-                                                <div className={styles.titleBlock}>
-                                                    <h3>{provider.label}</h3>
-                                                    <p>{providerOwnerSummary(provider)}</p>
-                                                </div>
+                                {data.providers.map((provider) => (
+                                    <article className={styles.provider} key={provider.provider}>
+                                        <div className={styles.rowStart}>
+                                            <div className={styles.iconBox}>
+                                                <LuShieldCheck size={18} />
                                             </div>
-                                            <div className={styles.chips}>
-                                                <span className={styles.chip} data-tone="amber">{displayLabel(provider.mode)}</span>
-                                                <span className={styles.chip}>{displayLabel(provider.status)}</span>
+                                            <div className={styles.titleBlock}>
+                                                <h3>{provider.label}</h3>
+                                                <p>{providerOwnerSummary(provider)}</p>
                                             </div>
-                                            <div className={styles.chips}>
-                                                <span className={styles.chip} data-tone={connection?.status === "setup_requested" ? "amber" : "green"}>
-                                                    {connection?.status ? displayLabel(connection.status) : "manual only"}
-                                                </span>
-                                            </div>
-                                            <div className={styles.chips}>
-                                                <button className={styles.ghostButton} disabled={busyKey === `integration:${provider.provider}:keep_manual`} onClick={() => recordIntegration(provider, "keep_manual")} type="button">
-                                                    Keep manual
-                                                </button>
-                                                <button className={styles.button} disabled={busyKey === `integration:${provider.provider}:request_setup`} onClick={() => recordIntegration(provider, "request_setup")} type="button">
-                                                    Ask to connect
-                                                </button>
-                                            </div>
-                                        </article>
-                                    );
-                                })}
+                                        </div>
+                                        <div className={styles.chips}>
+                                            <span className={styles.chip} data-tone="amber">{displayLabel(provider.mode)}</span>
+                                            <span className={styles.chip}>future provider layer off</span>
+                                        </div>
+                                    </article>
+                                ))}
                             </div>
                         </section>
                     ) : null}
@@ -1093,7 +1199,7 @@ export default function CampaignCueWorkspaceApp() {
                                 <div>
                                     <span className={styles.eyebrow}>Settings</span>
                                     <h2>Owner settings</h2>
-                                    <p>Choose the workspace shape. Connected posting and paid actions stay off until they are approved and enabled.</p>
+                                    <p>Choose the workspace shape. Export/download stays on; direct social posting is not an owner setting.</p>
                                 </div>
                                 <button className={styles.button} disabled={busyKey === "business"} onClick={saveBusinessDetails} type="button">
                                     <LuCheck size={16} />
@@ -1118,14 +1224,12 @@ export default function CampaignCueWorkspaceApp() {
                                         <input checked={businessDraft.multiLocationMode} onChange={(event) => setBusinessDraft((draft) => ({ ...draft, multiLocationMode: event.target.checked }))} type="checkbox" />
                                         Multiple locations
                                     </label>
-                                    <label className={styles.toggleRow}>
-                                        <input checked={businessDraft.providerGenerationEnabled} onChange={(event) => setBusinessDraft((draft) => ({ ...draft, providerGenerationEnabled: event.target.checked }))} type="checkbox" />
-                                        Prepare packs from saved details
-                                    </label>
-                                    <label className={styles.toggleRow}>
-                                        <input checked={businessDraft.directPublishingEnabled} onChange={(event) => setBusinessDraft((draft) => ({ ...draft, directPublishingEnabled: event.target.checked }))} type="checkbox" />
-                                        Ask for connected posting
-                                    </label>
+                                    <div className={styles.fieldWide}>
+                                        <div className={styles.noteBox}>
+                                            <strong>Delivery boundary</strong>
+                                            <p>CampaignCue prepares packs for copy and download. It does not connect social accounts or post on behalf of the business.</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -1150,9 +1254,15 @@ export default function CampaignCueWorkspaceApp() {
                                             <div className={styles.titleBlock}>
                                                 <h3>{cue.title}</h3>
                                                 <p>{cue.reason}</p>
+                                                <p>{cue.ownerBenefit}</p>
                                             </div>
                                         </div>
                                         <div className={styles.chips}>
+                                            {cue.evidence.slice(0, 2).map((item) => (
+                                                <span className={styles.chip} data-tone="green" key={item}>
+                                                    {item}
+                                                </span>
+                                            ))}
                                             {cue.channels.map((channel) => (
                                                 <span className={styles.chip} data-tone={channelTone(channel)} key={channel}>
                                                     {displayLabel(channel)}
@@ -1166,7 +1276,7 @@ export default function CampaignCueWorkspaceApp() {
                                             type="button"
                                         >
                                             <LuPackageCheck size={16} />
-                                            Create pack
+                                            {cue.actionLabel}
                                         </button>
                                     </article>
                                 ))}
@@ -1185,7 +1295,7 @@ export default function CampaignCueWorkspaceApp() {
                                 <div>
                                     <span className={styles.eyebrow}>Packs</span>
                                     <h2>Campaign packs</h2>
-                                    <p>{data.campaigns.length ? "Packs are ready to copy, download, schedule, or send for approval." : "Create your first pack from a campaign idea or saved business details."}</p>
+                                    <p>{data.campaigns.length ? "Packs are ready to copy, download, export, schedule, or send for approval." : "Create your first pack from a campaign idea or saved business details."}</p>
                                 </div>
                                 <button className={styles.ghostButton} disabled={busyKey === "cue:default"} onClick={() => createCampaign()} type="button">
                                     <LuPackageCheck size={16} />
@@ -1216,6 +1326,7 @@ export default function CampaignCueWorkspaceApp() {
                                                         </div>
                                                         <p>{displayLabel(output.mode)} · {displayLabel(output.providerMode)}</p>
                                                         <div className={styles.outputText}>{output.text}</div>
+                                                        <OutputFieldSummary output={output} />
                                                         <div className={styles.chips}>
                                                             <button
                                                                 className={styles.ghostButton}
@@ -1233,7 +1344,7 @@ export default function CampaignCueWorkspaceApp() {
                                                                 type="button"
                                                             >
                                                                 <LuDownload size={16} />
-                                                                Download
+                                                                Download text
                                                             </button>
                                                         </div>
                                                     </article>
@@ -1248,19 +1359,22 @@ export default function CampaignCueWorkspaceApp() {
                                                     <LuUsers size={16} />
                                                     Request approval
                                                 </button>
+                                                <button
+                                                    className={styles.ghostButton}
+                                                    disabled={busyKey === `${campaign.id}:export:campaign`}
+                                                    onClick={() => recordAction(campaign, "export")}
+                                                    type="button"
+                                                >
+                                                    <LuDownload size={16} />
+                                                    Download pack
+                                                </button>
                                                 <button className={styles.ghostButton} onClick={() => recordAction(campaign, "mark_used")} type="button">
                                                     <LuCheck size={16} />
                                                     Mark used
                                                 </button>
-                                                <button
-                                                    className={styles.dangerButton}
-                                                    disabled={!data.workspace.settings.directPublishingEnabled || busyKey === `${campaign.id}:direct_publish:campaign`}
-                                                    onClick={() => recordAction(campaign, "direct_publish")}
-                                                    title={data.workspace.settings.directPublishingEnabled ? "Try connected posting" : "Use copy or download until connected posting is approved."}
-                                                    type="button"
-                                                >
-                                                    <LuAlertTriangle size={16} />
-                                                    {data.workspace.settings.directPublishingEnabled ? "Connected posting" : "Connected posting off"}
+                                                <button className={styles.ghostButton} onClick={() => recordAction(campaign, "record_outcome")} type="button">
+                                                    <LuCheckCircle2 size={16} />
+                                                    Record result
                                                 </button>
                                             </div>
                                         </article>
@@ -1396,6 +1510,41 @@ export default function CampaignCueWorkspaceApp() {
                                         </select>
                                     </div>
                                     <div className={styles.field}>
+                                        <label htmlFor="asset-consent">Consent</label>
+                                        <select
+                                            className={styles.select}
+                                            id="asset-consent"
+                                            onChange={(event) => setAssetDraft((draft) => ({ ...draft, consentType: event.target.value }))}
+                                            value={assetDraft.consentType}
+                                        >
+                                            <option value="unknown">Unknown</option>
+                                            <option value="not_applicable">Not applicable</option>
+                                            <option value="owner_confirmed">Owner confirmed</option>
+                                            <option value="creator_release">Creator release</option>
+                                            <option value="customer_release">Customer release</option>
+                                        </select>
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="asset-tags">Tags</label>
+                                        <input
+                                            className={styles.input}
+                                            id="asset-tags"
+                                            onChange={(event) => setAssetDraft((draft) => ({ ...draft, tags: event.target.value }))}
+                                            placeholder="Example: lunch, storefront, staff"
+                                            value={assetDraft.tags}
+                                        />
+                                    </div>
+                                    <div className={styles.fieldWide}>
+                                        <label htmlFor="asset-note">Rights note</label>
+                                        <textarea
+                                            className={styles.textarea}
+                                            id="asset-note"
+                                            onChange={(event) => setAssetDraft((draft) => ({ ...draft, rightsNote: event.target.value }))}
+                                            placeholder="Example: Owner confirmed photo can be used this month."
+                                            value={assetDraft.rightsNote}
+                                        />
+                                    </div>
+                                    <div className={styles.field}>
                                         <label>&nbsp;</label>
                                         <button
                                             className={styles.button}
@@ -1418,12 +1567,20 @@ export default function CampaignCueWorkspaceApp() {
                                             </div>
                                             <div className={styles.titleBlock}>
                                                 <h3>{asset.name}</h3>
-                                                <p>{displayLabel(asset.assetType)} · {displayLabel(asset.source)}</p>
+                                                <p>
+                                                    {displayLabel(asset.assetType)} · {displayLabel(asset.source)}
+                                                    {asset.rights.consentType ? ` · ${displayLabel(asset.rights.consentType)}` : ""}
+                                                </p>
                                             </div>
                                         </div>
-                                        <span className={styles.chip} data-tone={asset.status === "blocked" ? "red" : asset.rights.status === "confirmed" ? "green" : "amber"}>
-                                            {displayLabel(asset.rights.status)}
-                                        </span>
+                                        <div className={styles.chips}>
+                                            {asset.tags?.slice(0, 3).map((tag) => (
+                                                <span className={styles.chip} key={tag}>{tag}</span>
+                                            ))}
+                                            <span className={styles.chip} data-tone={asset.status === "blocked" ? "red" : asset.rights.status === "confirmed" ? "green" : "amber"}>
+                                                {displayLabel(asset.rights.status)}
+                                            </span>
+                                        </div>
                                     </div>
                                 ))}
                                 {!data.assets.length ? <div className={styles.empty}><p>No assets yet. Save a photo, logo, or file note before reusing it in packs.</p></div> : null}
@@ -1437,23 +1594,46 @@ export default function CampaignCueWorkspaceApp() {
                                 <div>
                                     <span className={styles.eyebrow}>Results</span>
                                     <h2>Usage summary</h2>
-                                    <p>Counts update when a pack is copied, downloaded, scheduled, approved, or marked used.</p>
+                                    <p>Counts update when a pack is copied, downloaded, exported, scheduled, approved, or marked used.</p>
                                 </div>
                             </div>
                             <div className={styles.statusGrid}>
                                 <StatCard label="Campaigns" value={data.analytics.campaignCount} />
                                 <StatCard label="Exports" value={data.analytics.exportCount} />
                                 <StatCard label="Manual use" value={data.analytics.usedCount} />
-                                <StatCard label="Approvals" value={data.analytics.approvalRequestCount} />
+                                <StatCard label="Reported results" value={data.analytics.ownerReportedOutcomeCount || 0} />
                             </div>
                             <div className={styles.panel}>
-                                <div className={styles.rowStart}>
-                                    <div className={styles.iconBox}>
-                                        <LuMapPin size={18} />
+                                <div className={styles.formGrid}>
+                                    <div className={styles.fieldWide}>
+                                        <label htmlFor="outcome-note">Result note</label>
+                                        <textarea
+                                            className={styles.textarea}
+                                            id="outcome-note"
+                                            onChange={(event) => setOutcomeDraft(event.target.value)}
+                                            value={outcomeDraft}
+                                        />
                                     </div>
-                                    <div className={styles.titleBlock}>
-                                        <h3>Cost control</h3>
-                                        <p>CampaignCue reads saved summaries for this page and does not keep live listeners open.</p>
+                                    <div className={styles.field}>
+                                        <button
+                                            className={styles.button}
+                                            disabled={!latestCampaign || busyKey === `${latestCampaign?.id}:record_outcome:campaign`}
+                                            onClick={() => latestCampaign && recordAction(latestCampaign, "record_outcome")}
+                                            type="button"
+                                        >
+                                            <LuCheckCircle2 size={16} />
+                                            Record result
+                                        </button>
+                                    </div>
+                                    <div className={styles.field}>
+                                        <div className={styles.noteBox}>
+                                            <strong>Confidence</strong>
+                                            <ol>
+                                                <li>Copied or downloaded means the owner exported a pack.</li>
+                                                <li>Marked used means the owner says it was posted or shared.</li>
+                                                <li>Reported result is owner-entered and not treated as platform proof.</li>
+                                            </ol>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1477,7 +1657,7 @@ export default function CampaignCueWorkspaceApp() {
                                 <StatCard label="Agency mode" value={data.workspace.agencyMode ? "On" : "Off"} />
                                 <StatCard label="Approval requests" value={data.analytics.approvalRequestCount} />
                                 <StatCard label="Campaigns" value={data.analytics.campaignCount} />
-                                <StatCard label="Manual handoffs" value={data.analytics.manualFallbackCount} />
+                                <StatCard label="Provider actions" value="Off" />
                             </div>
                             <div className={styles.list}>
                                 {data.campaigns.map((campaign) => (
@@ -1555,14 +1735,30 @@ export default function CampaignCueWorkspaceApp() {
                                 <div>
                                     <span className={styles.eyebrow}>Plan</span>
                                     <h2>Plan and access</h2>
-                                    <p>Billing is not active yet. No spend-changing action can run from this workspace.</p>
+                                    <p>Billing is not active yet. No spend-changing or social-posting action can run from this workspace.</p>
                                 </div>
                             </div>
                             <div className={styles.statusGrid}>
                                 <StatCard label="Billing" value={displayLabel(data.workspace.billingStatus)} />
                                 <StatCard label="Default role" value={displayLabel(data.workspace.defaultRole)} />
                                 <StatCard label="Billing enabled" value={data.workspace.settings.billingEnabled ? "On" : "Off"} />
-                                <StatCard label="Connected posting" value={data.workspace.settings.directPublishingEnabled ? "On" : "Off"} />
+                                <StatCard label="Delivery mode" value={displayLabel(data.deliveryPolicy.activeMode)} />
+                            </div>
+                            <div className={styles.list}>
+                                {data.launchReadiness.checks.map((check) => (
+                                    <div className={styles.findingRow} key={check.id}>
+                                        <div className={styles.rowStart}>
+                                            <div className={styles.iconBox}><LuShieldCheck size={18} /></div>
+                                            <div className={styles.titleBlock}>
+                                                <h3>{check.label}</h3>
+                                                <p>{check.detail}</p>
+                                            </div>
+                                        </div>
+                                        <span className={styles.chip} data-tone={check.status === "ready" ? "green" : check.status === "blocked" ? "red" : "amber"}>
+                                            {displayLabel(check.status)}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
                             <div className={styles.list}>
                                 {Object.entries(data.workspace.members).map(([memberId, member]) => (

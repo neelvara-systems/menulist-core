@@ -2,7 +2,7 @@
  * Multi-Tenant Domain Resolver
  * 
  * Resolves incoming requests to the correct tenant based on:
- * 1. Product website domain (e.g., answerlattice.com → product website)
+ * 1. Product website domain (e.g., answerlattice.com or campaigncue.ai → product website)
  * 2. Custom domain (e.g., joespizza.com → client menu)
  * 3. Subdomain (e.g., joespizza.menulist.ai → client menu)
  * 4. Platform domain (e.g., menulist.ai → MenuList website)
@@ -54,7 +54,7 @@ export function resolveDomain(hostname: string | null): ResolvedDomain {
     // Normalize hostname (remove port if present)
     const normalizedHost = hostname.split(':')[0].toLowerCase();
 
-    // Check if it's a product website domain (answerlattice.com, surfaceos.app, etc.)
+    // Check if it's a product website domain (answerlattice.com, campaigncue.ai, surfaceos.app, etc.)
     // Must check BEFORE platform domain check since product domains are also in PLATFORM_DOMAINS
     const productSite = resolveProductSiteByHostname(normalizedHost);
     if (productSite && productSite.id !== 'menulist') {

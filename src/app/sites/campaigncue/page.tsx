@@ -23,13 +23,9 @@ import {
 } from 'react-icons/lu';
 import {
     CAMPAIGNCUE_LOCAL_PATH_PREFIX,
-    CAMPAIGNCUE_LOCAL_WORKSPACE_PATH,
-    CAMPAIGNCUE_PRODUCTION_DOMAINS,
     CAMPAIGNCUE_SITE_DESCRIPTION,
     CAMPAIGNCUE_SITE_TITLE,
-    CAMPAIGNCUE_STAGING_DOMAINS,
 } from './siteConfig';
-import { CAMPAIGNCUE_PRODUCT_ID } from '@constant/campaigncue/product';
 
 export const metadata: Metadata = {
     title: CAMPAIGNCUE_SITE_TITLE,
@@ -84,7 +80,7 @@ const OUTPUTS: IconCard[] = [
     },
     {
         title: 'Social creative',
-        description: 'Story, post, reel script, subtitles, and downloadable assets.',
+        description: 'Story copy, post notes, reel briefs, caption guidance, and downloadable text handoffs.',
         icon: LuImage,
     },
     {
@@ -125,7 +121,7 @@ const BOUNDARIES: IconCard[] = [
     },
     {
         title: 'Manual fallback',
-        description: 'Copy, download, ZIP export, and mark-posted flows stay available without direct integrations.',
+        description: 'Copy, text download, approval, scheduling, and mark-posted flows stay available without direct integrations.',
         icon: LuDownload,
     },
     {
@@ -148,13 +144,12 @@ const TRUST_ITEMS = [
 ];
 
 const FOUNDATION_ITEMS = [
-    `Product id: ${CAMPAIGNCUE_PRODUCT_ID}`,
-    `Local route: ${CAMPAIGNCUE_LOCAL_PATH_PREFIX}`,
-    `Workspace route: ${CAMPAIGNCUE_LOCAL_WORKSPACE_PATH}`,
-    `Preview host: ${CAMPAIGNCUE_STAGING_DOMAINS[0]}`,
-    `Production host: ${CAMPAIGNCUE_PRODUCTION_DOMAINS[0]}`,
-    'Manual/export runtime: enabled',
-    'Direct provider routes: disabled',
+    'Manual posting stays available without connected accounts',
+    'Source checks run before copy or handoff',
+    'Direct sending and ad spend stay off until approved',
+    'Campaign usage is counted from owner actions',
+    'Restaurant and salon claims stay tied to saved facts',
+    'Approvals and location records stay workspace-scoped',
 ];
 
 function getBasePath(): string {
@@ -263,13 +258,13 @@ export default function CampaignCueHomePage() {
                     <a href="#cues">Cues</a>
                     <a href="#pack">Pack</a>
                     <a href="#trust">Trust</a>
-                    <a href="#foundation">Foundation</a>
+                    <a href="#safety">Safety</a>
                 </nav>
             </header>
 
             <section className="campaigncue-hero">
                 <div className="campaigncue-hero-copy">
-                    <span className="campaigncue-eyebrow">Separate product in the MenuList repo</span>
+                    <span className="campaigncue-eyebrow">For local restaurants, salons, and agencies</span>
                     <h1>CampaignCue</h1>
                     <p>
                         Campaign packs from real business data. Start with menus, services, photos, offers,
@@ -334,8 +329,8 @@ export default function CampaignCueHomePage() {
                     <span>Campaign studio</span>
                     <h2>One brief prepares many local channels.</h2>
                     <p>
-                        A campaign pack can include WhatsApp copy, Google local posts, social visuals, reel scripts,
-                        printable handoffs, ad variants, comments for approval, and manual export assets.
+                        A campaign pack can include WhatsApp copy, Google local drafts, social creative notes,
+                        reel briefs, text handoffs, ad variants, comments for approval, and manual export records.
                     </p>
                 </div>
                 <IconCardGrid cards={OUTPUTS} />
@@ -353,14 +348,14 @@ export default function CampaignCueHomePage() {
                 <IconCardGrid cards={BOUNDARIES} />
             </section>
 
-            <section className="campaigncue-section campaigncue-foundation" id="foundation">
+            <section className="campaigncue-section campaigncue-foundation" id="safety">
                 <div className="campaigncue-foundation-copy">
-                    <span>Implementation foundation</span>
-                    <h2>Manual runtime is live; provider mutation is still gated.</h2>
+                    <span>Safety boundary</span>
+                    <h2>Use campaign packs manually; connected actions stay gated.</h2>
                     <p>
-                        CampaignCue now has a protected workspace, server APIs, source-backed deterministic campaign
-                        packs, trust gates, manual exports, assets, schedule tasks, and bounded analytics. Provider
-                        publishing, direct sends, ad spend, paid generation, and billing remain disabled.
+                        CampaignCue prepares source-backed packs for owners and teams to review, copy, schedule,
+                        approve, and mark used. It will not start spend, send messages, or publish through a connected
+                        account without approved connections and clear controls.
                     </p>
                 </div>
                 <div className="campaigncue-foundation-grid">

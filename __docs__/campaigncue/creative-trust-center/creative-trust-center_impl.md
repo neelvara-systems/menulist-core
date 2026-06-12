@@ -28,7 +28,13 @@ Creative Trust Center should expose a shared CampaignCue trust-check service use
 - Campaign creation writes a deterministic `campaigncue-trust-v1` report.
 - Outputs carry `clear`, `warning`, `needs_fix`, or `blocked` gate state.
 - Unsupported absolute/result/ranking claims are blocked.
-- WhatsApp and ad outputs receive manual/export/spend posture warnings.
+- Missing CTA/destination receives a `needs_fix` gate for WhatsApp, Google local, and ads.
+- WhatsApp outputs receive consent/export warnings.
+- Google local outputs receive manual verification warnings for post type, date, price, image, and link.
+- Ad outputs receive spend and policy handoff warnings.
+- Salon video/UGC/ad outputs receive consent/result-claim warnings.
+- Restaurant outputs receive menu/source verification warnings when no public menu link exists.
+- Creative/video/UGC outputs warn when no approved asset fact exists.
 - Model-assisted checks are not active.
 
 ## Gate States

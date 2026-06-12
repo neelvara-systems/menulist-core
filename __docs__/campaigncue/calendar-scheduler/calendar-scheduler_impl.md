@@ -35,7 +35,7 @@ Calendar Scheduler must be CampaignCue-scoped and scheduler-bounded. It should u
 - Claim jobs with lease fields to avoid duplicate execution.
 - Keep retry limits per channel.
 - Do not execute publish if approval or trust status has changed.
-- Mark provider failures visibly and preserve manual fallback.
+- Mark future provider failures visibly and preserve export/download output.
 
 ## Acceptance
 

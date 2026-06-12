@@ -2,11 +2,11 @@
 
 ## What This Means
 
-CampaignCue currently records provider setup requests and prepares export-ready campaign packs. Direct provider connections stay disabled until account setup, platform approval, API capability, permission, and workspace role checks are configured.
+CampaignCue currently prepares export-ready campaign packs. Direct provider connections and provider setup requests are not active owner workflows; they require separate account setup, platform approval, API capability, permission, consent, quota, and workspace role checks.
 
-## Connected Actions
+## Future Connected Actions
 
-Connected actions depend on account setup, platform approval, API capability, permission, and workspace role. When a connected action is not available, CampaignCue shows a manual path instead of pretending the action ran.
+Connected actions are not active in the current runtime. A future connected action would need account setup, platform approval, API capability, permission, consent, quota controls, and workspace role checks. Until then, CampaignCue shows a manual path instead of pretending the action ran.
 
 ## Manual Actions
 

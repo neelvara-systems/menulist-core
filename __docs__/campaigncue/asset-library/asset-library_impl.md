@@ -25,7 +25,7 @@ Asset Library is the cross-feature media and output registry for CampaignCue. Fe
 ## Current Runtime
 
 - `GET /api/campaigncue/assets` lists bounded asset metadata.
-- `POST /api/campaigncue/assets` registers metadata, source, rights status, optional storage/download refs, and usage refs.
+- `POST /api/campaigncue/assets` registers metadata, source, rights status, consent type, rights note, tags, optional storage/download refs, and usage refs.
 - `storage-campaigncue.rules` scopes `campaigncue/assets/{workspaceId}/...` by CampaignCue workspace id and enforces type/size limits.
 - Render and report storage prefixes are read-only to clients and server-owned.
 
@@ -34,4 +34,5 @@ Asset Library is the cross-feature media and output registry for CampaignCue. Fe
 - Asset cards can render from metadata without downloading full media.
 - An exported asset is traceable to source and campaign.
 - Blocked assets cannot be reused in new campaign packs.
+- Salon and UGC assets can record customer/creator/owner consent posture before use.
 - Deleting/archiving an asset does not break historical campaign records.

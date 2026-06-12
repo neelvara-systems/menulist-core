@@ -35,8 +35,8 @@ const FEATURE_PAGE_PROOF_ITEMS = [
         description: 'Each feature is explained as something buyers already recognize: docs, FAQs, releases, tickets, feedback, notifications, or review work.',
     },
     {
-        title: 'Connected to the support suite',
-        description: 'The feature does not live alone. It connects back to widget answers, hosted help, fallback, and owner review.',
+        title: 'Feeds the support suite',
+        description: 'The feature does not live alone. It helps turn scattered product knowledge, tickets, and signals into widget answers, hosted help, fallback, and owner review.',
     },
     {
         title: 'Owner control stays visible',
@@ -107,7 +107,7 @@ export default function ProductFeatureLandingPage({
                         <PageProofStrip
                             className="mt-5 max-w-2xl"
                             items={[
-                                { label: 'Connected to', value: 'Widget, hosted help, tickets, and review' },
+                                { label: 'Feeds', value: 'Widget, hosted help, tickets, and review' },
                                 { label: 'Authority rule', value: 'Drafts stay review work until approved' },
                                 { label: 'Buyer proof', value: 'Shows what the feature changes in the support loop' },
                             ]}
@@ -212,22 +212,22 @@ export default function ProductFeatureLandingPage({
             <section className="border-t border-white/[0.06] bg-white/[0.01] px-4 py-20 sm:px-6">
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
-                        eyebrow="Connected product truth"
+                        eyebrow="Generated support truth"
                         title={feature.connectedTitle}
                         description={feature.connectedDescription}
                     />
                     <AnswerlatticeHubDiagram
                         idPrefix={`al-feature-connected-${feature.slug}`}
                         inputLabel="Feature layer"
-                        outputLabel="Connected surfaces"
+                        outputLabel="Support outputs"
                         inputs={[
                             {
                                 title: feature.label,
-                                detail: `${feature.label} stays tied to reviewed sources, safe page context, and owner-approved support output.`,
+                                detail: `${feature.label} turns structured support knowledge, safe page context, and owner approval into usable support output.`,
                             },
                             {
-                                title: 'Reviewed source',
-                                detail: 'Support content feeds the widget, hosted help, tickets, and answer review from one controlled workspace.',
+                                title: 'Scattered knowledge',
+                                detail: 'Docs, tickets, releases, screenshots, recordings, and notes become widget help, hosted help, tickets, and answer review from one controlled workspace.',
                             },
                             {
                                 title: 'Page context',
@@ -245,12 +245,12 @@ export default function ProductFeatureLandingPage({
             <section className="border-t border-white/[0.06] px-4 py-20 sm:px-6">
                 <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
                     <div data-answerlattice-reveal>
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Connected layer</p>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Support output layer</p>
                         <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
                             {feature.label} is one part of the full support layer.
                         </h2>
                         <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
-                            A founder may start with {featureName}, but the value comes from keeping it connected to setup, in-app support, hosted help, fallback, and approved-answer review.
+                            A founder may start with {featureName}, but the value comes from turning it into setup, in-app support, hosted help, fallback, and approved-answer review.
                         </p>
                         <div className="mt-6 grid gap-3">
                             {FEATURE_PAGE_PROOF_ITEMS.map((item) => (
@@ -264,7 +264,7 @@ export default function ProductFeatureLandingPage({
 
                     <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6">
                         <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                            Explore the connected layer
+                            Explore the support layer
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
                             {ANSWERLATTICE_PRODUCT_AREAS.map((area) => (
@@ -333,7 +333,7 @@ export default function ProductFeatureLandingPage({
                     Launch {featureName} as part of the full support loop.
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#a0a0c0]">
-                    AnswerLattice works best when {featureName} stays connected to widget answers, hosted help, tickets, and answer review.
+                    AnswerLattice works best when {featureName} feeds widget answers, hosted help, tickets, and answer review from the same approved support truth.
                 </p>
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                     <AnswerlatticeLink

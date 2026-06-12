@@ -21,5 +21,4 @@ Multi-Location Center is mobile-relevant for local manager review and central st
 ## Acceptance
 
 - Local manager can review and approve their branch campaign from mobile.
-- Central user can see which locations are blocked, approved, or published.
-
+- Central user can see which locations are blocked, approved, exported, or completed manually.

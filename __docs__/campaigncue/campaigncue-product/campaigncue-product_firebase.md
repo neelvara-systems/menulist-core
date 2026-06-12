@@ -2,7 +2,7 @@
 
 ## Cost Posture
 
-CampaignCue is cost-sensitive because campaign generation, videos, asset processing, analytics, and integrations can become expensive. Every credit-consuming action must estimate cost before work starts, reserve credits, capture completed outputs, and refund failed outputs.
+CampaignCue is cost-sensitive because campaign generation, videos, asset processing, analytics, and future provider integrations can become expensive. The active runtime is export/download-only and has no direct provider posting, social account connection, or credit-consuming provider action.
 
 ## Product-Level Collections
 
@@ -10,9 +10,9 @@ CampaignCue is cost-sensitive because campaign generation, videos, asset process
 | --- | --- | --- | --- |
 | `campaigncueWorkspaces/{workspaceId}` | Workspace load | Server-created workspace, members, settings | Medium |
 | `campaigncueWorkspaces/{workspaceId}/businessBrains/{businessBrainId}` | Business Brain load, campaign creation | Profile, catalog, brand kit, source confidence | Medium |
-| `campaigncueWorkspaces/{workspaceId}/sourceSnapshots/{snapshotId}` | Campaign generation/trust check | Snapshot on changed source data | Medium |
+| `campaigncueWorkspaces/{workspaceId}/sourceSnapshots/{snapshotId}` | Campaign generation/trust check | Snapshot with source facts, missing facts, vertical risks, and hash on changed source data | Medium |
 | `campaigncueWorkspaces/{workspaceId}/campaigns/{campaignId}` | Campaign lists and detail | Brief, status, output references | Medium |
-| `campaigncueWorkspaces/{workspaceId}/assets/{assetId}` | Asset library and campaign selection | Asset metadata, rights, source links | Medium |
+| `campaigncueWorkspaces/{workspaceId}/assets/{assetId}` | Asset library and campaign selection | Asset metadata, rights, consent type, tags, source links | Medium |
 | `campaigncueWorkspaces/{workspaceId}/trustReports/{trustReportId}` | Review/export/publish gates | Issues, warnings, blockers | Medium |
 | `campaigncueWorkspaces/{workspaceId}/schedules/{scheduleId}` | Calendar/manual task list | Manual schedule records | Low |
 | `campaigncueWorkspaces/{workspaceId}/events/{eventId}` | Internal/debug/event audit | Meaningful campaign and asset actions | High if overused |
@@ -41,7 +41,7 @@ CampaignCue is cost-sensitive because campaign generation, videos, asset process
 
 ## Cloud Functions
 
-No CampaignCue Cloud Function is active in the current manual/export-first runtime. These function classes remain the provider/scheduler contract when direct integrations are enabled:
+No CampaignCue Cloud Function is active in the current export/download-first runtime. These function classes remain the provider/scheduler contract only if a separate future provider layer is enabled:
 
 | Function class | Trigger | Cost guard |
 | --- | --- | --- |
@@ -50,23 +50,24 @@ No CampaignCue Cloud Function is active in the current manual/export-first runti
 | Generation | Campaign/output request | Credit reservation before provider calls. |
 | Video render | Render request | Estimate before queue and refund failed outputs. |
 | Trust check | Generation complete/export/publish | Reuse trust report if source/output unchanged. |
-| Publishing | Direct channel action | Idempotency and retry caps. |
+| Publishing | Future direct channel action | Idempotency, retry caps, consent, provider quota, and manual export fallback. |
 | Analytics rollup | Scheduled or event-based | Summary docs, no raw runtime scans. |
 
 ## Current Runtime Cost Impact
 
-The current implementation adds a manual/export-first CampaignCue runtime:
+The current implementation adds an export/download-first CampaignCue runtime:
 
 - Public site: zero Firebase reads/writes.
-- Workspace load: one bounded server overview read for workspace, Business Brain, source inputs, campaigns, assets, schedules, locations, provider connection records, and one analytics summary; zero realtime listeners.
-- Standalone campaign, asset, source, integration, location, and analytics endpoints use direct workspace-only reads instead of loading the full overview.
+- Workspace load: one bounded server overview read for workspace, Business Brain, source inputs, campaigns, assets, schedules, locations, and one analytics summary; zero realtime listeners. Provider connection records are not read in the active runtime.
+- Standalone campaign, asset, source, read-only provider posture, location, and analytics endpoints use direct workspace-only reads instead of loading the full overview.
 - First workspace load: may create workspace, business brain, source snapshot, and dashboard summary documents once for the signed-in tenant/store.
-- Owner campaign creation: atomically claims one idempotency key, then writes one campaign, one trust report, one event, one atomic summary increment, and one idempotency completion.
-- Campaign action: reads the target campaign once, atomically claims one idempotency key, writes one event plus the scoped campaign update, then writes one idempotency completion; schedule and approval actions add one schedule/approval document. The API response is built from known mutation state and does not reread the campaign after commit.
-- Blocked direct publish/direct send/manual-fallback actions write the fallback event, summary increment, and a completed idempotency error record so owner retries do not leave dangling `in_progress` keys.
-- Asset registration, provider setup/manual confirmation, and location creation use a workspace-only guard read, then write their scoped document plus one event.
+- Owner campaign creation: reads bounded source, asset, schedule, location, and summary context so the selected cue can be resolved server-side; then atomically claims one idempotency key and writes one campaign, one trust report, one event, one atomic summary increment, and one idempotency completion.
+- Campaign action: reads the target campaign once, atomically claims one idempotency key, writes one event plus the scoped campaign update, then writes one idempotency completion; schedule, approval, and owner-reported outcome actions update summary counters without scanning raw events. The API response is built from known mutation state and does not reread the campaign after commit.
+- Blocked trust-gate actions write an `export_action_blocked` event and a completed idempotency error record so owner retries do not leave dangling `in_progress` keys.
+- Asset registration and location creation use a workspace-only guard read, then write their scoped document plus one event. Asset metadata now includes rights status, consent type, note, and tags without requiring binary upload.
+- Provider setup/manual confirmation writes are not active; `/api/campaigncue/integrations` is read-only posture.
 - The owner workspace UI merges successful mutation responses locally instead of reloading the full overview after every save/action.
-- Direct provider calls, paid generation, rendered video, billing checkout, and ad spend mutation: disabled, zero provider cost.
+- Social account connection, direct provider calls, paid generation, rendered video, billing checkout, and ad spend mutation: disabled, zero provider cost.
 
 No CampaignCue Cloud Function or scheduler cost is introduced in this pass.
 

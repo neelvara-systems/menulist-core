@@ -6,8 +6,8 @@ import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-const title = 'Owner Phone Dashboard - MenuList | Manage Your Menu Without a Desktop';
-const description = 'Use the MenuList owner dashboard from a phone browser or PWA to update menus, publish changes, share QR links, check Business Health, and manage daily operations.';
+const title = 'Owner PWA Dashboard - MenuList | Manage MenuList From Your Phone';
+const description = 'Use MenuList from a phone browser or installed PWA to edit menus, publish changes, share QR links, review feedback, check Business Health, manage screens, and handle daily owner work.';
 
 export const metadata: Metadata = {
   title,

@@ -66,12 +66,12 @@ function verifyApiRoutes() {
   assertIncludes(read("src/app/api/campaigncue/campaigns/[campaignId]/actions/route.ts"), "CampaignCueIdSchema", "campaign id validation");
   assertIncludes(read("src/app/api/campaigncue/assets/route.ts"), "CampaignCueAssetSchema", "asset validation");
   assertIncludes(read("src/app/api/campaigncue/sources/route.ts"), "CampaignCueSourceInputSchema", "source input validation");
-  assertIncludes(read("src/app/api/campaigncue/integrations/route.ts"), "CampaignCueIntegrationActionSchema", "integration action validation");
+  assertNotIncludes(read("src/app/api/campaigncue/integrations/route.ts"), "export const POST", "CampaignCue integrations route is read-only in export runtime");
   assertIncludes(read("src/app/api/campaigncue/locations/route.ts"), "CampaignCueLocationSchema", "location validation");
   assertIncludes(read("src/app/api/campaigncue/campaigns/route.ts"), "listCampaignCueCampaignsServer", "campaign list direct bounded loader");
   assertIncludes(read("src/app/api/campaigncue/assets/route.ts"), "listCampaignCueAssetsServer", "asset list direct bounded loader");
   assertIncludes(read("src/app/api/campaigncue/sources/route.ts"), "listCampaignCueSourceInputsServer", "source list direct bounded loader");
-  assertIncludes(read("src/app/api/campaigncue/integrations/route.ts"), "listCampaignCueProviderConnectionsServer", "integration list direct bounded loader");
+  assertIncludes(read("src/app/api/campaigncue/integrations/route.ts"), "listCampaignCueProviderConnectionsServer", "integration posture direct bounded loader");
   assertIncludes(read("src/app/api/campaigncue/locations/route.ts"), "listCampaignCueLocationsServer", "location list direct bounded loader");
   assertIncludes(read("src/app/api/campaigncue/analytics/route.ts"), "readCampaignCueAnalyticsServer", "analytics summary direct loader");
 }
@@ -79,6 +79,10 @@ function verifyApiRoutes() {
 function verifyServerRuntime() {
   const server = read("src/lib/campaigncue/server.ts");
   const errors = read("src/constants/campaigncue/errors.ts");
+  const blockedActionStart = server.indexOf("if (actionError) {");
+  const blockedActionEnd = server.indexOf("const now = nowTimestamp();", blockedActionStart);
+  assert(blockedActionStart > -1 && blockedActionEnd > blockedActionStart, "CampaignCue blocked action branch is discoverable");
+  const blockedActionBlock = server.slice(blockedActionStart, blockedActionEnd);
 
   assertIncludes(server, "campaigncueFirestoreAdmin as firestoreAdmin", "CampaignCue server dedicated Firestore Admin");
   assertIncludes(server, "firestoreAdmin as menuListFirestoreAdmin", "CampaignCue server MenuList source-read Admin");
@@ -92,16 +96,25 @@ function verifyServerRuntime() {
   assertIncludes(server, "FieldValue.increment", "CampaignCue analytics summary atomic increments");
   assertIncludes(server, "ensureCampaignCueWorkspaceOnlyServer", "CampaignCue server workspace-only cost path");
   assertIncludes(server, "readCampaignCueAnalyticsServer", "CampaignCue server analytics summary-only read path");
+  assertIncludes(server, "buildSourceFacts", "CampaignCue server derives source facts");
+  assertIncludes(server, "missingFacts", "CampaignCue source snapshot tracks missing facts");
+  assertIncludes(server, "outputFieldsForChannel", "CampaignCue server builds structured output fields");
+  assertIncludes(server, "owner_outcome_recorded", "CampaignCue server records owner-reported outcomes");
+  assertIncludes(server, "buildLaunchReadiness", "CampaignCue server exposes launch readiness");
+  assertIncludes(server, "buildDeliveryPolicy", "CampaignCue server exposes export/download delivery policy");
+  assertIncludes(server, "normalizeCampaignCueWorkspace", "CampaignCue server normalizes legacy workspace delivery settings");
+  assertIncludes(server, "providerConnections: []", "CampaignCue overview avoids active provider connection reads");
+  assertIncludes(server, "readsPerLoad: 8", "CampaignCue overview read cost excludes provider connection collection");
   assertIncludes(server, "const updated: CampaignCueCampaign", "CampaignCue action response avoids post-write campaign reread");
   assertIncludes(server, "responseError: actionError", "CampaignCue blocked actions complete idempotency with replayable error");
+  assertNotIncludes(blockedActionBlock, "updateDashboardSummary", "CampaignCue blocked export actions do not increment analytics counters");
   assertIncludes(server, "CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS", "CampaignCue server source input collection");
-  assertIncludes(server, "CAMPAIGNCUE_COLLECTIONS.PROVIDER_CONNECTIONS", "CampaignCue server provider connection collection");
   assertIncludes(server, "CAMPAIGNCUE_COLLECTIONS.LOCATIONS", "CampaignCue server location collection");
   assertIncludes(server, "createCampaignCueSourceInputServer", "CampaignCue source input mutation");
-  assertIncludes(server, "recordCampaignCueIntegrationServer", "CampaignCue integration mutation");
+  assertNotIncludes(server, "recordCampaignCueIntegrationServer", "CampaignCue server has no day-one integration mutation");
   assertIncludes(server, "createCampaignCueLocationServer", "CampaignCue location mutation");
-  assertIncludes(server, "if (action === \"direct_publish\" || action === \"direct_send\")", "CampaignCue direct provider action guard");
-  assertIncludes(server, "manual_fallback_shown", "CampaignCue manual fallback event");
+  assertIncludes(server, "export_action_blocked", "CampaignCue trust-blocked export action event");
+  assertIncludes(server, "manual_export_used", "CampaignCue manual export used event");
   assertIncludes(errors, "CAMPAIGNCUE_FIREBASE_UNAVAILABLE", "CampaignCue Firebase setup error code");
   assertIncludes(server, "status: 503", "CampaignCue Firebase setup HTTP status");
   assertIncludes(errors, "CAMPAIGNCUE_RUNTIME_ERROR", "CampaignCue generic runtime error code");
@@ -111,6 +124,7 @@ function verifyClientRuntime() {
   const app = read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx");
   const styles = read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.module.scss");
   const schemas = read("src/lib/validation/campaigncueSchemas.ts");
+  const delivery = read("src/constants/campaigncue/delivery.ts");
   const workspaceConstants = read("src/constants/campaigncue/workspace.ts");
   const navigationConstants = read("src/constants/campaigncue/navigations.ts");
   const appAndConstants = `${app}\n${workspaceConstants}\n${navigationConstants}`;
@@ -125,7 +139,7 @@ function verifyClientRuntime() {
     "What to do first",
     "Business details",
     "Offers, events, and notes",
-    "Posting connections",
+    "Export and download",
     "Owner settings",
     "Campaign ideas",
     "Campaign packs",
@@ -147,11 +161,18 @@ function verifyClientRuntime() {
     assertIncludes(navigationConstants, label, `CampaignCue navigation group ${label}`)
   ));
   assertIncludes(app, "CAMPAIGNCUE_API_ROUTES.SOURCES", "CampaignCue source UI API call");
-  assertIncludes(app, "CAMPAIGNCUE_API_ROUTES.INTEGRATIONS", "CampaignCue integrations UI API call");
+  assertNotIncludes(app, "CAMPAIGNCUE_API_ROUTES.INTEGRATIONS", "CampaignCue owner UI has no day-one integration mutation call");
   assertIncludes(app, "CAMPAIGNCUE_API_ROUTES.LOCATIONS", "CampaignCue locations UI API call");
   assertIncludes(app, "getCampaignCueCampaignActionApiPath", "CampaignCue campaign action API path helper");
   assertIncludes(app, "No owner action is needed", "CampaignCue setup blocker uses owner-safe copy");
-  assertIncludes(app, "Connected posting off", "CampaignCue connected posting shows disabled owner-safe state");
+  assertIncludes(app, "Download pack", "CampaignCue owner can download full campaign pack");
+  assertIncludes(app, "Delivery boundary", "CampaignCue settings explain export/download boundary");
+  assertIncludes(app, "future provider layer off", "CampaignCue provider cards show future layer disabled");
+  assertIncludes(app, "What CampaignCue can safely use", "CampaignCue home shows source facts");
+  assertIncludes(app, "Manual handoff", "CampaignCue outputs show manual handoff steps");
+  assertIncludes(app, "Record result", "CampaignCue owner can record manual outcomes");
+  assertIncludes(app, "Valid until", "CampaignCue source inputs support expiry");
+  assertIncludes(app, "Consent", "CampaignCue asset UI captures consent posture");
   assertNotIncludes(app, "Connect the CampaignCue Firebase project", "CampaignCue owner setup copy hides Firebase instructions");
   assertNotIncludes(app, "source confidence", "CampaignCue owner dashboard avoids internal source confidence wording");
   assertNotIncludes(app, "Deterministic generation", "CampaignCue settings avoid deterministic-generation jargon");
@@ -164,6 +185,12 @@ function verifyClientRuntime() {
   assertIncludes(styles, "@media (max-width: 640px)", "CampaignCue mobile responsive breakpoint");
   assertIncludes(schemas, "const optionalUrl", "CampaignCue optional URL fields can be blank");
   assertIncludes(schemas, "return trimmed ? trimmed : null", "CampaignCue blank URL normalization");
+  assertIncludes(schemas, "CAMPAIGNCUE_EXPORT_ACTIONS", "CampaignCue schema uses delivery action constants");
+  assertIncludes(delivery, "\"record_outcome\"", "CampaignCue delivery constants include outcome action");
+  assertNotIncludes(schemas, "\"direct_publish\"", "CampaignCue action schema rejects direct publish");
+  assertNotIncludes(schemas, "\"direct_send\"", "CampaignCue action schema rejects direct send");
+  assertIncludes(schemas, "consentType", "CampaignCue schema validates asset consent type");
+  assertIncludes(schemas, "expiresAt", "CampaignCue schema validates source expiry");
   assertIncludes(read("src/lib/campaigncue/server.ts"), "const patchOptionalUrl", "CampaignCue optional URL clearing helper");
   assertIncludes(read("src/lib/campaigncue/server.ts"), "writesPerCampaignCreate: 6", "CampaignCue campaign create write cost");
 }
@@ -204,6 +231,7 @@ function verifyProductConstantSeparation() {
     "src/constants/campaigncue/index.ts",
     "src/constants/campaigncue/channels.ts",
     "src/constants/campaigncue/database.ts",
+    "src/constants/campaigncue/delivery.ts",
     "src/constants/campaigncue/domains.ts",
     "src/constants/campaigncue/errors.ts",
     "src/constants/campaigncue/firebase.ts",
@@ -218,6 +246,7 @@ function verifyProductConstantSeparation() {
 
   const product = read("src/constants/campaigncue/product.ts");
   const database = read("src/constants/campaigncue/database.ts");
+  const delivery = read("src/constants/campaigncue/delivery.ts");
   const domains = read("src/constants/campaigncue/domains.ts");
   const routes = read("src/constants/campaigncue/routes.ts");
   const firebase = read("src/constants/campaigncue/firebase.ts");
@@ -226,10 +255,14 @@ function verifyProductConstantSeparation() {
   const loader = read("src/components/organisms/loader/index.tsx");
   const productDomains = read("src/constants/productDomains.ts");
   const domainResolver = read("src/lib/multiTenant/domainResolver.ts");
+  const urls = read("src/constants/urls.ts");
 
   assertIncludes(product, "CAMPAIGNCUE_PRODUCT_ID", "CampaignCue product id constant");
   assertIncludes(database, "CAMPAIGNCUE_COLLECTIONS", "CampaignCue collection constants");
   assertIncludes(database, "CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES", "CampaignCue asset size constant");
+  assertIncludes(delivery, "CAMPAIGNCUE_EXPORT_ACTIONS", "CampaignCue export action constants");
+  assertIncludes(delivery, "CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS", "CampaignCue disabled provider action constants");
+  assertIncludes(delivery, "CAMPAIGNCUE_FUTURE_PROVIDER_LAYER", "CampaignCue future provider layer constants");
   assertIncludes(domains, "isCampaignCueRuntimeRoute", "CampaignCue runtime route helper");
   assertIncludes(domains, "CAMPAIGNCUE_APP_INTERNAL_BASE_PATH", "CampaignCue app route-group base path constant");
   assertIncludes(domains, "CAMPAIGNCUE_APP_INTERNAL_WORKSPACE_PATH", "CampaignCue app workspace route-group path constant");
@@ -241,7 +274,13 @@ function verifyProductConstantSeparation() {
   assertIncludes(workspace, "CAMPAIGNCUE_CHANNEL_STUDIO_COPY", "CampaignCue workspace copy constants");
   assertIncludes(loader, "isCampaignCueRuntimeRoute", "CampaignCue loader uses product route helper");
   assertIncludes(productDomains, "CAMPAIGNCUE_SITE_INTERNAL_BASE_PATH", "Product domains use CampaignCue path constants");
+  assertIncludes(productDomains, "pathname === product.devPathPrefix || pathname.startsWith(`${product.devPathPrefix}/`)", "Product dev prefixes require exact or slash-boundary match");
   assertIncludes(domainResolver, "CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX", "Domain resolver uses CampaignCue local prefix constant");
+  assertIncludes(domainResolver, "campaigncue.ai", "Domain resolver comments include CampaignCue as active product domain");
+  assertIncludes(urls, "Local: /__campaigncue", "URL architecture comments include CampaignCue local route");
+  assertIncludes(urls, "QA: campaigncue.menulist.online", "URL architecture comments include CampaignCue preview domain");
+  assertIncludes(urls, "Prod: campaigncue.ai", "URL architecture comments include CampaignCue production domain");
+  assertIncludes(urls, "CAMPAIGNCUE_PRODUCT_ID", "URL constants reserve CampaignCue namespace");
 
   assertNotIncludes(read("src/lib/campaigncue/server.ts"), 'from "@constant/campaigncue";', "CampaignCue server avoids all-in barrel import");
   assertNotIncludes(read("src/lib/firebase/campaigncueFirebaseAdmin.ts"), 'const CAMPAIGNCUE_APP_NAME = "campaigncue-admin"', "CampaignCue Admin app name is not local literal");
@@ -282,6 +321,8 @@ function verifyDocsAlignment() {
   const apiDoc = read("__docs__/campaigncue/api-boundaries/api-boundaries_impl.md");
   const readme = read("__docs__/campaigncue/README.md");
   const boundaryDoc = read("__docs__/campaigncue/campaigncue-route-boundary.md");
+  const expansionDoc = read("__docs__/campaigncue/campaigncue-next-expansion-list.md");
+  const deliveryDoc = read("__docs__/campaigncue/campaigncue-delivery-boundary.md");
   const changelog = read("__docs__/CHANGELOG.md");
 
   assertIncludes(audit, "CAMPAIGNCUE_FIREBASE_UNAVAILABLE", "CampaignCue audit setup-blocked code");
@@ -290,6 +331,15 @@ function verifyDocsAlignment() {
   assertIncludes(validation, "rewrites to `/campaigncue/app`", "CampaignCue validation workspace rewrite path");
   assertIncludes(apiDoc, "CAMPAIGNCUE_FIREBASE_UNAVAILABLE", "CampaignCue API doc setup-blocked code");
   assertIncludes(readme, "campaigncue-route-boundary.md", "CampaignCue README route-boundary link");
+  assertIncludes(readme, "campaigncue-next-expansion-list.md", "CampaignCue README next expansion link");
+  assertIncludes(readme, "campaigncue-delivery-boundary.md", "CampaignCue README delivery-boundary link");
+  assertIncludes(expansionDoc, "Provider adapters behind capability checks", "CampaignCue next expansion provider gate");
+  assertIncludes(deliveryDoc, "CampaignCue day-one delivery is export/download only", "CampaignCue delivery-boundary day-one rule");
+  assertIncludes(deliveryDoc, "/api/campaigncue/integrations` is read-only", "CampaignCue delivery-boundary read-only integrations rule");
+  assertIncludes(audit, "Main Gap Fix Pass", "CampaignCue audit documents main gap pass");
+  assertIncludes(audit, "Delivery Boundary Pass", "CampaignCue audit documents delivery boundary pass");
+  assertIncludes(changelog, "CampaignCue Main Gap Hardening", "CampaignCue changelog main gap entry");
+  assertIncludes(changelog, "CampaignCue Export Delivery Boundary", "CampaignCue changelog delivery boundary entry");
   assertIncludes(boundaryDoc, "Do not add owner dashboard pages under `src/app/sites/campaigncue`", "CampaignCue route-boundary guardrail");
   assertIncludes(changelog, "CampaignCue Route Boundary Alignment", "CampaignCue changelog route-boundary entry");
   assertIncludes(changelog, "CampaignCue setup-blocked state added", "CampaignCue changelog setup-blocked entry");
@@ -304,6 +354,7 @@ function verifyRequiredFiles() {
     "src/app/sites/campaigncue/page.tsx",
     "src/app/(campaigncue)/campaigncue/app/page.tsx",
     "src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx",
+    "__docs__/campaigncue/campaigncue-delivery-boundary.md",
     "__docs__/campaigncue/campaigncue-production-implementation-audit.md",
   ].forEach((relPath) => assert(exists(relPath), `${relPath} exists`));
 }

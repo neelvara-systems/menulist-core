@@ -11,8 +11,8 @@ Ads Studio must default to ad-pack preparation and manual handoff. Direct ad-pla
 3. Add budget recommendation and UTM plan.
 4. Run Creative Trust Center policy checks.
 5. Owner approves the ad pack.
-6. Export to owner/agency or create draft/publish through provider adapter where enabled.
-7. Store spend/result metrics where connected and authorized.
+6. Export to owner/agency for manual setup.
+7. Store owner-reported results; provider spend metrics require a separate future provider layer.
 
 ## Data Objects
 
@@ -36,4 +36,3 @@ Ads Studio must default to ad-pack preparation and manual handoff. Direct ad-pla
 - Owner can create and export an ad pack without ad account connection.
 - The system never starts spend from generation alone.
 - Disapproved or failed API attempts remain reviewable with reason/status.
-

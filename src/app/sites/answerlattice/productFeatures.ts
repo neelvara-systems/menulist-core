@@ -116,7 +116,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         eyebrow: 'Knowledge Intake',
         title: 'Teach AnswerLattice your product before users need support.',
         description:
-            'Start from selected product links, docs, FAQs, release notes, setup notes, support macros, repeated replies, files, screenshots, and short recordings. AnswerLattice prepares source-backed drafts for owner review before anything becomes support knowledge.',
+            'Start from product knowledge scattered across links, docs, FAQs, release notes, setup notes, support macros, repeated replies, files, screenshots, and short recordings. AnswerLattice prepares structured drafts for owner review before anything becomes support knowledge.',
         heroBullets: [
             'Selected public links, files, screenshots, and short media',
             'FAQ, KB, surface, and answer-proposal drafts',
@@ -124,7 +124,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         proofTitle: 'Start with product truth, not a blank help center.',
         proofDescription:
-            'Knowledge Intake gives founders a first-session path from existing product material to reviewed support content without creating an unbounded crawler or auto-publishing AI answers.',
+            'Knowledge Intake gives founders a first-session path from scattered product material to reviewed support content without creating an unbounded crawler or auto-publishing AI answers.',
         cards: [
             {
                 title: 'Inspect selected public pages',
@@ -134,7 +134,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Bring existing files',
                 description:
-                    'Use TXT, Markdown, CSV, JSON, DOCX, and text-based PDF content as source material without retaining raw files by default.',
+                    'Use TXT, Markdown, CSV, JSON, DOCX, and text-based PDF content as product material without retaining raw files by default.',
             },
             {
                 title: 'Import repeated replies',
@@ -178,10 +178,10 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         connectedTitle: 'Intake feeds AnswerLattice without creating a second knowledge system.',
         connectedDescription:
-            'Published intake output lands in the same collections and freshness paths used by hosted help, widget search, in-app suggestions, and answer review.',
+            'Published intake output turns scattered product material into the same structured knowledge used by hosted help, widget search, in-app suggestions, and answer review.',
         connectedItems: [
             { title: 'Knowledge Base', description: 'Accepted article drafts become reviewed KB content with embeddings attempted at publish time.' },
-            { title: 'FAQ Management', description: 'Short answers can publish as owner-reviewed FAQs tied to source material and context keys.' },
+            { title: 'FAQ Management', description: 'Short answers can publish as owner-reviewed FAQs tied to product material and context keys.' },
             { title: 'Product Surfaces', description: 'Selected page context can become support-aware route and workflow mappings.' },
             { title: 'Answer review', description: 'Approved-answer output stays reviewable through proposals instead of auto-publishing authority.' },
         ],
@@ -210,15 +210,15 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         eyebrow: 'Knowledge Base',
         title: 'Docs that power approved support.',
         description:
-            'Import or write help articles, connect them to product pages, and use them as source material for approved answers, custom owner answers, FAQs, hosted help, and widget suggestions.',
+            'Import or write help articles, map them to product pages, and turn scattered product material into standard support knowledge for approved answers, owner answers, FAQs, hosted help, and widget suggestions.',
         heroBullets: [
             'Import starter knowledge and files',
             'Attach articles to product pages',
-            'Keep Help Center, widget, and review connected',
+            'Feed Help Center, widget, and review',
         ],
         proofTitle: 'Manage support knowledge without building a docs empire.',
         proofDescription:
-            'The knowledge base is not just a document shelf. It is the reviewed source material AnswerLattice uses for in-app support, approved answers, FAQs, and coverage review.',
+            'The knowledge base is not just a document shelf. It is where scattered product material becomes structured support knowledge for in-app support, approved answers, FAQs, and coverage review.',
         cards: [
             {
                 title: 'Create reviewed articles',
@@ -233,7 +233,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Organize by surface',
                 description:
-                    'Connect articles to product pages, workflows, entities, tags, and support contexts so answers match where users are stuck.',
+                    'Map articles to product pages, workflows, entities, tags, and support contexts so answers match where users are stuck.',
             },
             {
                 title: 'Generate related FAQs',
@@ -257,9 +257,9 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         connectedTitle: 'Articles should feed the full support loop.',
         connectedDescription:
-            'Articles feed the support loop instead of living alone. FAQ, changelog, tickets, and answer review all refer back to reviewed product knowledge.',
+            'Articles feed the support loop instead of living alone. FAQ, changelog, tickets, and answer review all refer back to the same structured support knowledge.',
         connectedItems: [
-            { title: 'FAQ', description: 'Short answers stay linked to article source material.' },
+            { title: 'FAQ', description: 'Short answers stay tied to the deeper article knowledge.' },
             { title: 'Changelog', description: 'Release changes can point to support docs that need review.' },
             { title: 'Tickets', description: 'Resolved tickets can become new article or approved-answer proposals.' },
             { title: 'Answer review', description: 'Coverage and stale-answer checks use article relationships instead of raw document count.' },
@@ -273,7 +273,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Can articles power widget answers?',
                 description:
-                    'Yes. Articles can be used as reviewed support source material and connected to in-app widget responses.',
+                    'Yes. Articles can be used as structured support knowledge for in-app widget responses.',
             },
             {
                 title: 'Does imported content publish automatically?',
@@ -297,7 +297,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         proofTitle: 'Answer repeated questions quickly.',
         proofDescription:
-            'FAQs and owner-written answers help users get direct responses without making owners maintain a second disconnected knowledge system.',
+            'FAQs and owner-written answers help users get direct responses without making owners maintain another scattered knowledge system.',
         cards: [
             {
                 title: 'Add exact owner answers',
@@ -344,7 +344,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         connectedDescription:
             'A good FAQ system reduces repeated questions only when it follows the same product context and source freshness rules as the rest of support.',
         connectedItems: [
-            { title: 'Knowledge Base', description: 'FAQ answers can point back to article source material.' },
+            { title: 'Knowledge Base', description: 'FAQ answers can point back to deeper article knowledge.' },
             { title: 'Widget', description: 'In-app support can surface matching owner answers after approved answers and before fallback.' },
             { title: 'Hosted Help', description: 'FAQ sections can sit beside docs and changelog on the support domain.' },
             { title: 'Cache freshness', description: 'Public reads can reuse cached content while invalidating when source versions change.' },
@@ -368,7 +368,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Are FAQs a replacement for articles?',
                 description:
-                    'No. FAQs are short answers. Articles remain the deeper source material for review, search, and answer updates.',
+                    'No. FAQs are short answers. Articles remain the deeper support knowledge for review, search, and answer updates.',
             },
         ],
     },
@@ -379,10 +379,10 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         eyebrow: 'Changelog',
         title: 'Release notes that keep support current.',
         description:
-            'AnswerLattice connects changelog entries to product surfaces, tags, affected entities, and support content so releases become review triggers instead of stale support risk.',
+            'AnswerLattice turns changelog entries into support review triggers by mapping releases to product surfaces, tags, affected entities, and support content.',
         heroBullets: [
             'Publish release notes for customers',
-            'Connect changes to product surfaces',
+            'Map changes to product surfaces',
             'Review affected support answers after releases',
         ],
         proofTitle: 'Explain what changed and what support must review.',
@@ -397,7 +397,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Attach affected surfaces',
                 description:
-                    'Connect changes to routes, workflows, tags, and entities so support context understands what changed.',
+                    'Map changes to routes, workflows, tags, and entities so support context understands what changed.',
             },
             {
                 title: 'Link related articles',
@@ -420,13 +420,13 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             'AnswerLattice treats product changes as support events. When the product moves, support content gets a review path.',
         workflowSteps: [
             { title: 'Write the release note', description: 'Describe what changed in customer-readable language.' },
-            { title: 'Assign affected surfaces', description: 'Connect the update to pages, workflows, entities, tags, and related articles.' },
+            { title: 'Assign affected surfaces', description: 'Map the update to pages, workflows, entities, tags, and related articles.' },
             { title: 'Review stale support', description: 'Check approved answers and FAQs that may now be outdated.' },
             { title: 'Publish support context', description: 'Expose the update through hosted help and in-app support where useful.' },
         ],
         connectedTitle: 'Every product change can become support context.',
         connectedDescription:
-            'Changelog entries help support stay accurate because they connect product movement to articles, answers, FAQs, tickets, and stale-answer signals.',
+            'Changelog entries help support stay accurate because product movement can become article updates, answer review, FAQ refreshes, ticket signals, and stale-answer checks.',
         connectedItems: [
             { title: 'Knowledge Base', description: 'Release notes point to articles that explain the change.' },
             { title: 'Approved answers', description: 'Affected answers can be reviewed after product changes.' },
@@ -437,7 +437,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Is this only a public release log?',
                 description:
-                    'No. The public update is useful, but the support value comes from connecting each change to affected support content.',
+                    'No. The public update is useful, but the support value comes from turning each change into review work for affected support content.',
             },
             {
                 title: 'Can changelog content appear in the widget?',
@@ -585,11 +585,11 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             { title: 'Create a card', description: 'Capture the support gap, unresolved question, or follow-up item the owner wants to track.' },
             { title: 'Add private context', description: 'Record internal notes, assignee, priority, due date, and links to the relevant support objects.' },
             { title: 'Move the status', description: 'Use current status for the board view while preserving timestamped status activity.' },
-            { title: 'Connect product context', description: 'Link the item to a surface, entity, answer, ticket, or conversation when that helps review.' },
+            { title: 'Attach product context', description: 'Link the item to a surface, entity, answer, ticket, or conversation when that helps review.' },
             { title: 'Create a proposal', description: 'Draft an answer proposal only when the support item should become reusable support knowledge.' },
             { title: 'Approve the answer', description: 'The review queue remains the authority layer before an answer becomes official.' },
         ],
-        connectedTitle: 'The board connects support work without duplicating every screen.',
+        connectedTitle: 'The board turns scattered follow-up into review work.',
         connectedDescription:
             'Support Board is useful because it sits above tickets, conversations, surfaces, and answer work as an owner review lane. It should not replace those dedicated screens.',
         connectedItems: [
@@ -686,7 +686,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         connectedTitle: 'Feedback belongs inside the support knowledge loop.',
         connectedDescription:
-            'Feedback Review is useful because it connects end-user sentiment to Support Board, support signals, product surfaces, and reviewed answers without becoming a separate feedback product.',
+            'Feedback Review is useful because end-user sentiment can become Support Board work, support signals, product-surface context, and reviewed answer improvements without becoming a separate feedback product.',
         connectedItems: [
             { title: 'Help Center', description: 'End users submit feedback from the same support surface where they ask for help.' },
             { title: 'Product Surfaces', description: 'Owners keep feedback grouped by the product area where the confusion belongs.' },
@@ -775,7 +775,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             { title: 'Deliver digest or alert', description: 'Routine movement rolls into digest; critical events can alert sooner.' },
             { title: 'Review health', description: 'Use the compact health summary instead of reading delivery logs.' },
         ],
-        connectedTitle: 'Notifications should stay connected to support truth.',
+        connectedTitle: 'Notifications should point back to approved support truth.',
         connectedDescription:
             'Workflow notifications are useful only when they point owners back to the support content, answers, tickets, and review items that need attention.',
         connectedItems: [
@@ -852,9 +852,9 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         ],
         workflowTitle: 'From page trigger to quiet in-app guidance.',
         workflowDescription:
-            'Proactive help stays owner-controlled: configure the page trigger, connect it to approved support, let the widget display it only when eligible, and review feedback.',
+            'Proactive help stays owner-controlled: configure the page trigger, attach approved support, let the widget display it only when eligible, and review feedback.',
         workflowSteps: [
-            { title: 'Map the support-heavy page', description: 'Connect the route or workflow to the product surface where users need help.' },
+            { title: 'Map the support-heavy page', description: 'Attach the route or workflow to the product surface where users need help.' },
             { title: 'Create an active trigger', description: 'Define when the widget should suggest help for that page context.' },
             { title: 'Resolve the suggestion', description: 'Attach reviewed support content or an approved answer summary.' },
             { title: 'Let runtime gate the call', description: 'The widget checks capability state before requesting proactive help.' },

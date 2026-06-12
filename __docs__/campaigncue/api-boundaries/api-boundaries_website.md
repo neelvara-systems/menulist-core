@@ -2,18 +2,18 @@
 
 ## Section Goal
 
-Explain integration posture honestly: connected where supported, export-ready where not.
+Explain integration posture honestly: export/download is active now; connected provider actions are future-only.
 
 ## Approved Public Copy
 
-> Use manual/export workflows by default, request connected workflows where supported, and keep campaign packs ready when a platform action requires review or posting.
+> Use export/download workflows by default, keep campaign packs ready for manual posting, and keep provider connections separate until the future provider layer is enabled.
 
 ## Supporting Points
 
 - Separates provider connections from campaign creation.
-- Shows status for manual-only and setup-requested provider actions.
+- Shows export/download status and read-only future provider posture.
 - Keeps manual export as a normal path.
-- Uses workspace and role controls for integration actions.
+- Reserves workspace and role controls for future provider actions.
 
 ## Do Not Say
 

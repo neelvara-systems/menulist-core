@@ -370,7 +370,7 @@ Rules:
 ### 5.2.4 Shared Feature Campaign Pages
 
 Use `src/components/website/features/FeatureDetailPage.tsx` for the dedicated public feature pages added in v3.6.34+:
-Menu Import, Menu Content Prep, Featured Choices, Official Business Page, QR Menu and Links, Print-ready Kit, Owner Phone Dashboard, Menu Quality Validation, and Public Discovery.
+Menu Import, Menu Content Prep, Featured Choices, Official Business Page, QR Menu and Links, Print-ready Kit, Owner PWA Dashboard, Menu Quality Validation, and Public Discovery.
 
 The desktop Features dropdown should read as an elevated navigation surface, not a content card merged with the hero. v3.6.38 uses a viewport-centered top overview row, three-column feature grid, stronger shadow/border separation, and a compact bottom proof/CTA strip.
 

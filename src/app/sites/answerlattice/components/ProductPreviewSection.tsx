@@ -128,11 +128,11 @@ export default function ProductPreviewSection() {
                     <ProductPreviewFrame id="answerlattice-product-preview" tab={activeTab} />
                 </div>
 
-                <div className="mt-6 grid gap-3 text-sm text-[#808099] md:grid-cols-3">
-                    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
-                        <div className="font-semibold text-white">Screens are connected by surfaces</div>
-                        <p className="mt-2">Articles, FAQs, changelogs, tickets, and widget answers share page and workflow context.</p>
-                    </div>
+                    <div className="mt-6 grid gap-3 text-sm text-[#808099] md:grid-cols-3">
+                        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                            <div className="font-semibold text-white">Screens are mapped by surfaces</div>
+                            <p className="mt-2">Articles, FAQs, changelogs, tickets, and widget answers share reviewed page and workflow context.</p>
+                        </div>
                     <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
                         <div className="font-semibold text-white">Fallback becomes review work</div>
                         <p className="mt-2">Missed questions become signals and draft improvements instead of disappearing into chat history.</p>

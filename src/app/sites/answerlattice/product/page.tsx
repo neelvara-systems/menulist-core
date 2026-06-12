@@ -31,7 +31,7 @@ import { ANSWERLATTICE_SUPPORT_FEATURES } from '../productFeatures';
 
 export const metadata: Metadata = {
     title: 'Product',
-    description: 'AnswerLattice is the support layer for founder-led SaaS: in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and support-gap review.',
+    description: 'AnswerLattice turns scattered product knowledge into a standard support knowledge structure for your widget, help center, FAQs, fallback, and review loop.',
     alternates: { canonical: '/product' },
 };
 
@@ -46,7 +46,7 @@ function getBasePath(): string {
 const SUPPORT_LAYER_INPUTS = [
     {
         title: 'What you add',
-        detail: 'Docs, FAQs, release notes, support replies, product notes, screenshots, and common questions.',
+        detail: 'Scattered docs, tickets, release notes, support replies, product notes, screenshots, recordings, and founder memory.',
         meta: 'Sources',
     },
     {
@@ -73,8 +73,8 @@ const SUPPORT_LAYER_OUTPUTS = [
         meta: 'Review queue',
     },
     {
-        title: 'What stays connected',
-        detail: 'Hosted help, FAQs, changelog, product surfaces, and approved answers move as one support layer.',
+        title: 'What becomes reusable',
+        detail: 'Hosted help, FAQs, changelog support, product-surface guidance, and approved answers come from the same standard support knowledge.',
         meta: 'Published truth',
     },
 ];
@@ -194,7 +194,7 @@ function SupportLayerMap() {
                 <SectionHeader
                     eyebrow="System map"
                     title="One support layer across your product, help content, tickets, and review work."
-                    description="This is where AnswerLattice stops feeling like one widget. Sources, product moments, user support, and founder review stay connected."
+                    description="This is where AnswerLattice stops feeling like one widget. Scattered product knowledge becomes approved answers, hosted help, fallback paths, and review work."
                 />
                 <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6">
                     <AnswerlatticeHubDiagram
@@ -217,7 +217,7 @@ function OperatingModesSection() {
                 <SectionHeader
                     eyebrow="Operating spine"
                     title="Support has three jobs: prepare, serve, and improve."
-                    description="AnswerLattice keeps those jobs connected instead of scattering setup, tickets, docs, feedback, and reviewed answers across separate places."
+                    description="AnswerLattice turns scattered setup material, tickets, docs, feedback, and reviewed answers into one support workflow instead of leaving them across separate tools."
                 />
                 <div className="al-linear-proof__grid">
                     <article className="al-linear-proof__copy" data-answerlattice-reveal>
@@ -508,7 +508,7 @@ function ReviewAndGovernanceSections() {
                     <SectionHeader
                         eyebrow="Trust mechanism"
                         title="Built around support truth, not AI confidence."
-                        description="The deeper product layer keeps page context, approved answers, stale-answer review, and repeated-gap review connected."
+                        description="The deeper product layer turns page context, approved answers, stale-answer review, and repeated gaps into governed support truth."
                     />
                     <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6">
                         <AnswerlatticeCrossDiagram idPrefix="al-product-governance" items={TRUST_ITEMS} />
@@ -545,7 +545,7 @@ function DifferenceAndSignupSections({ basePath }: { basePath: string }) {
                     <SectionHeader
                         eyebrow="After signup"
                         title="From signup to first supported users."
-                        description="Self-serve setup should move a founder from workspace creation to widget install and first review work."
+                        description="Self-serve setup should move a founder from source intake to approved answers, widget install, hosted help, and first review work."
                     />
                     <div className="grid gap-3 md:grid-cols-7">
                         {SIGNUP_STEPS.map((step, index) => (
@@ -581,7 +581,7 @@ function FinalCta({ basePath }: { basePath: string }) {
                     Give your SaaS a support system before support becomes your job.
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#d6d6ef]">
-                    Set up an in-app widget, hosted help, approved answers, ticket fallback, changelog, feedback, and support review loop in one connected layer.
+                    Turn scattered product knowledge into an in-app widget, hosted help, approved answers, ticket fallback, changelog support, feedback, and review loop.
                 </p>
                 <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                     <AnswerlatticeLink
@@ -619,7 +619,7 @@ export default function AnswerlatticeProductPage() {
                 <PageHero
                     eyebrow="Product overview"
                     title="Everything your SaaS needs to support users before you hire a support team."
-                    description="AnswerLattice connects your in-app support widget, hosted help center, FAQs, tickets, changelog, feedback, approved answers, and review queue into one support layer."
+                    description="Every product owner has knowledge scattered across docs, tickets, releases, screenshots, recordings, notes, product context, and repeated replies. AnswerLattice turns it into a standard support knowledge structure with approved answers for your help widget, help center, FAQs, and future AI agents."
                     basePath={basePath}
                     align="left"
                     actions={[
@@ -640,7 +640,7 @@ export default function AnswerlatticeProductPage() {
                     ]}
                     proofItems={[
                         { label: 'What it is', value: '24/7 support layer for founder-led SaaS' },
-                        { label: 'What it connects', value: 'Widget, hosted help, tickets, feedback, releases, and review' },
+                        { label: 'What it turns into', value: 'Widget help, hosted help, FAQs, fallback, feedback, releases, and review' },
                         { label: 'What stays safe', value: 'Safe context, owner approval, and scoped workspace access' },
                     ]}
                 >

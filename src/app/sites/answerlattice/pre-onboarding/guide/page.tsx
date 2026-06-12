@@ -164,7 +164,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                 <section className="border-b border-white/[0.06] px-4 py-20 text-center sm:px-6 lg:py-24">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Pre-Onboarding Guide</p>
                     <h1 className="mx-auto max-w-4xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Use the prompt with the right source material, then review the package before AnswerLattice intake.
+                        Use the prompt with the right product material, then review the package before AnswerLattice intake.
                     </h1>
                     <p className="mx-auto mt-6 max-w-3xl text-base leading-relaxed text-[#a0a0c0] sm:text-lg">
                         This guide is for product owners and the AI agents helping them. It explains what to prepare, how to run the prompt, what the agent should inspect, and what must be checked before live support.
@@ -211,7 +211,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                         <SectionHeader
                             eyebrow="Market patterns"
                             title="Handle repo-to-doc, FAQ, demo, and website requests safely."
-                            description="Some teams expect the agent to turn product sources into support docs, FAQs, walkthroughs, or website asset briefs. AnswerLattice keeps those outputs source-backed and review-gated."
+                            description="Some teams expect the agent to turn product material into support docs, FAQs, walkthroughs, or website asset briefs. AnswerLattice keeps those outputs source-backed and review-gated."
                         />
                         <div className="grid gap-4 md:grid-cols-2">
                             {MARKET_PATTERN_RULES.map((item) => (
@@ -248,7 +248,7 @@ export default function AnswerlatticePreOnboardingGuidePage() {
                     <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.85fr_1.15fr]">
                         <div>
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Multi-product repos</p>
-                            <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">Target one product before collecting source truth.</h2>
+                            <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">Target one product before collecting product material.</h2>
                             <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
                                 Some clients keep several products in one codebase. In that case, the agent must map the repo first, then prepare AnswerLattice inputs only for the product named in the prompt.
                             </p>
@@ -266,11 +266,11 @@ export default function AnswerlatticePreOnboardingGuidePage() {
 
                 <section className="border-b border-white/[0.06] px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-7xl">
-                        <SectionHeader
-                            eyebrow="Before running"
-                            title="Give the agent enough source truth."
-                            description="The prompt works best when the AI IDE can inspect product material, but it can also create a starter package from explicit links, exported docs, or owner notes."
-                        />
+                            <SectionHeader
+                                eyebrow="Before running"
+                                title="Give the agent enough product material."
+                                description="The prompt works best when the AI IDE can inspect product material, but it can also create a starter package from explicit links, exported docs, or owner notes."
+                            />
                         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                             {BEFORE_RUN.map((item) => (
                                 <div key={item} className="flex items-start gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] p-4">

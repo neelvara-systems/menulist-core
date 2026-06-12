@@ -10,7 +10,7 @@ export const ANSWERLATTICE_SITE_URL = 'https://answerlattice.com';
 export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - 24/7 Support Layer for Founder-Led SaaS';
 
 export const ANSWERLATTICE_SITE_DESCRIPTION =
-    'AnswerLattice helps founder-led SaaS products manage support 24/7 with an in-app widget, hosted help center, FAQs, changelog, ticket fallback, feedback review, approved answers, and a weekly support review loop.';
+    'AnswerLattice turns scattered product knowledge into a standard support knowledge structure: approved answers for your widget, help center, FAQs, ticket fallback, and future AI agents.';
 
 export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     path: string;
@@ -29,7 +29,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | AnswerLattice',
-        description: 'One support layer for founder-led SaaS: launch setup, in-app widget, hosted help, FAQs, changelog, ticket fallback, feedback review, approved answers, and support-gap review.',
+        description: 'Turn scattered docs, tickets, releases, screenshots, recordings, notes, and product context into standard support knowledge, approved answers, hosted help, FAQs, and reviewable gaps.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -50,7 +50,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product/support-control',
         title: 'Help Center and Tickets | AnswerLattice',
-        description: 'Operate hosted help, docs, FAQ, custom owner answers, changelog, tickets, feedback, Support Board, conversations, and weekly support review from one connected support layer.',
+        description: 'Turn scattered product knowledge into hosted help, docs, FAQs, custom owner answers, changelog support, fallback tickets, feedback, and weekly support review.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
@@ -78,7 +78,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/pre-onboarding',
         title: 'Pre-Onboarding Kit | AnswerLattice',
-        description: 'Use an AI coding agent to prepare product website links, docs, owner notes, policies, support questions, and screenshot rules before AnswerLattice onboarding.',
+        description: 'Use an AI coding agent to organize scattered product website links, docs, owner notes, policies, support questions, and screenshot rules before AnswerLattice onboarding.',
         priority: 0.84,
         changeFrequency: 'monthly',
     },

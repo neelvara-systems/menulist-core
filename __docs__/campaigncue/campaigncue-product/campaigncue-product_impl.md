@@ -6,7 +6,7 @@ CampaignCue should live in the same repo with a separate product boundary. Imple
 
 ## Implementation Status
 
-CampaignCue now has a repo-level public shell and a protected manual/export-first runtime. The runtime adds CampaignCue workspace APIs, a dedicated Firebase Admin client, CampaignCue Firebase rules/config files, Business Brain bootstrap, source snapshots, deterministic opportunity cues, campaign packs, trust reports, asset metadata, manual schedule records, approval request logging, and bounded analytics summaries.
+CampaignCue now has a repo-level public shell and a protected export/download-first runtime. The runtime adds CampaignCue workspace APIs, a dedicated Firebase Admin client, CampaignCue Firebase rules/config files, Business Brain bootstrap, source snapshots, source facts, evidence-backed opportunity cues, structured campaign packs, trust reports, asset rights metadata, manual schedule records, approval request logging, owner-reported outcomes, launch-readiness checks, and bounded analytics summaries.
 
 It still does not create direct provider calls, billing checkout, ad spend mutations, WhatsApp direct sends, rendered video provider calls, or MenuList write-back.
 
@@ -18,7 +18,7 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Workspace app | `src/app/(campaigncue)/campaigncue/app`; local `/__campaigncue/app` and product-domain `/app` rewrite to `/campaigncue/app`. |
 | Product id | `campaigncue` added to product/domain/deployment registries. |
 | Firebase | Separate project ids selected: `campaigncue-qa` and `campaigncue`; config/rules files added through `firebase-campaigncue.json`. |
-| Functions | No CampaignCue Cloud Function is required for the current manual/export-first runtime. Scheduled/provider workers remain disabled until external credentials and leases are configured. |
+| Functions | No CampaignCue Cloud Function is required for the current export/download-first runtime. Scheduled/provider workers remain disabled until external credentials, consent, quotas, idempotency, and leases are configured. |
 | Billing | Product-aware billing with `productId: "campaigncue"` or approved short code. |
 | Auth | Shared account bridge allowed; CampaignCue workspace scope required. |
 | Data access | Server-side product APIs for source, generation, publishing, billing, and trust actions. |
@@ -28,16 +28,16 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Service | Responsibility |
 | --- | --- |
 | WorkspaceService | Workspace, membership, agency, multi-location scope. |
-| BusinessBrainService | Profile, catalog, brand kit, source confidence. |
+| BusinessBrainService | Profile, catalog, brand kit, source facts, missing fact list, vertical risk context. |
 | SourceConnectionService | Manual/upload/website/MenuList/Google/WhatsApp/Meta/source links. |
-| OpportunityService | Campaign cues. |
-| CampaignService | Campaign brief and pack state. |
+| OpportunityService | Campaign cues with owner benefit, evidence, and safe next action labels. |
+| CampaignService | Campaign brief, structured channel fields, manual handoff steps, and pack state. |
 | GenerationService | Visual/script/video/ad generation jobs. |
 | AssetService | Upload, classify, rights/consent metadata. |
-| TrustService | Fact, source, consent, claim, synthetic-content checks. |
+| TrustService | Fact, source, consent, claim, vertical, destination, asset-rights, and spend checks. |
 | CreditService | Estimate, reserve, capture, refund. |
-| PublishService | Direct publish or manual fallback. |
-| AnalyticsService | Usage/execution/performance/outcome separation. |
+| DeliveryService | Copy, output download, full-pack download, schedule, approval, manual-use, and result tracking. Provider posting is a separate future layer. |
+| AnalyticsService | Usage, manual execution, owner-reported outcomes, confidence labels, and provider-disabled posture. |
 
 ## Implementation Acceptance
 
@@ -48,9 +48,9 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Security | Server-side workspace, client, location, source, credit, trust checks. |
 | Firebase rules | Default deny with explicit CampaignCue product scopes. |
 | Jobs | Current runtime uses synchronous server APIs with idempotency. Async generation/render/sync/publish/report jobs remain blocked until provider mode is enabled. |
-| Trust | Critical blockers enforced before export, handoff, and any future connected publish/direct send. |
+| Trust | Critical blockers and channel warnings enforced before export, handoff, and any future connected publish/direct send. |
 | Cost | Deterministic generation costs zero credits; paid generation remains disabled. |
-| Mobile | Owner critical actions tested in mobile shell. |
+| Mobile | Owner critical actions remain within the responsive CampaignCue workspace; copy, schedule, mark used, source input, asset metadata, and result recording use 44px touch targets. |
 
 ## Validation Checklist
 

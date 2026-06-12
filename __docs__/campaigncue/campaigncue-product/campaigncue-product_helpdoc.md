@@ -50,9 +50,9 @@ CampaignCue creates campaign packs from your business data. You can use it for W
 
 ## Troubleshooting
 
-### My source input or setup request did not update
+### My source input did not update
 
-Use the current business details or add a manual source input. Provider setup requests do not run a live sync until external provider credentials and permissions are configured.
+Use the current business details or add a manual source input. Provider setup requests are not part of the active export/download runtime.
 
 ### A campaign is blocked
 
@@ -60,7 +60,7 @@ Blocked campaigns usually contain missing consent, fake testimonial wording, una
 
 ### Credits Look High
 
-The current manual/export-first runtime does not charge credits. Credit estimates only become active when paid generation, rendered video, billing, or provider actions are enabled.
+The current export/download-first runtime does not charge credits. Credit estimates only become active when paid generation, rendered video, billing, or provider actions are enabled in a separate future layer.
 
 ## Need More Help
 

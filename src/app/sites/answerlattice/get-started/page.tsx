@@ -10,7 +10,7 @@ import OnboardingForm from './OnboardingForm';
 
 export const metadata: Metadata = {
     title: 'Get Started',
-    description: 'Create your AnswerLattice workspace, add your app, invite the first team members, teach AnswerLattice from starter sources, pick pages where users need help, and get a widget key for in-app support.',
+    description: 'Create your AnswerLattice workspace, add your app, organize scattered product knowledge, pick pages where users need help, and get a widget key for in-app support.',
     alternates: { canonical: '/get-started' },
 };
 
@@ -25,7 +25,7 @@ function getBasePath(): string {
 const CRITERIA = [
     { label: 'Your SaaS app is live, beta, or close to launch', description: 'A working product with billing, onboarding, settings, release notes, or other user-facing flows to support.' },
     { label: 'You know the first support questions', description: 'The same setup, billing, role, release, or error questions already appear, or are predictable before launch.' },
-    { label: 'You have starter support material', description: 'Docs, FAQs, changelogs, support notes, screenshots, recordings, or common answers AnswerLattice can learn from.' },
+    { label: 'Your support knowledge is scattered', description: 'Docs, FAQs, changelogs, support notes, screenshots, recordings, common answers, or founder replies exist but are not yet organized.' },
     { label: 'You can install one script', description: 'You can add the widget, allow domains, block routes, and pass safe page context.' },
     { label: 'You want answer approval', description: 'You want to approve answers before they become official support guidance.' },
 ];
@@ -36,7 +36,7 @@ const FIRST_SESSION = [
     'Invite the first team members or confirm owner-only access',
     'Get your widget key',
     'Seed starter surfaces for key product pages',
-    'Teach AnswerLattice from selected links, docs, FAQs, screenshots, recordings, support macros, or repeated replies',
+    'Turn scattered links, docs, FAQs, screenshots, recordings, support macros, or repeated replies into structured support knowledge',
     'Verify widget install and page context',
     'Review the first approved answers',
 ];
@@ -57,7 +57,7 @@ export default function AnswerlatticeGetStartedPage() {
                                 Create your AnswerLattice workspace.
                             </h1>
                             <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                                Sign in with Google, add your app, invite the people who need access, pick the pages where users need help, and get a widget key for your first support layer.
+                                Sign in with Google, add your app, bring the scattered product knowledge you already have, pick the pages where users need help, and get a widget key for your first support layer.
                             </p>
                         </div>
 
@@ -65,7 +65,7 @@ export default function AnswerlatticeGetStartedPage() {
                             className="mb-10"
                             items={[
                                 { label: 'First session', value: 'Workspace, team, product pages, widget key' },
-                                { label: 'Best input', value: 'Docs, FAQs, owner notes, screenshots, recordings, recurring questions' },
+                                { label: 'Best input', value: 'Scattered docs, FAQs, owner notes, screenshots, recordings, recurring questions' },
                                 { label: 'Go-live rule', value: 'Review answers and verify widget context before relying on live support' },
                             ]}
                         />
@@ -77,9 +77,9 @@ export default function AnswerlatticeGetStartedPage() {
                                         <LuFileInput aria-hidden size={20} />
                                     </span>
                                     <div>
-                                        <h2 className="text-base font-semibold text-white">Have a repo, docs, website, screenshots, or owner notes?</h2>
+                                        <h2 className="text-base font-semibold text-white">Have product knowledge scattered across a repo, docs, website, screenshots, or owner notes?</h2>
                                         <p className="mt-1 text-sm leading-relaxed text-[#d6d6ef]">
-                                            Run pre-onboarding first so AnswerLattice starts with cleaner source truth.
+                                            Run pre-onboarding first so AnswerLattice starts with cleaner, structured product material.
                                         </p>
                                     </div>
                                 </div>
@@ -123,7 +123,7 @@ export default function AnswerlatticeGetStartedPage() {
                     <div className="mx-auto max-w-3xl">
                         <h2 className="mb-3 text-xl font-semibold">What you need before signup</h2>
                         <p className="mb-6 text-sm leading-relaxed text-[#a0a0c0]">
-                            You do not need a full help center to start. Bring your best notes, recurring questions, setup instructions, release updates, screenshots, or short support recordings. The Pre-Onboarding Kit can organize those sources before you upload them.
+                            You do not need a full help center to start. Bring the scattered material you already use to explain your product: notes, recurring questions, setup instructions, release updates, screenshots, short support recordings, and repeated replies. The Pre-Onboarding Kit organizes those sources before you upload them.
                         </p>
                         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
                             <div className="mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">First session checklist</div>

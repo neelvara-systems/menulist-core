@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.54 (Regional Workspace Settings Proof)
+**Version:** 3.6.55 (Owner PWA Dashboard Claim Correction)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 11, 2026
+**Last Updated:** June 12, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.54** | **Regional Workspace Settings Proof** | **"Regional owner settings belong in Operations, not the homepage hero."** | **ACTIVE** |
+| **3.6.55** | **Owner PWA Dashboard Claim Correction** | **"Core owner workflows stay available from phone or PWA."** | **ACTIVE** |
+
+Version 3.6.55 corrects the `/features/owner-phone-dashboard` public positioning from a narrow phone-update message to the fuller Owner PWA Dashboard promise. Header dropdown labels, the Features Operations card, and the dedicated feature-page copy now explain that core owner workflows - menu edits, publishing, QR/link sharing, Business Health, feedback, screens, status, hours, and key settings - stay available from a phone browser or installed PWA. The copy still avoids overclaiming exact parity for every rare precision/setup edge case and keeps desktop positioned as optional for heavier review. This is static public website locale/docs work only; owner dashboard runtime, mobile PWA runtime, customer menu runtime, pricing, payment, auth, upload/extraction, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
 Version 3.6.54 adds a compact `/features` Operations card for regional workspace settings: owner workspace language preference, timezone, date format, and time format. The copy keeps customer-facing menu languages tied to the approved source and does not expand public website/resource locale claims beyond reviewed website languages. This is static public website locale/component/docs work only; owner dashboard runtime, customer menu runtime, public website language switcher, sitemap, hreflang, LLM discovery files, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, and Vercel deployment were not changed.
 
@@ -37,7 +39,7 @@ Version 3.6.37 adds the dedicated public campaign page `/features/featured-choic
 
 Version 3.6.36 adds the dedicated public campaign page `/features/menu-content-prep` for the owner job of preparing customer-friendly descriptions, menu images, and customer languages from the same approved menu source before publishing. The header Features dropdown now places Menu Content Prep after Menu Import, and the `/features` Generated images, Descriptions written for you, and One-click translations cards link to the new page. The route is registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. Copy stays outcome-led and review-first: it avoids `AI-powered` positioning, ranking/AI-placement promises, and unchecked public publishing claims. This is public website route/component/locale/discovery/docs only; owner dashboard runtime, generation providers, credits runtime, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
 
-Version 3.6.34 adds a restrained Features dropdown to the desktop header and matching nested feature links to the mobile drawer. As of v3.6.37, the dropdown promotes the highest-selling, owner-readable feature surfaces: Menu Import, Menu Content Prep, Featured Choices, Official Business Page, QR Menu and Links, Print-ready Kit, Owner Phone Dashboard, Business Health, and Public Discovery. Dedicated public campaign pages exist at `/features/menu-import`, `/features/menu-content-prep`, `/features/featured-choices`, `/features/official-business-page`, `/features/qr-menu-links`, `/features/print-ready-kit`, `/features/owner-phone-dashboard`, and `/features/public-discovery`, while `/features/business-health` remains the custom Business Health campaign page. These routes are registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. This is public website route/component/CSS/locale/discovery/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
+Version 3.6.34 adds a restrained Features dropdown to the desktop header and matching nested feature links to the mobile drawer. As of v3.6.55, the dropdown promotes the highest-selling, owner-readable feature surfaces: Menu Import, Menu Content Prep, Featured Choices, Official Business Page, QR Menu and Links, Print-ready Kit, Owner PWA Dashboard, Business Health, and Public Discovery. Dedicated public campaign pages exist at `/features/menu-import`, `/features/menu-content-prep`, `/features/featured-choices`, `/features/official-business-page`, `/features/qr-menu-links`, `/features/print-ready-kit`, `/features/owner-phone-dashboard`, and `/features/public-discovery`, while `/features/business-health` remains the custom Business Health campaign page. These routes are registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. This is public website route/component/CSS/locale/discovery/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
 
 Version 3.6.33 adds the dedicated public campaign page `/features/business-health`. The page explains Business Health as MenuList's owner-dashboard check for latest business state, public surfaces, customer attention, last checked date, location state, safe next actions, and the No action needed stable state. The homepage Business Health section and the `/features` Business Health card now link to this page. The route is registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`. It does not use `/business-health`, which remains the protected owner app route. This is public website route/component/CSS/locale/discovery/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
 
@@ -533,10 +535,10 @@ Protected scope:
 
 Stage 7.11 adds a dedicated Features page Operations card for phone-first owner work:
 
-- The Features page Operations group now includes "Owner dashboard on your phone."
-- Copy is grounded in existing mobile owner surfaces: dashboard, More/settings screens, digital screens, POS Sync, daily operations, customer signals, and menu publishing support.
+- The Features page Operations group now includes "Owner PWA dashboard."
+- Copy is grounded in existing mobile owner surfaces: dashboard, More/settings screens, digital screens, daily operations, customer signals, feedback, Business Health, menu publishing support, and public-source controls.
 - The homepage and supporting-page helper line remains the short reassurance version; the Features page carries the fuller capability explanation.
-- The wording avoids overclaiming exact desktop/mobile parity for every advanced edge case.
+- The wording avoids overclaiming exact desktop/mobile parity for every rare precision/setup edge case while clearly stating that core owner workflows are available from phone browser or installed PWA.
 
 Protected scope:
 
@@ -709,6 +711,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.55 | June 12, 2026 | Repositioned `/features/owner-phone-dashboard` as Owner PWA Dashboard and clarified that core owner workflows stay available from phone browser or installed PWA without changing mobile runtime. |
 | 3.6.54 | June 11, 2026 | Added a `/features` Operations card for regional workspace settings while keeping public website/resource language exposure limited to reviewed website locales. |
 | 3.6.53 | June 11, 2026 | Removed the shared trailing proof-chip row from dedicated feature-page hero visuals so tags are not repeated three times on mobile pages. |
 | 3.6.52 | June 11, 2026 | Hardened public website grid tracks with container-safe `minmax(min(100%, ...), 1fr)` values and verified representative pages at 390px mobile width with no horizontal overflow. |

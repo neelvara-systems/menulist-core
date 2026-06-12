@@ -34,10 +34,9 @@ CampaignCue must work on mobile because WhatsApp copy/share, campaign review, ap
 - Keep touch targets at least 44px.
 - Avoid dense tables, hover-only controls, and desktop canvas editing.
 - Show trust status as Ready, Needs review, or Blocked.
-- Keep manual fallback visible.
+- Keep export/download visible.
 - Show credits before generation.
 
 ## Current Pass
 
 No mobile code was changed. This document sets the implementation acceptance criteria.
-

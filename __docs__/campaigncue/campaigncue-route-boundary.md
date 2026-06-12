@@ -32,10 +32,11 @@ This mirrors the Answerlattice pattern where public website files live under `sr
 - Owner workspace pages must not be created below `src/app/sites/campaigncue`.
 - Product-domain `/app` must map to `/campaigncue/app`, not `/sites/campaigncue/app`.
 - Local `/__campaigncue/app` must map to `/campaigncue/app`, not `/sites/campaigncue/app`.
+- Local dev product prefixes must match the exact prefix or a slash-boundary child path. `/__campaigncue` and `/__campaigncue/app` are valid; `/__campaigncuex` must not match CampaignCue.
 - CampaignCue APIs stay under `src/app/api/campaigncue`.
 - CampaignCue product constants stay under `src/constants/campaigncue`.
 - The verifier must fail if `src/app/sites/campaigncue/app` exists.
 
 ## Validation
 
-`npm run verify:campaigncue` checks the route split, middleware rewrite helpers, docs, and the absence of the old `src/app/sites/campaigncue/app` path.
+`npm run verify:campaigncue` checks the route split, middleware rewrite helpers, exact local prefix matching, docs, and the absence of the old `src/app/sites/campaigncue/app` path.

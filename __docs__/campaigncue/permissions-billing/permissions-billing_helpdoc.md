@@ -17,7 +17,7 @@ Current CampaignCue shows role, member, billing, and feature-flag posture. Billi
 
 ## Credits
 
-Credit estimates apply only to future paid generation or rendering actions. The current manual/export-first runtime does not charge credits or write usage ledger entries.
+Credit estimates apply only to future paid generation or rendering actions. The current export/download-first runtime does not charge credits or write usage ledger entries.
 
 ## Spend
 

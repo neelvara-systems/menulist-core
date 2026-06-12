@@ -372,7 +372,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                 Launch support before users arrive.
                                             </p>
                                             <p className="mt-2 text-xs leading-relaxed text-[#a0a0c0]">
-                                                Set up widget help, hosted docs, tickets, feedback, changelog, and reviewed answers from one place.
+                                                Turn scattered docs, tickets, releases, screenshots, notes, and repeated replies into widget help, hosted docs, tickets, feedback, changelog support, and reviewed answers.
                                             </p>
                                             <div className="mt-4 flex h-24 items-center justify-center rounded-xl border border-teal-200/10 bg-teal-300/[0.07] text-teal-200">
                                                 <LuShieldCheck size={30} aria-hidden />
@@ -491,7 +491,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                         Prepare your support inputs before setup.
                                                     </p>
                                                     <p className="mt-2 text-xs leading-relaxed text-[#a0a0c0]">
-                                                        Use the pre-onboarding package to collect docs, FAQs, screenshots, release notes, and repeated replies.
+                                                        Use the pre-onboarding package to organize scattered docs, tickets, FAQs, screenshots, recordings, release notes, and repeated replies.
                                                     </p>
                                                     <div className="mt-4 flex h-24 items-center justify-center rounded-xl border border-teal-200/10 bg-teal-300/[0.07] text-teal-200">
                                                         <LuFileInput size={30} aria-hidden />

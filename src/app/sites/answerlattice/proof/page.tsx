@@ -32,7 +32,7 @@ const EXAMPLES = [
         label: 'Release-heavy product',
         title: 'Usage limit changes after a launch',
         situation: 'A product changes limits and users ask from billing, usage, and release pages why behavior changed.',
-        answerlattice: 'Connect changelog entries to affected surfaces, FAQs, and approved answers. Let stale answers and repeated misses surface review items.',
+        answerlattice: 'Turn changelog entries into affected surfaces, FAQs, and approved-answer review work. Let stale answers and repeated misses surface review items.',
         outcome: 'The owner sees where support needs review after the release and can approve updated answers before they become official.',
     },
     {

@@ -21,7 +21,7 @@
 | 12 | Video/Reel Studio | [video-reel-studio](./video-reel-studio/README.md) | Covered with brief mode, rendered mode, manual shoot fallback, and credit controls. |
 | 13 | UGC Script Studio | [ugc-script-studio](./ugc-script-studio/README.md) | Covered with scripts, creator briefs, disclosure, and fake-testimonial guardrails. |
 | 14 | WhatsApp Sales Studio | [whatsapp-sales-studio](./whatsapp-sales-studio/README.md) | Covered with consent, opt-out, manual export, template/direct-send separation. |
-| 15 | Google/Local Search Studio | [google-local-studio](./google-local-studio/README.md) | Covered as Google Local Studio with local posts, manual fallback, and no ranking claims. |
+| 15 | Google/Local Search Studio | [google-local-studio](./google-local-studio/README.md) | Covered as Google Local Studio with local posts, manual export, and no ranking claims. |
 | 16 | Ads Studio | [ads-studio](./ads-studio/README.md) | Covered with ad packs, policy checks, UTM posture, budget/spend guardrails. |
 | 17 | Calendar/Scheduler | [calendar-scheduler](./calendar-scheduler/README.md) | Covered with schedule state, manual tasks, reminders, retry posture, and follow-up cues. |
 | 18 | Asset Library | [asset-library](./asset-library/README.md) | Covered with source files, generated assets, rights, reuse, and storage boundaries. |
@@ -29,11 +29,11 @@
 | 20 | Analytics and Learning | [analytics-learning](./analytics-learning/README.md) | Covered with metric confidence, event contract, success metric families, reports, and next-cue signals. |
 | 21 | Agency Workspace | [agency-workspace](./agency-workspace/README.md) | Covered with clients, approvals, templates, reports, and data isolation. |
 | 22 | Multi-location Center | [multi-location-center](./multi-location-center/README.md) | Covered with location facts, variants, approval state, publish status, and rollup reporting. |
-| 23 | Integrations | [source-integrations](./source-integrations/README.md), [api-boundaries](./api-boundaries/README.md), channel feature docs | Covered with provider adapters, webhooks, connection state, and manual fallback. |
+| 23 | Integrations | [source-integrations](./source-integrations/README.md), [api-boundaries](./api-boundaries/README.md), channel feature docs | Covered as a separate future provider layer; active runtime exposes export/download and read-only provider posture only. |
 | 24 | Permissions and billing | [permissions-billing](./permissions-billing/README.md) | Covered with roles, entitlements, credit estimate/reserve/capture/refund, spend approvals, and agency/client payer boundaries. |
 | 25 | Data model | [campaigncue-product_impl.md](./campaigncue-product/campaigncue-product_impl.md), feature `_impl.md` docs, feature `_firebase.md` docs | Covered as distributed product/feature model with CampaignCue-scoped collections and services. |
 | 26 | API boundaries | [api-boundaries](./api-boundaries/README.md) | Covered with auth, validation, rate limits, idempotency, webhooks, provider adapters, and no direct privileged frontend calls. |
-| 27 | UX flows | Product and feature `_helpdoc.md`, `_spec.md`, and `_mobile-support.md` docs | Covered across owner, salon, restaurant, agency, multi-location, trust fix, manual fallback, and mobile review flows. |
+| 27 | UX flows | Product and feature `_helpdoc.md`, `_spec.md`, and `_mobile-support.md` docs | Covered across owner, salon, restaurant, agency, multi-location, trust fix, export/download, and mobile review flows. |
 | 28 | Success metrics | [analytics-learning_spec.md](./analytics-learning/analytics-learning_spec.md), [analytics-learning_impl.md](./analytics-learning/analytics-learning_impl.md) | Covered with explicit metric families and event contract; no vanity or unsupported sales attribution. |
 | 29 | Risks and guardrails | [creative-trust-center](./creative-trust-center/README.md), product spec, feature specs, API/billing/source docs | Covered with distributed risks plus enforceable trust, source, consent, permission, credit, agency, and location guardrails. |
 
@@ -75,7 +75,7 @@
 | Earlier naming preference was SignalPack.ai | Changed to CampaignCue.ai because it better describes cue-to-campaign action and has fewer positioning drawbacks. |
 | Launch-ordering language | Rewritten as day-one complete architecture with implementation flags, not staged roadmap promises. |
 | UGC-style video value | Kept scripts and creator briefs; blocked fake first-person customer testimonials without real source. |
-| Google/local automation | Kept publish/export path but required manual fallback because Google Business Profile APIs have post-type limitations. |
+| Google/local automation | Kept export/download path active; direct publish remains a separate future provider layer because Google Business Profile APIs have post-type limitations. |
 | WhatsApp execution | Kept WhatsApp as primary channel but made opt-in, opt-out, template, and spam controls part of the core product. |
 | Analytics outcomes | Kept measurement model but separated usage, execution, performance, and business outcomes so reports do not claim sales without proof. |
 | MenuList connector | Kept strategic advantage but documented read-only-by-default connector and no MenuList public-truth writes. |
@@ -89,7 +89,7 @@
 | Marketing banner/static creative creator | Current runtime produces creative briefs and channel copy inside campaign packs. It does not render PNG/JPG banners or template images yet. | Covered as architecture and manual brief runtime; rendered asset generation intentionally inactive. |
 | UGC/video creator | Current runtime produces creator-safe UGC scripts and reel briefs. It does not render MP4 videos, avatars, AI voiceover, or subtitles. | Covered as architecture and brief-mode runtime; video rendering intentionally inactive. |
 | Campaign pack generator | Campaign creation produces source-backed multi-channel packs for WhatsApp, Google local, creative, video, UGC, ads, and calendar. | Aligned. |
-| Edit/export flow | Owner can copy, download text outputs, schedule manual tasks, request approval, mark used, and register assets. Visual edit/crop/subtitle controls are not active. | Aligned to manual/export-first decision. |
+| Edit/export flow | Owner can copy, download text outputs, download full packs, schedule manual tasks, request approval, mark used, and register assets. Visual edit/crop/subtitle controls are not active. | Aligned to export/download-first decision. |
 | Data advantage over generic tools | Runtime avoids blank-prompt flow by deriving opportunities and outputs from Business Brain/readiness. | Aligned. |
 | Restaurant/salon categories | Business Brain supports restaurant/salon types and deterministic restaurant/salon opportunity/output wording. | Aligned for first verticals. |
 | Safety rules and fake-testimonial guardrails | Trust checks block/warn on unsupported claims, fake testimonial posture, WhatsApp manual consent, and ad spend handoff. UGC copy avoids fake customer claims. | Aligned. |
@@ -102,7 +102,7 @@
 
 ## Not Active By Design
 
-These items are present as product architecture or docs contracts but are not active in the current codebase because our validated decision was a safe manual/export-first runtime:
+These items are present as product architecture or docs contracts but are not active in the current codebase because our validated decision was a safe export/download-first runtime:
 
 - Rendered PNG/JPG banner generation and visual template editing.
 - MP4 video assembly, avatar generation, AI voiceover, and automatic subtitles.

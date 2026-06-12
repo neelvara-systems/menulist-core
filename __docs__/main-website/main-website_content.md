@@ -828,7 +828,7 @@ The desktop `Features` label is a menu trigger, not a direct route. The `/featur
 4. Official Business Page — `/features/official-business-page`
 5. QR Menu and Links — `/features/qr-menu-links`
 6. Print-ready Kit — `/features/print-ready-kit`
-7. Owner Phone Dashboard — `/features/owner-phone-dashboard`
+7. Owner PWA Dashboard — `/features/owner-phone-dashboard`
 8. Business Health — `/features/business-health`
 9. Customer Feedback Loop — `/features/customer-feedback-loop`
 10. Public Discovery — `/features/public-discovery`
@@ -839,7 +839,7 @@ The desktop `Features` label is a menu trigger, not a direct route. The `/featur
 
 **Selection rationale:**
 
-- These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, prepare descriptions/images/languages, guide customers toward useful choices, create one public customer source, share it through QR/links, deploy print-ready files, manage it from a phone, know what needs attention, and provide a clearer public source for search/answer systems.
+- These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, prepare descriptions/images/languages, guide customers toward useful choices, create one public customer source, share it through QR/links, deploy print-ready files, manage the core owner workflow from phone or PWA, know what needs attention, and provide a clearer public source for search/answer systems.
 - POS sync, staff roles, analytics depth, and advanced multi-location governance remain on `/features`, `/multi-location`, or supporting resources. They should not crowd the primary header dropdown unless the buyer strategy changes.
 - v3.6.39 adds `/features/menu-quality-validation` as a dedicated page but keeps it out of the desktop dropdown to preserve the restrained top-nav shape. The route is reached from `/features` quality, pricing integrity, and customer-trust cards because validation is high-value proof but not the first nine-link evaluation path.
 - v3.6.43 adds `/features/customer-feedback-loop` as a dedicated page and navigation link in the desktop Features dropdown and mobile hamburger feature list. Public customer feedback is valuable proof when framed as a correction loop from customer issue to owner source.
@@ -855,7 +855,8 @@ The desktop `Features` label is a menu trigger, not a direct route. The `/featur
 - v3.6.53 removes the shared trailing proof-chip row from `FeatureDetailVisual` across all generic dedicated feature pages. Keep internal chips only when they are part of the visual story, and keep the separate signal strip as the page-level proof row. Do not re-add a generic bottom tag row under the visual because it repeats the same tags on mobile pages.
 - Use the sticky journey to show the end-to-end owner/customer logic for each feature page. Do not add one-off tab systems or carousels unless a future feature genuinely needs different interaction.
 - v3.6.45 keeps the shared desktop sticky journey as a left tab rail plus right story panel, but the right panel is one parent story card with a top narrative row and bottom full-width proof-card row. v3.6.46 keeps desktop panel height responsive with a tighter `32rem -> 72vh -> 39rem` clamp so taller screens do not create excessive empty card space. Do not return to a nested side-by-side copy/proof layout or internal copy/proof divider because it compresses copy-heavy proof cards and makes the panel feel split.
-- v3.6.42 completed the feature-detail parity pass after the Print-ready Kit page update. Menu Import now includes permission-confirmed public link intake; Menu Content Prep now owns descriptions, item images, and languages as one setup-relief story; Featured Choices now emphasizes owner pinning and availability-safe customer guidance; Official Business Page now includes QR options, photos, actions, and structured public facts; QR Menu and Links now focuses on stable access and customer shortcuts while leaving print depth to Print-ready Kit; Owner Phone Dashboard now names the mobile/PWA daily operations path; Public Discovery now includes sitemap, crawler, and LLM context without placement promises; Menu Quality Validation now has full key parity and no internal process language.
+- v3.6.42 completed the feature-detail parity pass after the Print-ready Kit page update. Menu Import now includes permission-confirmed public link intake; Menu Content Prep now owns descriptions, item images, and languages as one setup-relief story; Featured Choices now emphasizes owner pinning and availability-safe customer guidance; Official Business Page now includes QR options, photos, actions, and structured public facts; QR Menu and Links now focuses on stable access and customer shortcuts while leaving print depth to Print-ready Kit; Owner Phone Dashboard originally named the mobile/PWA daily operations path; Public Discovery now includes sitemap, crawler, and LLM context without placement promises; Menu Quality Validation now has full key parity and no internal process language.
+- v3.6.55 renames the public feature surface to Owner PWA Dashboard and strengthens the page around core owner workflows on phone: menu edits, publishing, QR/link sharing, Business Health, feedback, screens, status, hours, and key settings. Keep the claim practical: core owner dashboard work is available from phone browser or installed PWA; desktop remains useful for heavier review or precision setup.
 
 **Validated external-suggestion decisions:**
 
@@ -987,21 +988,21 @@ Description:
 - Use `Feedback`, not `Reviews`, for public website labels. Do not imply review gating, public reputation management, sentiment scoring, public testimonial collection, or automated public replies.
 - Keep Business Health as the quiet status surface; this page explains the underlying customer-to-owner correction path.
 
-**Mobile owner operations card:**
+**Owner PWA operations card:**
 
 Title:
 
-> Owner dashboard on your phone
+> Owner PWA dashboard
 
 Description:
 
-> Use the mobile owner dashboard from a phone browser or the MenuList PWA to update menus, publish changes, check customer signals, adjust settings, manage screens, and handle daily operations without a desktop.
+> Use MenuList from a phone browser or installed PWA to edit menus, publish changes, share QR/link assets, review feedback, check Business Health, manage screens, adjust key settings, and handle daily operations without waiting for a desktop.
 
 **Notes:**
 
 - This is a dedicated Features page proof point because it reduces the non-technical SMB owner's fear that MenuList requires desktop administration.
 - Keep the homepage version short as reassurance copy near CTAs.
-- Avoid claiming exact parity for every advanced edge case; the claim is practical phone-first owner operation.
+- Avoid claiming exact parity for every rare precision/setup edge case; the claim is practical phone-first owner operation through the owner PWA and phone browser.
 
 **Staff accounts and roles card:**
 

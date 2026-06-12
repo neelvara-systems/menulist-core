@@ -183,7 +183,11 @@ export function resolveProductSiteByDevPath(pathname: string): {
     strippedPath: string;
 } | undefined {
     for (const product of PRODUCT_SITES) {
-        if (product.enabled && product.devPathPrefix && pathname.startsWith(product.devPathPrefix)) {
+        if (
+            product.enabled
+            && product.devPathPrefix
+            && (pathname === product.devPathPrefix || pathname.startsWith(`${product.devPathPrefix}/`))
+        ) {
             const strippedPath = pathname.slice(product.devPathPrefix.length) || '/';
             return { product, strippedPath };
         }

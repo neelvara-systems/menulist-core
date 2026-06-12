@@ -8,7 +8,7 @@ Google Local Studio helps local businesses turn campaign cues into Google Busine
 
 - Prepare offers, events, updates, media, and CTAs from real business facts.
 - Publish through connection where supported.
-- Use manual fallback when Google limits the action.
+- Use manual export when Google limits the action.
 - Learn from Google local-post performance when available.
 
 ## Proof Points
@@ -23,4 +23,3 @@ Google Local Studio helps local businesses turn campaign cues into Google Busine
 - Do not promise every Google Business Profile action can be automated.
 - Do not promise approval, ranking, or search placement.
 - Do not say Product Posts can be created through API unless the current integration proves it.
-

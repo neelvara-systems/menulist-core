@@ -25,9 +25,9 @@ const UPDATES = [
         date: 'June 6, 2026',
         title: 'Knowledge Intake can start from repeated replies',
         items: [
-            'Owners can paste one repeated user question and the answer they already send, then prepare FAQ and answer-proposal drafts for review.',
-            'The repeated-reply path stays inside Knowledge Intake and Governance; it does not read an inbox, connect a helpdesk, or publish canonical answers automatically.',
-            'Draft generation stays low-cost by using existing source and review-item writes and skipping the default full-article draft for repeated replies.',
+                'Owners can paste one repeated user question and the answer they already send, then prepare FAQ and answer-proposal drafts for review.',
+                'The repeated-reply path stays inside Knowledge Intake and Governance; it does not read an inbox, sync a helpdesk, or publish canonical answers automatically.',
+                'Draft generation stays low-cost by using existing source and review-item writes and skipping the default full-article draft for repeated replies.',
         ],
     },
     {

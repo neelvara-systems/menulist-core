@@ -29,8 +29,8 @@ const PROOF_POINTS: ProofPoint[] = [
     },
     {
         icon: LuBookOpen,
-        title: 'Hosted help, FAQs, and owner answers stay connected',
-        detail: 'The same support knowledge can feed public help pages, in-app answers, and review workflows.',
+        title: 'Scattered knowledge becomes one support structure',
+        detail: 'The same structured support knowledge can become public help pages, in-app answers, and review workflows.',
     },
     {
         icon: LuTicket,

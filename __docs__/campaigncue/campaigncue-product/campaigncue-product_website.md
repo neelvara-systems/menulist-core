@@ -6,8 +6,8 @@
 - **Subheadline:** Campaign packs from real business data. Start with menus, services, photos, offers, source links, and local signals, then prepare channel-ready work with checks before use.
 - **Primary CTA Text:** View product loop
 - **Primary CTA Link:** `#workspace`
-- **Secondary CTA Text:** See implementation boundary
-- **Secondary CTA Link:** `#foundation`
+- **Secondary CTA Text:** See safety boundary
+- **Secondary CTA Link:** `#safety`
 
 ## Implemented Public Shell
 
@@ -19,7 +19,9 @@
 | `/robots.txt` on product host | Static robots output for CampaignCue. |
 | `/sitemap.xml` on product host | Static sitemap for the CampaignCue homepage. |
 
-The shell is intentionally source-backed and product-loop oriented. It shows a campaign board preview, cue queue, output channels, trust checks, product loop, campaign studio scope, and implementation boundary. It does not expose real signup, billing, data connection, provider generation, or publishing actions yet.
+The shell is intentionally source-backed and product-loop oriented. It shows a campaign board preview, cue queue, output channels, trust checks, product loop, campaign studio scope, and safety boundary. It does not expose real signup, billing, data connection, provider generation, or publishing actions yet.
+
+Public website copy must stay owner-facing. Do not expose internal repo details, deployment target names, local routes, Firebase project ids, or implementation status tables on the product homepage.
 
 ## Branding Boundary
 
@@ -37,7 +39,7 @@ Local businesses need regular posts, WhatsApp messages, Google updates, and ads,
 
 ## Solution Statement
 
-CampaignCue starts with the business. It prepares a campaign pack from menu items, services, offers, photos, local context, and source inputs, then checks the pack before export, handoff, or any connected action.
+CampaignCue starts with the business. It prepares a campaign pack from menu items, services, offers, photos, local context, and source inputs, then checks the pack before export or handoff.
 
 ## Benefits
 
@@ -45,8 +47,8 @@ CampaignCue starts with the business. It prepares a campaign pack from menu item
 | --- | --- | --- |
 | Know what to promote | The home screen shows practical cues such as top item, open slots, new service, missing photo, stale price, or festival campaign. | Cue cards for restaurant and salon. |
 | One campaign, many outputs | Generate WhatsApp, story, Google post, script, video, and ad handoff from one brief. | Channel output grid. |
-| Source-checked before use | Price, offer, consent, source freshness, and claim issues appear before export, handoff, or any connected action. | Trust check panel. |
-| Works without direct integrations | Copy, download, ZIP export, and manual posting stay available when Google, WhatsApp, or ad accounts are not connected. | Manual mode export sheet. |
+| Source-checked before use | Price, offer, consent, source freshness, and claim issues appear before export or handoff. | Trust check panel. |
+| Export/download first | Copy, text download, full-pack download, approval, scheduling, and manual posting stay available without connecting Google, WhatsApp, or ad accounts. | Export sheet. |
 
 ## How It Works
 
@@ -63,10 +65,10 @@ CampaignCue starts with the business. It prepares a campaign pack from menu item
 **A:** Yes. Salons can upload service lists, add booking/WhatsApp details, and create booking campaigns without MenuList.
 
 **Q:** Does it publish directly?
-**A:** The current runtime is manual/export-first. Direct publishing stays disabled until provider credentials, capability checks, and policy controls are configured.
+**A:** The current runtime is export/download-first. Direct publishing and social account connection are not active product flows; they require a separate future provider layer with credentials, capability checks, consent, quotas, and policy controls.
 
 **Q:** Does it guarantee sales or ranking?
-**A:** No. Reports separate campaign usage, channel execution, connected performance, and owner-reported outcomes.
+**A:** No. Reports separate campaign usage, manual channel execution, and owner-reported outcomes. Future provider metrics must be labeled separately when that layer exists.
 
 ## SEO Meta
 

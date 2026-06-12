@@ -1,5 +1,6 @@
 import { CAMPAIGNCUE_CHANNELS } from "@constant/campaigncue/channels";
 import { CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES } from "@constant/campaigncue/database";
+import { CAMPAIGNCUE_EXPORT_ACTIONS } from "@constant/campaigncue/delivery";
 import { z } from "zod";
 
 const idPattern = /^[a-zA-Z0-9_-]+$/;
@@ -26,16 +27,7 @@ export const CampaignCueCreateCampaignSchema = z.object({
 });
 
 export const CampaignCueCampaignActionSchema = z.object({
-    action: z.enum([
-        "copy",
-        "download",
-        "export",
-        "mark_used",
-        "request_approval",
-        "schedule",
-        "direct_publish",
-        "direct_send",
-    ]),
+    action: z.enum(CAMPAIGNCUE_EXPORT_ACTIONS),
     outputId: CampaignCueIdSchema.optional(),
     channel: CampaignCueChannelSchema.optional(),
     scheduledAt: z.string().datetime().optional(),
@@ -49,6 +41,9 @@ export const CampaignCueAssetSchema = z.object({
     source: z.enum(["upload", "generated", "imported", "manual"]).default("manual"),
     rightsStatus: z.enum(["confirmed", "needs_review", "restricted"]).default("needs_review"),
     rightsNote: z.string().trim().max(400).optional(),
+    consentType: z.enum(["not_applicable", "owner_confirmed", "creator_release", "customer_release", "unknown"])
+        .default("unknown"),
+    tags: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
     storagePath: z.string().trim().regex(/^[a-zA-Z0-9/_:.-]+$/).max(500).optional(),
     downloadUrl: z.string().trim().url().max(1000).optional(),
     mimeType: z.string().trim().max(120).optional(),
@@ -74,8 +69,6 @@ export const CampaignCueBusinessPatchSchema = z.object({
     timezone: z.string().trim().min(2).max(80).optional(),
     agencyMode: z.boolean().optional(),
     multiLocationMode: z.boolean().optional(),
-    directPublishingEnabled: z.boolean().optional(),
-    providerGenerationEnabled: z.boolean().optional(),
 });
 
 export const CampaignCueSourceInputSchema = z.object({
@@ -83,12 +76,7 @@ export const CampaignCueSourceInputSchema = z.object({
     label: z.string().trim().min(2).max(120),
     value: z.string().trim().min(2).max(1200),
     status: z.enum(["active", "needs_review"]).default("needs_review"),
-});
-
-export const CampaignCueIntegrationActionSchema = z.object({
-    provider: z.enum(["whatsapp", "google_business_profile", "google_ads", "meta_ads", "video_render"]),
-    action: z.enum(["request_setup", "keep_manual"]),
-    note: z.string().trim().max(400).optional(),
+    expiresAt: z.string().datetime().optional(),
 });
 
 export const CampaignCueLocationSchema = z.object({
@@ -102,5 +90,4 @@ export type CampaignCueCampaignActionInput = z.infer<typeof CampaignCueCampaignA
 export type CampaignCueAssetInput = z.infer<typeof CampaignCueAssetSchema>;
 export type CampaignCueBusinessPatchInput = z.infer<typeof CampaignCueBusinessPatchSchema>;
 export type CampaignCueSourceInputData = z.infer<typeof CampaignCueSourceInputSchema>;
-export type CampaignCueIntegrationActionInput = z.infer<typeof CampaignCueIntegrationActionSchema>;
 export type CampaignCueLocationInput = z.infer<typeof CampaignCueLocationSchema>;

@@ -10,6 +10,14 @@ import {
     CAMPAIGNCUE_WORKSPACE_ID_PREFIX,
 } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_CHANNEL_LABELS } from "@constant/campaigncue/channels";
+import {
+    CAMPAIGNCUE_DAY_ONE_DELIVERY,
+    CAMPAIGNCUE_DELIVERY_MODE,
+    CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS,
+    CAMPAIGNCUE_EXPORT_ACTIONS,
+    CAMPAIGNCUE_FUTURE_PROVIDER_LAYER,
+    CAMPAIGNCUE_PROVIDER_POSTURES,
+} from "@constant/campaigncue/delivery";
 import { CAMPAIGNCUE_ERROR_CODES } from "@constant/campaigncue/errors";
 import { CAMPAIGNCUE_PRODUCT_ID } from "@constant/campaigncue/product";
 import { buildCampaignCueAuthLaunchUrl as buildCampaignCueAuthLaunchUrlFromSignIn } from "@constant/campaigncue/routes";
@@ -31,14 +39,19 @@ import type {
     CampaignCueBusinessBrain,
     CampaignCueCampaign,
     CampaignCueChannel,
+    CampaignCueDeliveryPolicy,
+    CampaignCueLaunchReadiness,
     CampaignCueLocation,
+    CampaignCueMetricConfidence,
     CampaignCueOutput,
+    CampaignCueOutputFields,
     CampaignCueOverview,
     CampaignCueOpportunity,
     CampaignCueProviderConnection,
     CampaignCueProviderMode,
     CampaignCueProviderStatus,
     CampaignCueSchedule,
+    CampaignCueSourceFact,
     CampaignCueSourceInput,
     CampaignCueSourceSnapshot,
     CampaignCueTrustFinding,
@@ -51,7 +64,6 @@ import type {
     CampaignCueBusinessPatchInput,
     CampaignCueCampaignActionInput,
     CampaignCueCreateCampaignInput,
-    CampaignCueIntegrationActionInput,
     CampaignCueLocationInput,
     CampaignCueSourceInputData,
 } from "@lib/validation/campaigncueSchemas";
@@ -244,19 +256,9 @@ function buildSourceSnapshot(
     businessBrain: CampaignCueBusinessBrain,
     sourceInputs: CampaignCueSourceInput[] = [],
 ): CampaignCueSourceSnapshot {
-    const facts = {
-        businessType: businessBrain.businessType,
-        contacts: businessBrain.contacts,
-        items: businessBrain.catalog.items.map((item) => item.name),
-        locality: businessBrain.locality,
-        name: businessBrain.name,
-        services: businessBrain.catalog.services.map((service) => service.name),
-        sourceInputs: sourceInputs.map((input) => ({
-            label: input.label,
-            sourceType: input.sourceType,
-            value: input.value,
-        })),
-    };
+    const facts = buildSourceFacts(businessBrain, sourceInputs);
+    const missingFacts = buildMissingSourceFacts(businessBrain, sourceInputs);
+    const verticalRisks = buildVerticalRisks(businessBrain);
     return {
         id: defaultSourceSnapshotId,
         workspaceId: businessBrain.workspaceId,
@@ -264,9 +266,166 @@ function buildSourceSnapshot(
         sourceHash: stableHash(facts),
         sourceRefs: ["store_profile", ...sourceInputs.map((input) => input.id)],
         confidence: businessBrain.sourceConfidence,
-        freshness: "fresh",
-        summary: `${businessBrain.name} ${businessBrain.locality ? `in ${businessBrain.locality}` : ""}`.trim(),
+        freshness: missingFacts.length ? "unknown" : "fresh",
+        summary: `${businessBrain.name} ${businessBrain.locality ? `in ${businessBrain.locality}` : ""} · ${facts.length} saved facts`.trim(),
+        facts,
+        missingFacts,
+        verticalRisks,
     };
+}
+
+function buildSourceFact(params: {
+    confidence?: CampaignCueMetricConfidence;
+    freshness?: CampaignCueSourceFact["freshness"];
+    id: string;
+    label: string;
+    risk?: CampaignCueSourceFact["risk"];
+    sourceRef: string;
+    sourceType: CampaignCueSourceFact["sourceType"];
+    value?: string;
+}): CampaignCueSourceFact | null {
+    const value = compactString(params.value);
+    if (!value) return null;
+    return {
+        id: params.id,
+        label: params.label,
+        value,
+        sourceRef: params.sourceRef,
+        sourceType: params.sourceType,
+        confidence: params.confidence || "observed",
+        freshness: params.freshness || "fresh",
+        risk: params.risk || "low",
+    };
+}
+
+function sourceTypeToFactType(sourceType: CampaignCueSourceInput["sourceType"]): CampaignCueSourceFact["sourceType"] {
+    if (sourceType === "offer") return "offer";
+    if (sourceType === "event") return "event";
+    if (sourceType === "upload_metadata") return "asset";
+    if (sourceType === "menu_link" || sourceType === "booking_link") return "contact";
+    return "manual";
+}
+
+function sourceInputToFacts(input: CampaignCueSourceInput): CampaignCueSourceFact[] {
+    const fact = buildSourceFact({
+        id: `${input.id}_fact`,
+        label: input.label,
+        value: input.value,
+        sourceRef: input.id,
+        sourceType: sourceTypeToFactType(input.sourceType),
+        confidence: input.confidence,
+        risk: input.status === "active" ? "low" : "needs_review",
+    });
+    return fact ? [fact] : [];
+}
+
+function buildSourceFacts(
+    businessBrain: CampaignCueBusinessBrain,
+    sourceInputs: CampaignCueSourceInput[] = [],
+): CampaignCueSourceFact[] {
+    const item = businessBrain.catalog.items.find((entry) => entry.available) || businessBrain.catalog.items[0];
+    const service = businessBrain.catalog.services.find((entry) => entry.available) || businessBrain.catalog.services[0];
+    const baseFacts = [
+        buildSourceFact({
+            id: "business_name",
+            label: "Business name",
+            value: businessBrain.name,
+            sourceRef: "store_profile",
+            sourceType: "business_profile",
+        }),
+        buildSourceFact({
+            id: "business_area",
+            label: "Area or city",
+            value: businessBrain.locality,
+            sourceRef: "store_profile",
+            sourceType: "business_profile",
+        }),
+        buildSourceFact({
+            id: "business_phone",
+            label: "Phone",
+            value: businessBrain.contacts.phone,
+            sourceRef: "store_profile",
+            sourceType: "contact",
+        }),
+        buildSourceFact({
+            id: "business_whatsapp",
+            label: "WhatsApp",
+            value: businessBrain.contacts.whatsapp,
+            sourceRef: "store_profile",
+            sourceType: "contact",
+        }),
+        buildSourceFact({
+            id: "business_booking",
+            label: "Booking link",
+            value: businessBrain.contacts.bookingUrl,
+            sourceRef: "store_profile",
+            sourceType: "contact",
+        }),
+        buildSourceFact({
+            id: "business_menu",
+            label: "Menu or service link",
+            value: businessBrain.contacts.publicMenuUrl,
+            sourceRef: "store_profile",
+            sourceType: "contact",
+        }),
+        buildSourceFact({
+            id: "primary_item",
+            label: businessBrain.businessType === "salon" ? "Primary service" : "Primary item",
+            value: businessBrain.businessType === "salon" ? service?.name : item?.name,
+            sourceRef: "store_profile",
+            sourceType: "menu_or_service",
+        }),
+        buildSourceFact({
+            id: "brand_logo",
+            label: "Logo or photo",
+            value: businessBrain.brandKit.logoUrl,
+            sourceRef: "store_profile",
+            sourceType: "asset",
+            risk: "needs_review",
+        }),
+    ].filter(Boolean) as CampaignCueSourceFact[];
+    return [
+        ...baseFacts,
+        ...sourceInputs.flatMap(sourceInputToFacts),
+    ];
+}
+
+function buildMissingSourceFacts(
+    businessBrain: CampaignCueBusinessBrain,
+    sourceInputs: CampaignCueSourceInput[] = [],
+): string[] {
+    const missing: string[] = [];
+    const hasCta = Boolean(
+        businessBrain.contacts.bookingUrl
+        || businessBrain.contacts.publicMenuUrl
+        || businessBrain.contacts.website
+        || businessBrain.contacts.whatsapp
+        || businessBrain.contacts.phone,
+    );
+    if (!hasCta) missing.push("Add one contact, booking, menu, or website link before posting.");
+    if (businessBrain.businessType === "restaurant" && !businessBrain.contacts.publicMenuUrl) {
+        missing.push("Add a public menu link so price and item details stay easy to verify.");
+    }
+    if (businessBrain.businessType === "salon" && !businessBrain.contacts.bookingUrl) {
+        missing.push("Add a booking link or WhatsApp number before running booking-slot campaigns.");
+    }
+    if (!sourceInputs.some((input) => input.status === "active")) {
+        missing.push("Add at least one ready offer, event, service, or menu note for today.");
+    }
+    return missing;
+}
+
+function buildVerticalRisks(businessBrain: CampaignCueBusinessBrain): string[] {
+    if (businessBrain.businessType === "salon") {
+        return [
+            "Before/after photos need explicit consent before use.",
+            "Beauty, wellness, or result claims must avoid guaranteed outcomes.",
+        ];
+    }
+    return [
+        "Menu price, item availability, and offer dates must match the saved source before posting.",
+        "Food photos should not imply unavailable items or incorrect portion sizes.",
+    ];
 }
 
 function buildWorkspace(params: {
@@ -294,8 +453,7 @@ function buildWorkspace(params: {
         settings: {
             timezone: compactString(params.storeData?.timezone || CAMPAIGNCUE_DEFAULT_TIMEZONE),
             locale: compactString(params.storeData?.locale || CAMPAIGNCUE_DEFAULT_LOCALE),
-            directPublishingEnabled: false,
-            providerGenerationEnabled: false,
+            deliveryMode: CAMPAIGNCUE_DELIVERY_MODE,
             billingEnabled: FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_BILLING,
         },
         members: {
@@ -309,6 +467,23 @@ function buildWorkspace(params: {
     };
 }
 
+function normalizeCampaignCueWorkspace(workspace: CampaignCueWorkspace): CampaignCueWorkspace {
+    const settings = (workspace.settings || {}) as Partial<CampaignCueWorkspace["settings"]>;
+    return {
+        ...workspace,
+        settings: {
+            timezone: compactString(settings.timezone, CAMPAIGNCUE_DEFAULT_TIMEZONE),
+            locale: compactString(settings.locale, CAMPAIGNCUE_DEFAULT_LOCALE),
+            deliveryMode: CAMPAIGNCUE_DELIVERY_MODE,
+            billingEnabled: Boolean(
+                (settings.billingEnabled ?? FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_BILLING)
+                && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_BILLING,
+            ),
+        },
+        members: workspace.members || {},
+    };
+}
+
 function dashboardSummarySeed(workspaceId: string): CampaignCueAnalyticsSummary {
     const now = nowTimestamp();
     return {
@@ -319,6 +494,7 @@ function dashboardSummarySeed(workspaceId: string): CampaignCueAnalyticsSummary 
         exportCount: 0,
         approvalRequestCount: 0,
         manualFallbackCount: 0,
+        ownerReportedOutcomeCount: 0,
         latestEventAt: null,
         confidence: "observed",
         createdAt: now,
@@ -331,7 +507,7 @@ export async function ensureCampaignCueWorkspaceServer(scope: CampaignCueSession
     const ref = workspaceRef(workspaceId);
     const workspaceSnap = await ref.get();
     if (workspaceSnap.exists) {
-        const workspace = workspaceSnap.data() as CampaignCueWorkspace;
+        const workspace = normalizeCampaignCueWorkspace(workspaceSnap.data() as CampaignCueWorkspace);
         const businessSnap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.BUSINESS_BRAINS)
             .doc(defaultBusinessBrainId)
             .get();
@@ -345,7 +521,7 @@ export async function ensureCampaignCueWorkspaceServer(scope: CampaignCueSession
 
     const storeData = await readStoreData(scope);
     const workspace = workspaceSnap.exists
-        ? workspaceSnap.data() as CampaignCueWorkspace
+        ? normalizeCampaignCueWorkspace(workspaceSnap.data() as CampaignCueWorkspace)
         : buildWorkspace({ scope, storeData, workspaceId });
     const businessBrain = buildBusinessBrain({ scope, storeData, workspaceId });
     const sourceSnapshot = buildSourceSnapshot(businessBrain);
@@ -383,20 +559,34 @@ export async function ensureCampaignCueWorkspaceServer(scope: CampaignCueSession
 async function ensureCampaignCueWorkspaceOnlyServer(scope: CampaignCueSessionScope): Promise<CampaignCueWorkspace> {
     const workspaceId = buildCampaignCueWorkspaceId(scope);
     const snap = await workspaceRef(workspaceId).get();
-    if (snap.exists) return snap.data() as CampaignCueWorkspace;
+    if (snap.exists) return normalizeCampaignCueWorkspace(snap.data() as CampaignCueWorkspace);
     const created = await ensureCampaignCueWorkspaceServer(scope);
     return created.workspace;
 }
 
 export function buildCampaignCueOpportunities(params: {
+    analytics?: CampaignCueAnalyticsSummary;
+    assets?: CampaignCueAsset[];
     businessBrain: CampaignCueBusinessBrain;
+    locations?: CampaignCueLocation[];
+    schedules?: CampaignCueSchedule[];
+    sourceInputs?: CampaignCueSourceInput[];
     workspaceId: string;
 }): CampaignCueOpportunity[] {
-    const { businessBrain, workspaceId } = params;
+    const { analytics, assets = [], businessBrain, locations = [], schedules = [], sourceInputs = [], workspaceId } = params;
     const primaryItem = businessBrain.catalog.items.find((item) => item.available) || businessBrain.catalog.items[0];
     const primaryService = businessBrain.catalog.services.find((service) => service.available) || businessBrain.catalog.services[0];
-    const sourceReferences = [businessBrain.sourceSnapshotId || defaultSourceSnapshotId];
     const now = new Date().toISOString();
+    const activeInputs = sourceInputs.filter((input) => input.status === "active");
+    const sourceReferences = [
+        businessBrain.sourceSnapshotId || defaultSourceSnapshotId,
+        ...activeInputs.slice(0, 4).map((input) => input.id),
+    ];
+    const needsReviewInputs = sourceInputs.filter((input) => input.status === "needs_review");
+    const restrictedAssets = assets.filter((asset) => asset.rights.status === "restricted");
+    const reviewAssets = assets.filter((asset) => asset.rights.status === "needs_review");
+    const activeLocations = locations.filter((location) => location.status === "active");
+    const dueSchedules = schedules.filter((schedule) => schedule.status === "due" || schedule.status === "scheduled");
 
     const base: CampaignCueOpportunity[] = [];
     if (businessBrain.businessType === "salon") {
@@ -407,10 +597,16 @@ export function buildCampaignCueOpportunities(params: {
             title: `${primaryService?.name || "Featured service"} booking push`,
             reason: "Service and contact details are ready for a booking-focused campaign.",
             type: "booking_fill",
-            priority: 95,
+            priority: activeInputs.length ? 96 : 88,
             channels: ["whatsapp", "creative", "ugc", "calendar"],
             sourceReferences,
             status: "open",
+            actionLabel: "Create booking pack",
+            ownerBenefit: "Fill open appointment slots with copy that points to the saved booking or WhatsApp contact.",
+            evidence: [
+                primaryService?.name || "Featured service",
+                businessBrain.contacts.bookingUrl || businessBrain.contacts.whatsapp || "Booking contact needs review",
+            ],
             createdAt: now,
             updatedAt: now,
         });
@@ -422,10 +618,16 @@ export function buildCampaignCueOpportunities(params: {
             title: `${primaryItem?.name || "Featured item"} campaign pack`,
             reason: "Menu item, business name, and CTA context are available for local campaign output.",
             type: "menu_push",
-            priority: 98,
+            priority: activeInputs.length ? 98 : 90,
             channels: ["whatsapp", "google_local", "creative", "video", "calendar"],
             sourceReferences,
             status: "open",
+            actionLabel: "Create item pack",
+            ownerBenefit: "Turn one menu or offer fact into WhatsApp, Google, social, and manual posting copy.",
+            evidence: [
+                primaryItem?.name || "Featured item",
+                businessBrain.contacts.publicMenuUrl || "Menu link needs review",
+            ],
             createdAt: now,
             updatedAt: now,
         });
@@ -443,6 +645,12 @@ export function buildCampaignCueOpportunities(params: {
             channels: ["whatsapp", "google_local", "creative", "ads", "ugc"],
             sourceReferences,
             status: "open",
+            actionLabel: "Create weekly pack",
+            ownerBenefit: "Prepare one owner-approved pack for the week instead of creating each channel separately.",
+            evidence: [
+                `${activeInputs.length} ready input${activeInputs.length === 1 ? "" : "s"}`,
+                `${assets.length} asset record${assets.length === 1 ? "" : "s"}`,
+            ],
             createdAt: now,
             updatedAt: now,
         },
@@ -457,23 +665,123 @@ export function buildCampaignCueOpportunities(params: {
             channels: ["video", "creative", "ugc"],
             sourceReferences,
             status: "open",
+            actionLabel: "Create reel brief",
+            ownerBenefit: "Give staff or a creator a short shoot plan without paying for rendered video.",
+            evidence: [
+                primaryService?.name || primaryItem?.name || "Featured item or service",
+                businessBrain.locality || "Location not set",
+            ],
             createdAt: now,
             updatedAt: now,
         },
     );
 
-    if (businessBrain.readiness.warnings.length || businessBrain.readiness.blockers.length) {
+    const sourceSnapshot = buildSourceSnapshot(businessBrain, sourceInputs);
+    if (sourceSnapshot.missingFacts.length || needsReviewInputs.length || businessBrain.readiness.warnings.length || businessBrain.readiness.blockers.length) {
         base.push({
             id: "cue_source_fix",
             workspaceId,
             businessBrainId: businessBrain.businessBrainId,
             title: "Fix campaign source readiness",
-            reason: [...businessBrain.readiness.blockers, ...businessBrain.readiness.warnings][0],
+            reason: [
+                ...sourceSnapshot.missingFacts,
+                ...businessBrain.readiness.blockers,
+                ...businessBrain.readiness.warnings,
+                needsReviewInputs.length ? `${needsReviewInputs.length} input${needsReviewInputs.length === 1 ? "" : "s"} need review.` : "",
+            ].filter(Boolean)[0] || "Review source details before posting.",
             type: "source_fix",
             priority: 100,
             channels: ["creative", "calendar"],
             sourceReferences,
             status: "open",
+            actionLabel: "Fix source",
+            ownerBenefit: "Avoid posting with missing links, stale offers, or unreviewed facts.",
+            evidence: sourceSnapshot.missingFacts.slice(0, 3),
+            createdAt: now,
+            updatedAt: now,
+        });
+    }
+
+    if (reviewAssets.length || restrictedAssets.length) {
+        base.push({
+            id: "cue_asset_rights",
+            workspaceId,
+            businessBrainId: businessBrain.businessBrainId,
+            title: "Review photos and rights",
+            reason: restrictedAssets.length
+                ? "One or more assets are restricted and should not be used in campaign packs."
+                : "Some photos or files need owner confirmation before use.",
+            type: "asset_rights",
+            priority: restrictedAssets.length ? 99 : 86,
+            channels: ["creative", "video", "ugc"],
+            sourceReferences: [...sourceReferences, ...reviewAssets.slice(0, 3).map((asset) => asset.id)],
+            status: "open",
+            actionLabel: "Review assets",
+            ownerBenefit: "Prevent unapproved photos, before/after images, or creator content from going live.",
+            evidence: [...restrictedAssets, ...reviewAssets].slice(0, 3).map((asset) => asset.name),
+            createdAt: now,
+            updatedAt: now,
+        });
+    }
+
+    if (activeLocations.length > 1) {
+        base.push({
+            id: "cue_local_variant",
+            workspaceId,
+            businessBrainId: businessBrain.businessBrainId,
+            title: "Prepare location variants",
+            reason: `${activeLocations.length} active locations can use the same pack with local area details.`,
+            type: "local_variant",
+            priority: 84,
+            channels: ["whatsapp", "google_local", "creative", "calendar"],
+            sourceReferences,
+            status: "open",
+            actionLabel: "Create local variants",
+            ownerBenefit: "Keep one campaign consistent while changing only the area, contact, or local note.",
+            evidence: activeLocations.slice(0, 3).map((location) => location.name),
+            createdAt: now,
+            updatedAt: now,
+        });
+    }
+
+    if ((analytics?.usedCount || 0) > (analytics?.ownerReportedOutcomeCount || 0)) {
+        base.push({
+            id: "cue_outcome_followup",
+            workspaceId,
+            businessBrainId: businessBrain.businessBrainId,
+            title: "Record result for used campaign",
+            reason: "A pack was marked used, but the result has not been recorded yet.",
+            type: "outcome_followup",
+            priority: 80,
+            channels: ["calendar"],
+            sourceReferences,
+            status: "open",
+            actionLabel: "Record result",
+            ownerBenefit: "Help CampaignCue learn what owners actually used and what happened after posting.",
+            evidence: [
+                `${analytics?.usedCount || 0} used`,
+                `${analytics?.ownerReportedOutcomeCount || 0} results recorded`,
+            ],
+            createdAt: now,
+            updatedAt: now,
+        });
+    }
+
+    if (dueSchedules.length) {
+        base.push({
+            id: "cue_scheduled_manual_post",
+            workspaceId,
+            businessBrainId: businessBrain.businessBrainId,
+            title: "Finish scheduled manual post",
+            reason: "A scheduled manual task is waiting to be copied, posted, or marked used.",
+            type: "weekly_pack",
+            priority: 87,
+            channels: ["calendar", "whatsapp", "google_local"],
+            sourceReferences,
+            status: "open",
+            actionLabel: "Open calendar",
+            ownerBenefit: "Keep manual posting reliable without direct platform publishing.",
+            evidence: dueSchedules.slice(0, 3).map((schedule) => schedule.note),
             createdAt: now,
             updatedAt: now,
         });
@@ -483,43 +791,18 @@ export function buildCampaignCueOpportunities(params: {
 }
 
 function providerStatuses(): CampaignCueProviderStatus[] {
-    return [
-        {
-            provider: "whatsapp",
-            label: "WhatsApp",
-            mode: "manual_export",
-            status: "manual_only",
-            reason: "Direct send remains disabled until opt-in, template approval, stop-list, and webhook verification are configured.",
-        },
-        {
-            provider: "google_business_profile",
-            label: "Google Business Profile",
-            mode: "manual_fallback",
-            status: "manual_only",
-            reason: "Google local posts can be prepared; connected publish requires approved OAuth access and location capability checks.",
-        },
-        {
-            provider: "google_ads",
-            label: "Google Ads",
-            mode: "manual_handoff",
-            status: "manual_only",
-            reason: "Ad packs are handoff-only until account mapping, validate-only checks, spend approval, and billing controls are active.",
-        },
-        {
-            provider: "meta_ads",
-            label: "Meta Ads",
-            mode: "manual_handoff",
-            status: "manual_only",
-            reason: "Spend-changing mutations are blocked by default.",
-        },
-        {
-            provider: "video_render",
-            label: "Video rendering",
-            mode: "brief_only",
-            status: "manual_only",
-            reason: "Brief mode works now; rendered output needs a metered provider adapter and credit reservation.",
-        },
-    ];
+    return CAMPAIGNCUE_PROVIDER_POSTURES.map((provider) => ({ ...provider }));
+}
+
+function buildDeliveryPolicy(): CampaignCueDeliveryPolicy {
+    return {
+        activeMode: CAMPAIGNCUE_DELIVERY_MODE,
+        allowedActions: [...CAMPAIGNCUE_EXPORT_ACTIONS],
+        disabledProviderActions: [...CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS],
+        dayOneSummary: CAMPAIGNCUE_DAY_ONE_DELIVERY.ownerSummary,
+        futureProviderSummary: CAMPAIGNCUE_FUTURE_PROVIDER_LAYER.ownerSummary,
+        activationGate: [...CAMPAIGNCUE_FUTURE_PROVIDER_LAYER.activationGate],
+    };
 }
 
 async function listSubcollection<T>(workspaceId: string, collection: string, limitCount = CAMPAIGNCUE_PAGE_SIZE): Promise<T[]> {
@@ -534,7 +817,10 @@ async function readDashboardSummary(workspaceId: string): Promise<CampaignCueAna
     const snap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
         .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID)
         .get();
-    return snap.exists ? snap.data() as CampaignCueAnalyticsSummary : dashboardSummarySeed(workspaceId);
+    const seed = dashboardSummarySeed(workspaceId);
+    return snap.exists
+        ? { ...seed, ...snap.data(), id: CAMPAIGNCUE_DASHBOARD_SUMMARY_ID, workspaceId } as CampaignCueAnalyticsSummary
+        : seed;
 }
 
 export async function listCampaignCueCampaignsServer(scope: CampaignCueSessionScope): Promise<CampaignCueCampaign[]> {
@@ -553,13 +839,10 @@ export async function listCampaignCueSourceInputsServer(scope: CampaignCueSessio
 }
 
 export async function listCampaignCueProviderConnectionsServer(scope: CampaignCueSessionScope) {
-    const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
-    const providerConnections = await listSubcollection<CampaignCueProviderConnection>(
-        workspace.workspaceId,
-        CAMPAIGNCUE_COLLECTIONS.PROVIDER_CONNECTIONS,
-    );
+    await ensureCampaignCueWorkspaceOnlyServer(scope);
     return {
-        connections: providerConnections,
+        connections: [] as CampaignCueProviderConnection[],
+        deliveryPolicy: buildDeliveryPolicy(),
         providers: providerStatuses(),
     };
 }
@@ -581,23 +864,65 @@ export async function readCampaignCueAnalyticsServer(scope: CampaignCueSessionSc
             notes: [
                 "Analytics endpoint reads one workspace document and one precomputed summary document.",
                 "It does not scan raw campaign, event, asset, source, location, or provider collections.",
-                "Direct provider actions are disabled, so no paid provider call runs from analytics load.",
+                "Provider posting is not part of the active runtime, so no paid provider call runs from analytics load.",
             ],
         },
         providers: providerStatuses(),
     };
 }
 
+function buildLaunchReadiness(): CampaignCueLaunchReadiness {
+    const hasServerProject = Boolean(process.env.CAMPAIGNCUE_FIREBASE_PROJECT_ID);
+    const hasPublicProject = Boolean(process.env.NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID);
+    const hasAdminCredential = Boolean(
+        process.env.CAMPAIGNCUE_FIREBASE_CLIENT_EMAIL
+        && (process.env.CAMPAIGNCUE_FIREBASE_PRIVATE_KEY || process.env.CAMPAIGNCUE_GOOGLE_APPLICATION_CREDENTIALS),
+    );
+    const checks: CampaignCueLaunchReadiness["checks"] = [
+        {
+            id: "firebase_project",
+            label: "CampaignCue Firebase project",
+            status: hasServerProject && hasPublicProject ? "ready" : "blocked",
+            detail: hasServerProject && hasPublicProject
+                ? "Dedicated CampaignCue Firebase project ids are configured."
+                : "Set CampaignCue public and server Firebase project ids before launch.",
+        },
+        {
+            id: "firebase_admin",
+            label: "Server credential",
+            status: hasAdminCredential ? "ready" : "blocked",
+            detail: hasAdminCredential
+                ? "Server credential shape is present for CampaignCue Admin writes."
+                : "Add CampaignCue Admin credentials or application credentials before launch.",
+        },
+        {
+            id: "manual_runtime",
+            label: "Export/download runtime",
+            status: "ready",
+            detail: "Copy, text download, pack export, approval, scheduling, and mark-used actions are available without provider APIs.",
+        },
+        {
+            id: "direct_provider_actions",
+            label: "Future provider posting",
+            status: "manual",
+            detail: "Direct WhatsApp send, Google publish, ad spend, social posting, paid generation, and video render are not part of the active product.",
+        },
+    ];
+    return {
+        status: checks.some((check) => check.status === "blocked") ? "blocked_external_setup" : "ready_in_repo",
+        checks,
+    };
+}
+
 export async function loadCampaignCueOverviewServer(scope: CampaignCueSessionScope): Promise<CampaignCueOverview> {
     const { workspace, businessBrain } = await ensureCampaignCueWorkspaceServer(scope);
     const workspaceId = workspace.workspaceId;
-    const [sourceInputs, campaigns, assets, schedules, locations, providerConnections, analytics] = await Promise.all([
+    const [sourceInputs, campaigns, assets, schedules, locations, analytics] = await Promise.all([
         listSubcollection<CampaignCueSourceInput>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS),
         listSubcollection<CampaignCueCampaign>(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS),
         listSubcollection<CampaignCueAsset>(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS),
         listSubcollection<CampaignCueSchedule>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SCHEDULES),
         listSubcollection<CampaignCueLocation>(workspaceId, CAMPAIGNCUE_COLLECTIONS.LOCATIONS),
-        listSubcollection<CampaignCueProviderConnection>(workspaceId, CAMPAIGNCUE_COLLECTIONS.PROVIDER_CONNECTIONS),
         readDashboardSummary(workspaceId),
     ]);
 
@@ -605,35 +930,56 @@ export async function loadCampaignCueOverviewServer(scope: CampaignCueSessionSco
         workspace,
         businessBrain,
         sourceInputs,
-        opportunities: buildCampaignCueOpportunities({ businessBrain, workspaceId }),
+        opportunities: buildCampaignCueOpportunities({
+            analytics,
+            assets,
+            businessBrain,
+            locations,
+            schedules,
+            sourceInputs,
+            workspaceId,
+        }),
         campaigns,
         assets,
         schedules,
         locations,
         analytics,
         providers: providerStatuses(),
-        providerConnections,
+        providerConnections: [],
+        deliveryPolicy: buildDeliveryPolicy(),
+        launchReadiness: buildLaunchReadiness(),
+        sourceFacts: buildSourceFacts(businessBrain, sourceInputs),
         cost: {
-            readsPerLoad: 9,
+            readsPerLoad: 8,
             writesPerCampaignCreate: 6,
             realtimeListeners: 0,
             notes: [
                 "Overview uses bounded server reads and no realtime listeners.",
                 "Workspace bootstrap may read one MenuList store profile as source input.",
                 "Owner campaign creation writes idempotency placeholder/completion, campaign, trust report, event, and dashboard summary.",
-                "Direct provider actions are disabled, so no paid provider call runs from page load.",
+                "Provider connections are not loaded in the active export/download runtime, so no social-integration read or paid provider call runs from page load.",
             ],
         },
     };
 }
 
 function resolveOpportunity(params: {
+    analytics?: CampaignCueAnalyticsSummary;
+    assets?: CampaignCueAsset[];
     businessBrain: CampaignCueBusinessBrain;
     input: CampaignCueCreateCampaignInput;
+    locations?: CampaignCueLocation[];
+    schedules?: CampaignCueSchedule[];
+    sourceInputs?: CampaignCueSourceInput[];
     workspaceId: string;
 }) {
     const opportunities = buildCampaignCueOpportunities({
+        analytics: params.analytics,
+        assets: params.assets,
         businessBrain: params.businessBrain,
+        locations: params.locations,
+        schedules: params.schedules,
+        sourceInputs: params.sourceInputs,
         workspaceId: params.workspaceId,
     });
     return opportunities.find((opportunity) => opportunity.id === params.input.opportunityId) || opportunities[0];
@@ -656,7 +1002,6 @@ function primaryThing(businessBrain: CampaignCueBusinessBrain) {
 function providerModeForChannel(channel: CampaignCueChannel): CampaignCueProviderMode {
     if (channel === "video") return "brief_only";
     if (channel === "ads") return "manual_handoff";
-    if (channel === "google_local") return "manual_fallback";
     return "manual_export";
 }
 
@@ -692,6 +1037,94 @@ function lineForChannel(params: {
     return `Manual task: review and use the approved campaign pack for ${thing}.${ctaLine}`;
 }
 
+function outputFieldsForChannel(params: {
+    businessBrain: CampaignCueBusinessBrain;
+    brief: string;
+    channel: CampaignCueChannel;
+    text: string;
+    title: string;
+}): CampaignCueOutputFields {
+    const { businessBrain, channel, text, title } = params;
+    const thing = primaryThing(businessBrain);
+    const cta = ctaForBusiness(businessBrain);
+    const destination = businessBrain.contacts.publicMenuUrl
+        || businessBrain.contacts.bookingUrl
+        || businessBrain.contacts.website
+        || "";
+    const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    const utm = destination ? `utm_source=campaigncue&utm_medium=${channel}&utm_campaign=${base || "manual_pack"}` : "";
+    const manualStepsByChannel: Record<CampaignCueChannel, string[]> = {
+        ads: [
+            "Review destination, budget, audience, and policy in the ad account.",
+            "Paste the copy into the ad draft manually.",
+            "Start spend only after owner approval.",
+        ],
+        calendar: [
+            "Open the scheduled task.",
+            "Use the attached channel copy.",
+            "Mark the pack used after posting.",
+        ],
+        creative: [
+            "Pick a current approved photo or simple background.",
+            "Place the business name and CTA clearly.",
+            "Copy the caption text after checking source details.",
+        ],
+        google_local: [
+            "Open Google Business Profile.",
+            "Choose update, offer, or event based on the saved source.",
+            "Paste the draft and verify dates, price, photo, and link before publishing.",
+        ],
+        ugc: [
+            "Share this as a creator or staff brief.",
+            "Use only real experiences and approved claims.",
+            "Attach consent when a customer, staff member, or transformation appears.",
+        ],
+        video: [
+            "Shoot the listed moments on a phone.",
+            "Keep the CTA visible in the final frame.",
+            "Avoid before/after or result claims without proof and consent.",
+        ],
+        whatsapp: [
+            "Send only to people who expect business messages from this business.",
+            "Paste the copy manually.",
+            "Respect replies asking not to receive more messages.",
+        ],
+    };
+    const postTypeByChannel: Record<CampaignCueChannel, CampaignCueOutputFields["postType"]> = {
+        ads: "ad_handoff",
+        calendar: "manual_task",
+        creative: "social_post",
+        google_local: "google_update",
+        ugc: "creator_script",
+        video: "reel_brief",
+        whatsapp: "whatsapp_message",
+    };
+    return {
+        headline: `${thing} from ${businessBrain.name}`,
+        body: text,
+        cta: cta || "Add a phone, booking, menu, or website link before posting.",
+        imageBrief: channel === "video"
+            ? `Show ${thing}, the business name, and a clear final CTA.`
+            : `Use an approved image that matches ${thing}; avoid unrelated or unavailable items.`,
+        dimensions: channel === "video" ? "9:16 reel" : channel === "google_local" ? "Google Business Profile post" : "Channel native format",
+        postType: postTypeByChannel[channel],
+        consentNote: channel === "whatsapp"
+            ? "Use only where the owner has consent or an existing customer conversation."
+            : channel === "ugc" || channel === "video"
+                ? "Use real people only with owner-confirmed consent."
+                : "Use owner-approved assets and claims.",
+        policyNote: channel === "ads"
+            ? "No spend starts from CampaignCue. Check platform policy before launching."
+            : channel === "google_local"
+                ? "Verify offer dates, price, and post type before publishing manually."
+                : "Do not add guarantees, fake testimonials, or unsupported result claims.",
+        destination,
+        utm,
+        approvalNote: "Owner or assigned reviewer should approve source details, CTA, and claims before use.",
+        manualSteps: manualStepsByChannel[channel],
+    };
+}
+
 function buildOutputs(params: {
     businessBrain: CampaignCueBusinessBrain;
     brief: string;
@@ -699,34 +1132,50 @@ function buildOutputs(params: {
     sourceReferences: string[];
     title: string;
 }): CampaignCueOutput[] {
-    return params.channels.map((channel) => ({
-        id: `${channel}_draft`,
-        channel,
-        label: CAMPAIGNCUE_CHANNEL_LABELS[channel],
-        mode: channel === "video" ? "brief" : channel === "ads" ? "manual_handoff" : "manual_export",
-        text: lineForChannel({
+    return params.channels.map((channel) => {
+        const text = lineForChannel({
             businessBrain: params.businessBrain,
             brief: params.brief,
             channel,
             title: params.title,
-        }),
-        sourceReferences: params.sourceReferences,
-        providerMode: providerModeForChannel(channel),
-        trustGate: "warning",
-        metadata: channel === "ads"
-            ? { spendChanging: false, directMutationEnabled: false }
-            : channel === "google_local"
-                ? { productPostApiFallback: true, directPublishEnabled: false }
-                : undefined,
-    }));
+        });
+        return {
+            id: `${channel}_draft`,
+            channel,
+            label: CAMPAIGNCUE_CHANNEL_LABELS[channel],
+            mode: channel === "video" ? "brief" : channel === "ads" ? "manual_handoff" : "manual_export",
+            text,
+            sourceReferences: params.sourceReferences,
+            providerMode: providerModeForChannel(channel),
+            trustGate: "warning",
+            fields: outputFieldsForChannel({
+                businessBrain: params.businessBrain,
+                brief: params.brief,
+                channel,
+                text,
+                title: params.title,
+            }),
+            metadata: channel === "ads"
+                ? { spendChanging: false, directMutationEnabled: false }
+                : channel === "google_local"
+                    ? { productPostApiFallback: true, directPublishEnabled: false }
+                    : undefined,
+        };
+    });
 }
 
 function buildTrustReport(params: {
+    businessBrain: CampaignCueBusinessBrain;
     campaignId: string;
     outputs: CampaignCueOutput[];
+    sourceFacts: CampaignCueSourceFact[];
     workspaceId: string;
 }): CampaignCueTrustReport {
     const findings: CampaignCueTrustFinding[] = [];
+    const missingDestination = !ctaForBusiness(params.businessBrain);
+    const unreviewedFacts = params.sourceFacts.filter((fact) => fact.risk === "needs_review");
+    const blockedFacts = params.sourceFacts.filter((fact) => fact.risk === "blocked");
+    const assetFacts = params.sourceFacts.filter((fact) => fact.sourceType === "asset");
     for (const output of params.outputs) {
         const text = output.text.toLowerCase();
         if (/(guaranteed|100%|cure|best in|#1)/.test(text)) {
@@ -736,6 +1185,26 @@ function buildTrustReport(params: {
                 ruleId: "unsupported_absolute_claim",
                 message: `${output.label} includes an unsupported absolute or result claim.`,
                 recommendation: "Remove guarantee, medical/result, or ranking language before export or handoff.",
+                sourceReferences: output.sourceReferences,
+            });
+        }
+        if (blockedFacts.length) {
+            findings.push({
+                id: `${output.id}_blocked_source_fact`,
+                severity: "blocked",
+                ruleId: "blocked_source_fact",
+                message: `${output.label} references source material that is blocked for use.`,
+                recommendation: "Remove restricted photos, claims, or source records before using this pack.",
+                sourceReferences: blockedFacts.slice(0, 3).map((fact) => fact.sourceRef),
+            });
+        }
+        if (missingDestination && (output.channel === "whatsapp" || output.channel === "google_local" || output.channel === "ads")) {
+            findings.push({
+                id: `${output.id}_missing_cta_destination`,
+                severity: "needs_fix",
+                ruleId: "missing_cta_destination",
+                message: `${output.label} needs a phone, WhatsApp, booking, menu, or website destination.`,
+                recommendation: "Add one clear next step in Business details before posting this channel.",
                 sourceReferences: output.sourceReferences,
             });
         }
@@ -759,6 +1228,48 @@ function buildTrustReport(params: {
                 sourceReferences: output.sourceReferences,
             });
         }
+        if (output.channel === "google_local") {
+            findings.push({
+                id: `${output.id}_google_manual_verify`,
+                severity: params.businessBrain.businessType === "restaurant" && !params.businessBrain.contacts.publicMenuUrl
+                    ? "needs_fix"
+                    : "warning",
+                ruleId: "google_local_manual_verification",
+                message: "Google local output needs manual verification before publishing.",
+                recommendation: "Check post type, price, date, photo, and business link inside Google Business Profile.",
+                sourceReferences: output.sourceReferences,
+            });
+        }
+        if ((output.channel === "video" || output.channel === "ugc" || output.channel === "creative") && !assetFacts.length) {
+            findings.push({
+                id: `${output.id}_asset_proof_missing`,
+                severity: "warning",
+                ruleId: "asset_proof_missing",
+                message: `${output.label} has no approved photo or video asset attached.`,
+                recommendation: "Use owner-approved media or register a photo with rights before posting.",
+                sourceReferences: output.sourceReferences,
+            });
+        }
+        if (params.businessBrain.businessType === "salon" && (output.channel === "video" || output.channel === "ugc" || output.channel === "ads")) {
+            findings.push({
+                id: `${output.id}_salon_consent_review`,
+                severity: "warning",
+                ruleId: "salon_consent_review",
+                message: "Salon content may involve before/after images, personal appearance, or result claims.",
+                recommendation: "Confirm consent and avoid guaranteed transformation, health, or beauty-result promises.",
+                sourceReferences: output.sourceReferences,
+            });
+        }
+        if (params.businessBrain.businessType === "restaurant" && output.channel !== "calendar" && !params.businessBrain.contacts.publicMenuUrl) {
+            findings.push({
+                id: `${output.id}_restaurant_menu_verify`,
+                severity: "warning",
+                ruleId: "restaurant_menu_verify",
+                message: "Restaurant campaign copy should point to a current menu or verified item source.",
+                recommendation: "Add a public menu link or current item note before posting widely.",
+                sourceReferences: output.sourceReferences,
+            });
+        }
         if (output.channel === "ads") {
             findings.push({
                 id: `${output.id}_spend_handoff`,
@@ -767,6 +1278,16 @@ function buildTrustReport(params: {
                 message: "Ad output is a spend-safe handoff. CampaignCue will not start spend.",
                 recommendation: "Review destination, budget, and policy in the ad account before launch.",
                 sourceReferences: output.sourceReferences,
+            });
+        }
+        if (unreviewedFacts.length) {
+            findings.push({
+                id: `${output.id}_source_review_needed`,
+                severity: "warning",
+                ruleId: "source_review_needed",
+                message: `${output.label} includes facts that are saved but not marked ready.`,
+                recommendation: "Review current offers, events, links, or upload notes before posting.",
+                sourceReferences: unreviewedFacts.slice(0, 3).map((fact) => fact.sourceRef),
             });
         }
     }
@@ -923,9 +1444,7 @@ async function updateDashboardSummary(params: {
         next.exportCount = increment(1);
     }
     if (params.action === "request_approval") next.approvalRequestCount = increment(1);
-    if (params.action === "direct_publish" || params.action === "direct_send") {
-        next.manualFallbackCount = increment(1);
-    }
+    if (params.action === "record_outcome") next.ownerReportedOutcomeCount = increment(1);
     await summaryRef.set(next, { merge: true });
 }
 
@@ -956,7 +1475,23 @@ export async function createCampaignCueCampaignServer(params: {
         throw new CampaignCueIdempotencyConflictError("This campaign request already completed, but its result is unavailable.");
     }
 
-    const opportunity = resolveOpportunity({ businessBrain, input: params.input, workspaceId });
+    const [sourceInputs, assets, locations, schedules, analytics] = await Promise.all([
+        listSubcollection<CampaignCueSourceInput>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS),
+        listSubcollection<CampaignCueAsset>(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS),
+        listSubcollection<CampaignCueLocation>(workspaceId, CAMPAIGNCUE_COLLECTIONS.LOCATIONS),
+        listSubcollection<CampaignCueSchedule>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SCHEDULES),
+        readDashboardSummary(workspaceId),
+    ]);
+    const opportunity = resolveOpportunity({
+        analytics,
+        assets,
+        businessBrain,
+        input: params.input,
+        locations,
+        schedules,
+        sourceInputs,
+        workspaceId,
+    });
     const title = compactString(params.input.title, opportunity.title);
     const brief = compactString(params.input.brief, opportunity.reason);
     const channels = (params.input.channels?.length ? params.input.channels : opportunity.channels) as CampaignCueChannel[];
@@ -968,9 +1503,12 @@ export async function createCampaignCueCampaignServer(params: {
         sourceReferences: opportunity.sourceReferences,
         title,
     });
+    const sourceFacts = buildSourceFacts(businessBrain, sourceInputs);
     const trustReport = buildTrustReport({
+        businessBrain,
         campaignId,
         outputs: outputsDraft,
+        sourceFacts,
         workspaceId,
     });
     const outputs = applyTrustToOutputs(outputsDraft, trustReport);
@@ -1036,10 +1574,7 @@ export async function createCampaignCueCampaignServer(params: {
     return { campaign, trustReport };
 }
 
-function assertCampaignActionAllowed(campaign: CampaignCueCampaign, action: CampaignCueActionType) {
-    if (action === "direct_publish" || action === "direct_send") {
-        return "Direct provider actions are disabled. Use manual export or handoff.";
-    }
+function assertCampaignActionAllowed(campaign: CampaignCueCampaign) {
     if (campaign.trustGate === "blocked") {
         return "This campaign has a blocking trust issue.";
     }
@@ -1077,11 +1612,11 @@ export async function recordCampaignCueActionServer(params: {
         }
         return { campaign, replayed: true };
     }
-    const actionError = assertCampaignActionAllowed(campaign, params.input.action);
+    const actionError = assertCampaignActionAllowed(campaign);
     if (actionError) {
         await Promise.all([
             writeEvent({
-                action: "manual_fallback_shown",
+                action: "export_action_blocked",
                 campaignId: campaign.id,
                 channel: params.input.channel,
                 metadata: { blockedAction: params.input.action, reason: actionError },
@@ -1089,7 +1624,6 @@ export async function recordCampaignCueActionServer(params: {
                 scope: params.scope,
                 workspaceId,
             }),
-            updateDashboardSummary({ action: params.input.action, workspaceId }),
             completeIdempotency({
                 action: params.input.action,
                 idempotencyKey: params.input.idempotencyKey,
@@ -1111,6 +1645,7 @@ export async function recordCampaignCueActionServer(params: {
         updatedAt: now,
     };
     if (params.input.action === "mark_used") updates.status = "used";
+    if (params.input.action === "record_outcome") updates.status = "used";
     if (params.input.action === "schedule") updates.status = "scheduled";
     if (params.input.action === "request_approval") updates.ownerApprovalState = "requested";
 
@@ -1162,10 +1697,15 @@ export async function recordCampaignCueActionServer(params: {
         sanitizeForAdminFirestore({
             workspaceId,
             actorId: params.scope.userId,
-            action: params.input.action === "mark_used" ? "manual_fallback_completed" : `campaign_${params.input.action}`,
+            action: params.input.action === "mark_used"
+                ? "manual_export_used"
+                : params.input.action === "record_outcome"
+                    ? "owner_outcome_recorded"
+                    : `campaign_${params.input.action}`,
             campaignId: campaign.id,
             channel: params.input.channel,
             outputId: params.input.outputId,
+            metadata: params.input.action === "record_outcome" ? { note: params.input.note || "Owner reported a result." } : {},
             confidence: "observed",
             createdAt: now,
         }),
@@ -1209,7 +1749,9 @@ export async function createCampaignCueAssetServer(params: {
         rights: {
             status: params.input.rightsStatus,
             note: params.input.rightsNote,
+            consentType: params.input.consentType,
         },
+        tags: params.input.tags || [],
         file: {
             storagePath: params.input.storagePath,
             downloadUrl: params.input.downloadUrl,
@@ -1256,9 +1798,14 @@ export async function createCampaignCueSourceInputServer(params: {
         status: params.input.status,
         confidence: params.input.status === "active" ? "manual" : "estimated",
         sourceRefs: ["owner_input"],
+        facts: [],
+        expiresAt: params.input.expiresAt
+            ? admin.firestore.Timestamp.fromDate(new Date(params.input.expiresAt))
+            : null,
         createdAt: now,
         updatedAt: now,
     };
+    sourceInput.facts = sourceInputToFacts(sourceInput);
     const existingInputs = await listSubcollection<CampaignCueSourceInput>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS);
     const sourceSnapshot = buildSourceSnapshot(businessBrain, [sourceInput, ...existingInputs]);
     const batch = firestoreAdmin.batch();
@@ -1288,50 +1835,6 @@ export async function createCampaignCueSourceInputServer(params: {
     );
     await batch.commit();
     return sourceInput;
-}
-
-export async function recordCampaignCueIntegrationServer(params: {
-    input: CampaignCueIntegrationActionInput;
-    scope: CampaignCueSessionScope;
-}) {
-    const workspace = await ensureCampaignCueWorkspaceOnlyServer(params.scope);
-    const workspaceId = workspace.workspaceId;
-    const provider = providerStatuses().find((item) => item.provider === params.input.provider);
-    const now = nowTimestamp();
-    const connection: CampaignCueProviderConnection = {
-        id: params.input.provider,
-        workspaceId,
-        provider: params.input.provider,
-        label: provider?.label || params.input.provider,
-        mode: provider?.mode || "disabled",
-        status: params.input.action === "request_setup" ? "setup_requested" : "manual_only",
-        requestedBy: params.scope.userId,
-        reason: params.input.note || provider?.reason || "Provider stays manual until external setup is complete.",
-        createdAt: now,
-        updatedAt: now,
-    };
-    const batch = firestoreAdmin.batch();
-    batch.set(
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.PROVIDER_CONNECTIONS).doc(connection.id),
-        sanitizeForAdminFirestore(connection),
-        { merge: true },
-    );
-    batch.set(
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.EVENTS).doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX)),
-        sanitizeForAdminFirestore({
-            workspaceId,
-            actorId: params.scope.userId,
-            action: params.input.action === "request_setup" ? "integration_setup_requested" : "integration_manual_confirmed",
-            metadata: {
-                provider: params.input.provider,
-                note: params.input.note,
-            },
-            confidence: "observed",
-            createdAt: now,
-        }),
-    );
-    await batch.commit();
-    return connection;
 }
 
 export async function createCampaignCueLocationServer(params: {
@@ -1409,12 +1912,6 @@ export async function patchCampaignCueBusinessServer(params: {
         updatedAt: nowTimestamp(),
     };
     const sourceSnapshot = buildSourceSnapshot(next, sourceInputs);
-    const directPublishingEnabled = params.input.directPublishingEnabled === undefined
-        ? workspace.settings.directPublishingEnabled
-        : Boolean(params.input.directPublishingEnabled && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PUBLISHING);
-    const providerGenerationEnabled = params.input.providerGenerationEnabled === undefined
-        ? workspace.settings.providerGenerationEnabled
-        : Boolean(params.input.providerGenerationEnabled && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_GENERATION);
     const workspaceUpdate: Partial<CampaignCueWorkspace> = {
         agencyMode: params.input.agencyMode ?? workspace.agencyMode,
         multiLocationMode: params.input.multiLocationMode ?? workspace.multiLocationMode,
@@ -1422,8 +1919,7 @@ export async function patchCampaignCueBusinessServer(params: {
             ...workspace.settings,
             timezone: params.input.timezone ?? workspace.settings.timezone,
             locale: params.input.locale ?? workspace.settings.locale,
-            directPublishingEnabled,
-            providerGenerationEnabled,
+            deliveryMode: CAMPAIGNCUE_DELIVERY_MODE,
             billingEnabled: Boolean(FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_BILLING),
         },
         updatedAt: nowTimestamp(),
@@ -1453,7 +1949,7 @@ export async function patchCampaignCueBusinessServer(params: {
     };
     return {
         businessBrain: next,
-        opportunities: buildCampaignCueOpportunities({ businessBrain: next, workspaceId }),
+        opportunities: buildCampaignCueOpportunities({ businessBrain: next, sourceInputs, workspaceId }),
         workspace: updatedWorkspace,
     };
 }

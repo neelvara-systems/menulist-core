@@ -78,8 +78,8 @@ const CAPABILITY_PROOF = [
 
 const SUITE_BUILD_STEPS = [
     {
-        title: 'Teach the support layer',
-        detail: 'Start from docs, FAQs, release notes, tickets, screenshots, and repeated replies.',
+        title: 'Bring scattered knowledge',
+        detail: 'Start from docs, tickets, releases, screenshots, recordings, notes, repeated replies, and founder memory.',
         meta: 'Sources',
     },
     {
@@ -88,8 +88,8 @@ const SUITE_BUILD_STEPS = [
         meta: 'Context',
     },
     {
-        title: 'Publish the support surfaces',
-        detail: 'Use one reviewed truth across widget, hosted help, FAQ, changelog, and fallback.',
+        title: 'Create the support structure',
+        detail: 'Turn scattered material into widget help, hosted help, FAQ, changelog support, approved answers, and fallback.',
         meta: 'Surfaces',
     },
     {
@@ -159,8 +159,8 @@ const BUSINESS_SOLUTION_CARDS = [
         icon: LuTicket,
     },
     {
-        title: 'Help content stays connected',
-        description: 'Hosted help, FAQ, changelog, feedback, and support-board work share the same reviewed support layer.',
+        title: 'Scattered knowledge becomes usable support',
+        description: 'Docs, notes, tickets, releases, feedback, and founder replies become standard help users can actually use.',
         icon: LuBookOpen,
     },
     {
@@ -172,8 +172,8 @@ const BUSINESS_SOLUTION_CARDS = [
 
 const OWNER_INPUT_DIAGRAM_INPUTS = [
     {
-        title: 'Owner inputs',
-        detail: 'Product docs, repeated replies, screenshots, recordings, and release notes.',
+        title: 'Scattered product knowledge',
+        detail: 'Docs, tickets, releases, screenshots, recordings, notes, support replies, and founder memory.',
     },
 ];
 
@@ -200,11 +200,11 @@ const SUPPORT_SURFACE_STORY = [
     {
         id: 'support-surface-owner-inputs',
         navLabel: 'Owner inputs',
-        navSummary: 'Docs, notes, screenshots, and release details become the source layer.',
+        navSummary: 'Scattered docs, notes, screenshots, recordings, and releases become structured support.',
         eyebrow: '01 / Owner inputs',
-        title: 'Start from the support knowledge you already have.',
-        description: 'Product docs, repeated replies, screenshots, recordings, release notes, and support notes become the source layer for customer-facing help.',
-        bullets: ['Docs', 'Repeated replies', 'Screenshots', 'Release notes'],
+        title: 'Start from the knowledge already scattered around your product.',
+        description: 'Product docs, repeated replies, screenshots, recordings, release notes, support notes, and founder memory become structured help content and answer drafts.',
+        bullets: ['Docs', 'Replies', 'Screenshots', 'Release notes'],
         href: '/product/knowledge-intake',
         icon: LuBookOpen,
         asset: ANSWERLATTICE_FEATURE_ASSETS['knowledge-intake'],
@@ -224,10 +224,10 @@ const SUPPORT_SURFACE_STORY = [
     {
         id: 'support-surface-hosted-help',
         navLabel: 'Hosted help',
-        navSummary: 'Docs, FAQ, and changelog stay tied to the same reviewed layer.',
+        navSummary: 'Docs, FAQ, and changelog come from the same structured support knowledge.',
         eyebrow: '03 / Hosted help',
         title: 'Publish a support home outside the product too.',
-        description: 'Hosted help, documentation, FAQ answers, and changelog content stay connected to the same reviewed support layer.',
+        description: 'Hosted help, documentation, FAQ answers, and changelog content come from the same structured support knowledge instead of separate scattered notes.',
         bullets: ['Help center', 'Documentation', 'FAQ', 'Changelog'],
         href: '/product/support-control',
         icon: LuFileText,
@@ -300,7 +300,7 @@ const PRODUCT_OVERVIEW_FEATURES = [
     {
         label: 'Changelog',
         href: '/product/changelog',
-        description: 'Connect release notes to product surfaces and answers so changed features do not leave stale support behind.',
+        description: 'Turn release notes into support review triggers so changed features do not leave stale answers behind.',
         icon: LuFileText,
         asset: ANSWERLATTICE_FEATURE_ASSETS.changelog,
     },
@@ -321,7 +321,7 @@ const PRODUCT_OVERVIEW_FEATURES = [
     {
         label: 'Approved answers',
         href: '/product/knowledge-governance',
-        description: 'Keep official answers reviewed, page-aware, and connected to the surfaces where users ask for help.',
+        description: 'Keep official answers reviewed, page-aware, and ready for the surfaces where users ask for help.',
         icon: LuCheckCircle,
         asset: ANSWERLATTICE_PRODUCT_AREA_ASSETS['Review approved answers'],
     },
@@ -360,12 +360,12 @@ const SETUP_STEPS = [
     },
     {
         title: 'Import support knowledge',
-        detail: 'Start with docs, FAQs, release notes, tickets, owner notes, screenshots, or repeated replies.',
+        detail: 'Start with scattered docs, FAQs, release notes, tickets, owner notes, screenshots, recordings, or repeated replies.',
         meta: 'Sources',
     },
     {
         title: 'Map important pages',
-        detail: 'Connect billing, onboarding, settings, integrations, releases, and error screens to support topics.',
+        detail: 'Map billing, onboarding, settings, integrations, releases, and error screens to the support topics users need there.',
         meta: 'Context',
     },
     {
@@ -503,7 +503,7 @@ function HomepageHero({ basePath }: { basePath: string }) {
                         ))}
                     </h1>
                     <p className="al-home-hero__subtitle mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-[#a0a0c0] sm:text-xl">
-                        Connect docs, FAQs, tickets, feedback, releases, and product pages into one support layer: widget help, hosted help, fallback, and approved answers.
+                        Your product knowledge already exists, but it is scattered across docs, tickets, releases, screenshots, recordings, notes, and repeated replies. AnswerLattice turns it into a standard support knowledge structure: approved answers for your widget, help center, FAQs, and future AI agents.
                     </p>
                     <div className="al-home-hero__actions mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
@@ -560,7 +560,7 @@ function SupportSuiteSection({ basePath }: { basePath: string }) {
                 <SectionHeader
                     eyebrow="One support suite"
                     title="Widget, help center, tickets, and approved answers in one layer."
-                    description="The familiar support surfaces stay connected without turning AnswerLattice into a generic helpdesk."
+                    description="The familiar support surfaces are generated from one standard support knowledge structure instead of scattered founder notes, docs, tickets, and release updates."
                 />
 
                 <div className="mt-10 grid gap-4 lg:grid-cols-4">
@@ -801,7 +801,7 @@ function BusinessSolutionSection({ basePath }: { basePath: string }) {
                 <SectionHeader
                     eyebrow="Business & support solution"
                     title="Your first support system after launch."
-                    description="Give AnswerLattice your product docs, repeated replies, screenshots, recordings, and release notes. It turns those owner inputs into support outputs users can actually use: in-app help, hosted help, FAQs, documentation, and reviewed answers."
+                    description="Every founder already has product knowledge somewhere: docs, tickets, release notes, screenshots, recordings, owner notes, product context, and repeated replies. AnswerLattice turns that scattered material into standard support knowledge users can actually use: in-app help, hosted help, FAQs, documentation, and reviewed answers."
                 />
 
                 <div className="al-business-solution__panel" data-answerlattice-reveal>
@@ -809,7 +809,7 @@ function BusinessSolutionSection({ basePath }: { basePath: string }) {
                         <p className="al-business-solution__kicker">Before your first support hire</p>
                         <h3>Launch support without turning support into your full-time job.</h3>
                         <p>
-                            Your users need answers, paths, updates, and feedback loops. You need to keep building the product. AnswerLattice sits between scattered founder replies and a full helpdesk operation.
+                            Your users need answers, paths, updates, and feedback loops. Your support knowledge is probably spread across founder memory, old replies, notes, docs, tickets, and release updates. AnswerLattice turns that reality into a support layer before it becomes your full-time job.
                         </p>
                         <div className="al-business-solution__boundaries">
                             {['Not a generic chatbot', 'Not static docs', 'Not a helpdesk replacement'].map((item) => (
@@ -861,7 +861,7 @@ function SupportSurfaceStorySection() {
                 <SectionHeader
                     eyebrow="From inputs to support surfaces"
                     title="One support layer across every place users ask for help."
-                    description="Start with source material. Serve help in-product and on hosted pages. Turn gaps into review work."
+                    description="Start with scattered product knowledge. Turn it into structured in-product help, hosted pages, approved answers, and review work when coverage is missing."
                 />
 
                 <div className="al-surface-story__layout">
@@ -923,7 +923,7 @@ function ProductOverviewSection({ basePath }: { basePath: string }) {
                 <SectionHeader
                     eyebrow="Product overview"
                     title="Everything your first support layer needs."
-                    description="Manage the support surfaces founders usually scatter across docs, inboxes, release notes, forms, and chat widgets."
+                    description="Bring the support knowledge founders usually scatter across docs, inboxes, release notes, screenshots, forms, and chat widgets into one standard structure."
                 />
 
                 <div className="al-product-overview__showcase">
@@ -1004,15 +1004,15 @@ function SetupPathSection() {
                 <SectionHeader
                     eyebrow="How it works"
                     title="Start with what you already have."
-                    description="You do not need a perfect docs site. Start with the support material, product pages, tickets, and repeated replies already around your product."
+                    description="You do not need a perfect docs site. Start with the scattered product knowledge already around your product: docs, tickets, releases, screenshots, recordings, owner notes, pages, and repeated replies."
                 />
 
                 <div className="al-setup-track" data-answerlattice-reveal>
                     <div className="al-setup-track__intro">
                         <p>One setup session</p>
-                        <h3>Connect the support pieces before users arrive.</h3>
+                        <h3>Turn scattered product knowledge into support before users arrive.</h3>
                         <span>
-                            Start from existing material, map it to product pages, review what becomes official, then install the widget.
+                            Bring scattered material into a standard structure, map it to product pages, review what becomes official, then publish it through the widget and help center.
                         </span>
                     </div>
 
@@ -1106,7 +1106,7 @@ function ConnectedLoopSection() {
         >
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="Connected support surfaces"
+                    eyebrow="Shared support truth"
                     title="Keep every support surface aligned."
                     description="When an answer is missing, fallback becomes review work. When the fix is approved, the next user gets better support."
                 />

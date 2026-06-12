@@ -10,7 +10,7 @@ Explain the outcome loop: campaign runs, results are captured, the next cue impr
 
 ## Supporting Points
 
-- Captures observed CampaignCue actions now; publish status, replies, clicks, and imported metrics require connected providers.
+- Captures observed CampaignCue actions now; publish status, replies, clicks, and imported metrics require a separate future provider layer.
 - Labels where each metric came from.
 - Creates practical follow-up cues.
 - Supports client-ready reporting for agencies.

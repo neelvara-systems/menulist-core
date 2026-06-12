@@ -402,6 +402,51 @@
   white-space: pre-wrap;
 }
 
+.detailStack {
+  display: grid;
+  gap: 10px;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.detailGrid div,
+.noteBox {
+  border: 1px solid #e0d9ca;
+  border-radius: 8px;
+  background: #fbf8f0;
+  padding: 10px;
+}
+
+.detailGrid span,
+.noteBox strong {
+  display: block;
+  color: #7a6a57;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.detailGrid strong {
+  display: block;
+  margin-top: 4px;
+  color: #243b35;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.noteBox ol {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #40524d;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .formGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -530,6 +575,7 @@
   }
 
   .grid,
+  .detailGrid,
   .stepGrid,
   .twoGrid,
   .formGrid {

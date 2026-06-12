@@ -20,11 +20,3 @@ export const CAMPAIGNCUE_CHANNEL_LABELS: Record<CampaignCueChannelConstant, stri
     calendar: "Calendar",
 };
 
-export const CAMPAIGNCUE_MANUAL_PROVIDER_POSTURE = {
-    whatsapp: "manual_export",
-    google_local: "manual_fallback",
-    meta_ads: "manual_handoff",
-    google_ads: "manual_handoff",
-    video_render: "brief_only",
-} as const;
-

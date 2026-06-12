@@ -16,11 +16,10 @@ Current runtime:
 
 - `GET /api/campaigncue/workspace` reads the signed-in MenuList store profile as a source, then creates/reads a CampaignCue source snapshot from the derived Business Brain.
 - `GET /api/campaigncue/sources` reads bounded owner source input records.
-- `POST /api/campaigncue/sources` saves manual notes, menu links, booking links, offers, events, and upload metadata; the server refreshes `sourceSnapshots/current`.
-- `GET /api/campaigncue/integrations` reads provider posture and setup-request records.
-- `POST /api/campaigncue/integrations` records manual-mode confirmation or setup request for WhatsApp, Google Business Profile, Google Ads, Meta Ads, or video rendering.
+- `POST /api/campaigncue/sources` saves manual notes, menu links, booking links, offers, events, optional expiry, and upload metadata; the server derives source facts and refreshes `sourceSnapshots/current`.
+- `GET /api/campaigncue/integrations` returns read-only future provider posture.
 
-Direct provider integrations, OAuth token storage, webhooks, MenuList write-back, and background sync are not enabled. MenuList source access is read-only and scoped by the signed-in tenant/store session. Provider posture is returned as manual-only from the workspace overview.
+Direct provider integrations, social account connection, setup-request writes, OAuth token storage, webhooks, MenuList write-back, and background sync are not enabled. MenuList source access is read-only and scoped by the signed-in tenant/store session. Provider posture is returned as manual-only/future-disabled from the workspace overview. The owner workspace shows saved facts from Business details and Inputs so owners can see what CampaignCue is allowed to use.
 
 ## Validation
 

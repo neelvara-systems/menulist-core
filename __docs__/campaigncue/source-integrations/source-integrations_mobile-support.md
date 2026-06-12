@@ -2,7 +2,7 @@
 
 ## Decision
 
-**PARTIAL.** Mobile supports upload, simple refresh, and manual fallback. Complex OAuth and conflict review are desktop-preferred.
+**PARTIAL.** Mobile supports owner inputs, simple refresh, and export/download. Complex OAuth and conflict review belong to a separate future provider layer.
 
 ## Admission Test
 
@@ -22,4 +22,3 @@
 - See source status.
 
 Desktop remains primary for provider connection setup, source mapping, and large conflict resolution.
-

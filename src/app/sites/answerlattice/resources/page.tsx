@@ -130,9 +130,9 @@ export default function AnswerlatticeResourcesPage() {
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Feature pages</p>
                                 <h2 className="text-2xl font-bold text-white">Evaluate the individual product features.</h2>
                             </div>
-                            <p className="text-sm leading-relaxed text-[#a0a0c0]">
-                                Core features now have dedicated buyer-facing pages. Each page shows workflow, proof cards, and connected support-truth context. Runtime scaling stays in Product and Security because it is core infrastructure, not a separate buyer feature.
-                            </p>
+                                <p className="text-sm leading-relaxed text-[#a0a0c0]">
+                                    Core features now have dedicated buyer-facing pages. Each page shows workflow, proof cards, and support-output context. Runtime scaling stays in Product and Security because it is core infrastructure, not a separate buyer feature.
+                                </p>
                         </div>
                         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                             {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => (

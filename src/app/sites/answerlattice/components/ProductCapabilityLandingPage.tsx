@@ -98,7 +98,7 @@ export default function ProductCapabilityLandingPage({
         { label: 'Context', value: 'Safe page context for relevant help' },
         { label: 'Authority', value: 'Approved answers before fallback' },
         { label: 'Review', value: 'Owner approval before official guidance' },
-        { label: 'Runtime', value: 'Widget, hosted help, tickets, and signals connected' },
+        { label: 'Runtime', value: 'Widget, hosted help, tickets, and signals share reviewed truth' },
     ],
 }: ProductCapabilityLandingPageProps) {
     const canvasAsset = ANSWERLATTICE_PRODUCT_AREA_ASSETS[activeTab as keyof typeof ANSWERLATTICE_PRODUCT_AREA_ASSETS];
@@ -181,8 +181,8 @@ export default function ProductCapabilityLandingPage({
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
                         eyebrow="Where this fits"
-                        title={`${activeTab} stays connected to the whole support suite.`}
-                        description="Founders can start with one support problem, then keep sources, user-facing surfaces, owner control, and support-gap review moving together."
+                        title={`${activeTab} becomes part of the whole support suite.`}
+                        description="Founders can start with one support problem, then turn scattered product material, user-facing surfaces, owner control, and support-gap review into one workflow."
                     />
                     <div className="mt-8 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                         {CAPABILITY_SUITE_ITEMS.map((item) => (

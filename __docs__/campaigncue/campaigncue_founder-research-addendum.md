@@ -9,7 +9,7 @@ CampaignCue should not be built as another design tool, social scheduler, ad gen
 
 The durable product wedge is:
 
-> Source-backed campaign execution for local businesses, with trust checks, manual fallback, owner approval, credits, and outcome learning.
+> Source-backed campaign execution for local businesses, with trust checks, export/download delivery, owner approval, cost controls, and outcome learning.
 
 That means CampaignCue wins only if it does what generic tools do not do well:
 
@@ -28,7 +28,7 @@ That means CampaignCue wins only if it does what generic tools do not do well:
 | Social schedulers | Buffer, Hootsuite, Later, Adobe Express, Canva, and Meta Business Suite already cover scheduling and caption assistance. | CampaignCue Calendar is campaign-state and manual-task aware, not a standalone scheduler. |
 | Ad/video generators | Predis and Creatify already focus on ad variants, UGC-style ads, URL-to-video, avatars, and batch creative. | CampaignCue Video/Reel and UGC Script should prioritize practical briefs, real assets, owner/staff scripts, and trust review over synthetic-volume output. |
 | WhatsApp | Meta requires opt-in for business messaging; marketing messages have pricing, template, preference, quality, and enforcement constraints. | WhatsApp Sales Studio is consent-led and export-first. Direct send is optional and blocked until template, opt-in, pricing, and preference handling are configured. |
-| Google Business Profile | Google supports posts/offers/events, but API access, quotas, location eligibility, and Product Post limitations make universal automation unsafe. | Google Local Studio must keep manual fallback as a normal path and must not promise all GBP actions can be automated. |
+| Google Business Profile | Google supports posts/offers/events, but API access, quotas, location eligibility, and Product Post limitations make universal automation unsafe. | Google Local Studio must keep manual export as the normal path and must not promise all GBP actions can be automated. |
 | Google local discovery | Google Business Profile posts, offers, events, photos, reviews, and timely updates remain valuable local surfaces. Restaurant/bar "What's Happening" signals reinforce timely local updates. | Restaurant campaign cues should include specials/events/local updates, but CampaignCue must not claim ranking gains. |
 | Meta/Google ads | Google and Meta policy surfaces reject misleading claims, personal-attribute assertions, restricted health/wellness claims, and deceptive destinations. | Ads Studio is a policy preflight and handoff tool first. Direct mutate/publish stays gated. |
 | Reviews/testimonials | FTC rules and endorsement guidance make fake reviews, fabricated testimonials, undisclosed endorsements, and synthetic personal experiences high risk. | UGC Script Studio and Trust Center must block fake first-person customer stories and require evidence/disclosure for testimonials and creator briefs. |
@@ -91,4 +91,3 @@ This is not a phased roadmap. These are product-weight decisions for launch-comp
 | FTC CAN-SPAM guide: https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business | Supports keeping email campaign tools out unless compliance is designed. |
 | TikTok Content Posting API: https://developers.tiktok.com/doc/content-posting-api-reference-direct-post | Confirms direct post requires app/API workflow and export UI constraints. |
 | YouTube Data API quota costs: https://developers.google.com/youtube/v3/determine_quota_cost | Confirms video upload APIs are quota-expensive. |
-

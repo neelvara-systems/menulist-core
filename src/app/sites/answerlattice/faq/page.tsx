@@ -33,15 +33,15 @@ const FAQS = [
     },
     {
         question: 'Can I use ChatGPT or a normal chatbot instead?',
-        answer: 'You can, but generic chat is not the same as a support layer. AnswerLattice connects the widget, hosted help, tickets, feedback, changelog, approved answers, and support gaps.',
+        answer: 'You can, but generic chat is not the same as a support layer. AnswerLattice turns scattered product knowledge into structured widget help, hosted help, tickets, feedback, changelog support, approved answers, and support-gap review.',
     },
     {
         question: 'What if I do not have documentation yet?',
-        answer: 'Start with FAQs, setup notes, release notes, and recurring support questions. AnswerLattice helps turn that material into reviewed support knowledge.',
+        answer: 'Start with what you already have scattered around the product: FAQs, tickets, setup notes, release notes, screenshots, recordings, owner notes, and recurring support questions. AnswerLattice helps turn that material into reviewed support knowledge.',
     },
     {
         question: 'Can AnswerLattice import my website or docs?',
-        answer: 'Yes. Knowledge Intake can discover bounded public page candidates, import only the pages you select, and accept supported files or pasted source material. It does not crawl your whole site or log into private app areas.',
+        answer: 'Yes. Knowledge Intake can discover bounded public page candidates, import only the pages you select, and accept supported files or pasted product material. It does not crawl your whole site or log into private app areas.',
     },
     {
         question: 'Can I upload screenshots or recordings during intake?',
@@ -85,7 +85,7 @@ const FAQS = [
     },
     {
         question: 'How does in-app context work?',
-        answer: 'Your product can pass safe route, page, feature, workflow, role, and plan hints to the AnswerLattice widget. AnswerLattice uses those hints to prefer support content connected to that product surface.',
+        answer: 'Your product can pass safe route, page, feature, workflow, role, and plan hints to the AnswerLattice widget. AnswerLattice uses those hints to prefer approved support content mapped to that product surface.',
     },
     {
         question: 'Can users attach screenshots in the widget?',

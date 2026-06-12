@@ -9,7 +9,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Use Cases',
-    description: 'AnswerLattice use cases for founder-led SaaS across billing, onboarding, settings, releases, errors, approved answers, ticket fallback, and support-gap review.',
+    description: 'AnswerLattice use cases for turning scattered product knowledge into support across billing, onboarding, settings, releases, errors, approved answers, ticket fallback, and support-gap review.',
     alternates: { canonical: '/use-cases' },
 };
 
@@ -22,13 +22,13 @@ function getBasePath(): string {
 }
 
 const USE_CASES = [
-    {
-        title: 'AI-built SaaS launch',
-        context: 'Cursor, Replit, Lovable, Bolt, or another AI-assisted build path',
-        question: 'Users are asking questions before my docs are ready. What do I launch first?',
-        generic: 'Create documentation and add a chatbot when you are ready.',
-        answerlattice: 'Launch a widget, hosted help center, ticket fallback, and review queue from your existing notes, FAQs, release notes, and recurring questions.',
-        outcome: 'Start support without building a full support stack from scratch.',
+        {
+            title: 'AI-built SaaS launch',
+            context: 'Cursor, Replit, Lovable, Bolt, or another AI-assisted build path',
+            question: 'Users are asking questions before my docs are ready. What do I launch first?',
+            generic: 'Create documentation and add a chatbot when you are ready.',
+            answerlattice: 'Launch a widget, hosted help center, ticket fallback, and review queue from the scattered docs, tickets, release notes, screenshots, recordings, notes, and recurring questions you already have.',
+            outcome: 'Start support without building a full support stack from scratch.',
     },
     {
         title: 'Billing and plan questions',
@@ -58,10 +58,10 @@ const USE_CASES = [
         title: 'Release support',
         context: 'New features, changed workflows, removed states, version mismatch',
         question: 'Did usage limits change?',
-        generic: 'Read the latest release notes for usage limits.',
-        answerlattice: 'The usage-limits release affected plan quota answers. AnswerLattice flags stale-answer risk until the related approved answer is reviewed.',
-        outcome: 'Connect changelog entries to affected answers so stale support content becomes visible.',
-    },
+            generic: 'Read the latest release notes for usage limits.',
+            answerlattice: 'The usage-limits release affected plan quota answers. AnswerLattice flags stale-answer risk until the related approved answer is reviewed.',
+            outcome: 'Turn changelog entries into affected-answer review so stale support content becomes visible.',
+        },
     {
         title: 'Hosted help for public support',
         context: 'help.yourapp.com, docs.yourapp.com, FAQ, changelog, public article pages',
@@ -135,7 +135,7 @@ export default function AnswerlatticeUseCasesPage() {
                         Support use cases for founder-led SaaS.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        When users ask from billing, onboarding, settings, releases, or error screens, AnswerLattice serves approved support tied to the product moment instead of giving generic AI replies.
+                        Founders already know the answers, but that knowledge is spread across docs, tickets, release notes, support replies, screenshots, and memory. AnswerLattice structures it so billing, onboarding, settings, releases, and error screens get support tied to the real product moment.
                     </p>
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink

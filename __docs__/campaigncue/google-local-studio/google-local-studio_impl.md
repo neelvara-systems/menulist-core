@@ -33,6 +33,5 @@ Google Local Studio must run through a CampaignCue Google adapter with explicit 
 ## Acceptance
 
 - Product-post content never claims direct API publishing unless support is verified.
-- Disabled or unverified locations show manual fallback.
+- Disabled or unverified locations show manual export guidance.
 - API publish failure preserves approved copy and media for manual posting.
-

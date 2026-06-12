@@ -13,11 +13,10 @@ Describe WhatsApp campaign preparation without making unsafe platform claims.
 - Creates short message variants with CTA.
 - Keeps audience and opt-out posture visible.
 - Supports manual copy/export where direct send is not configured.
-- Captures replies and results when connected.
+- Lets owners record manual results; direct reply capture requires a separate future provider layer.
 
 ## Do Not Say
 
 - Do not promise bulk WhatsApp sending.
 - Do not promise approval by WhatsApp or Meta.
 - Do not suggest cold-message campaigns.
-
