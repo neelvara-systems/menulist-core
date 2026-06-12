@@ -2,7 +2,15 @@
 
 ## Status
 
-Planning document only. No CueLayers collections, rules, indexes, Storage paths, or worker targets are implemented yet.
+Safe upload spine implemented. CueLayers collections, rules, indexes, immutable Storage paths, source packages, version snapshots, quality summaries, and export records exist in code. Long-running worker targets and provider decomposition are not active yet.
+
+Current implementation notes:
+
+- Firestore rules expose scoped read-only access for CueLayers design/job/version/export/repair/correction/quality documents and keep cost/review samples admin-only.
+- Storage rules allow scoped workspace-member reads under `campaigncue/cue-layers/{workspaceId}/{designId}/...` and deny client writes/deletes.
+- Server/Admin code writes all CueLayers artifacts and metadata through CampaignCue workspace scope.
+- The active path is upload -> flat-safe editor projection -> autosave/version -> Storage-backed PNG export registration. Provider calls are not active, so provider cost is zero in the current runtime.
+- Asset Library downloads for private Storage-backed exports use runtime signed URLs. Signed URLs are not stored in Firestore or durable editor JSON.
 
 ## Cost Principles
 
@@ -236,7 +244,7 @@ CueLayers should spend the least expensive resource first.
 | 1 | MIME, size, dimension, corruption, EXIF, local route heuristics. | Browser/server CPU; blocks bad inputs before any Firebase/model cost. |
 | 2 | Source hash and perceptual hash dedupe. | One bounded lookup or indexed direct record; avoids duplicate worker/model runs. |
 | 3 | Workspace/session/rate limit/SAFE_MODE/capacity check. | Small bounded reads; prevents provider spend. |
-| 4 | Create job and upload normalized source. | Small Firestore writes plus one Storage object. |
+| 4 | Create job and upload source image. | Small Firestore writes plus one Storage object in the current flat-safe path. |
 | 5 | Worker observations and validation. | Provider calls only after budgets and source quality pass. |
 | 6 | Export-resolution assets. | Lazy; created only when the owner exports/downloads. |
 
@@ -273,6 +281,7 @@ Provider cost dominates Firebase cost, so the implementation should optimize for
 | Workspace/design guard read | 1-2 reads | Server-side. |
 | Current pointer read | included in design read | No broad collection scan. |
 | Storage signed URL generation | per referenced asset | Not a Firestore read. |
+| Asset download signed URL | 1 per owner download | Generated on demand from an authenticated API route; not persisted. |
 | Editor document snapshot Storage read | 1 | Server reads and hydrates scoped asset URLs. |
 
 ### Autosave
@@ -291,7 +300,7 @@ Provider cost dominates Firebase cost, so the implementation should optimize for
 | Export request doc write | 1 | Idempotent. |
 | Editor document snapshot Storage read | 1 | Source of truth for render. |
 | Asset reads | per asset used | Use signed URLs/server bucket access. |
-| Output Storage write | 1 | Final downloadable file. |
+| Output Storage write | 1 | Final downloadable file; export registration is not created unless this write succeeds. |
 | Export doc update | 1 | Mark ready/failed. |
 | CampaignCue asset record write | 1 optional | If owner registers export into Asset Library. |
 
@@ -323,7 +332,7 @@ Initial constants should include:
 
 | Limit | Default |
 | --- | ---: |
-| Max upload bytes | 25 MB for CueLayers source intake, lower than generic CampaignCue asset cap unless raised by config. |
+| Max upload bytes | 3 MB for current direct JSON source intake. Raise only after moving upload to a signed/resumable landing zone or client-side compression path. |
 | Max source long edge | 4096 px |
 | Max editor long edge | 2048 px |
 | Max canvas pixels | 8 million |

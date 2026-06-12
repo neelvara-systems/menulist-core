@@ -147,6 +147,9 @@ type EditorTool = {
 };
 
 export interface CreativeEditorProps {
+    allowDesignImport?: boolean;
+    allowNewDesign?: boolean;
+    allowRasterImports?: boolean;
     assetSources?: CreativeEditorAssetSource[];
     initialDocument: CreativeEditorDocument;
     onDocumentChange?: (documentValue: CreativeEditorDocument) => void;
@@ -443,6 +446,9 @@ const parsePolygonPoints = (value: string) => value
     .filter((point): point is { x: number; y: number } => Boolean(point));
 
 export default function CreativeEditor({
+    allowDesignImport = true,
+    allowNewDesign = true,
+    allowRasterImports = true,
     assetSources = [],
     initialDocument,
     onDocumentChange,
@@ -1235,7 +1241,7 @@ export default function CreativeEditor({
     };
 
     const replaceSelectedImageFile = async (file: File) => {
-        if (selectedElement?.type !== "image" || selectedElement.locked) return;
+        if (!allowRasterImports || selectedElement?.type !== "image" || selectedElement.locked) return;
         setNotice("");
         try {
             const dataUrl = await readFileAsDataUrl(file);
@@ -1251,6 +1257,7 @@ export default function CreativeEditor({
     };
 
     const addSvgMarkup = () => {
+        if (!allowRasterImports) return;
         const svg = svgMarkup.trim();
         if (!svg) return;
         if (!svg.includes("<svg")) {
@@ -1270,6 +1277,8 @@ export default function CreativeEditor({
         const files = Array.from(event.target.files || []);
         event.target.value = "";
         if (!files.length) return;
+        if (kind === "json" && !allowDesignImport) return;
+        if ((kind === "image" || kind === "svg") && !allowRasterImports) return;
         if (kind === "json") {
             void importJsonFile(files[0]);
             return;
@@ -1398,6 +1407,7 @@ export default function CreativeEditor({
         const filename = buildCreativeEditorFilename(latestDocument, "png");
         triggerDownload(dataUrl, filename);
         return {
+            dataUrl,
             document: latestDocument,
             filename,
             format: "png",
@@ -1603,12 +1613,13 @@ export default function CreativeEditor({
                     <div className={styles.imageAdder}>
                         <input
                             aria-label="Image URL"
+                            disabled={!allowRasterImports}
                             onChange={(event) => setImageUrl(event.target.value)}
                             placeholder="https://image..."
                             value={imageUrl}
                         />
                         <button
-                            disabled={!imageUrl.trim()}
+                            disabled={!allowRasterImports || !imageUrl.trim()}
                             onClick={() => {
                                 addElement(buildCreativeEditorImageElement({ src: imageUrl.trim() }));
                                 setImageUrl("");
@@ -1620,12 +1631,13 @@ export default function CreativeEditor({
                         </button>
                         <textarea
                             aria-label="SVG markup"
+                            disabled={!allowRasterImports}
                             onChange={(event) => setSvgMarkup(event.target.value)}
                             placeholder="<svg ..."
                             value={svgMarkup}
                         />
                         <button
-                            disabled={!svgMarkup.trim()}
+                            disabled={!allowRasterImports || !svgMarkup.trim()}
                             onClick={addSvgMarkup}
                             type="button"
                         >
@@ -1633,7 +1645,7 @@ export default function CreativeEditor({
                             Add SVG code
                         </button>
                     </div>
-                    {assetSources.length ? (
+                    {allowRasterImports && assetSources.length ? (
                         <div className={styles.assetSourceList}>
                             {assetSources.slice(0, 10).map((asset) => (
                                 <button
@@ -1871,6 +1883,7 @@ export default function CreativeEditor({
             <input
                 accept="application/json,.json"
                 className={styles.hiddenFileInput}
+                disabled={!allowDesignImport}
                 onChange={(event) => handleFileInput(event, "json")}
                 ref={jsonInputRef}
                 type="file"
@@ -1879,6 +1892,7 @@ export default function CreativeEditor({
                 accept="image/png,image/jpeg,image/webp,image/gif"
                 className={styles.hiddenFileInput}
                 multiple
+                disabled={!allowRasterImports}
                 onChange={(event) => handleFileInput(event, "image")}
                 ref={imageInputRef}
                 type="file"
@@ -1886,6 +1900,7 @@ export default function CreativeEditor({
             <input
                 accept="image/png,image/jpeg,image/webp,image/gif"
                 className={styles.hiddenFileInput}
+                disabled={!allowRasterImports}
                 onChange={handleReplaceImageInput}
                 ref={replaceImageInputRef}
                 type="file"
@@ -1894,6 +1909,7 @@ export default function CreativeEditor({
                 accept=".svg,image/svg+xml"
                 className={styles.hiddenFileInput}
                 multiple
+                disabled={!allowRasterImports}
                 onChange={(event) => handleFileInput(event, "svg")}
                 ref={svgInputRef}
                 type="file"
@@ -1920,25 +1936,33 @@ export default function CreativeEditor({
                             value={documentValue.title}
                         />
                     </label>
-                    <button className={styles.newDesignButton} onClick={startBlankDesign} type="button">
-                        <LuPlus size={18} />
-                        New Design
-                    </button>
+                    {allowNewDesign ? (
+                        <button className={styles.newDesignButton} onClick={startBlankDesign} type="button">
+                            <LuPlus size={18} />
+                            New Design
+                        </button>
+                    ) : null}
                 </div>
                 <div className={styles.topRight}>
                     <div className={styles.dimensionPill}>
                         <LuHash size={18} />
                         {documentValue.canvas.width} X {documentValue.canvas.height}
                     </div>
-                    <button aria-label="Import design JSON" className={styles.roundButton} onClick={() => jsonInputRef.current?.click()} type="button">
-                        <LuFileInput size={18} />
-                    </button>
-                    <button aria-label="Import image file" className={styles.roundButton} onClick={() => imageInputRef.current?.click()} type="button">
-                        <LuFileImage size={18} />
-                    </button>
-                    <button aria-label="Import SVG file" className={styles.roundButton} onClick={() => svgInputRef.current?.click()} type="button">
-                        <LuImport size={18} />
-                    </button>
+                    {allowDesignImport ? (
+                        <button aria-label="Import design JSON" className={styles.roundButton} onClick={() => jsonInputRef.current?.click()} type="button">
+                            <LuFileInput size={18} />
+                        </button>
+                    ) : null}
+                    {allowRasterImports ? (
+                        <>
+                            <button aria-label="Import image file" className={styles.roundButton} onClick={() => imageInputRef.current?.click()} type="button">
+                                <LuFileImage size={18} />
+                            </button>
+                            <button aria-label="Import SVG file" className={styles.roundButton} onClick={() => svgInputRef.current?.click()} type="button">
+                                <LuImport size={18} />
+                            </button>
+                        </>
+                    ) : null}
                     <button
                         aria-label="Toggle grid and rulers"
                         className={styles.roundButton}
@@ -1948,9 +1972,11 @@ export default function CreativeEditor({
                     >
                         <LuGrid size={18} />
                     </button>
-                    <button aria-label="Reset design" className={styles.roundButton} onClick={startBlankDesign} type="button">
-                        <LuRotateCcw size={18} />
-                    </button>
+                    {allowNewDesign ? (
+                        <button aria-label="Reset design" className={styles.roundButton} onClick={startBlankDesign} type="button">
+                            <LuRotateCcw size={18} />
+                        </button>
+                    ) : null}
                     <span className={styles.divider} />
                     <button aria-label="Undo" className={styles.roundButton} disabled={!canUndo} onClick={undo} type="button">
                         <LuUndo2 size={18} />

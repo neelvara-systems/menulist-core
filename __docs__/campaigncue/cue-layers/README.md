@@ -1,6 +1,6 @@
 # CueLayers - Documentation Hub
 
-**Status:** Planned documentation set. Not implemented in code yet.
+**Status:** Safe upload spine implemented. Provider-driven decomposition remains gated.
 **Product:** CampaignCue
 **Feature:** CueLayers
 **Owner-facing promise:** Convert an uploaded or generated flat image into an editable CampaignCue design where the system has enough confidence, while preserving safe fallbacks.
@@ -29,6 +29,7 @@ Repo-aligned corrections are captured in [cue-layers_chatgpt-cross-check.md](./c
 | [cue-layers_firebase.md](./cue-layers_firebase.md) | Engineering, cost owner | Firestore, Storage, worker, read/write, retention, cost controls. |
 | [cue-layers_mobile-support.md](./cue-layers_mobile-support.md) | Product, mobile | Mobile admission decision and mobile-safe subset. |
 | [cue-layers_test-cases.md](./cue-layers_test-cases.md) | QA, engineering | Deterministic fixture, security, cost, editor, export, and regression tests. |
+| [cue-layers_validation.md](./cue-layers_validation.md) | Engineering, audit | Code-vs-doc validation report for the implemented safe upload spine. |
 | [cue-layers_marketing.md](./cue-layers_marketing.md) | Internal GTM | Sales narrative, positioning, objections, approved language. |
 | [cue-layers_website.md](./cue-layers_website.md) | Public website planning | Public content blocks, SEO, claims boundary. |
 | [cue-layers_helpdoc.md](./cue-layers_helpdoc.md) | Owner support | Owner-facing guide for upload, review, edit, repair, and export. |
@@ -46,6 +47,22 @@ Business-safe creative reuse, not maximum layer count.
 The quality model is split into pixel fidelity, text fidelity, structural usefulness, and export fidelity. A result is not `ready` unless critical visual and protected-text checks pass. Useful-but-imperfect results should use `status=completed` with `outcome=needs_review`, or `outcome=flat_safe`, instead of pretending full editability.
 
 Durable editor truth is `CreativeEditorDocumentSnapshot` with `cue-asset://assetId` references plus a `CueLayersLayerIndex` sidecar. Fabric runtime serialization and signed URLs are temporary adapter/render details only.
+
+## Implemented Runtime Scope
+
+The current implementation ships the conservative CueLayers spine:
+
+- Owner upload of PNG/JPEG/WebP from CampaignCue Editor or Asset Library.
+- CampaignCue-authenticated API routes for upload, design list, job read, boot, autosave, fallback repair record, and Storage-backed export registration.
+- CampaignCue Asset Library download handoff for private Storage-backed exports. Download URLs are generated at request time and are not persisted.
+- CampaignCue source package, business/protected-text/brand/rights snapshots, quality report, reconstruction record, editor projection, layer index, version snapshots, repair requests, correction events, and export records.
+- Immutable CampaignCue Storage paths under `campaigncue/cue-layers/{workspaceId}/{designId}/...`.
+- `CreativeEditorDocumentSnapshot` persistence with `cue-asset://assetId` durable references and boot-time signed URL hydration.
+- Autosave validates image references against the current CueLayers layer index so saved documents cannot point to unknown `cue-asset://` ids.
+- Flat-safe editor projection that preserves the original image as a locked shared-editor image object. Owners can add text, shape, QR, and drawing layers, then export/download. New image/SVG/JSON imports are disabled while a CueLayers design is active until product-owned hydration is implemented for added images.
+- No direct posting, social account connection, provider upload, ad mutation, or external model spend.
+
+The current implementation does not claim OCR/text recovery, segmentation, vector reconstruction, generated-source intake, semantic background repair, or high-confidence editable decomposition. Those adapters remain behind `ENABLE_CAMPAIGNCUE_CUE_LAYERS_*` gates and the capability-based model registry.
 
 ## Current Repo Anchors
 

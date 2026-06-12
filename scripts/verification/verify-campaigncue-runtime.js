@@ -42,6 +42,13 @@ function verifyFeatureFlags() {
   assertIncludes(flags, "ENABLE_SHARED_CREATIVE_EDITOR_FABRIC_ADAPTER: true", "Shared creative editor Fabric adapter flag");
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_CREATIVE_EDITOR: true", "CampaignCue creative editor adapter flag");
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_RENDERED_ASSET_EXPORTS: true", "CampaignCue editor export registration flag");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_CUE_LAYERS: true", "CampaignCue CueLayers feature flag");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD: true", "CampaignCue CueLayers upload flag");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_CUE_LAYERS_GENERATED_SOURCE: false", "CampaignCue CueLayers generated-source provider gate");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_CUE_LAYERS_TEXT_EDITABLE: false", "CampaignCue CueLayers text-editable provider gate");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_CUE_LAYERS_VECTOR_EDITABLE: false", "CampaignCue CueLayers vector-editable provider gate");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_CUE_LAYERS_BACKGROUND_REPAIR: false", "CampaignCue CueLayers repair provider gate");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_CUE_LAYERS_REPAIR_WORKER: false", "CampaignCue CueLayers worker gate");
 }
 
 function verifyApiRoutes() {
@@ -79,6 +86,34 @@ function verifyApiRoutes() {
   assertIncludes(read("src/app/api/campaigncue/integrations/route.ts"), "listCampaignCueProviderConnectionsServer", "integration posture direct bounded loader");
   assertIncludes(read("src/app/api/campaigncue/locations/route.ts"), "listCampaignCueLocationsServer", "location list direct bounded loader");
   assertIncludes(read("src/app/api/campaigncue/analytics/route.ts"), "readCampaignCueAnalyticsServer", "analytics summary direct loader");
+
+  const cueLayerRouteFiles = [
+    "src/app/api/campaigncue/cue-layers/designs/route.ts",
+    "src/app/api/campaigncue/cue-layers/uploads/route.ts",
+    "src/app/api/campaigncue/cue-layers/jobs/[jobId]/route.ts",
+    "src/app/api/campaigncue/cue-layers/designs/[designId]/boot/route.ts",
+    "src/app/api/campaigncue/cue-layers/designs/[designId]/autosave/route.ts",
+    "src/app/api/campaigncue/cue-layers/designs/[designId]/repair/route.ts",
+    "src/app/api/campaigncue/cue-layers/designs/[designId]/exports/route.ts",
+  ];
+  for (const relPath of cueLayerRouteFiles) {
+    const content = read(relPath);
+    assertIncludes(content, "withAuth", relPath);
+    assertIncludes(content, "requireCampaignCueRuntime", relPath);
+    assertIncludes(content, "requireCampaignCueSessionScope", relPath);
+    assertIncludes(content, "applyCampaignCueRateLimit", relPath);
+    assertIncludes(content, "buildCampaignCueCueLayersApiError", relPath);
+  }
+  assertIncludes(read("src/app/api/campaigncue/cue-layers/uploads/route.ts"), "CampaignCueCueLayerUploadSchema", "CueLayers upload schema validation");
+  assertIncludes(read("src/app/api/campaigncue/cue-layers/designs/[designId]/autosave/route.ts"), "CampaignCueCueLayerAutosaveSchema", "CueLayers autosave schema validation");
+  assertIncludes(read("src/app/api/campaigncue/cue-layers/designs/[designId]/repair/route.ts"), "CampaignCueCueLayerRepairSchema", "CueLayers repair schema validation");
+  assertIncludes(read("src/app/api/campaigncue/cue-layers/designs/[designId]/exports/route.ts"), "CampaignCueCueLayerExportSchema", "CueLayers export schema validation");
+  const assetDownloadRoute = read("src/app/api/campaigncue/assets/[assetId]/download/route.ts");
+  assertIncludes(assetDownloadRoute, "withAuth", "CampaignCue asset download route auth");
+  assertIncludes(assetDownloadRoute, "requireCampaignCueRuntime", "CampaignCue asset download route runtime guard");
+  assertIncludes(assetDownloadRoute, "requireCampaignCueSessionScope", "CampaignCue asset download route scope guard");
+  assertIncludes(assetDownloadRoute, "applyCampaignCueRateLimit", "CampaignCue asset download route rate limit");
+  assertIncludes(assetDownloadRoute, "createCampaignCueAssetDownloadServer", "CampaignCue asset download server handoff");
 }
 
 function verifyServerRuntime() {
@@ -116,6 +151,9 @@ function verifyServerRuntime() {
   assertIncludes(server, "CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS", "CampaignCue server source input collection");
   assertIncludes(server, "CAMPAIGNCUE_COLLECTIONS.LOCATIONS", "CampaignCue server location collection");
   assertIncludes(server, "createCampaignCueSourceInputServer", "CampaignCue source input mutation");
+  assertIncludes(server, "createCampaignCueAssetDownloadServer", "CampaignCue asset download handoff");
+  assertIncludes(server, "isWorkspaceStoragePath", "CampaignCue asset download is workspace-path scoped");
+  assertIncludes(server, "getSignedUrl", "CampaignCue private Storage downloads use runtime signed URLs");
   assertNotIncludes(server, "recordCampaignCueIntegrationServer", "CampaignCue server has no day-one integration mutation");
   assertIncludes(server, "createCampaignCueLocationServer", "CampaignCue location mutation");
   assertIncludes(server, "export_action_blocked", "CampaignCue trust-blocked export action event");
@@ -123,6 +161,52 @@ function verifyServerRuntime() {
   assertIncludes(errors, "CAMPAIGNCUE_FIREBASE_UNAVAILABLE", "CampaignCue Firebase setup error code");
   assertIncludes(server, "status: 503", "CampaignCue Firebase setup HTTP status");
   assertIncludes(errors, "CAMPAIGNCUE_RUNTIME_ERROR", "CampaignCue generic runtime error code");
+
+  const cueLayersServer = read("src/lib/campaigncue/cue-layers/server.ts");
+  const cueLayersProjection = read("src/lib/campaigncue/cue-layers/editorProjection.ts");
+  const cueLayersStorage = read("src/lib/campaigncue/cue-layers/storagePaths.ts");
+  const cueLayersModels = read("src/lib/campaigncue/cue-layers/modelRegistry.ts");
+  const cueLayersSchemas = read("src/lib/validation/campaigncueCueLayersSchemas.ts");
+
+  assertIncludes(cueLayersServer, "ensureCampaignCueWorkspaceServer", "CueLayers server validates workspace scope");
+  assertIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_DESIGNS", "CueLayers server writes design collection");
+  assertIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS", "CueLayers server uses idempotency keys");
+  assertIncludes(cueLayersServer, "createCampaignCueCueLayerUploadServer", "CueLayers upload server entry");
+  assertIncludes(cueLayersServer, "params.input.sourceKind !== \"user_upload\"", "CueLayers upload enforces generated-source gate");
+  assertIncludes(cueLayersServer, "bootCampaignCueCueLayerDesignServer", "CueLayers boot server entry");
+  assertIncludes(cueLayersServer, "autosaveCampaignCueCueLayerDesignServer", "CueLayers autosave server entry");
+  assertIncludes(cueLayersServer, "exportCampaignCueCueLayerDesignServer", "CueLayers export server entry");
+  assertIncludes(cueLayersServer, "params.input.sourceRevision !== design.current.revision", "CueLayers export rejects stale revisions");
+  assertIncludes(cueLayersServer, "parseRenderedExportDataUrl", "CueLayers export validates rendered output bytes");
+  assertIncludes(cueLayersServer, "path: exportOutputPath", "CueLayers export writes immutable output before asset registration");
+  assertIncludes(cueLayersServer, "businessTruthSnapshot", "CueLayers snapshots business truth");
+  assertIncludes(cueLayersServer, "protectedTextSnapshot", "CueLayers snapshots protected text truth");
+  assertIncludes(cueLayersServer, "brandSnapshot", "CueLayers snapshots brand truth");
+  assertIncludes(cueLayersServer, "rightsSnapshot", "CueLayers snapshots rights truth");
+  assertIncludes(cueLayersServer, "getSignedUrl", "CueLayers hydrates signed URLs only at boot");
+  assertIncludes(cueLayersServer, "url: await signedUrlForAsset(asset)", "CueLayers signed URL is runtime hydration only");
+  assertNotIncludes(cueLayersProjection, "signedUrl", "CueLayers durable projection avoids signedUrl field naming");
+  assertIncludes(cueLayersServer, "dehydrateDocumentAssets", "CueLayers dehydrates runtime URLs before persistence");
+  assertIncludes(cueLayersServer, "collectLayerAssetIds", "CueLayers autosave validates image assets against layer index");
+  assertIncludes(cueLayersServer, "existing design asset", "CueLayers rejects unknown cue asset references");
+  assertIncludes(cueLayersProjection, "CreativeEditorDocumentSnapshot", "CueLayers projects into shared editor document snapshot");
+  assertIncludes(cueLayersProjection, "editableLevel: \"locked_reference\"", "CueLayers safe flat reference layer");
+  assertIncludes(cueLayersProjection, "params.editorReferenceAsset.assetUri", "CueLayers durable editor references use asset URIs");
+  assertIncludes(cueLayersStorage, "/sources/${sourcePackageId}/", "CueLayers immutable source storage paths");
+  assertIncludes(cueLayersStorage, "/reconstructions/${reconstructionId}/", "CueLayers immutable reconstruction storage paths");
+  assertIncludes(cueLayersStorage, "/versions/${versionId}/", "CueLayers immutable editor version storage paths");
+  assertIncludes(cueLayersStorage, "/exports/${exportId}/", "CueLayers immutable export storage paths");
+  assertIncludes(cueLayersStorage, "storageGeneration", "CueLayers asset refs track Storage generation");
+  assertIncludes(cueLayersModels, "CAMPAIGNCUE_CUE_LAYER_MODEL_REGISTRY", "CueLayers capability model registry");
+  assertIncludes(cueLayersModels, "capability", "CueLayers model selection is capability-based");
+  assertNotIncludes(cueLayersModels, "imagen", "CueLayers model registry avoids deprecated Imagen dependency");
+  assertIncludes(cueLayersSchemas, "cue-asset://", "CueLayers schema accepts durable cue asset URI");
+  assertIncludes(cueLayersSchemas, "/^(javascript|data):/i", "CueLayers schema blocks unsafe image URLs");
+  assertIncludes(cueLayersSchemas, "MAX_FINAL_LAYERS", "CueLayers schema caps editor layer count");
+  assertIncludes(cueLayersSchemas, ".strip()", "CueLayers schema strips unknown renderer properties");
+  assertIncludes(cueLayersSchemas, "MAX_EDITOR_DOCUMENT_BYTES", "CueLayers schema caps editor document size");
+  assertIncludes(cueLayersSchemas, "renderedDataUrl", "CueLayers export schema requires rendered bytes handoff");
+  assertIncludes(cueLayersSchemas, "product-owned source reference", "CueLayers image schema requires product-owned asset reference");
 }
 
 function verifyClientRuntime() {
@@ -189,6 +273,17 @@ function verifyClientRuntime() {
   assertIncludes(app, "Image editor", "CampaignCue editor tab screen");
   assertIncludes(app, "Create from scratch", "CampaignCue blank editor entry");
   assertIncludes(app, "Open editor", "CampaignCue campaign output editor entry");
+  assertIncludes(app, "Turn image into layers", "CampaignCue CueLayers upload entry");
+  assertIncludes(app, "loadCueLayerDesigns", "CampaignCue CueLayers bounded design loader");
+  assertIncludes(app, "saveCueLayerDocumentNow", "CampaignCue CueLayers autosave flow");
+  assertIncludes(app, "repairCueLayerFallback", "CampaignCue CueLayers fallback repair action");
+  assertIncludes(app, "getCampaignCueCueLayersExportApiPath", "CampaignCue CueLayers export API path helper");
+  assertIncludes(app, "allowRasterImports={!activeCueLayerDesign}", "CampaignCue CueLayers disables unsafe raster imports in shared editor");
+  assertIncludes(app, "renderedDataUrl: result.dataUrl", "CampaignCue CueLayers sends rendered export bytes");
+  assertIncludes(app, "getCampaignCueAssetDownloadApiPath", "CampaignCue Asset Library uses scoped download API");
+  assertIncludes(app, "asset-download:${asset.id}", "CampaignCue Asset Library has bounded asset download action");
+  assertIncludes(app, "onDocumentChange={setEditorDraftDocument}", "CampaignCue CueLayers editor change tracking");
+  assertIncludes(app, "Use PNG export for layered images", "CampaignCue CueLayers SVG export guard");
   assertNotIncludes(app, "Connect the CampaignCue Firebase project", "CampaignCue owner setup copy hides Firebase instructions");
   assertNotIncludes(app, "source confidence", "CampaignCue owner dashboard avoids internal source confidence wording");
   assertNotIncludes(app, "Deterministic generation", "CampaignCue settings avoid deterministic-generation jargon");
@@ -343,6 +438,10 @@ function verifyFirebaseBoundary() {
   assertIncludes(storageRules, "allow read, write: if false", "CampaignCue Storage default deny");
   assertIncludes(storageRules, "request.resource.size <= 250 * 1024 * 1024", "CampaignCue Storage size cap");
   assertIncludes(storageRules, "isCampaignCueWorkspaceMember(workspaceId)", "CampaignCue Storage workspace scope");
+  assertIncludes(firestoreRules, "match /cueLayerDesigns/{docId}", "CampaignCue CueLayers design rules");
+  assertIncludes(firestoreRules, "match /cueLayerCostRecords/{docId}", "CampaignCue CueLayers cost records are admin-only");
+  assertIncludes(storageRules, "match /campaigncue/cue-layers/{workspaceId}/{designId}/{allPaths=**}", "CampaignCue CueLayers storage path rule");
+  assertIncludes(storageRules, "allow write, delete: if false", "CampaignCue CueLayers client Storage writes disabled");
   assertIncludes(indexes, "\"collectionGroup\": \"sourceInputs\"", "CampaignCue source inputs index");
   assertIncludes(indexes, "\"collectionGroup\": \"campaigns\"", "CampaignCue campaigns index");
   assertIncludes(indexes, "\"collectionGroup\": \"assets\"", "CampaignCue assets index");
@@ -350,6 +449,9 @@ function verifyFirebaseBoundary() {
   assertIncludes(indexes, "\"collectionGroup\": \"providerConnections\"", "CampaignCue provider connections index");
   assertIncludes(indexes, "\"collectionGroup\": \"locations\"", "CampaignCue locations index");
   assertIncludes(indexes, "\"collectionGroup\": \"events\"", "CampaignCue events index");
+  assertIncludes(indexes, "\"collectionGroup\": \"cueLayerDesigns\"", "CampaignCue CueLayers design index");
+  assertIncludes(indexes, "\"collectionGroup\": \"cueLayerJobs\"", "CampaignCue CueLayers job index");
+  assertIncludes(indexes, "\"collectionGroup\": \"cueLayerExports\"", "CampaignCue CueLayers export index");
 }
 
 function verifyProductConstantSeparation() {
@@ -361,6 +463,7 @@ function verifyProductConstantSeparation() {
     "src/constants/campaigncue/domains.ts",
     "src/constants/campaigncue/errors.ts",
     "src/constants/campaigncue/firebase.ts",
+    "src/constants/campaigncue/cueLayers.ts",
     "src/constants/campaigncue/navigations.ts",
     "src/constants/campaigncue/product.ts",
     "src/constants/campaigncue/routes.ts",
@@ -372,6 +475,7 @@ function verifyProductConstantSeparation() {
 
   const product = read("src/constants/campaigncue/product.ts");
   const database = read("src/constants/campaigncue/database.ts");
+  const cueLayers = read("src/constants/campaigncue/cueLayers.ts");
   const delivery = read("src/constants/campaigncue/delivery.ts");
   const domains = read("src/constants/campaigncue/domains.ts");
   const routes = read("src/constants/campaigncue/routes.ts");
@@ -386,6 +490,12 @@ function verifyProductConstantSeparation() {
   assertIncludes(product, "CAMPAIGNCUE_PRODUCT_ID", "CampaignCue product id constant");
   assertIncludes(database, "CAMPAIGNCUE_COLLECTIONS", "CampaignCue collection constants");
   assertIncludes(database, "CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES", "CampaignCue asset size constant");
+  assertIncludes(database, "CUE_LAYER_DESIGNS", "CampaignCue CueLayers design collection constant");
+  assertIncludes(cueLayers, "CAMPAIGNCUE_CUE_LAYER_JOB_STATUSES", "CampaignCue CueLayers job status constants");
+  assertIncludes(cueLayers, "CAMPAIGNCUE_CUE_LAYER_JOB_OUTCOMES", "CampaignCue CueLayers outcome constants");
+  assertIncludes(cueLayers, "CAMPAIGNCUE_CUE_LAYER_PROCESSING_STEPS", "CampaignCue CueLayers step constants");
+  assertIncludes(cueLayers, "CAMPAIGNCUE_CUE_LAYER_ALLOWED_EDITOR_ELEMENT_TYPES", "CampaignCue CueLayers renderer allowlist constants");
+  assertIncludes(cueLayers, "CAMPAIGNCUE_CUE_LAYER_MODEL_CAPABILITIES", "CampaignCue CueLayers model capability constants");
   assertIncludes(delivery, "CAMPAIGNCUE_EXPORT_ACTIONS", "CampaignCue export action constants");
   assertIncludes(delivery, "CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS", "CampaignCue disabled provider action constants");
   assertIncludes(delivery, "CAMPAIGNCUE_FUTURE_PROVIDER_LAYER", "CampaignCue future provider layer constants");
@@ -396,6 +506,9 @@ function verifyProductConstantSeparation() {
     assertIncludes(domains, "startsWith(`${CAMPAIGNCUE_WORKSPACE_PATH}/`)", "CampaignCue workspace rewrite supports deep-link subpaths");
   assertIncludes(routes, "CAMPAIGNCUE_API_ROUTES", "CampaignCue API route constants");
   assertIncludes(routes, "CAMPAIGN_ACTION_TEMPLATE", "CampaignCue action route template");
+  assertIncludes(routes, "CUE_LAYERS_UPLOADS", "CampaignCue CueLayers upload route constant");
+  assertIncludes(routes, "getCampaignCueAssetDownloadApiPath", "CampaignCue asset download route helper");
+  assertIncludes(routes, "getCampaignCueCueLayersBootApiPath", "CampaignCue CueLayers boot route helper");
   assertIncludes(firebase, "CAMPAIGNCUE_FIREBASE_ENV", "CampaignCue Firebase env constants");
   assertIncludes(navigations, "CAMPAIGNCUE_WORKSPACE_TABS", "CampaignCue workspace navigation constants");
   assertIncludes(workspace, "CAMPAIGNCUE_CHANNEL_STUDIO_COPY", "CampaignCue workspace copy constants");
@@ -412,6 +525,7 @@ function verifyProductConstantSeparation() {
   assertNotIncludes(read("src/lib/campaigncue/server.ts"), 'from "@constant/campaigncue";', "CampaignCue server avoids all-in barrel import");
   assertNotIncludes(read("src/lib/firebase/campaigncueFirebaseAdmin.ts"), 'const CAMPAIGNCUE_APP_NAME = "campaigncue-admin"', "CampaignCue Admin app name is not local literal");
   assertNotIncludes(read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"), '"/api/campaigncue/sources"', "CampaignCue workspace avoids hardcoded source API path");
+  assertNotIncludes(read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"), '"/api/campaigncue/cue-layers', "CampaignCue CueLayers UI avoids hardcoded API paths");
   assertNotIncludes(read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"), '"/__campaigncue"', "CampaignCue workspace avoids hardcoded local public path");
 }
 
@@ -458,6 +572,10 @@ function verifyDocsAlignment() {
   const boundaryDoc = read("__docs__/campaigncue/campaigncue-route-boundary.md");
   const expansionDoc = read("__docs__/campaigncue/campaigncue-next-expansion-list.md");
   const deliveryDoc = read("__docs__/campaigncue/campaigncue-delivery-boundary.md");
+  const cueLayersReadme = read("__docs__/campaigncue/cue-layers/README.md");
+  const cueLayersImpl = read("__docs__/campaigncue/cue-layers/cue-layers_impl.md");
+  const cueLayersFirebase = read("__docs__/campaigncue/cue-layers/cue-layers_firebase.md");
+  const cueLayersValidation = read("__docs__/campaigncue/cue-layers/cue-layers_validation.md");
   const changelog = read("__docs__/CHANGELOG.md");
 
   assertIncludes(audit, "CAMPAIGNCUE_FIREBASE_UNAVAILABLE", "CampaignCue audit setup-blocked code");
@@ -480,6 +598,14 @@ function verifyDocsAlignment() {
   assertIncludes(boundaryDoc, "Do not add owner dashboard pages under `src/app/sites/campaigncue`", "CampaignCue route-boundary guardrail");
   assertIncludes(changelog, "CampaignCue Route Boundary Alignment", "CampaignCue changelog route-boundary entry");
   assertIncludes(changelog, "CampaignCue setup-blocked state added", "CampaignCue changelog setup-blocked entry");
+  assertIncludes(cueLayersReadme, "Safe upload spine implemented", "CueLayers README implemented status");
+  assertIncludes(cueLayersReadme, "Provider-driven decomposition remains gated", "CueLayers README provider gate");
+  assertIncludes(cueLayersImpl, "Flat-safe projection", "CueLayers implementation doc current scope");
+  assertIncludes(cueLayersImpl, "Not implemented as active runtime yet", "CueLayers implementation doc gated scope");
+  assertIncludes(cueLayersFirebase, "Safe upload spine implemented", "CueLayers Firebase doc implemented status");
+  assertIncludes(cueLayersValidation, "Safe upload spine is implementation-ready", "CueLayers validation verdict");
+  assertIncludes(cueLayersValidation, "Provider-driven editable decomposition is not active", "CueLayers validation provider boundary");
+  assertIncludes(changelog, "CampaignCue CueLayers Safe Upload Spine", "CampaignCue changelog CueLayers implementation entry");
 }
 
 function verifyRequiredFiles() {
@@ -488,11 +614,15 @@ function verifyRequiredFiles() {
     "src/lib/validation/campaigncueSchemas.ts",
     "src/lib/campaigncue/apiGuards.ts",
     "src/lib/campaigncue/server.ts",
+    "src/lib/campaigncue/cue-layers/server.ts",
+    "src/types/campaigncueCueLayers.ts",
+    "src/lib/validation/campaigncueCueLayersSchemas.ts",
     "src/app/sites/campaigncue/page.tsx",
     "src/app/(campaigncue)/campaigncue/app/page.tsx",
     "src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx",
     "__docs__/campaigncue/campaigncue-delivery-boundary.md",
     "__docs__/campaigncue/campaigncue-production-implementation-audit.md",
+    "__docs__/campaigncue/cue-layers/cue-layers_validation.md",
   ].forEach((relPath) => assert(exists(relPath), `${relPath} exists`));
 }
 

@@ -29,7 +29,11 @@ import {
 import { DB_COLLECTIONS } from "@constant/database";
 import { SIGNIN_URL } from "@constant/urls";
 import { FEATURE_FLAGS } from "@config/features";
-import { admin, campaigncueFirestoreAdmin as firestoreAdmin } from "@lib/firebase/campaigncueFirebaseAdmin";
+import {
+    admin,
+    campaigncueFirestoreAdmin as firestoreAdmin,
+    campaigncueStorageAdmin,
+} from "@lib/firebase/campaigncueFirebaseAdmin";
 import { firestoreAdmin as menuListFirestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import type {
@@ -1790,6 +1794,53 @@ export async function createCampaignCueAssetServer(params: {
         metadata: { assetId: asset.id, assetType: asset.assetType, rightsStatus: asset.rights.status },
     });
     return asset;
+}
+
+const isWorkspaceStoragePath = (storagePath: string, workspaceId: string) => (
+    storagePath.startsWith(`campaigncue/assets/${workspaceId}/`)
+    || storagePath.startsWith(`campaigncue/renders/${workspaceId}/`)
+    || storagePath.startsWith(`campaigncue/reports/${workspaceId}/`)
+    || storagePath.startsWith(`campaigncue/cue-layers/${workspaceId}/`)
+);
+
+export async function createCampaignCueAssetDownloadServer(params: {
+    assetId: string;
+    scope: CampaignCueSessionScope;
+}) {
+    const workspace = await ensureCampaignCueWorkspaceOnlyServer(params.scope);
+    const workspaceId = workspace.workspaceId;
+    const snap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS)
+        .doc(params.assetId)
+        .get();
+    if (!snap.exists) throw new Error("Asset not found.");
+    const asset = snap.data() as CampaignCueAsset;
+    if (asset.workspaceId !== workspaceId) throw new Error("Asset not found.");
+    if (asset.status === "blocked") throw new Error("This asset is blocked.");
+    if (asset.file?.downloadUrl) {
+        return {
+            assetId: asset.id,
+            expiresAt: null,
+            mimeType: asset.file.mimeType,
+            name: asset.name,
+            url: asset.file.downloadUrl,
+        };
+    }
+    const storagePath = asset.file?.storagePath;
+    if (!storagePath || !isWorkspaceStoragePath(storagePath, workspaceId)) {
+        throw new Error("This asset does not have a downloadable file.");
+    }
+    const expiresAt = Date.now() + 15 * 60 * 1000;
+    const [url] = await campaigncueStorageAdmin.bucket().file(storagePath).getSignedUrl({
+        action: "read",
+        expires: expiresAt,
+    });
+    return {
+        assetId: asset.id,
+        expiresAt,
+        mimeType: asset.file.mimeType,
+        name: asset.name,
+        url,
+    };
 }
 
 export async function createCampaignCueSourceInputServer(params: {

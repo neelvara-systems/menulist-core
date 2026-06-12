@@ -88,6 +88,56 @@ service cloud.firestore {
       match /idempotencyKeys/{docId} {
         allow read, write: if false;
       }
+
+      match /cueLayerDesigns/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /cueLayerJobs/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /cueLayerJobEvents/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /cueLayerVersions/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /cueLayerExports/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /cueLayerRepairRequests/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /cueLayerCorrectionEvents/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /cueLayerQualityReports/{docId} {
+        allow read: if isCampaignCueWorkspaceMemberById(workspaceId);
+        allow write: if false;
+      }
+
+      match /cueLayerCostRecords/{docId} {
+        allow read: if isPlatformAdmin();
+        allow write: if false;
+      }
+
+      match /cueLayerReviewSamples/{docId} {
+        allow read: if isPlatformAdmin();
+        allow write: if false;
+      }
     }
 
     function isAuthenticated() {

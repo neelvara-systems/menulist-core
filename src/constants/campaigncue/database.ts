@@ -16,6 +16,16 @@ export const CAMPAIGNCUE_COLLECTIONS = {
     LOCATIONS: "locations",
     AGENCY_CLIENT_LINKS: "agencyClientLinks",
     IDEMPOTENCY_KEYS: "idempotencyKeys",
+    CUE_LAYER_DESIGNS: "cueLayerDesigns",
+    CUE_LAYER_JOBS: "cueLayerJobs",
+    CUE_LAYER_JOB_EVENTS: "cueLayerJobEvents",
+    CUE_LAYER_VERSIONS: "cueLayerVersions",
+    CUE_LAYER_EXPORTS: "cueLayerExports",
+    CUE_LAYER_REPAIR_REQUESTS: "cueLayerRepairRequests",
+    CUE_LAYER_CORRECTION_EVENTS: "cueLayerCorrectionEvents",
+    CUE_LAYER_QUALITY_REPORTS: "cueLayerQualityReports",
+    CUE_LAYER_COST_RECORDS: "cueLayerCostRecords",
+    CUE_LAYER_REVIEW_SAMPLES: "cueLayerReviewSamples",
 } as const;
 
 export const CAMPAIGNCUE_DASHBOARD_SUMMARY_ID = "dashboard";

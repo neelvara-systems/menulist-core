@@ -18,6 +18,18 @@ Recover original Canva, Figma, Photoshop, or PSD source layers.
 
 Flattened pixels do not contain enough information to recover the original design file with certainty. CueLayers is valuable because it gives the owner a practical reusable design, not because it claims perfect source-file recovery.
 
+## Current Implementation Status
+
+The active runtime implements Flow 1 in conservative form:
+
+- Upload PNG/JPEG/WebP.
+- Preserve the original as the first-render editor image.
+- Store source packages, truth snapshots, reconstruction/quality/version artifacts, and export records.
+- Open the shared Creative Editor with a locked image reference and normal editor tools for owner edits.
+- Autosave immutable editor snapshots and register exported assets for manual download/reuse.
+
+Flow 2 and Flow 3 are product goals but are not enabled in the current runtime. OCR/text extraction, generated-source intake, segmentation, vectorization, background repair, provider workers, and high-confidence editable decomposition remain behind feature flags and model capability registry gates.
+
 ## Target Users
 
 | User | Need |

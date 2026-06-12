@@ -2,7 +2,22 @@
 
 ## Implementation Status
 
-This document is a technical plan. The current repo has the shared Creative Editor and CampaignCue adapter implemented, but CueLayers-specific source packages, jobs, reconstruction schema, workers, APIs, and UI are not implemented yet.
+This document is both the implementation plan and current implementation map.
+
+Implemented now:
+
+- CampaignCue owner upload entry from Editor and Asset Library.
+- Source package, design, job, version, quality report, repair request, correction event, and export metadata contracts.
+- CampaignCue-authenticated API routes for upload, list, job read, boot, autosave, repair record, Storage-backed export registration, and scoped Asset Library download handoff.
+- CampaignCue Storage-first artifacts with immutable source/package/version/reconstruction/quality/repair/export paths.
+- `CreativeEditorDocumentSnapshot` as durable editor truth with `cue-asset://assetId` references.
+- Boot-time signed URL hydration and autosave-time URL dehydration.
+- Flat-safe projection into the shared Creative Editor that preserves the original image as the first render.
+
+Not implemented as active runtime yet:
+
+- OCR/text recovery, segmentation masks, vectorization, semantic background repair, generated-source intake, worker dispatch, provider model calls, visual diff rendering, and high-confidence editable decomposition.
+- These paths are intentionally gated behind feature flags and server-side capability registry entries until deterministic fixtures and provider adapters are implemented.
 
 ## Current Codebase Truth
 
@@ -74,12 +89,12 @@ Add flags in `src/config/features.ts`.
 | --- | --- | --- |
 | `ENABLE_CAMPAIGNCUE_CUE_LAYERS` | `true` after implementation | Top-level CueLayers capability. |
 | `ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD` | `true` | Owner upload source adapter. |
-| `ENABLE_CAMPAIGNCUE_CUE_LAYERS_GENERATED_SOURCE` | `true` | Generated source adapter. |
-| `ENABLE_CAMPAIGNCUE_CUE_LAYERS_TEXT_EDITABLE` | `true` | Allows text conversion only after safety gate. |
-| `ENABLE_CAMPAIGNCUE_CUE_LAYERS_VECTOR_EDITABLE` | `true` | Allows vector candidates only after validation. |
+| `ENABLE_CAMPAIGNCUE_CUE_LAYERS_GENERATED_SOURCE` | `false` | Generated source adapter. |
+| `ENABLE_CAMPAIGNCUE_CUE_LAYERS_TEXT_EDITABLE` | `false` | Allows text conversion only after safety gate. |
+| `ENABLE_CAMPAIGNCUE_CUE_LAYERS_VECTOR_EDITABLE` | `false` | Allows vector candidates only after validation. |
 | `ENABLE_CAMPAIGNCUE_CUE_LAYERS_BACKGROUND_REPAIR` | `false` until validated | Controls semantic/background repair risk. |
 | `ENABLE_CAMPAIGNCUE_CUE_LAYERS_SVG_EXPORT` | `false` until sanitized | Controls risky SVG output. |
-| `ENABLE_CAMPAIGNCUE_CUE_LAYERS_REPAIR_WORKER` | `true` | Targeted repair loop. |
+| `ENABLE_CAMPAIGNCUE_CUE_LAYERS_REPAIR_WORKER` | `false` | Targeted repair loop. Current route records restore-fallback intent only. |
 | `ENABLE_CAMPAIGNCUE_CUE_LAYERS_LARGE_CANVAS_EXPORT` | `false` until cost-tested | Large export guard. |
 
 ## Proposed File Map
@@ -98,21 +113,21 @@ Add flags in `src/config/features.ts`.
 
 | Path | Purpose |
 | --- | --- |
-| `src/app/api/campaigncue/cue-layers/uploads/route.ts` | Create upload landing-zone signed target or direct upload session. |
-| `src/app/api/campaigncue/cue-layers/jobs/route.ts` | Create reconstruction job from source package. |
+| `src/app/api/campaigncue/cue-layers/uploads/route.ts` | Implemented. Creates a server-owned source package from owner upload and returns editor boot package. |
+| `src/app/api/campaigncue/cue-layers/jobs/route.ts` | Not implemented. Upload route currently creates the deterministic flat-safe job. |
 | `src/app/api/campaigncue/cue-layers/jobs/[jobId]/route.ts` | Read one job/design status. |
-| `src/app/api/campaigncue/cue-layers/jobs/[jobId]/cancel/route.ts` | Cancel pending/running job. |
+| `src/app/api/campaigncue/cue-layers/jobs/[jobId]/cancel/route.ts` | Not implemented. Required only when asynchronous workers are active. |
 | `src/app/api/campaigncue/cue-layers/designs/[designId]/boot/route.ts` | Return editor boot package with runtime-hydrated asset URLs. |
 | `src/app/api/campaigncue/cue-layers/designs/[designId]/autosave/route.ts` | Save debounced runtime snapshot pointer. |
-| `src/app/api/campaigncue/cue-layers/designs/[designId]/versions/route.ts` | Create explicit version snapshot. |
-| `src/app/api/campaigncue/cue-layers/designs/[designId]/repair/route.ts` | Create repair request. |
-| `src/app/api/campaigncue/cue-layers/designs/[designId]/exports/route.ts` | Create export request. |
+| `src/app/api/campaigncue/cue-layers/designs/[designId]/versions/route.ts` | Not implemented as a separate route. Autosave creates immutable version snapshots. |
+| `src/app/api/campaigncue/cue-layers/designs/[designId]/repair/route.ts` | Implemented for restore-fallback/correction-event records. Worker repair remains gated. |
+| `src/app/api/campaigncue/cue-layers/designs/[designId]/exports/route.ts` | Implemented. Revision-pins, stores rendered export bytes, and registers exported assets for manual download/reuse. |
 | `src/lib/campaigncue/cue-layers/server.ts` | CampaignCue Admin reads/writes, idempotency, state transitions. |
 | `src/lib/campaigncue/cue-layers/storagePaths.ts` | Canonical Storage paths and asset ref helpers. |
-| `src/lib/campaigncue/cue-layers/runtimeAssetUrls.ts` | Signed URL hydration and stripping. |
+| `src/lib/campaigncue/cue-layers/runtimeAssetUrls.ts` | Folded into `server.ts` for current implementation. Extract only if reuse grows. |
 | `src/lib/campaigncue/cue-layers/modelRegistry.ts` | CampaignCue model/provider selection using server-side config, feature flags, and cost gates. |
-| `src/lib/campaigncue/cue-layers/costEstimator.ts` | Provider, worker, Storage, and Firestore estimate before dispatch. |
-| `src/lib/campaigncue/cue-layers/workerDispatcher.ts` | Cloud Tasks/Firebase Functions/Cloud Run dispatch wrapper with task secret/IAM validation. |
+| `src/lib/campaigncue/cue-layers/costEstimator.ts` | Not implemented. No provider dispatch runs in the current safe upload spine. |
+| `src/lib/campaigncue/cue-layers/workerDispatcher.ts` | Not implemented. Required before async provider decomposition is enabled. |
 
 ### Pipeline
 
@@ -595,7 +610,7 @@ Every durable artifact must carry a `schemaVersion` and be readable through back
 | Text mismatch | Owner cannot edit altered semantic text until repaired/accepted. |
 | Flat-safe mode | Opens original as locked image with safe overlays only. |
 | Repair | Restore original, keep text as image, replace image, rerun selected area, downgrade vector. |
-| Export | Save/download from saved runtime state; no social posting. |
+| Export | Save/download from saved runtime state; rendered PNG bytes must be stored before Asset Library registration; no social posting. |
 
 ## Security Requirements
 
@@ -604,6 +619,8 @@ Every durable artifact must carry a `schemaVersion` and be readable through back
 - Do not load arbitrary external URLs, JavaScript URLs, raw user SVG, remote fonts, or base64 blobs in the renderer.
 - Hydrate only workspace-owned asset ids into short-lived signed URLs.
 - Strip signed URLs before autosave/version persistence.
+- Validate persisted image references against the current CueLayers layer index before writing a version.
+- Generate Asset Library download URLs only at request time; never persist signed URLs.
 - Enforce max image bytes, pixels, object count, layer count, vector path count, total editor document snapshot bytes, and export dimensions.
 - Add deletion paths for user-requested removal and failed temporary artifacts.
 

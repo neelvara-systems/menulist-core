@@ -6,6 +6,28 @@
 
 ---
 
+## June 12, 2026 - CampaignCue CueLayers Safe Upload Spine
+
+### Added
+
+- **CueLayers safe upload spine implemented** - CampaignCue owners can upload PNG, JPEG, or WebP images from Editor or Asset Library, open the preserved original in the shared Creative Editor, autosave immutable editor snapshots, and register exported assets for manual download/reuse.
+- **CueLayers contracts added** - CampaignCue now has CueLayers constants, types, validation schemas, immutable Storage paths, model capability registry, source-package artifacts, truth snapshots, layer index, quality report, repair record, correction event, and export metadata contracts.
+- **CueLayers API routes added** - Protected routes now cover upload, design list, job read, boot, autosave, fallback repair record, and revision-pinned export.
+
+### Boundaries
+
+- **Provider decomposition remains gated** - Generated-source intake, OCR/text recovery, segmentation, vectorization, semantic background repair, worker dispatch, premium model calls, and high-confidence editable decomposition are disabled until adapters and deterministic fixtures exist.
+- **Original image remains first-render truth** - The implemented projection opens the uploaded image unchanged as a locked reference and never persists signed URLs or base64 payloads in durable editor state.
+
+### Cost
+
+- **No model cost introduced** - The current CueLayers path uses validation, Storage, Firestore pointers, and shared-editor export registration only. Provider calls and worker fan-out remain off.
+- **Firestore stays pointer-only** - Large source packages, snapshots, reconstruction documents, layer indexes, quality reports, and exports live in Storage while Firestore stores compact state and pointers.
+
+### Validation
+
+- **CueLayers validation report added** - `__docs__/campaigncue/cue-layers/cue-layers_validation.md` records implementation scope, files reviewed, fixes made, security result, Firebase cost result, UX result, docs result, and remaining gated work.
+
 ## June 12, 2026 - Shared Creative Editor And CampaignCue Adapter
 
 ### Added

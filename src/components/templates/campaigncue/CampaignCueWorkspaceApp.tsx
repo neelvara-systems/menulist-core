@@ -4,10 +4,16 @@ import { SIGNIN_URL } from "@constant/urls";
 import { CAMPAIGNCUE_PAGE_SIZE } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX } from "@constant/campaigncue/domains";
 import { CAMPAIGNCUE_ERROR_CODES } from "@constant/campaigncue/errors";
+import { CAMPAIGNCUE_CUE_LAYERS } from "@constant/campaigncue/cueLayers";
 import { CAMPAIGNCUE_WORKSPACE_TABS, type CampaignCueWorkspaceTabKey } from "@constant/campaigncue/navigations";
 import {
     CAMPAIGNCUE_API_ROUTES,
     buildCampaignCueAuthLaunchUrl,
+    getCampaignCueAssetDownloadApiPath,
+    getCampaignCueCueLayersAutosaveApiPath,
+    getCampaignCueCueLayersBootApiPath,
+    getCampaignCueCueLayersExportApiPath,
+    getCampaignCueCueLayersRepairApiPath,
     getCampaignCueCampaignActionApiPath,
 } from "@constant/campaigncue/routes";
 import {
@@ -39,8 +45,13 @@ import type {
     CampaignCueProviderStatus,
     CampaignCueSourceInput,
 } from "@type/campaigncue";
-import type { ComponentType } from "react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import type {
+    CampaignCueCueLayerBootPackage,
+    CampaignCueCueLayerDesign,
+    CampaignCueCueLayerUploadResult,
+} from "@type/campaigncueCueLayers";
+import type { ChangeEvent, ComponentType } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
     LuArrowRight,
     LuBuilding2,
@@ -50,14 +61,17 @@ import {
     LuDownload,
     LuFileText,
     LuImage,
+    LuLayers,
     LuMapPin,
     LuPackageCheck,
     LuRefreshCw,
+    LuRotateCcw,
     LuSend,
     LuShieldCheck,
     LuSparkles,
     LuStore,
     LuUpload,
+    LuUploadCloud,
     LuUsers,
 } from "react-icons/lu";
 import styles from "./CampaignCueWorkspaceApp.module.scss";
@@ -84,9 +98,26 @@ const trustTone = (gate?: string) => {
 
 const displayLabel = (value?: string) => (value || "").replace(/_/g, " ");
 
+const formatLooseDate = (value: unknown) => {
+    if (!value) return "";
+    const rawDate = typeof value === "string" || typeof value === "number" || value instanceof Date
+        ? new Date(value)
+        : typeof (value as { toDate?: unknown }).toDate === "function"
+            ? (value as { toDate: () => Date }).toDate()
+            : null;
+    if (!rawDate || Number.isNaN(rawDate.getTime())) return "";
+    return rawDate.toLocaleDateString();
+};
+
 const noticeTone = (notice: string) => (
     /blocked|could|failed|not|unavailable|error/i.test(notice) ? "red" : "green"
 );
+
+const cueLayerDesignTone = (status?: string) => {
+    if (status === "ready") return "green";
+    if (status === "failed" || status === "cancelled") return "red";
+    return "amber";
+};
 
 const providerOwnerSummary = (provider: CampaignCueProviderStatus) => {
     if (provider.status === "manual_only") {
@@ -99,6 +130,29 @@ const providerOwnerSummary = (provider: CampaignCueProviderStatus) => {
 };
 
 const buildIdempotencyKey = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+const formatMegabytes = (bytes: number) => `${Math.max(1, Math.floor(bytes / (1024 * 1024)))} MB`;
+
+const fingerprintDocument = (documentValue: CreativeEditorDocument | null) => (
+    documentValue ? JSON.stringify(documentValue) : ""
+);
+
+const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Image could not be read."));
+    reader.readAsDataURL(file);
+});
+
+const readImageDimensions = (dataUrl: string) => new Promise<{ height: number; width: number }>((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve({
+        height: image.naturalHeight || 1080,
+        width: image.naturalWidth || 1080,
+    });
+    image.onerror = () => resolve({ height: 1080, width: 1080 });
+    image.src = dataUrl;
+});
 
 const getLocalSignInUrl = () => {
     if (typeof window === "undefined") return buildCampaignCueAuthLaunchUrl(SIGNIN_URL);
@@ -115,6 +169,17 @@ const downloadText = (filename: string, text: string) => {
     anchor.download = filename;
     anchor.click();
     URL.revokeObjectURL(url);
+};
+
+const openDownloadUrl = (url: string, filename: string) => {
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.rel = "noopener noreferrer";
+    anchor.target = "_blank";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
 };
 
 const parseDateTimeLocal = (value: string): string => {
@@ -420,9 +485,17 @@ export default function CampaignCueWorkspaceApp() {
         rightsStatus: "needs_review",
         tags: "",
     });
+    const cueLayerUploadInputRef = useRef<HTMLInputElement | null>(null);
+    const cueLayerAutosaveTimeoutRef = useRef<number | null>(null);
+    const cueLayerLastSavedFingerprintRef = useRef("");
+    const [cueLayerDesigns, setCueLayerDesigns] = useState<CampaignCueCueLayerDesign[]>([]);
+    const [activeCueLayerDesign, setActiveCueLayerDesign] = useState<CampaignCueCueLayerDesign | null>(null);
+    const [activeCueLayerRevision, setActiveCueLayerRevision] = useState<number | null>(null);
+    const [editorDraftDocument, setEditorDraftDocument] = useState<CreativeEditorDocument | null>(null);
     const [editorDocument, setEditorDocument] = useState<CreativeEditorDocument | null>(null);
     const [editorSourceLabel, setEditorSourceLabel] = useState("Blank asset");
     const [outcomeDraft, setOutcomeDraft] = useState("Got replies, bookings, walk-ins, orders, or useful comments.");
+    const data = state.data;
 
     const load = async () => {
         setState((current) => ({ ...current, loading: true, error: undefined }));
@@ -452,11 +525,34 @@ export default function CampaignCueWorkspaceApp() {
     }, []);
 
     useEffect(() => {
+        if (!data || !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS) return;
+        void loadCueLayerDesigns();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data?.workspace.workspaceId]);
+
+    useEffect(() => {
+        if (!activeCueLayerDesign || !editorDraftDocument || activeCueLayerRevision == null) return;
+        const fingerprint = fingerprintDocument(editorDraftDocument);
+        if (!fingerprint || fingerprint === cueLayerLastSavedFingerprintRef.current) return;
+        if (cueLayerAutosaveTimeoutRef.current) window.clearTimeout(cueLayerAutosaveTimeoutRef.current);
+        cueLayerAutosaveTimeoutRef.current = window.setTimeout(() => {
+            void saveCueLayerDocumentNow(editorDraftDocument).catch((error) => {
+                setNotice(error instanceof Error ? error.message : "Layered image autosave failed.");
+            });
+        }, 1800);
+        return () => {
+            if (cueLayerAutosaveTimeoutRef.current) {
+                window.clearTimeout(cueLayerAutosaveTimeoutRef.current);
+                cueLayerAutosaveTimeoutRef.current = null;
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeCueLayerDesign?.id, activeCueLayerRevision, editorDraftDocument]);
+
+    useEffect(() => {
         const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
         setPublicSiteHref(isLocal ? CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX : "/");
     }, []);
-
-    const data = state.data;
 
     const updateOverview = (updater: (current: CampaignCueOverview) => CampaignCueOverview) => {
         setState((current) => (
@@ -464,6 +560,153 @@ export default function CampaignCueWorkspaceApp() {
                 ? { ...current, data: updater(current.data), loading: false }
                 : current
         ));
+    };
+
+    const loadCueLayerDesigns = async () => {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS) return;
+        try {
+            const res = await fetch(CAMPAIGNCUE_API_ROUTES.CUE_LAYERS_DESIGNS, {
+                cache: "no-store",
+                credentials: "include",
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (res.ok) setCueLayerDesigns(payload.data || []);
+        } catch {
+            setCueLayerDesigns([]);
+        }
+    };
+
+    const openCueLayerBootPackage = (boot: CampaignCueCueLayerBootPackage) => {
+        setActiveCueLayerDesign(boot.design);
+        setActiveCueLayerRevision(boot.design.current.revision);
+        setEditorDocument(boot.document);
+        setEditorDraftDocument(boot.document);
+        cueLayerLastSavedFingerprintRef.current = fingerprintDocument(boot.document);
+        setEditorSourceLabel(`CueLayers · ${boot.design.title}`);
+        setTab("editor");
+    };
+
+    const openCueLayerDesign = async (designId: string) => {
+        setBusyKey(`cue-layer-open:${designId}`);
+        setNotice("");
+        try {
+            const res = await fetch(getCampaignCueCueLayersBootApiPath(designId), {
+                cache: "no-store",
+                credentials: "include",
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setNotice(payload?.error || "Layered image could not open.");
+                return;
+            }
+            openCueLayerBootPackage(payload.data as CampaignCueCueLayerBootPackage);
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const saveCueLayerDocumentNow = async (documentValue: CreativeEditorDocument) => {
+        if (!activeCueLayerDesign || activeCueLayerRevision == null) return activeCueLayerRevision;
+        if (cueLayerAutosaveTimeoutRef.current) {
+            window.clearTimeout(cueLayerAutosaveTimeoutRef.current);
+            cueLayerAutosaveTimeoutRef.current = null;
+        }
+        const fingerprint = fingerprintDocument(documentValue);
+        if (fingerprint === cueLayerLastSavedFingerprintRef.current) return activeCueLayerRevision;
+        const res = await fetch(getCampaignCueCueLayersAutosaveApiPath(activeCueLayerDesign.id), {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                document: documentValue,
+                expectedRevision: activeCueLayerRevision,
+                idempotencyKey: buildIdempotencyKey("cue_layers_save"),
+            }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(payload?.error || "Layered image could not be saved.");
+        }
+        const revision = Number(payload?.data?.revision || activeCueLayerRevision);
+        const design = payload?.data?.design as CampaignCueCueLayerDesign | undefined;
+        if (design?.id) {
+            setActiveCueLayerDesign(design);
+            setCueLayerDesigns((current) => replaceBounded(current, design, CAMPAIGNCUE_PAGE_SIZE));
+        }
+        setActiveCueLayerRevision(revision);
+        cueLayerLastSavedFingerprintRef.current = fingerprint;
+        return revision;
+    };
+
+    const uploadCueLayerFile = async (file: File) => {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD) return;
+        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+            setNotice("Use a PNG, JPEG, or WebP image.");
+            return;
+        }
+        if (file.size > CAMPAIGNCUE_CUE_LAYERS.MAX_UPLOAD_BYTES) {
+            setNotice(`Use an image under ${formatMegabytes(CAMPAIGNCUE_CUE_LAYERS.MAX_UPLOAD_BYTES)}.`);
+            return;
+        }
+        setBusyKey("cue-layer-upload");
+        setNotice("");
+        try {
+            const dataUrl = await fileToDataUrl(file);
+            const dimensions = await readImageDimensions(dataUrl);
+            const res = await fetch(CAMPAIGNCUE_API_ROUTES.CUE_LAYERS_UPLOADS, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    dataUrl,
+                    fileName: file.name,
+                    height: dimensions.height,
+                    idempotencyKey: buildIdempotencyKey("cue_layers_upload"),
+                    mimeType: file.type,
+                    sourceKind: "user_upload",
+                    title: `${file.name.replace(/\.[a-z0-9]+$/i, "")} layered edit`,
+                    width: dimensions.width,
+                }),
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setNotice(payload?.error || "Image could not be layered.");
+                return;
+            }
+            const result = payload.data as CampaignCueCueLayerUploadResult;
+            setCueLayerDesigns((current) => prependBounded(current, result.design, CAMPAIGNCUE_PAGE_SIZE));
+            openCueLayerBootPackage(result.boot);
+            setNotice("Layered image ready. Original preserved.");
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const repairCueLayerFallback = async () => {
+        if (!activeCueLayerDesign || activeCueLayerRevision == null) return;
+        setBusyKey("cue-layer-repair");
+        setNotice("");
+        try {
+            const res = await fetch(getCampaignCueCueLayersRepairApiPath(activeCueLayerDesign.id), {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    correctionType: "restore_fallback",
+                    expectedRevision: activeCueLayerRevision,
+                }),
+            });
+            const payload = await res.json().catch(() => ({}));
+            setNotice(res.ok ? "Original fallback is available." : payload?.error || "Fallback could not be prepared.");
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const onCueLayerUploadChange = async (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (file) await uploadCueLayerFile(file);
     };
 
     useEffect(() => {
@@ -729,12 +972,48 @@ export default function CampaignCueWorkspaceApp() {
         }
     };
 
+    const downloadAsset = async (asset: CampaignCueAsset) => {
+        if (!asset.file?.downloadUrl && !asset.file?.storagePath) {
+            setNotice("This asset does not have a downloadable file yet.");
+            return;
+        }
+        setBusyKey(`asset-download:${asset.id}`);
+        setNotice("");
+        try {
+            const res = await fetch(getCampaignCueAssetDownloadApiPath(asset.id), {
+                cache: "no-store",
+                credentials: "include",
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setNotice(payload?.error || "Asset download is unavailable.");
+                return;
+            }
+            const url = payload?.data?.url;
+            if (typeof url !== "string" || !url) {
+                setNotice("Asset download is unavailable.");
+                return;
+            }
+            openDownloadUrl(url, `${asset.name || "campaigncue-asset"}`);
+            setNotice("Asset download opened.");
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
     const creativeEditorEnabled = FEATURE_FLAGS.ENABLE_SHARED_CREATIVE_EDITOR
         && FEATURE_FLAGS.ENABLE_SHARED_CREATIVE_EDITOR_INTERACTIVE_CANVAS
         && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CREATIVE_EDITOR;
+    const cueLayersUploadEnabled = creativeEditorEnabled
+        && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS
+        && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD;
 
     const openBlankCreativeEditor = () => {
         if (!data || !creativeEditorEnabled) return;
+        setActiveCueLayerDesign(null);
+        setActiveCueLayerRevision(null);
+        setEditorDraftDocument(null);
+        cueLayerLastSavedFingerprintRef.current = "";
         setEditorDocument(buildCampaignCueBlankCreativeDocument({
             businessBrain: data.businessBrain,
             workspace: data.workspace,
@@ -745,6 +1024,10 @@ export default function CampaignCueWorkspaceApp() {
 
     const openOutputCreativeEditor = (campaign: CampaignCueCampaign, output: CampaignCueOutput) => {
         if (!data || !creativeEditorEnabled) return;
+        setActiveCueLayerDesign(null);
+        setActiveCueLayerRevision(null);
+        setEditorDraftDocument(null);
+        cueLayerLastSavedFingerprintRef.current = "";
         setEditorDocument(buildCampaignCueOutputCreativeDocument({
             businessBrain: data.businessBrain,
             campaign,
@@ -760,6 +1043,41 @@ export default function CampaignCueWorkspaceApp() {
         setBusyKey("editor-export");
         setNotice("");
         try {
+            if (activeCueLayerDesign && activeCueLayerRevision != null) {
+                if (result.format === "svg") {
+                    setNotice("Use PNG export for layered images.");
+                    return;
+                }
+                const savedRevision = await saveCueLayerDocumentNow(result.document);
+                const res = await fetch(getCampaignCueCueLayersExportApiPath(activeCueLayerDesign.id), {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        document: result.document,
+                        format: result.format === "json" ? "json" : result.format,
+                        idempotencyKey: buildIdempotencyKey("cue_layers_export"),
+                        mimeType: result.mimeType,
+                        renderedDataUrl: result.dataUrl,
+                        sizeBytes: result.sizeBytes,
+                        sourceRevision: savedRevision ?? activeCueLayerRevision,
+                    }),
+                });
+                const payload = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    setNotice(payload?.error || "Layered export could not be saved.");
+                    return;
+                }
+                const asset = payload?.data?.asset as CampaignCueAsset | undefined;
+                if (asset?.id) {
+                    updateOverview((current) => ({
+                        ...current,
+                        assets: prependBounded(current.assets, asset, CAMPAIGNCUE_PAGE_SIZE),
+                    }));
+                }
+                setNotice("Layered export saved in Asset Library.");
+                return;
+            }
             const metadata = result.document.metadata || {};
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.ASSETS, {
                 method: "POST",
@@ -920,6 +1238,15 @@ export default function CampaignCueWorkspaceApp() {
 
     return (
         <main className={styles.shell}>
+            {cueLayersUploadEnabled ? (
+                <input
+                    ref={cueLayerUploadInputRef}
+                    accept="image/png,image/jpeg,image/webp"
+                    hidden
+                    onChange={onCueLayerUploadChange}
+                    type="file"
+                />
+            ) : null}
             <header className={styles.topbar}>
                 <div className={styles.brand}>
                     <span className={styles.brandMark}>CC</span>
@@ -1487,29 +1814,124 @@ export default function CampaignCueWorkspaceApp() {
                                 <div>
                                     <span className={styles.eyebrow}>Creative Editor</span>
                                     <h2>Image editor</h2>
-                                    <p>Create a campaign asset from scratch or edit a prepared campaign output.</p>
+                                    <p>Create a campaign asset, open a prepared output, or turn an existing image into a safe editable layer set.</p>
                                 </div>
-                                {creativeEditorEnabled ? (
-                                    <button className={styles.button} onClick={openBlankCreativeEditor} type="button">
-                                        <LuImage size={16} />
-                                        Create from scratch
-                                    </button>
-                                ) : null}
+                                <div className={styles.topActions}>
+                                    {cueLayersUploadEnabled ? (
+                                        <button
+                                            className={styles.ghostButton}
+                                            disabled={busyKey === "cue-layer-upload"}
+                                            onClick={() => cueLayerUploadInputRef.current?.click()}
+                                            type="button"
+                                        >
+                                            <LuUploadCloud size={16} />
+                                            Turn image into layers
+                                        </button>
+                                    ) : null}
+                                    {creativeEditorEnabled ? (
+                                        <button className={styles.button} onClick={openBlankCreativeEditor} type="button">
+                                            <LuImage size={16} />
+                                            Create from scratch
+                                        </button>
+                                    ) : null}
+                                </div>
                             </div>
+                            {cueLayersUploadEnabled ? (
+                                <>
+                                    <div className={styles.panel}>
+                                        <div className={styles.row}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}>
+                                                    <LuLayers size={18} />
+                                                </div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{activeCueLayerDesign ? activeCueLayerDesign.title : "Layered image reuse"}</h3>
+                                                    <p>
+                                                        {activeCueLayerDesign
+                                                            ? "Original image is preserved. Save or export from the editor when the result is ready."
+                                                            : "Upload an existing image when you want a reusable editor version."}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className={styles.chips}>
+                                                {activeCueLayerDesign ? (
+                                                    <>
+                                                        <span className={styles.chip} data-tone={cueLayerDesignTone(activeCueLayerDesign.status)}>
+                                                            {displayLabel(activeCueLayerDesign.status)}
+                                                        </span>
+                                                        <span className={styles.chip}>Revision {activeCueLayerRevision ?? activeCueLayerDesign.current.revision}</span>
+                                                        <button
+                                                            className={styles.ghostButton}
+                                                            disabled={busyKey === "cue-layer-repair"}
+                                                            onClick={repairCueLayerFallback}
+                                                            type="button"
+                                                        >
+                                                            <LuRotateCcw size={16} />
+                                                            Restore original
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <span className={styles.chip}>Original preserved</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {cueLayerDesigns.length ? (
+                                        <div className={styles.list}>
+                                            {cueLayerDesigns.slice(0, 5).map((design) => (
+                                                <div className={styles.assetRow} key={design.id}>
+                                                    <div className={styles.rowStart}>
+                                                        <div className={styles.iconBox}>
+                                                            <LuLayers size={18} />
+                                                        </div>
+                                                        <div className={styles.titleBlock}>
+                                                            <h3>{design.title}</h3>
+                                                            <p>
+                                                                {displayLabel(design.source.kind)}
+                                                                {" · "}
+                                                                revision {design.current.revision}
+                                                                {formatLooseDate(design.updatedAt) ? ` · ${formatLooseDate(design.updatedAt)}` : ""}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={styles.chips}>
+                                                        <span className={styles.chip} data-tone={cueLayerDesignTone(design.status)}>
+                                                            {displayLabel(design.status)}
+                                                        </span>
+                                                        <button
+                                                            className={styles.ghostButton}
+                                                            disabled={busyKey === `cue-layer-open:${design.id}`}
+                                                            onClick={() => openCueLayerDesign(design.id)}
+                                                            type="button"
+                                                        >
+                                                            <LuArrowRight size={16} />
+                                                            Open
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : null}
+                                </>
+                            ) : null}
                             {creativeEditorEnabled && editorDocument ? (
                                 <CreativeEditor
-                                    assetSources={buildCampaignCueCreativeAssetSources({
+                                    allowDesignImport={!activeCueLayerDesign}
+                                    allowNewDesign={!activeCueLayerDesign}
+                                    allowRasterImports={!activeCueLayerDesign}
+                                    assetSources={activeCueLayerDesign ? [] : buildCampaignCueCreativeAssetSources({
                                         assets: data.assets,
                                         businessBrain: data.businessBrain,
                                     })}
                                     initialDocument={editorDocument}
+                                    onDocumentChange={setEditorDraftDocument}
                                     onExport={registerEditorExport}
                                     productLabel="CampaignCue"
                                     sourceLabel={editorSourceLabel}
                                 />
                             ) : creativeEditorEnabled ? (
                                 <div className={styles.empty}>
-                                    <p>Start from a blank asset or open a campaign output from Packs or Social.</p>
+                                    <p>Start from a blank asset, upload an existing image, or open a campaign output from Packs or Social.</p>
                                 </div>
                             ) : (
                                 <div className={styles.empty}>
@@ -1598,12 +2020,25 @@ export default function CampaignCueWorkspaceApp() {
                                     <h2>Photos and files</h2>
                                     <p>{data.assets.length ? "Saved assets can be checked before they are reused in packs." : "Save photos, logos, or files that may be used in campaigns."}</p>
                                 </div>
-                                {creativeEditorEnabled ? (
-                                    <button className={styles.button} onClick={openBlankCreativeEditor} type="button">
-                                        <LuImage size={16} />
-                                        Create from scratch
-                                    </button>
-                                ) : null}
+                                <div className={styles.topActions}>
+                                    {cueLayersUploadEnabled ? (
+                                        <button
+                                            className={styles.ghostButton}
+                                            disabled={busyKey === "cue-layer-upload"}
+                                            onClick={() => cueLayerUploadInputRef.current?.click()}
+                                            type="button"
+                                        >
+                                            <LuUploadCloud size={16} />
+                                            Turn image into layers
+                                        </button>
+                                    ) : null}
+                                    {creativeEditorEnabled ? (
+                                        <button className={styles.button} onClick={openBlankCreativeEditor} type="button">
+                                            <LuImage size={16} />
+                                            Create from scratch
+                                        </button>
+                                    ) : null}
+                                </div>
                             </div>
                             <div className={styles.panel}>
                                 <div className={styles.formGrid}>
@@ -1715,6 +2150,17 @@ export default function CampaignCueWorkspaceApp() {
                                             <span className={styles.chip} data-tone={asset.status === "blocked" ? "red" : asset.rights.status === "confirmed" ? "green" : "amber"}>
                                                 {displayLabel(asset.rights.status)}
                                             </span>
+                                            {asset.file?.downloadUrl || asset.file?.storagePath ? (
+                                                <button
+                                                    className={styles.ghostButton}
+                                                    disabled={busyKey === `asset-download:${asset.id}`}
+                                                    onClick={() => downloadAsset(asset)}
+                                                    type="button"
+                                                >
+                                                    <LuDownload size={16} />
+                                                    Download
+                                                </button>
+                                            ) : null}
                                         </div>
                                     </div>
                                 ))}

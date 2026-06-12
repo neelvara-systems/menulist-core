@@ -321,6 +321,7 @@ export interface CreativeEditorAssetSource {
 }
 
 export interface CreativeEditorExportResult {
+    dataUrl?: string;
     document: CreativeEditorDocument;
     filename: string;
     format: CreativeEditorExportFormat;
