@@ -17,7 +17,7 @@ The active runtime uses the signed-in MenuList store profile as a read-only boot
 | Website URL | Basic business facts and available public content, with review. |
 | MenuList | Official restaurant/store/menu/photos/public-link source snapshots. |
 | Google Business Profile | Manual Google-ready drafts; connected publish context is reserved for a separate future layer. |
-| WhatsApp Business | Manual message copy/export; direct-send and template status are reserved for a separate future layer. |
+| WhatsApp Business | Manual message download/export; direct-send and template status are reserved for a separate future layer. |
 | Meta social/ads | Manual social/ad handoff packs; no ad-account or social-account mutation in the active runtime. |
 | Booking/POS/order | Owner-entered links and outcomes now; imports only after a future connector contract exists. |
 

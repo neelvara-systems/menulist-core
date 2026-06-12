@@ -36,7 +36,7 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | AssetService | Upload, classify, rights/consent metadata. |
 | TrustService | Fact, source, consent, claim, vertical, destination, asset-rights, and spend checks. |
 | CreditService | Estimate, reserve, capture, refund. |
-| DeliveryService | Copy, output download, full-pack download, schedule, approval, manual-use, and result tracking. Provider posting is a separate future layer. |
+| DeliveryService | Output download, full-pack download, schedule, approval, manual-use, and result tracking. Provider posting is a separate future layer. |
 | AnalyticsService | Usage, manual execution, owner-reported outcomes, confidence labels, and provider-disabled posture. |
 
 ## Implementation Acceptance
@@ -50,7 +50,7 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Jobs | Current runtime uses synchronous server APIs with idempotency. Async generation/render/sync/publish/report jobs remain blocked until provider mode is enabled. |
 | Trust | Critical blockers and channel warnings enforced before export, handoff, and any future connected publish/direct send. |
 | Cost | Deterministic generation costs zero credits; paid generation remains disabled. |
-| Mobile | Owner critical actions remain within the responsive CampaignCue workspace; copy, schedule, mark used, source input, asset metadata, and result recording use 44px touch targets. |
+| Mobile | Owner critical actions remain within the responsive CampaignCue workspace; download/export, schedule, mark used, source input, asset metadata, and result recording use 44px touch targets. |
 
 ## Validation Checklist
 

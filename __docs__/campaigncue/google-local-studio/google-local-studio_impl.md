@@ -2,7 +2,7 @@
 
 ## Runtime Contract
 
-Google Local Studio must run through a CampaignCue Google adapter with explicit capability detection. UI must distinguish connected API publish, manual copy/export, and unsupported actions.
+Google Local Studio must run through a CampaignCue Google adapter with explicit capability detection. UI must distinguish connected API publish, manual download/export, and unsupported actions.
 
 ## Flow
 

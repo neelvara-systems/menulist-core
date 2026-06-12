@@ -8,7 +8,7 @@ Video Reel Studio is mobile-relevant because local owners often review scripts, 
 
 - Show one scene at a time.
 - Keep hook, overlay, and CTA readable without horizontal scroll.
-- Provide copy/download actions for scripts and captions.
+- Provide download/export actions for scripts and captions.
 - Keep render credit confirmation explicit.
 - Allow owner approval and export from phone.
 
@@ -23,4 +23,3 @@ Video Reel Studio is mobile-relevant because local owners often review scripts, 
 - Owner can review a complete reel brief on mobile.
 - Owner can approve a script without creating a render.
 - Render status and credit usage are understandable from the mobile screen.
-

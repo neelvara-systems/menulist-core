@@ -13,11 +13,10 @@ Explain that CampaignCue can prepare creator-ready scripts and briefs while keep
 - Useful for owners, staff, agencies, and local creators.
 - Keeps the selected offer, service, location, and CTA visible.
 - Adds disclosure and prohibited-claim notes where relevant.
-- Supports copy and download workflows.
+- Supports download and export workflows.
 
 ## Do Not Say
 
 - Do not promise creator sourcing or influencer management.
 - Do not claim legal approval.
 - Do not normalize fake testimonials or fake customer experiences.
-

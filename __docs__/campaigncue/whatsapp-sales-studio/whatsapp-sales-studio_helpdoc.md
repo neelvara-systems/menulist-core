@@ -16,7 +16,7 @@ Make sure the business has permission to message the audience. Do not import or 
 4. Confirm consent posture.
 5. Create message variants.
 6. Review trust checks.
-7. Copy, download, submit as a template, or send only where direct sending is configured.
+7. Download/export, submit as a template, or send only where direct sending is configured.
 
 ## Good Campaigns
 
@@ -25,4 +25,3 @@ Make sure the business has permission to message the audience. Do not import or 
 - Simple opt-out handling.
 - No misleading urgency.
 - No claims that the business cannot support.
-

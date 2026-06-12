@@ -6,7 +6,7 @@ WhatsApp Sales Studio must separate `draft`, `manual_export`, `template_submissi
 
 ## Current Runtime
 
-Current CampaignCue output generates WhatsApp-ready copy inside the campaign pack and exposes copy/download/export actions. There is no contact import, audience send, template submission, webhook processing, delivery/reply capture, opt-out processing, or direct-send action in the active runtime.
+Current CampaignCue output generates WhatsApp-ready text inside the campaign pack and exposes download/export actions. There is no contact import, audience send, template submission, webhook processing, delivery/reply capture, opt-out processing, clipboard-copy action, or direct-send action in the active runtime.
 
 ## Flow
 

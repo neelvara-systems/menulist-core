@@ -6,7 +6,7 @@ One campaign brief becomes a complete pack for the channels the business uses.
 
 ## Value
 
-The owner chooses the goal. CampaignCue prepares the campaign pack, keeps source details visible, and makes copy/download/manual handoff/approval actions clear.
+The owner chooses the goal. CampaignCue prepares the campaign pack, keeps source details visible, and makes download/export/manual handoff/approval actions clear.
 
 ## Approved Terms
 

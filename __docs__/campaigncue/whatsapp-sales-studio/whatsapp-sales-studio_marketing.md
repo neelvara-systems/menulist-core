@@ -8,7 +8,7 @@ WhatsApp Sales Studio helps local businesses prepare clear WhatsApp campaigns fr
 
 - Campaign messages start from real business facts.
 - Consent and opt-out posture stay visible.
-- Owners can use copy/export first and direct send only where configured.
+- Owners can use download/export first and direct send only where configured.
 - Replies and results can feed the next campaign cue.
 
 ## Proof Points
@@ -23,4 +23,3 @@ WhatsApp Sales Studio helps local businesses prepare clear WhatsApp campaigns fr
 - Do not promise mass blasting.
 - Do not imply cold outreach is acceptable.
 - Do not claim WhatsApp approval or deliverability is guaranteed.
-

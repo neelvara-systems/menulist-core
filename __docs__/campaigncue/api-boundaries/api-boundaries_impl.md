@@ -11,7 +11,7 @@ CampaignCue API code should live under CampaignCue-scoped modules and route grou
 | Internal app APIs | Campaign, generation, trust, export/download, schedule, analytics actions. |
 | Provider adapters | Separate future layer for Google, Meta, WhatsApp, generation, video, billing, and email/webhook providers. |
 | Webhooks | Provider callbacks for publish status, replies, metrics, billing, and opt-out events. |
-| Export APIs | Download/copy/share package creation. |
+| Export APIs | Download/export package creation. |
 | Partner APIs | Future agency/client integrations, disabled unless explicitly enabled. |
 
 Current runtime exposes only the internal app APIs listed below. Provider adapter routes, webhook endpoints, partner APIs, social account connection, and billing/provider callbacks are architecture contracts and remain inactive until a separate provider-posting layer is explicitly built.
@@ -42,7 +42,7 @@ Use product-scoped paths such as:
 | `/api/campaigncue/workspace` | `PATCH` | Update CampaignCue Business Brain fields. |
 | `/api/campaigncue/campaigns` | `GET` | Bounded campaign list through a direct workspace-only collection read. |
 | `/api/campaigncue/campaigns` | `POST` | Create deterministic structured export/download-first campaign pack with trust report, cue evidence, bounded source context, and atomic idempotency key support. |
-| `/api/campaigncue/campaigns/[campaignId]/actions` | `POST` | Record copy, download, pack export, schedule, approval, manual-use, or owner-reported outcome action with atomic idempotency. Direct publish/send actions are not part of the accepted schema. |
+| `/api/campaigncue/campaigns/[campaignId]/actions` | `POST` | Record download, pack export, schedule, approval, manual-use, or owner-reported outcome action with atomic idempotency. Direct publish/send actions are not part of the accepted schema. |
 | `/api/campaigncue/assets` | `GET` | Bounded asset metadata list through a direct workspace-only collection read. |
 | `/api/campaigncue/assets` | `POST` | Register asset metadata, rights status, consent type, rights note, tags, and usage refs. |
 | `/api/campaigncue/analytics` | `GET` | Read one workspace doc, one dashboard summary doc, provider posture, and cost model. |

@@ -45,7 +45,11 @@ export function isCampaignCueRuntimeRoute(pathname?: string | null, hostname?: s
 
 export function getCampaignCueWorkspaceRewritePath(pathname: string): string | null {
     const normalizedPathname = pathname === "/" ? "/" : pathname.replace(/\/+$/, "");
-    if (normalizedPathname !== CAMPAIGNCUE_WORKSPACE_PATH) return null;
+    if (normalizedPathname === CAMPAIGNCUE_WORKSPACE_PATH) {
+        return CAMPAIGNCUE_APP_INTERNAL_WORKSPACE_PATH;
+    }
 
-    return CAMPAIGNCUE_APP_INTERNAL_WORKSPACE_PATH;
+    if (!normalizedPathname.startsWith(`${CAMPAIGNCUE_WORKSPACE_PATH}/`)) return null;
+
+    return `${CAMPAIGNCUE_APP_INTERNAL_BASE_PATH}${normalizedPathname}`;
 }

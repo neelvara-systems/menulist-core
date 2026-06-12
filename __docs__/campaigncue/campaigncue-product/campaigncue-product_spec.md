@@ -50,9 +50,9 @@ The implemented runtime is export/download-first. It creates source-backed campa
 | Source-aware generation | Every generated output stores source references when source data was used. |
 | MenuList connector | Read-only by default, scoped by workspace/store/tenant, source snapshots required. |
 | Trust checks | Export, handoff, and manual-use actions are blocked when critical issues exist. |
-| Export/download delivery | Copy/download/export remains the active delivery path without social account connections. |
+| Export/download delivery | Download/export remains the active delivery path without social account connections. |
 | Credit visibility | Every paid generation shows estimate before reservation. |
-| Mobile owner workflows | Copy WhatsApp, approve, upload asset, fix simple trust issue, and mark posted must work on mobile. |
+| Mobile owner workflows | Download WhatsApp-ready text, approve, upload asset, fix simple trust issue, and mark posted must work on mobile. |
 
 ## Competitive Validation
 
@@ -76,7 +76,7 @@ See [campaigncue_founder-research-addendum.md](../campaigncue_founder-research-a
 | --- | --- |
 | Source-backed cue generation is the wedge. | Business Brain, Source Integrations, Opportunity Engine, and Trust Center are core, not support modules. |
 | Export/download is the first-class delivery path. | Every channel output must be useful without direct publishing credentials. |
-| WhatsApp is consent-led. | Message generation, copy/share, template/direct-send, opt-out, and pricing posture must be separate. |
+| WhatsApp is consent-led. | Message generation, download/share, template/direct-send, opt-out, and pricing posture must be separate. |
 | Google Local is useful but constrained. | Prepare manual Google-ready posts/offers/events/media; connected publish belongs in a separate future provider layer. |
 | Ads need policy preflight before platform mutation. | Ads Studio must focus on safe handoff, spend approval, and destination checks. |
 | UGC risk is high. | Scripts and creator briefs are safer than fake customer videos or synthetic testimonials. |

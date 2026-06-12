@@ -7,7 +7,7 @@ UGC Script Studio is mobile-relevant because owners and agencies may review or s
 ## Mobile Requirements
 
 - Show hook, script, shots, and prohibited claims in separated sections.
-- Keep approve, copy, export, and send actions large enough for touch.
+- Keep approve, download, export, and handoff actions large enough for touch.
 - Show trust status before export.
 - Let owners copy one section or the full brief.
 - Avoid dense side-by-side version comparison on mobile.
@@ -20,6 +20,5 @@ UGC Script Studio is mobile-relevant because owners and agencies may review or s
 
 ## Acceptance
 
-- Owner can review, approve, copy, and export a creator brief from mobile.
+- Owner can review, approve, download, and export a creator brief from mobile.
 - The mobile view shows disclosure and prohibited-claim notes before handoff.
-

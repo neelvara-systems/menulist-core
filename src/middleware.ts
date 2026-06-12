@@ -6,7 +6,7 @@
  * 1. Active product domains. Public product website paths rewrite to /sites/{product};
  *    product owner app paths rewrite to the product route group when configured.
  * 2. Dev path prefixes (/__answerlattice → /sites/answerlattice,
- *    /__campaigncue/app → /campaigncue/app) — local dev only
+ *    /__campaigncue/app(/...) → /campaigncue/app(/...)) — local dev only
  * 3. Client tenant domains (*.menulist.ai → /client)
  * 4. Platform domain (menulist.ai → (website) route group)
  * 
@@ -359,6 +359,10 @@ export async function middleware(request: NextRequest) {
         }
 
         if (productConfig.id === 'campaigncue') {
+            if (shouldBypassDomainRouting(pathname)) {
+                return applySecurityHeaders(request, NextResponse.next());
+            }
+
             const campaignCueWorkspacePath = getCampaignCueWorkspaceRewritePath(pathname);
             const url = request.nextUrl.clone();
             url.pathname = campaignCueWorkspacePath || `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;

@@ -48,13 +48,13 @@ CampaignCue starts with the business. It prepares a campaign pack from menu item
 | Know what to promote | The home screen shows practical cues such as top item, open slots, new service, missing photo, stale price, or festival campaign. | Cue cards for restaurant and salon. |
 | One campaign, many outputs | Generate WhatsApp, story, Google post, script, video, and ad handoff from one brief. | Channel output grid. |
 | Source-checked before use | Price, offer, consent, source freshness, and claim issues appear before export or handoff. | Trust check panel. |
-| Export/download first | Copy, text download, full-pack download, approval, scheduling, and manual posting stay available without connecting Google, WhatsApp, or ad accounts. | Export sheet. |
+| Export/download first | Text download, full-pack download, approval, scheduling, and manual posting stay available without connecting Google, WhatsApp, or ad accounts. | Export sheet. |
 
 ## How It Works
 
 1. **Add business data** — Connect MenuList, upload a menu or service list, or enter details manually.
 2. **Choose a campaign cue** — Promote an item, fill booking slots, create a weekend offer, or prepare a local update.
-3. **Use the campaign pack** — Review, fix trust issues, copy, download, schedule a manual task, hand off, or send for approval.
+3. **Use the campaign pack** — Review, fix trust issues, download, schedule a manual task, hand off, or send for approval.
 
 ## FAQ
 

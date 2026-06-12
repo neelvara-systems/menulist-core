@@ -37,6 +37,11 @@ function verifyFeatureFlags() {
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_ANALYTICS: true", "CampaignCue analytics flag");
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_PUBLISHING: false", "CampaignCue publishing flag");
   assertIncludes(flags, "ENABLE_CAMPAIGNCUE_BILLING: false", "CampaignCue billing flag");
+  assertIncludes(flags, "ENABLE_SHARED_CREATIVE_EDITOR: true", "Shared creative editor flag");
+  assertIncludes(flags, "ENABLE_SHARED_CREATIVE_EDITOR_INTERACTIVE_CANVAS: true", "Shared creative editor interactive canvas flag");
+  assertIncludes(flags, "ENABLE_SHARED_CREATIVE_EDITOR_FABRIC_ADAPTER: true", "Shared creative editor Fabric adapter flag");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_CREATIVE_EDITOR: true", "CampaignCue creative editor adapter flag");
+  assertIncludes(flags, "ENABLE_CAMPAIGNCUE_RENDERED_ASSET_EXPORTS: true", "CampaignCue editor export registration flag");
 }
 
 function verifyApiRoutes() {
@@ -164,6 +169,9 @@ function verifyClientRuntime() {
   assertNotIncludes(app, "CAMPAIGNCUE_API_ROUTES.INTEGRATIONS", "CampaignCue owner UI has no day-one integration mutation call");
   assertIncludes(app, "CAMPAIGNCUE_API_ROUTES.LOCATIONS", "CampaignCue locations UI API call");
   assertIncludes(app, "getCampaignCueCampaignActionApiPath", "CampaignCue campaign action API path helper");
+  assertIncludes(app, "parseDateTimeLocal(sourceDraft.expiresAt)", "CampaignCue source expiry converts local input at submit time");
+  assertIncludes(app, "value={sourceDraft.expiresAt}", "CampaignCue source expiry input keeps local datetime value");
+  assertNotIncludes(app, "new Date(event.target.value).toISOString()", "CampaignCue source expiry input avoids timezone drift while typing");
   assertIncludes(app, "No owner action is needed", "CampaignCue setup blocker uses owner-safe copy");
   assertIncludes(app, "Download pack", "CampaignCue owner can download full campaign pack");
   assertIncludes(app, "Delivery boundary", "CampaignCue settings explain export/download boundary");
@@ -173,6 +181,14 @@ function verifyClientRuntime() {
   assertIncludes(app, "Record result", "CampaignCue owner can record manual outcomes");
   assertIncludes(app, "Valid until", "CampaignCue source inputs support expiry");
   assertIncludes(app, "Consent", "CampaignCue asset UI captures consent posture");
+  assertIncludes(app, "CreativeEditor", "CampaignCue uses shared creative editor component");
+  assertIncludes(app, "buildCampaignCueBlankCreativeDocument", "CampaignCue blank editor adapter");
+  assertIncludes(app, "buildCampaignCueOutputCreativeDocument", "CampaignCue output editor adapter");
+  assertIncludes(app, "buildCampaignCueCreativeAssetSources", "CampaignCue editor asset source adapter");
+  assertIncludes(app, "registerEditorExport", "CampaignCue editor export callback");
+  assertIncludes(app, "Image editor", "CampaignCue editor tab screen");
+  assertIncludes(app, "Create from scratch", "CampaignCue blank editor entry");
+  assertIncludes(app, "Open editor", "CampaignCue campaign output editor entry");
   assertNotIncludes(app, "Connect the CampaignCue Firebase project", "CampaignCue owner setup copy hides Firebase instructions");
   assertNotIncludes(app, "source confidence", "CampaignCue owner dashboard avoids internal source confidence wording");
   assertNotIncludes(app, "Deterministic generation", "CampaignCue settings avoid deterministic-generation jargon");
@@ -187,12 +203,122 @@ function verifyClientRuntime() {
   assertIncludes(schemas, "return trimmed ? trimmed : null", "CampaignCue blank URL normalization");
   assertIncludes(schemas, "CAMPAIGNCUE_EXPORT_ACTIONS", "CampaignCue schema uses delivery action constants");
   assertIncludes(delivery, "\"record_outcome\"", "CampaignCue delivery constants include outcome action");
+  assertNotIncludes(delivery, "\"copy\"", "CampaignCue active delivery constants exclude clipboard-copy action");
   assertNotIncludes(schemas, "\"direct_publish\"", "CampaignCue action schema rejects direct publish");
   assertNotIncludes(schemas, "\"direct_send\"", "CampaignCue action schema rejects direct send");
   assertIncludes(schemas, "consentType", "CampaignCue schema validates asset consent type");
   assertIncludes(schemas, "expiresAt", "CampaignCue schema validates source expiry");
   assertIncludes(read("src/lib/campaigncue/server.ts"), "const patchOptionalUrl", "CampaignCue optional URL clearing helper");
   assertIncludes(read("src/lib/campaigncue/server.ts"), "writesPerCampaignCreate: 6", "CampaignCue campaign create write cost");
+}
+
+function verifySharedCreativeEditor() {
+  const requiredFiles = [
+    "__docs__/shared-creative-editor/README.md",
+    "__docs__/shared-creative-editor/shared-creative-editor_spec.md",
+    "__docs__/shared-creative-editor/shared-creative-editor_impl.md",
+    "__docs__/shared-creative-editor/shared-creative-editor_marketing.md",
+    "__docs__/shared-creative-editor/shared-creative-editor_website.md",
+    "__docs__/shared-creative-editor/shared-creative-editor_helpdoc.md",
+    "__docs__/shared-creative-editor/shared-creative-editor_firebase.md",
+    "__docs__/shared-creative-editor/shared-creative-editor_mobile-support.md",
+    "__docs__/shared-creative-editor/shared-creative-editor_test-cases.md",
+    "src/app/(internal)/creative-editor-smoke/page.tsx",
+    "src/modules/creative-editor/types.ts",
+    "src/modules/creative-editor/templates.ts",
+    "src/modules/creative-editor/export.ts",
+    "src/modules/creative-editor/fabricAdapter.ts",
+    "src/modules/creative-editor/CreativeEditor.tsx",
+    "src/modules/creative-editor/CreativeEditor.module.scss",
+    "src/modules/creative-editor/index.ts",
+    "src/modules/creative-editor/providers/campaigncue.ts",
+  ];
+  requiredFiles.forEach((relPath) => assert(exists(relPath), `${relPath} exists`));
+
+  const types = read("src/modules/creative-editor/types.ts");
+  const editor = read("src/modules/creative-editor/CreativeEditor.tsx");
+  const editorStyles = read("src/modules/creative-editor/CreativeEditor.module.scss");
+  const exporter = read("src/modules/creative-editor/export.ts");
+  const fabricAdapter = read("src/modules/creative-editor/fabricAdapter.ts");
+  const smokeRoute = read("src/app/(internal)/creative-editor-smoke/page.tsx");
+  const templates = read("src/modules/creative-editor/templates.ts");
+  const campaigncueProvider = read("src/modules/creative-editor/providers/campaigncue.ts");
+  const sharedImpl = read("__docs__/shared-creative-editor/shared-creative-editor_impl.md");
+  const campaigncueReadme = read("__docs__/campaigncue/README.md");
+
+  assertIncludes(types, "CreativeEditorDocument", "Shared editor neutral document type");
+  assertIncludes(types, "CreativeEditorProductContext", "Shared editor product context type");
+  assertIncludes(types, "\"line\"", "Shared editor line element type");
+  assertIncludes(types, "\"pathText\"", "Shared editor path-text element type");
+  assertIncludes(types, "\"triangle\"", "Shared editor triangle element type");
+  assertIncludes(types, "\"polygon\"", "Shared editor polygon element type");
+  assertIncludes(types, "\"path\"", "Shared editor path element type");
+  assertIncludes(types, "blur?: number", "Shared editor blur property");
+  assertIncludes(types, "CreativeEditorVisibleWatermark", "Shared editor visible watermark schema");
+  assertIncludes(types, "CreativeEditorLineArrowStyle", "Shared editor line arrow schema");
+  assertIncludes(fabricAdapter, "loadDocumentIntoFabricCanvas", "Shared editor Fabric document loader");
+  assertIncludes(fabricAdapter, "serializeFabricCanvasToDocument", "Shared editor Fabric document serializer");
+  assertIncludes(fabricAdapter, "buildVisibleWatermarkObjects", "Shared editor visible watermark renderer");
+  assertIncludes(fabricAdapter, "buildOutlinedImageSrc", "Shared editor image outline renderer");
+  assertIncludes(fabricAdapter, "RemoveColor", "Shared editor RemoveColor image filter support");
+  assertIncludes(fabricAdapter, "Gamma", "Shared editor Gamma image filter support");
+  assertIncludes(fabricAdapter, "initFabricDragging", "Shared editor Fabric grab and wheel controls");
+  assertIncludes(fabricAdapter, "initFabricAlignmentGuidelines", "Shared editor Fabric snap guidelines");
+  assertIncludes(smokeRoute, "process.env.NODE_ENV === \"production\"", "Shared editor smoke route is production blocked");
+  assertIncludes(smokeRoute, "notFound()", "Shared editor smoke route returns 404 in production");
+  assertIncludes(smokeRoute, "width: 620", "Shared editor smoke route covers legacy width");
+  assertIncludes(smokeRoute, "height: 427", "Shared editor smoke route covers legacy height");
+  assertIncludes(editor, "LuLayers", "Shared editor layer UI icon");
+  assertIncludes(editor, "buildCreativeEditorQrElement", "Shared editor QR tool");
+  assertIncludes(editor, "buildCreativeEditorTriangleElement", "Shared editor triangle tool");
+  assertIncludes(editor, "buildCreativeEditorLineElement", "Shared editor line tool");
+  assertIncludes(editor, "buildCreativeEditorArrowElement", "Shared editor arrow tool");
+  assertIncludes(editor, "buildCreativeEditorPathTextElement", "Shared editor path text tool");
+  assertIncludes(editor, "buildCreativeEditorHexagonElement", "Shared editor hexagon tool");
+  assertIncludes(editor, "buildCreativeEditorStarElement", "Shared editor star tool");
+  assertIncludes(editor, "finishPolygonDraft", "Shared editor interactive polygon drawing");
+  assertIncludes(editor, "distributeSelection", "Shared editor multi-select distribution");
+  assertIncludes(editor, "copyBase64ToClipboard", "Shared editor base64 clipboard export");
+  assertIncludes(editor, "copyPngToClipboard", "Shared editor PNG clipboard export");
+  assertIncludes(editor, "replaceSelectedImageFile", "Shared editor replace-image action");
+  assertIncludes(editor, "drawerCollapsed", "Shared editor drawer collapse state");
+  assertIncludes(editor, "clearSelection", "Shared editor clear selection action");
+  assertIncludes(editor, "Save PNG", "Shared editor save action names PNG export");
+  assertNotIncludes(editor, "CampaignCue", "Shared editor base UI avoids CampaignCue default text");
+  assertIncludes(editor, "void import(\"fabric\")", "Shared editor loads Fabric client-side");
+  assertIncludes(editor, "canvas.toDataURL", "Shared editor Fabric PNG export action");
+  assertIncludes(editor, "canvas.toSVG", "Shared editor Fabric SVG export action");
+  assertIncludes(editor, "AI Tools", "Shared editor rail shows AI Tools placeholder");
+  assertIncludes(editor, "Templates", "Shared editor rail shows Templates placeholder");
+  assertIncludes(editor, "Background", "Shared editor background drawer");
+  assertIncludes(editor, "Illustrations", "Shared editor illustration drawer");
+  assertIncludes(editor, "Layer Alignment", "Shared editor inspector layer alignment");
+  assertIncludes(editor, "Alignment With Background", "Shared editor inspector canvas alignment");
+  assertIncludes(editor, "Selection", "Shared editor bottom selection mode");
+  assertIncludes(editor, "Grab", "Shared editor bottom grab mode");
+  assertIncludes(editor, "Move Backward", "Shared editor layer move label is owner-readable");
+  assertIncludes(editor, "registerAsset", "Shared editor product save action");
+  assertIncludes(editorStyles, ".toolRail", "Shared editor left tool rail styles");
+  assertIncludes(editorStyles, ".assetDrawer", "Shared editor asset drawer styles");
+  assertIncludes(editorStyles, ".inspector", "Shared editor right inspector styles");
+  assertIncludes(editorStyles, ".bottomControls", "Shared editor bottom canvas controls");
+  assertIncludes(editorStyles, ".fabricZoomBox", "Shared editor Fabric zoom wrapper styles");
+  assertIncludes(editorStyles, ".rulerTop", "Shared editor numeric ruler top gutter");
+  assertIncludes(editorStyles, ".gradientStopRow", "Shared editor multi-stop gradient styles");
+  assertIncludes(editorStyles, "[data-theme=\"dark\"]", "Shared editor dark theme styles");
+  assertIncludes(exporter, "serializeCreativeDocumentToSvg", "Shared editor SVG serializer");
+  assertIncludes(exporter, "QRCode.toDataURL", "Shared editor QR export support");
+  assertIncludes(campaigncueProvider, "productId: \"campaigncue\"", "CampaignCue adapter sets product context");
+  assertIncludes(campaigncueProvider, "buildCampaignCueOutputCreativeDocument", "CampaignCue output document builder");
+  assertNotIncludes(read("src/modules/creative-editor/types.ts"), "@type/campaigncue", "Shared editor types do not import CampaignCue types");
+  assertNotIncludes(read("src/modules/creative-editor/CreativeEditor.tsx"), "@type/campaigncue", "Shared editor UI does not import CampaignCue types");
+  assertNotIncludes(read("src/modules/creative-editor/export.ts"), "@type/campaigncue", "Shared editor export layer does not import CampaignCue types");
+  assertNotIncludes(read("src/modules/creative-editor/fabricAdapter.ts"), "@type/campaigncue", "Shared editor Fabric adapter does not import CampaignCue types");
+  assertNotIncludes(exporter, "campaigncue.ai", "Shared editor export layer has no CampaignCue fallback URL");
+  assertNotIncludes(templates, "campaigncue.ai", "Shared editor templates have no CampaignCue fallback URL");
+  assertIncludes(sharedImpl, "The schema is deliberately not Fabric JSON", "Shared editor docs reject hardcoded Fabric persistence");
+  assertIncludes(sharedImpl, "Full editor shell", "Shared editor docs cover full shell implementation");
+  assertIncludes(campaigncueReadme, "Shared creative editor", "CampaignCue docs link shared editor boundary");
 }
 
 function verifyFirebaseBoundary() {
@@ -263,10 +389,11 @@ function verifyProductConstantSeparation() {
   assertIncludes(delivery, "CAMPAIGNCUE_EXPORT_ACTIONS", "CampaignCue export action constants");
   assertIncludes(delivery, "CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS", "CampaignCue disabled provider action constants");
   assertIncludes(delivery, "CAMPAIGNCUE_FUTURE_PROVIDER_LAYER", "CampaignCue future provider layer constants");
-  assertIncludes(domains, "isCampaignCueRuntimeRoute", "CampaignCue runtime route helper");
-  assertIncludes(domains, "CAMPAIGNCUE_APP_INTERNAL_BASE_PATH", "CampaignCue app route-group base path constant");
-  assertIncludes(domains, "CAMPAIGNCUE_APP_INTERNAL_WORKSPACE_PATH", "CampaignCue app workspace route-group path constant");
-  assertIncludes(domains, "getCampaignCueWorkspaceRewritePath", "CampaignCue product-domain workspace rewrite helper");
+    assertIncludes(domains, "isCampaignCueRuntimeRoute", "CampaignCue runtime route helper");
+    assertIncludes(domains, "CAMPAIGNCUE_APP_INTERNAL_BASE_PATH", "CampaignCue app route-group base path constant");
+    assertIncludes(domains, "CAMPAIGNCUE_APP_INTERNAL_WORKSPACE_PATH", "CampaignCue app workspace route-group path constant");
+    assertIncludes(domains, "getCampaignCueWorkspaceRewritePath", "CampaignCue product-domain workspace rewrite helper");
+    assertIncludes(domains, "startsWith(`${CAMPAIGNCUE_WORKSPACE_PATH}/`)", "CampaignCue workspace rewrite supports deep-link subpaths");
   assertIncludes(routes, "CAMPAIGNCUE_API_ROUTES", "CampaignCue API route constants");
   assertIncludes(routes, "CAMPAIGN_ACTION_TEMPLATE", "CampaignCue action route template");
   assertIncludes(firebase, "CAMPAIGNCUE_FIREBASE_ENV", "CampaignCue Firebase env constants");
@@ -294,6 +421,11 @@ function verifyRouteBoundary() {
   const routingDoc = read("__docs__/url-routing-architecture/README.md");
   const boundaryDoc = read("__docs__/campaigncue/campaigncue-route-boundary.md");
   const nextConfig = read("next.config.js");
+  const campaignCueRouteStart = middleware.indexOf("if (productConfig.id === 'campaigncue')");
+  const campaignCueRouteEnd = middleware.indexOf("const campaignCueWorkspacePath", campaignCueRouteStart);
+  const campaignCueRouteBlock = campaignCueRouteStart > -1 && campaignCueRouteEnd > campaignCueRouteStart
+    ? middleware.slice(campaignCueRouteStart, campaignCueRouteEnd)
+    : "";
 
   assert(exists("src/app/sites/campaigncue/page.tsx"), "CampaignCue public site page exists under sites");
   assert(exists("src/app/sites/campaigncue/layout.tsx"), "CampaignCue public site layout exists under sites");
@@ -305,11 +437,14 @@ function verifyRouteBoundary() {
 
   assertIncludes(middleware, "getCampaignCueWorkspaceRewritePath(pathname)", "CampaignCue product-domain /app rewrite");
   assertIncludes(middleware, "productConfig.id === 'campaigncue'", "CampaignCue product-domain route special case");
+  assertIncludes(campaignCueRouteBlock, "shouldBypassDomainRouting(pathname)", "CampaignCue product domain preserves API/internal bypass routes");
+  assertIncludes(campaignCueRouteBlock, "NextResponse.next()", "CampaignCue product domain bypass routes pass through without site rewrite");
   assertIncludes(middleware, "getCampaignCueWorkspaceRewritePath(strippedPath)", "CampaignCue local dev /__campaigncue/app rewrite");
   assertIncludes(productDomains, "Public product websites belong under src/app/sites/[productId]", "Product domain route-boundary comment");
   assertIncludes(routingDoc, "Product Site Vs Product App Routes", "Global routing doc product site/app boundary");
   assertIncludes(routingDoc, "`src/app/sites/[productId]` is public website only", "Global routing doc sites public-only rule");
   assertIncludes(boundaryDoc, "`src/app/sites/campaigncue` is public website only", "CampaignCue route-boundary public-only rule");
+  assertIncludes(boundaryDoc, "`/api/*` and other internal bypass paths pass through before CampaignCue product-domain rewrites", "CampaignCue route-boundary API bypass rule");
   assertIncludes(boundaryDoc, "src/app/(campaigncue)/campaigncue/app/page.tsx", "CampaignCue route-boundary owner app path");
   assertIncludes(nextConfig, "routes-manifest.json", "Next start routes manifest repair");
   assertIncludes(nextConfig, "app-path-routes-manifest.json", "Next start app route manifest input");
@@ -336,6 +471,8 @@ function verifyDocsAlignment() {
   assertIncludes(expansionDoc, "Provider adapters behind capability checks", "CampaignCue next expansion provider gate");
   assertIncludes(deliveryDoc, "CampaignCue day-one delivery is export/download only", "CampaignCue delivery-boundary day-one rule");
   assertIncludes(deliveryDoc, "/api/campaigncue/integrations` is read-only", "CampaignCue delivery-boundary read-only integrations rule");
+  assertIncludes(deliveryDoc, "Clipboard copy is not an active API action", "CampaignCue delivery-boundary clipboard-copy exclusion");
+  assertNotIncludes(deliveryDoc, "copy a single output", "CampaignCue delivery-boundary excludes stale copy action");
   assertIncludes(audit, "Main Gap Fix Pass", "CampaignCue audit documents main gap pass");
   assertIncludes(audit, "Delivery Boundary Pass", "CampaignCue audit documents delivery boundary pass");
   assertIncludes(changelog, "CampaignCue Main Gap Hardening", "CampaignCue changelog main gap entry");
@@ -366,6 +503,7 @@ verifyFeatureFlags();
 verifyApiRoutes();
 verifyServerRuntime();
 verifyClientRuntime();
+verifySharedCreativeEditor();
 verifyFirebaseBoundary();
 verifyDocsAlignment();
 

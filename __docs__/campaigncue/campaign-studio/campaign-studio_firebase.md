@@ -31,6 +31,6 @@ Current runtime creates deterministic export/download-first campaign packs:
 
 - Owner campaign creation atomically claims one idempotency key, then writes one campaign doc, one trust report doc, one event doc, one atomic dashboard summary increment, and one idempotency completion.
 - Campaign action reads the target campaign once, atomically claims one idempotency key, writes one event and a scoped campaign update, then writes one idempotency completion; schedule and approval actions add one schedule/approval doc.
-- Blocked trust-gate copy/download/export actions complete the idempotency key with the replayable error response after writing the blocked event; they do not increment dashboard counters.
+- Blocked trust-gate download/export actions complete the idempotency key with the replayable error response after writing the blocked event; they do not increment dashboard counters.
 - Campaign action responses are assembled from the known campaign document and mutation payload after commit, so the server does not pay for a second campaign read and the client does not reload the full workspace overview after every action.
 - No paid AI generation, credit reservation, provider job, or polling listener is active.

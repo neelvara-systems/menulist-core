@@ -1,7 +1,6 @@
 export const CAMPAIGNCUE_DELIVERY_MODE = "export_download_only" as const;
 
 export const CAMPAIGNCUE_EXPORT_ACTIONS = [
-    "copy",
     "download",
     "export",
     "mark_used",
@@ -18,7 +17,7 @@ export const CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS = [
 export const CAMPAIGNCUE_DAY_ONE_DELIVERY = {
     label: "Export and download",
     mode: CAMPAIGNCUE_DELIVERY_MODE,
-    ownerSummary: "CampaignCue prepares packs. Owners copy or download them and post manually.",
+    ownerSummary: "CampaignCue prepares packs. Owners download generated assets and post manually.",
     providerSummary: "No social account connection, direct posting, ad spend, or provider send runs in the day-one product.",
 } as const;
 
@@ -42,14 +41,14 @@ export const CAMPAIGNCUE_PROVIDER_POSTURES = [
         label: "WhatsApp",
         mode: "manual_export",
         status: "manual_only",
-        reason: "Download or copy WhatsApp-ready text. Direct send is not part of the active product.",
+        reason: "Download WhatsApp-ready text and materials. Direct send is not part of the active product.",
     },
     {
         provider: "google_business_profile",
         label: "Google Business Profile",
         mode: "manual_export",
         status: "manual_only",
-        reason: "Download or copy Google-ready post text. Connected publishing is a separate future layer.",
+        reason: "Download Google-ready post text. Connected publishing is a separate future layer.",
     },
     {
         provider: "google_ads",

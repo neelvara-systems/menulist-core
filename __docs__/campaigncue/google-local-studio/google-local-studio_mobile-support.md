@@ -7,12 +7,12 @@ Google Local Studio is mobile-relevant because owners often approve local update
 ## Mobile Requirements
 
 - Show post preview, location, date, CTA, and media in one clear review flow.
-- Keep publish/manual-copy actions large and separated.
+- Keep publish/manual-download actions large and separated.
 - Show when manual export is required.
-- Allow copy of post text and download/share of media.
+- Allow download/export of post text and download/share of media.
 - Avoid OAuth setup as the primary mobile path.
 
-Current runtime exposes manual copy/export/download behavior only. Connected publish controls must remain unavailable until a separate Google provider layer is complete.
+Current runtime exposes manual download/export behavior only. Connected publish controls must remain unavailable until a separate Google provider layer is complete.
 
 ## Mobile Non-Goals
 
@@ -22,6 +22,6 @@ Current runtime exposes manual copy/export/download behavior only. Connected pub
 
 ## Acceptance
 
-- Owner can approve and copy a Google update from mobile.
-- Owner can copy or download one approved Google-ready post from mobile.
+- Owner can approve and download/export a Google update from mobile.
+- Owner can download/export one approved Google-ready post from mobile.
 - Manual instructions remain clear.

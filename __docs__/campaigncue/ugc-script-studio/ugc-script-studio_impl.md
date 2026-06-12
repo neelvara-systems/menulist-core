@@ -20,7 +20,7 @@ UGC Script Studio is a script and brief workflow, not a creator marketplace. It 
 | `ugcBriefs` | Script, role, channel, and business facts used. |
 | `ugcBriefVersions` | Versioned scripts and edits. |
 | `ugcTrustReports` | Claim, disclosure, and source checks. |
-| `ugcExports` | Download, copy, or agency handoff history. |
+| `ugcExports` | Download, export, or agency handoff history. |
 
 ## Trust Rules
 
@@ -34,4 +34,3 @@ UGC Script Studio is a script and brief workflow, not a creator marketplace. It 
 - Briefs remain useful without any creator marketplace feature.
 - Every exported brief has an owner-approved version id.
 - Rejected claims remain visible in the trust report.
-

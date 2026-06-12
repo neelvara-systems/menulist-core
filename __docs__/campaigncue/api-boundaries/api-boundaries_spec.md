@@ -20,13 +20,13 @@ API Boundaries defines where CampaignCue exposes or consumes APIs: provider adap
 | Auth | API calls require workspace-scoped auth and role checks. |
 | Webhooks | Webhooks validate signatures, map to known workspace/provider records, and write idempotently. |
 | Rate limits | Expensive, public, and provider-facing operations are rate-limited. |
-| Manual fallback | API failure or unsupported action preserves copy/export workflow. |
+| Manual fallback | API failure or unsupported action preserves download/export workflow. |
 
 ## Provider Posture Matrix
 
 | Provider/channel | Default CampaignCue mode | Direct mode requirement |
 | --- | --- | --- |
-| WhatsApp | Draft, copy/share, template planning, consent record. | Opt-in, template, pricing, preference webhook, quality/rate posture, provider credentials, role approval. |
+| WhatsApp | Draft, download/export, template planning, consent record. | Opt-in, template, pricing, preference webhook, quality/rate posture, provider credentials, role approval. |
 | Google Business Profile | Google-ready post/offer/event/media pack with manual steps. | Approved GBP API access, location eligibility, OAuth, quota, post type support, trust clear. |
 | Instagram/Facebook organic | Export and owner/agency scheduling handoff. | Eligible business/creator account, app review/scopes, publishing limits, media constraints, trust clear. |
 | Meta/Google ads | Ad pack export and agency/platform handoff. | Ad account connection, policy status, spend approval, budget confirmation, mutate idempotency. |

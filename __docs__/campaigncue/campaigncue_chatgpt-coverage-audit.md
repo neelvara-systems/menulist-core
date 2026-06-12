@@ -89,7 +89,7 @@
 | Marketing banner/static creative creator | Current runtime produces creative briefs and channel copy inside campaign packs. It does not render PNG/JPG banners or template images yet. | Covered as architecture and manual brief runtime; rendered asset generation intentionally inactive. |
 | UGC/video creator | Current runtime produces creator-safe UGC scripts and reel briefs. It does not render MP4 videos, avatars, AI voiceover, or subtitles. | Covered as architecture and brief-mode runtime; video rendering intentionally inactive. |
 | Campaign pack generator | Campaign creation produces source-backed multi-channel packs for WhatsApp, Google local, creative, video, UGC, ads, and calendar. | Aligned. |
-| Edit/export flow | Owner can copy, download text outputs, download full packs, schedule manual tasks, request approval, mark used, and register assets. Visual edit/crop/subtitle controls are not active. | Aligned to export/download-first decision. |
+| Edit/export flow | Owner can download text outputs, download full packs, schedule manual tasks, request approval, mark used, and register assets. Visual edit/crop/subtitle controls are not active. | Aligned to export/download-first decision. |
 | Data advantage over generic tools | Runtime avoids blank-prompt flow by deriving opportunities and outputs from Business Brain/readiness. | Aligned. |
 | Restaurant/salon categories | Business Brain supports restaurant/salon types and deterministic restaurant/salon opportunity/output wording. | Aligned for first verticals. |
 | Safety rules and fake-testimonial guardrails | Trust checks block/warn on unsupported claims, fake testimonial posture, WhatsApp manual consent, and ad spend handoff. UGC copy avoids fake customer claims. | Aligned. |

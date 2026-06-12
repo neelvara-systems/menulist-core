@@ -199,6 +199,15 @@ function buildBusinessBrain(params: {
     const locality = compactString(storeData?.locality || storeData?.city || storeData?.area || storeData?.address?.city);
     const website = compactString(storeData?.website || storeData?.websiteUrl || storeData?.domain || "");
     const phone = compactString(storeData?.phone || storeData?.phoneNumber || storeData?.contactNumber || "");
+    const whatsapp = compactString(
+        storeData?.whatsapp
+        || storeData?.whatsappNumber
+        || storeData?.publicPresence?.whatsappNumber
+        || storeData?.phoneNumber
+        || storeData?.phone
+        || storeData?.contactNumber
+        || "",
+    );
     const serviceFallback = {
         id: "service_1",
         name: businessType === "salon" ? "Featured service" : "Catering inquiry",
@@ -210,7 +219,9 @@ function buildBusinessBrain(params: {
     const warnings: string[] = [];
     if (!businessName) blockers.push("Business name is missing.");
     if (!publicMenuUrl && businessType === "restaurant") warnings.push("Public menu link is not connected.");
-    if (!website && !phone) warnings.push("Campaign CTA needs a website, booking link, phone, or menu link.");
+    if (!website && !phone && !whatsapp && !storeData?.bookingUrl) {
+        warnings.push("Campaign CTA needs a website, booking link, phone, WhatsApp, or menu link.");
+    }
     const readinessStatus: CampaignCueBusinessBrain["readiness"]["status"] = blockers.length
         ? "blocked"
         : warnings.length
@@ -227,7 +238,7 @@ function buildBusinessBrain(params: {
         contacts: {
             phone,
             website: website.startsWith("http") ? website : undefined,
-            whatsapp: phone,
+            whatsapp,
             bookingUrl: compactString(storeData?.bookingUrl || ""),
             publicMenuUrl,
         },
@@ -773,7 +784,7 @@ export function buildCampaignCueOpportunities(params: {
             workspaceId,
             businessBrainId: businessBrain.businessBrainId,
             title: "Finish scheduled manual post",
-            reason: "A scheduled manual task is waiting to be copied, posted, or marked used.",
+            reason: "A scheduled manual task is waiting to be downloaded, posted, or marked used.",
             type: "weekly_pack",
             priority: 87,
             channels: ["calendar", "whatsapp", "google_local"],
@@ -899,7 +910,7 @@ function buildLaunchReadiness(): CampaignCueLaunchReadiness {
             id: "manual_runtime",
             label: "Export/download runtime",
             status: "ready",
-            detail: "Copy, text download, pack export, approval, scheduling, and mark-used actions are available without provider APIs.",
+            detail: "Text download, pack export, approval, scheduling, and mark-used actions are available without provider APIs.",
         },
         {
             id: "direct_provider_actions",
@@ -1224,7 +1235,7 @@ function buildTrustReport(params: {
                 severity: "warning",
                 ruleId: "whatsapp_manual_consent",
                 message: "WhatsApp output is manual export only until opt-in and template handling are configured.",
-                recommendation: "Use as copy/share material only; do not treat it as a system-sent campaign.",
+                recommendation: "Use as download/share material only; do not treat it as a system-sent campaign.",
                 sourceReferences: output.sourceReferences,
             });
         }
@@ -1440,7 +1451,7 @@ async function updateDashboardSummary(params: {
     };
     if (params.action === "campaign_created") next.campaignCount = increment(1);
     if (params.action === "mark_used") next.usedCount = increment(1);
-    if (params.action === "copy" || params.action === "download" || params.action === "export") {
+    if (params.action === "download" || params.action === "export") {
         next.exportCount = increment(1);
     }
     if (params.action === "request_approval") next.approvalRequestCount = increment(1);

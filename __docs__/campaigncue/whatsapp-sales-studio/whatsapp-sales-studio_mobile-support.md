@@ -2,13 +2,13 @@
 
 ## Mobile Admission
 
-WhatsApp Sales Studio is highly mobile-relevant because owners often review, copy, and send WhatsApp messages from phones.
+WhatsApp Sales Studio is highly mobile-relevant because owners often review, download, and manually send WhatsApp messages from phones.
 
 ## Mobile Requirements
 
 - Show message variants as copyable cards.
-- Keep consent posture visible before copy/send.
-- Use large actions for copy, approve, export, and send.
+- Keep consent posture visible before download/manual send.
+- Use large actions for download, approve, export, and manual handoff.
 - Make opt-out warnings visible without blocking normal review.
 - Keep audience details compact and readable.
 
@@ -20,6 +20,5 @@ WhatsApp Sales Studio is highly mobile-relevant because owners often review, cop
 
 ## Acceptance
 
-- Owner can review a WhatsApp message, confirm consent posture, copy text, and mark it approved from mobile.
+- Owner can review a WhatsApp message, confirm consent posture, download/export text, and mark it approved from mobile.
 - Direct-send controls are hidden or disabled unless the workspace is fully configured.
-

@@ -21,6 +21,7 @@ CampaignCue is not a MenuList feature, not an Answerlattice feature, not GrowthO
 | [campaigncue-production-implementation-audit.md](./campaigncue-production-implementation-audit.md) | Running implementation audit, feature status, validation, and remaining risks. |
 | [campaigncue-route-boundary.md](./campaigncue-route-boundary.md) | Route separation rule for public website files vs owner workspace files. |
 | [campaigncue-product](./campaigncue-product/README.md) | Product-level doc set for identity, architecture, GTM, Firebase, mobile, and content. |
+| [../shared-creative-editor](../shared-creative-editor/README.md) | Shared product-neutral image editor used by CampaignCue through an adapter. |
 
 ## Feature Doc Sets
 
@@ -32,14 +33,15 @@ Each feature folder follows the repo doc-set pattern: `README.md`, `_spec.md`, `
 | [source-integrations](./source-integrations/README.md) | Current runtime uses signed-in MenuList store-profile bootstrap plus owner source inputs; social/provider connectors are future-disabled posture only. |
 | [opportunity-engine](./opportunity-engine/README.md) | Current runtime creates deterministic Business Brain/readiness cues; broader signal inputs remain provider/source architecture requirements. |
 | [campaign-studio](./campaign-studio/README.md) | Goal-first campaign brief, pack generation, output selection, edits, duplicate/reuse behavior. |
-| [creative-studio](./creative-studio/README.md) | Current runtime produces source-backed creative briefs and copy; rendered PNG/JPG template generation remains a disabled provider path. |
+| [creative-studio](./creative-studio/README.md) | Current runtime produces source-backed creative briefs and copy; CampaignCue can open the shared creative editor for manual SVG/PNG asset export while provider rendering remains disabled. |
 | [video-reel-studio](./video-reel-studio/README.md) | Current runtime produces reel briefs and shot lists; photo/clip-to-video rendering, subtitles, voiceover, and MP4 export remain disabled provider paths. |
 | [ugc-script-studio](./ugc-script-studio/README.md) | Owner/staff/creator-brief scripts, hook banks, shot lists, testimonial guardrails. |
-| [whatsapp-sales-studio](./whatsapp-sales-studio/README.md) | WhatsApp drafts, copy/share/manual mode, consent posture, and blocked direct-send rules. |
+| [whatsapp-sales-studio](./whatsapp-sales-studio/README.md) | WhatsApp drafts, download/export/manual mode, consent posture, and blocked direct-send rules. |
 | [google-local-studio](./google-local-studio/README.md) | Google Business Profile-ready manual drafts, local captions, fallback posture, and no ranking claims. |
 | [ads-studio](./ads-studio/README.md) | Meta/Google ad variants, click-to-WhatsApp creative, media-buyer handoff, performance-claim guardrails. |
 | [calendar-scheduler](./calendar-scheduler/README.md) | Current runtime stores manual schedule tasks; weekly/30-day generated asset plans remain a guarded architecture path. |
 | [asset-library](./asset-library/README.md) | Uploads, asset classification, consent/rights, source links, requests, reuse. |
+| [cue-layers](./cue-layers/README.md) | Planned image-to-editable-layer pipeline for uploaded or generated flat images, using the shared Creative Editor with business-safe accuracy gates, repo AI/Storage worker patterns, confidence, fallback, repair, and export/download boundaries. |
 | [creative-trust-center](./creative-trust-center/README.md) | Trust checks, blockers, warnings, source conflict resolution, fake-proof prevention. |
 | [analytics-learning](./analytics-learning/README.md) | Usage, execution, performance, outcome-level reporting, recommendation learning. |
 | [agency-workspace](./agency-workspace/README.md) | Clients, approvals, comments, weekly packs, reports, client-scoped operations. |
@@ -74,4 +76,6 @@ Docs are written for a complete launch architecture, but the active day-one prod
 | Runtime modules | App shell, store-profile source context, owner source facts, evidence-backed cues, structured exportable packs, trust gates, asset rights metadata, schedule tasks, approval logging, owner-reported outcomes, launch-readiness checks, and analytics summaries are enabled. |
 | Firebase | Dedicated CampaignCue Admin client, Firestore rules, Storage rules, indexes, and deploy config added; deploy still requires external credentials. |
 | MenuList relationship | No MenuList writes or direct data bridge runtime added. The current source snapshot uses signed-in store profile context only. |
+| Shared creative editor | CampaignCue consumes `src/modules/creative-editor/` through a product adapter. The editor is not CampaignCue-owned and can be reused by other products through separate adapters. |
+| CueLayers | Planned CampaignCue feature docs now define the source-package, reconstruction, validation, repair, and export pipeline for turning uploaded or generated flat images into shared-editor assets without creating a second editor runtime. The plan reuses the repo AI Gateway, cost gates, worker posture, Storage helpers, and defines a MenuList adapter boundary for generated menu item images. |
 | Disabled modules | Social account connections, direct provider publishing, WhatsApp direct send, ad spend mutation, billing checkout, paid AI generation, and rendered video provider calls. |

@@ -32,12 +32,12 @@ CampaignCue creates campaign packs from your business data. You can use it for W
 3. Review the selected channels.
 4. Create the pack.
 5. Review the outputs and Checks.
-6. Copy, download, export, schedule a manual task, mark as used, or send for approval.
+6. Download, export, schedule a manual task, mark as used, or send for approval.
 
 ### Use Manual Mode
 
 1. Open the ready output.
-2. Click **Copy**, **Download**, or **Export**.
+2. Click **Download** or **Export**.
 3. Post it manually in WhatsApp, Google Business Profile, Instagram, Facebook, or your ad account.
 4. Mark it as posted when done.
 

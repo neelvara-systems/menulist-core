@@ -36,8 +36,8 @@ CampaignCue success is measured by trust-safe campaign usage, not raw asset gene
 | Activation | Source added, first cue accepted, first pack generated, first export/manual task completed. | Do not count setup-only users as activated. |
 | Restaurant | Menu-item campaigns, top-item campaigns, public menu link usage, WhatsApp order packs, Google menu posts, price/source trust pass rate. | Do not claim orders unless source data proves them. |
 | Salon | Service campaigns, booking campaigns, before/after consent confirmations, WhatsApp booking messages, claim-warning resolution. | Do not claim transformations or results without evidence. |
-| WhatsApp | Packs generated, messages copied/shared/exported, status images/videos downloaded, opt-out/consent blocks. | Copied message is not a confirmed booking or order. |
-| Google/local | Google packs generated, posts copied/exported, and future local-post insights only where a future provider layer is authorized. | No ranking or SEO improvement claims. |
+| WhatsApp | Packs generated, messages downloaded/shared/exported, status images/videos downloaded, opt-out/consent blocks. | Downloaded message is not a confirmed booking or order. |
+| Google/local | Google packs generated, posts downloaded/exported, and future local-post insights only where a future provider layer is authorized. | No ranking or SEO improvement claims. |
 | Ads | Ad packs generated/exported, click-to-WhatsApp variants, policy warnings, spend approvals, and future provider metrics only where authorized. | No lead, ROI, or lower-cost claim without measured source. |
 | Agency | Client setup, weekly pack delivery, approval completion, revision count, report shares, trust issues resolved, credits by client. | Never mix metrics across clients. |
 | Multi-location | Location variants generated, local trust pass rate, approval/export by location, partial success, local source mapping. | Do not double-count master campaign plus location variants. |

@@ -17,7 +17,7 @@ That means CampaignCue wins only if it does what generic tools do not do well:
 - Tells the owner what is worth promoting now.
 - Creates a multi-channel campaign pack, not one isolated asset.
 - Keeps every output tied to source facts, consent, channel constraints, and owner approval.
-- Preserves copy/download/manual posting when direct APIs are unavailable, unapproved, rate-limited, or risky.
+- Preserves download/export/manual posting when direct APIs are unavailable, unapproved, rate-limited, or risky.
 - Measures trust-safe campaign usage and next action, not vanity generation volume.
 
 ## Research Findings And Product Decisions
@@ -40,7 +40,7 @@ That means CampaignCue wins only if it does what generic tools do not do well:
 
 ## Required Product Principles
 
-1. **Export-first is not a weakness.** Manual copy/download/share is a core product path because local channels and APIs are inconsistent.
+1. **Export-first is not a weakness.** Manual download/export/share is a core product path because local channels and APIs are inconsistent.
 2. **Trust-safe usage is the north star.** The product should optimize for campaigns used after checks, not raw creative generated.
 3. **Restaurant and salon rules must differ.** Restaurant risk centers on menu/price/photo/availability accuracy. Salon risk centers on claims, before/after consent, and booking promises.
 4. **No fake people.** Do not create fake customer stories, fake staff endorsements, fake review cards, synthetic client transformations, or undisclosed paid/creator testimonials.
@@ -58,7 +58,7 @@ This is not a phased roadmap. These are product-weight decisions for launch-comp
 | Opportunity Engine | Owners need "what to promote now" more than blank tools. |
 | Campaign Studio + Creative Trust Center | Multi-output packs and trust checks are the core product loop. |
 | WhatsApp Sales Studio + Google Local Studio | These are local conversion/discovery channels, especially for restaurants and salons. |
-| Manual Fallback + Calendar Scheduler | Local businesses still need reliable copy/share/mark-done flows even without connected APIs. |
+| Manual Fallback + Calendar Scheduler | Local businesses still need reliable download/share/mark-done flows even without connected APIs. |
 | Analytics Learning | The product must learn which cues become used campaigns. |
 | Agency and Multi-location boundaries | These expand buyer value but must never compromise client/location isolation. |
 

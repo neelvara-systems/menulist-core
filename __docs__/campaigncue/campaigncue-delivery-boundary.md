@@ -7,7 +7,6 @@
 
 The current product prepares source-backed campaign packs and lets the owner:
 
-- copy a single output,
 - download a single output,
 - download the full campaign pack,
 - schedule a manual task,
@@ -45,6 +44,7 @@ Future provider work must not reuse the export/download action path silently. It
 
 - `src/constants/campaigncue/delivery.ts` is the source of truth for active export actions and disabled provider actions.
 - `/api/campaigncue/campaigns/[campaignId]/actions` accepts export/download/manual-use actions only.
+- Clipboard copy is not an active API action. Owners download generated text or full packs and then paste/post manually outside CampaignCue.
 - `/api/campaigncue/integrations` is read-only in the active runtime and only reports future-disabled provider posture.
 - The workspace overview returns `deliveryPolicy` so owner screens can display the active mode without reading provider connection records.
 - `providerConnections` remains a reserved future data shape, but the active overview returns an empty list and does not read the collection.

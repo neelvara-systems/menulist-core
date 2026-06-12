@@ -4,15 +4,15 @@
 
 **Decision:** YES for owner action flows, PARTIAL for agency/multi-location management, NO for heavy setup and advanced editing.
 
-CampaignCue must work on mobile because WhatsApp copy/share, campaign review, approval, asset upload, consent confirmation, and mark-posted are mobile-native business tasks.
+CampaignCue must work on mobile because WhatsApp download/share, campaign review, approval, asset upload, consent confirmation, and mark-posted are mobile-native business tasks.
 
 ## Admission Test
 
 | Gate | Result | Notes |
 | --- | --- | --- |
-| Frequency | Pass | Owners may use campaign cues, WhatsApp copy, approvals, and asset uploads weekly or daily. |
-| Speed | Partial | Review/copy/share can be under 5 seconds; full campaign setup/video editing is slower. |
-| Touch | Pass for action flows | Cards, bottom sheets, large buttons, copy/share/download fit thumb use. |
+| Frequency | Pass | Owners may use campaign cues, WhatsApp downloads, approvals, and asset uploads weekly or daily. |
+| Speed | Partial | Review/download/share can be under 5 seconds; full campaign setup/video editing is slower. |
+| Touch | Pass for action flows | Cards, bottom sheets, large buttons, download/share/export fit thumb use. |
 | Value | Pass | Owners and staff often handle WhatsApp/status/photo tasks away from a desk. |
 
 ## Mobile Scope
@@ -21,7 +21,7 @@ CampaignCue must work on mobile because WhatsApp copy/share, campaign review, ap
 | --- | --- |
 | View campaign cues | Full account setup |
 | Generate small campaign pack | Bulk agency generation |
-| Copy WhatsApp message | Advanced creative layer editing |
+| Download WhatsApp-ready message | Advanced creative layer editing |
 | Download/share status | Timeline video editing |
 | Approve/request changes | Billing setup and role management |
 | Upload photo/clip | Integration OAuth setup when complex |

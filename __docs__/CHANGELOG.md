@@ -6,11 +6,44 @@
 
 ---
 
+## June 12, 2026 - Shared Creative Editor And CampaignCue Adapter
+
+### Added
+
+- **Shared Creative Editor added** - A product-neutral editor module now supports the full Fabric editor shell with top toolbar, left tool rail, asset drawer, central canvas, right inspector, bottom controls, dark/light mode, layers, active templates, text, text decoration, gradient fills, shapes, polygon/path/freehand layers, image URL/file/SVG import, QR blocks, typography, shadow, image filter presets and adjustments, image borders, background settings, preview, SVG/PNG download, JSON document export, and product-owned export callbacks.
+- **Shared Creative Editor old-result parity expanded** - The editor now adds path text, arrow and thin-tail arrow layers, click-to-draw polygons, polygon point editing, visible export watermark, image outline controls, multi-stop gradients, RemoveColor/Gamma/grayscale-mode filters, richer dash/cap borders, multi-select distribute X/Y, numeric ruler gutters, replace-image file action, PNG clipboard export, and base64 clipboard export while keeping product-owned backend integrations out of the shared module.
+- **CampaignCue adapter added** - CampaignCue can start a blank asset from Asset Library or open a campaign output in the shared editor without making the editor CampaignCue-specific.
+- **CampaignCue editor exports register in Asset Library** - Exported editor assets are recorded through the existing CampaignCue asset metadata API with rights review posture and campaign/output refs when available.
+- **CueLayers documentation added** - CampaignCue now has a full planned doc set for converting uploaded or generated flat images into safe editable layers in the shared editor, with source-package intake, reconstruction, validation, repair, cost, mobile, and export/download boundaries.
+- **CueLayers research addendum added** - The plan now includes current market/model research, business-safe accuracy gates, provider-registry posture, protected text validation, and quality-report storage guidance.
+- **CueLayers architecture reuse plan added** - The docs now require reuse of the repo AI Gateway, SAFE_MODE, rate limits, AI capacity checks, Cloud Tasks/worker posture, Storage helpers, image quality guards, and MenuList adapter boundaries for generated menu item images.
+- **CueLayers contract feedback adopted** - Follow-up ChatGPT review was validated against repo architecture and current Google/Firebase docs. CueLayers docs now freeze split job status/outcome/step states, `CreativeEditorDocumentSnapshot` as durable editor truth, immutable scoped Storage paths, truth snapshot artifacts, concrete renderer allowlist, revision-pinned export, correction events, migration contracts, and capability-based model registry selection.
+
+### Boundaries
+
+- **No direct provider posting added** - The editor does not enable social account connection, WhatsApp direct send, Google publish, ad spend mutation, paid generation, billing, or provider upload.
+- **Fabric runtime added behind the shared editor boundary** - The editor uses `fabric@5.3.0` for selection, dragging, resizing, rotation, object stacking, panning, snap guidelines, and rendered export while preserving the neutral document schema instead of storing Fabric JSON as product persistence.
+- **AI tools remain disabled** - The rail keeps AI Tools visible for screen parity, but no provider behavior is active until a governed product contract exists. Templates are local document starters and do not call provider APIs.
+
+### Fixed
+
+- **Shared Creative Editor usability tightened** - The editor now avoids dead Home/drawer/selection controls, uses owner-readable export labels, keeps shared defaults product-neutral, preserves intermediate gradient stops when endpoint colors change, avoids double-point polygon finish glitches, and serializes the latest canvas state before preview/JSON/export.
+- **CampaignCue product-domain APIs pass through correctly** - `campaigncue.ai/api/campaigncue/*` now reaches the protected API layer instead of being rewritten into the public `src/app/sites/campaigncue` website namespace.
+- **Fabric adapter type safety corrected** - The shared editor Fabric adapter now imports Fabric as a runtime value, serializes Fabric path data defensively, and clears the selection overlay through the installed Fabric 5 API surface.
+
+### Cost
+
+- **Browser-local editing has zero Firebase cost** - Moving layers, editing properties, downloading SVG/PNG/JSON, and switching templates do not write data. CampaignCue writes only when an exported asset record is explicitly saved.
+
+### Validation
+
+- **CampaignCue production checks passed** - `npm run verify:campaigncue` passed with 359 checks, `npx tsc --noEmit --incremental false`, `npm run lint`, `git diff --check`, and a clean `npm run build` passed. Built-server smoke covered `campaigncue.ai/`, `campaigncue.ai/app`, `www.campaigncue.ai/app`, `campaigncue.ai/api/campaigncue/workspace` unauthenticated `401`, local `/__campaigncue`, `/__campaigncue/app`, and `/campaigncue/app`.
+
 ## June 12, 2026 - CampaignCue Export Delivery Boundary
 
 ### Changed
 
-- **CampaignCue delivery is export/download-first** - Owner workflow now centers on copy, single-output download, full-pack download, manual scheduling, approval, mark-used, and owner-reported results.
+- **CampaignCue delivery is export/download-first** - Owner workflow now centers on single-output download, full-pack download, manual scheduling, approval, mark-used, and owner-reported results.
 - **Social/provider posting is separated** - Direct WhatsApp send, Google publish, social posting, ad mutations, and provider account connection are not active day-one workflows. The future provider layer is documented separately in `__docs__/campaigncue/campaigncue-delivery-boundary.md`.
 - **CampaignCue Connections became Exports** - Owner navigation now shows Export and Download instead of Posting Connections. Settings no longer exposes connected-posting or provider-generation toggles.
 
@@ -30,7 +63,7 @@
 
 - **CampaignCue now uses source facts instead of only source notes** - Business details and owner inputs derive saved facts, missing fact prompts, vertical risks, and source snapshot hashes for campaign creation and owner review.
 - **Campaign ideas are more actionable** - Cues now include owner benefit, evidence, and action labels, and they account for source inputs, asset rights, scheduled manual tasks, location records, and owner-reported outcomes.
-- **Campaign packs are structured** - Outputs now include headline, CTA, destination, format, consent note, policy note, approval note, UTM hint, and channel-specific manual handoff steps while keeping copy/download text available.
+- **Campaign packs are structured** - Outputs now include headline, CTA, destination, format, consent note, policy note, approval note, UTM hint, and channel-specific manual handoff steps while keeping download/export text available.
 - **Trust checks are deeper** - Checks now cover missing destinations, blocked/unreviewed facts, WhatsApp consent, Google manual verification, salon consent/result risk, restaurant menu verification, missing asset proof, and ad spend handoff.
 - **Results are more honest** - Owners can record manual outcomes such as replies, bookings, walk-ins, orders, or useful comments without treating them as provider-proven metrics.
 - **Asset records are safer** - Asset metadata now includes consent type, rights notes, and tags before reuse in campaign packs.

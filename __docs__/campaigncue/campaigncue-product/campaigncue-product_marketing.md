@@ -48,7 +48,7 @@ Use:
 - campaign pack
 - business data
 - source-checked
-- ready to copy, download, schedule, hand off, or approve
+- ready to download, schedule, hand off, or approve
 - manual mode
 
 Avoid:

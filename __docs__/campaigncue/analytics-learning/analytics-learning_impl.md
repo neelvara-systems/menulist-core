@@ -6,7 +6,7 @@ Analytics Learning must store channel events and compact metric snapshots separa
 
 ## Flow
 
-1. Campaign output is copied, downloaded, exported, scheduled as a manual task, marked used, sent for approval, or recorded with an owner-reported result.
+1. Campaign output is downloaded, exported, scheduled as a manual task, marked used, sent for approval, or recorded with an owner-reported result.
 2. Current server mutations record observed workspace events.
 3. Bounded mutation-time updates write dashboard summaries.
 4. Reports display source and confidence of each metric.
@@ -16,7 +16,7 @@ Analytics Learning must store channel events and compact metric snapshots separa
 
 | Object | Purpose |
 | --- | --- |
-| `campaignEvents` | Observed CampaignCue actions such as campaign creation, copy, download, pack export, schedule, approval, manual use, trust-gate export blocking, asset registration, source input, and location draft. |
+| `campaignEvents` | Observed CampaignCue actions such as campaign creation, download, pack export, schedule, approval, manual use, trust-gate export blocking, asset registration, source input, and location draft. |
 | `metricSnapshots` | Imported channel metric snapshots; not active in the current runtime. |
 | `campaignSummaries` | Precomputed campaign result summaries. |
 | `learningSignals` | Signals used by Opportunity Engine. |
@@ -37,7 +37,7 @@ Every important campaign action should emit a scoped event with `workspaceId`, `
 | Event | Purpose |
 | --- | --- |
 | `campaign_pack_generated` | Campaign pack was created. |
-| `campaign_copy` | Pack output was copied. |
+| `campaign_download` | Pack output was downloaded. |
 | `campaign_download` | Pack output was downloaded. |
 | `campaign_export` | Pack output was exported. |
 | `campaign_schedule` | Manual task schedule was created. |

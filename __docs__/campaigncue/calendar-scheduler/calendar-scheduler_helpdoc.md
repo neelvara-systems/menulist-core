@@ -2,7 +2,7 @@
 
 ## What This Does
 
-Calendar Scheduler helps plan when campaign outputs should be copied, exported, handed off, or reviewed.
+Calendar Scheduler helps plan when campaign outputs should be downloaded, exported, handed off, or reviewed.
 
 ## How To Use It
 

@@ -17,6 +17,17 @@ import {
     CAMPAIGNCUE_DEFAULT_TIMEZONE,
     CAMPAIGNCUE_SOURCE_TYPE_LABELS,
 } from "@constant/campaigncue/workspace";
+import { FEATURE_FLAGS } from "@config/features";
+import {
+    CreativeEditor,
+    type CreativeEditorDocument,
+    type CreativeEditorExportResult,
+} from "@/modules/creative-editor";
+import {
+    buildCampaignCueBlankCreativeDocument,
+    buildCampaignCueCreativeAssetSources,
+    buildCampaignCueOutputCreativeDocument,
+} from "@/modules/creative-editor/providers/campaigncue";
 import type {
     CampaignCueActionType,
     CampaignCueAsset,
@@ -36,7 +47,6 @@ import {
     LuCalendarDays,
     LuCheck,
     LuCheckCircle2,
-    LuClipboard,
     LuDownload,
     LuFileText,
     LuImage,
@@ -83,7 +93,7 @@ const providerOwnerSummary = (provider: CampaignCueProviderStatus) => {
         return "No account connection is needed. Download the pack and paste it manually.";
     }
     if (provider.status === "disabled") {
-        return "This future provider layer is off. Use copy or download.";
+        return "This future provider layer is off. Download prepared assets when available.";
     }
     return provider.reason;
 };
@@ -97,21 +107,6 @@ const getLocalSignInUrl = () => {
     return isLocal ? `/signin?callbackUrl=${callbackUrl}` : buildCampaignCueAuthLaunchUrl(SIGNIN_URL);
 };
 
-const copyToClipboard = async (text: string) => {
-    if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return;
-    }
-    const node = document.createElement("textarea");
-    node.value = text;
-    node.style.position = "fixed";
-    node.style.left = "-9999px";
-    document.body.appendChild(node);
-    node.select();
-    document.execCommand("copy");
-    document.body.removeChild(node);
-};
-
 const downloadText = (filename: string, text: string) => {
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -120,6 +115,28 @@ const downloadText = (filename: string, text: string) => {
     anchor.download = filename;
     anchor.click();
     URL.revokeObjectURL(url);
+};
+
+const parseDateTimeLocal = (value: string): string => {
+    if (!value) return "";
+    const normalized = value.trim();
+    if (!normalized) return "";
+
+    const [datePart, timePart] = normalized.split("T");
+    if (!datePart || !timePart) return "";
+
+    const dateParts = datePart.split("-").map(Number);
+    const timeParts = timePart.split(":").map(Number);
+    if (dateParts.length !== 3 || timeParts.length < 2) return "";
+
+    const [year, month, day] = dateParts;
+    const [hour, minute, second] = timeParts;
+    if (![year, month, day, hour, minute].every((value) => Number.isFinite(value))) return "";
+
+    const parsed = new Date(year, month - 1, day, hour, minute, second ?? 0);
+    if (Number.isNaN(parsed.getTime())) return "";
+
+    return parsed.toISOString();
 };
 
 const outputFilename = (campaign: CampaignCueCampaign, output: CampaignCueOutput) => (
@@ -169,7 +186,7 @@ const bumpAnalytics = (
         ...analytics,
         campaignCount: action === "campaign_created" ? analytics.campaignCount + 1 : analytics.campaignCount,
         usedCount: action === "mark_used" ? analytics.usedCount + 1 : analytics.usedCount,
-        exportCount: action === "copy" || action === "download" || action === "export"
+        exportCount: action === "download" || action === "export"
             ? analytics.exportCount + 1
             : analytics.exportCount,
         approvalRequestCount: action === "request_approval"
@@ -403,6 +420,8 @@ export default function CampaignCueWorkspaceApp() {
         rightsStatus: "needs_review",
         tags: "",
     });
+    const [editorDocument, setEditorDocument] = useState<CreativeEditorDocument | null>(null);
+    const [editorSourceLabel, setEditorSourceLabel] = useState("Blank asset");
     const [outcomeDraft, setOutcomeDraft] = useState("Got replies, bookings, walk-ins, orders, or useful comments.");
 
     const load = async () => {
@@ -555,15 +574,15 @@ export default function CampaignCueWorkspaceApp() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...sourceDraft,
-                    expiresAt: sourceDraft.expiresAt || undefined,
+                    expiresAt: parseDateTimeLocal(sourceDraft.expiresAt) || undefined,
                 }),
             });
-            const payload = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                setNotice(payload?.error || "Source input could not be saved.");
-                return;
-            }
-            setSourceDraft({ expiresAt: "", label: "", sourceType: "manual_note", status: "needs_review", value: "" });
+                const payload = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    setNotice(payload?.error || "Source input could not be saved.");
+                    return;
+                }
+                setSourceDraft({ expiresAt: "", label: "", sourceType: "manual_note", status: "needs_review", value: "" });
             setNotice("Source input saved.");
             const sourceInput = payload?.data as CampaignCueSourceInput | undefined;
             if (sourceInput?.id) {
@@ -640,10 +659,7 @@ export default function CampaignCueWorkspaceApp() {
                 setNotice(payload?.error || "Action could not be recorded.");
                 return;
             }
-            if (action === "copy" && output) {
-                await copyToClipboard(output.text);
-                setNotice("Copied and recorded.");
-            } else if (action === "download" && output) {
+            if (action === "download" && output) {
                 downloadText(outputFilename(campaign, output), output.text);
                 setNotice("Downloaded and recorded.");
             } else if (action === "export") {
@@ -713,6 +729,79 @@ export default function CampaignCueWorkspaceApp() {
         }
     };
 
+    const creativeEditorEnabled = FEATURE_FLAGS.ENABLE_SHARED_CREATIVE_EDITOR
+        && FEATURE_FLAGS.ENABLE_SHARED_CREATIVE_EDITOR_INTERACTIVE_CANVAS
+        && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CREATIVE_EDITOR;
+
+    const openBlankCreativeEditor = () => {
+        if (!data || !creativeEditorEnabled) return;
+        setEditorDocument(buildCampaignCueBlankCreativeDocument({
+            businessBrain: data.businessBrain,
+            workspace: data.workspace,
+        }));
+        setEditorSourceLabel("Blank CampaignCue asset");
+        setTab("editor");
+    };
+
+    const openOutputCreativeEditor = (campaign: CampaignCueCampaign, output: CampaignCueOutput) => {
+        if (!data || !creativeEditorEnabled) return;
+        setEditorDocument(buildCampaignCueOutputCreativeDocument({
+            businessBrain: data.businessBrain,
+            campaign,
+            output,
+            workspace: data.workspace,
+        }));
+        setEditorSourceLabel(`${campaign.title} · ${displayLabel(output.channel)}`);
+        setTab("editor");
+    };
+
+    const registerEditorExport = async (result: CreativeEditorExportResult) => {
+        if (!data || !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_RENDERED_ASSET_EXPORTS) return;
+        setBusyKey("editor-export");
+        setNotice("");
+        try {
+            const metadata = result.document.metadata || {};
+            const res = await fetch(CAMPAIGNCUE_API_ROUTES.ASSETS, {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: result.document.title,
+                    assetType: "export",
+                    source: "generated",
+                    rightsStatus: "needs_review",
+                    rightsNote: "Created in the shared creative editor. Review image rights before public use.",
+                    consentType: "not_applicable",
+                    tags: [
+                        "creative-editor",
+                        result.format,
+                        metadata.channel,
+                    ].filter(Boolean),
+                    mimeType: result.mimeType,
+                    sizeBytes: result.sizeBytes,
+                    campaignId: metadata.campaignId,
+                    outputId: metadata.outputId,
+                    channel: metadata.channel,
+                }),
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setNotice(payload?.error || "Creative asset could not be saved.");
+                return;
+            }
+            const asset = payload?.data as CampaignCueAsset | undefined;
+            if (asset?.id) {
+                updateOverview((current) => ({
+                    ...current,
+                    assets: prependBounded(current.assets, asset, CAMPAIGNCUE_PAGE_SIZE),
+                }));
+            }
+            setNotice("Creative asset saved in Asset Library.");
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
     const renderChannelStudio = (channel: CampaignCueChannel) => {
         const copy = CAMPAIGNCUE_CHANNEL_STUDIO_COPY[channel];
         const rows = outputsForChannel(channel);
@@ -722,7 +811,7 @@ export default function CampaignCueWorkspaceApp() {
                     <div>
                         <span className={styles.eyebrow}>{copy?.eyebrow || "Studio"}</span>
                         <h2>{copy?.title || "Outputs"}</h2>
-                        <p>{rows.length ? `${rows.length} output${rows.length === 1 ? "" : "s"} ready to copy or download.` : copy?.empty}</p>
+                        <p>{rows.length ? `${rows.length} output${rows.length === 1 ? "" : "s"} ready to download.` : copy?.empty}</p>
                     </div>
                     <button className={styles.ghostButton} disabled={busyKey === "cue:default"} onClick={() => createCampaign()} type="button">
                         <LuPackageCheck size={16} />
@@ -744,14 +833,16 @@ export default function CampaignCueWorkspaceApp() {
                             <div className={styles.outputText}>{output.text}</div>
                             <OutputFieldSummary output={output} />
                             <div className={styles.chips}>
-                                <button className={styles.ghostButton} onClick={() => recordAction(campaign, "copy", output)} type="button">
-                                    <LuClipboard size={16} />
-                                    Copy
-                                </button>
                                 <button className={styles.ghostButton} onClick={() => recordAction(campaign, "download", output)} type="button">
                                     <LuDownload size={16} />
                                     Download
                                 </button>
+                                {creativeEditorEnabled ? (
+                                    <button className={styles.ghostButton} onClick={() => openOutputCreativeEditor(campaign, output)} type="button">
+                                        <LuImage size={16} />
+                                        Open editor
+                                    </button>
+                                ) : null}
                                 <button className={styles.ghostButton} onClick={() => recordAction(campaign, "schedule", output)} type="button">
                                     <LuCalendarDays size={16} />
                                     Schedule
@@ -789,7 +880,7 @@ export default function CampaignCueWorkspaceApp() {
             icon: LuStore,
             onAction: () => setTab("details"),
             text: businessHasContact
-                ? "Your name, area, and contact links are available for campaign copy."
+                ? "Your name, area, and contact links are available for campaign messaging."
                 : "Add phone, WhatsApp, website, booking, or menu links before using packs.",
             title: "Confirm business details",
         },
@@ -811,18 +902,18 @@ export default function CampaignCueWorkspaceApp() {
             onAction: () => (data.campaigns.length ? setTab("campaigns") : createCampaign(firstOpportunity?.id)),
             text: data.campaigns.length
                 ? `${data.campaigns.length} campaign pack${data.campaigns.length === 1 ? "" : "s"} ready.`
-                : "Create one pack that includes copy, channel notes, and trust checks.",
+                : "Create one pack that includes campaign messaging, channel notes, and trust checks.",
             title: "Create a campaign pack",
         },
         {
             actionLabel: "Use pack",
             disabled: !data.campaigns.length,
             done: data.analytics.exportCount > 0 || data.analytics.usedCount > 0,
-            icon: LuClipboard,
+            icon: LuDownload,
             onAction: () => setTab("campaigns"),
             text: data.analytics.exportCount > 0 || data.analytics.usedCount > 0
-                ? "At least one pack has been copied, downloaded, or marked used."
-                : "Copy or download a pack, then mark it used when it goes live.",
+                ? "At least one pack has been downloaded or marked used."
+                : "Download a pack, then mark it used when it goes live.",
             title: "Post manually",
         },
     ];
@@ -886,7 +977,7 @@ export default function CampaignCueWorkspaceApp() {
                                         <p>
                                             {displayLabel(data.businessBrain.businessType)}
                                             {data.businessBrain.locality ? ` in ${data.businessBrain.locality}` : ""}
-                                            . Prepare campaign packs from saved business details, owner inputs, and ready-to-use copy.
+                                            . Prepare campaign packs from saved business details, owner inputs, and ready-to-use drafts.
                                         </p>
                                         <div className={styles.chips}>
                                             <span className={styles.chip} data-tone={trustTone(data.businessBrain.readiness.status)}>
@@ -899,7 +990,7 @@ export default function CampaignCueWorkspaceApp() {
                                 </div>
                                 <div className={styles.statusGrid}>
                                     <StatCard label="Packs" value={data.analytics.campaignCount} />
-                                    <StatCard label="Copied or downloaded" value={data.analytics.exportCount} />
+                                    <StatCard label="Downloaded" value={data.analytics.exportCount} />
                                     <StatCard label="Marked used" value={data.analytics.usedCount} />
                                     <StatCard label="Scheduled" value={data.schedules.length} />
                                 </div>
@@ -1113,9 +1204,9 @@ export default function CampaignCueWorkspaceApp() {
                                         <input
                                             className={styles.input}
                                             id="source-expires"
-                                            onChange={(event) => setSourceDraft((draft) => ({ ...draft, expiresAt: event.target.value ? new Date(event.target.value).toISOString() : "" }))}
+                                            onChange={(event) => setSourceDraft((draft) => ({ ...draft, expiresAt: event.target.value }))}
                                             type="datetime-local"
-                                            value={sourceDraft.expiresAt ? sourceDraft.expiresAt.slice(0, 16) : ""}
+                                            value={sourceDraft.expiresAt}
                                         />
                                     </div>
                                     <div className={styles.fieldWide}>
@@ -1167,7 +1258,7 @@ export default function CampaignCueWorkspaceApp() {
                                     </div>
                                     <div className={styles.titleBlock}>
                                         <h3>Day-one delivery</h3>
-                                        <p>Use Copy, Download text, Download pack, Schedule task, Request approval, Mark used, and Record result. CampaignCue does not post to social platforms.</p>
+                                        <p>Use Download text, Download pack, Schedule task, Request approval, Mark used, and Record result. CampaignCue does not post to social platforms.</p>
                                     </div>
                                 </div>
                             </div>
@@ -1227,7 +1318,7 @@ export default function CampaignCueWorkspaceApp() {
                                     <div className={styles.fieldWide}>
                                         <div className={styles.noteBox}>
                                             <strong>Delivery boundary</strong>
-                                            <p>CampaignCue prepares packs for copy and download. It does not connect social accounts or post on behalf of the business.</p>
+                                            <p>CampaignCue prepares packs for download and manual posting. It does not connect social accounts or post on behalf of the business.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1295,7 +1386,7 @@ export default function CampaignCueWorkspaceApp() {
                                 <div>
                                     <span className={styles.eyebrow}>Packs</span>
                                     <h2>Campaign packs</h2>
-                                    <p>{data.campaigns.length ? "Packs are ready to copy, download, export, schedule, or send for approval." : "Create your first pack from a campaign idea or saved business details."}</p>
+                                    <p>{data.campaigns.length ? "Packs are ready to download, export, schedule, or send for approval." : "Create your first pack from a campaign idea or saved business details."}</p>
                                 </div>
                                 <button className={styles.ghostButton} disabled={busyKey === "cue:default"} onClick={() => createCampaign()} type="button">
                                     <LuPackageCheck size={16} />
@@ -1330,15 +1421,6 @@ export default function CampaignCueWorkspaceApp() {
                                                         <div className={styles.chips}>
                                                             <button
                                                                 className={styles.ghostButton}
-                                                                disabled={busyKey === `${campaign.id}:copy:${output.id}`}
-                                                                onClick={() => recordAction(campaign, "copy", output)}
-                                                                type="button"
-                                                            >
-                                                                <LuClipboard size={16} />
-                                                                Copy
-                                                            </button>
-                                                            <button
-                                                                className={styles.ghostButton}
                                                                 disabled={busyKey === `${campaign.id}:download:${output.id}`}
                                                                 onClick={() => recordAction(campaign, "download", output)}
                                                                 type="button"
@@ -1346,6 +1428,16 @@ export default function CampaignCueWorkspaceApp() {
                                                                 <LuDownload size={16} />
                                                                 Download text
                                                             </button>
+                                                            {creativeEditorEnabled ? (
+                                                                <button
+                                                                    className={styles.ghostButton}
+                                                                    onClick={() => openOutputCreativeEditor(campaign, output)}
+                                                                    type="button"
+                                                                >
+                                                                    <LuImage size={16} />
+                                                                    Open editor
+                                                                </button>
+                                                            ) : null}
                                                         </div>
                                                     </article>
                                                 ))}
@@ -1389,6 +1481,43 @@ export default function CampaignCueWorkspaceApp() {
                     ) : null}
 
                     {tab === "creative" ? renderChannelStudio("creative") : null}
+                    {tab === "editor" ? (
+                        <section className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <div>
+                                    <span className={styles.eyebrow}>Creative Editor</span>
+                                    <h2>Image editor</h2>
+                                    <p>Create a campaign asset from scratch or edit a prepared campaign output.</p>
+                                </div>
+                                {creativeEditorEnabled ? (
+                                    <button className={styles.button} onClick={openBlankCreativeEditor} type="button">
+                                        <LuImage size={16} />
+                                        Create from scratch
+                                    </button>
+                                ) : null}
+                            </div>
+                            {creativeEditorEnabled && editorDocument ? (
+                                <CreativeEditor
+                                    assetSources={buildCampaignCueCreativeAssetSources({
+                                        assets: data.assets,
+                                        businessBrain: data.businessBrain,
+                                    })}
+                                    initialDocument={editorDocument}
+                                    onExport={registerEditorExport}
+                                    productLabel="CampaignCue"
+                                    sourceLabel={editorSourceLabel}
+                                />
+                            ) : creativeEditorEnabled ? (
+                                <div className={styles.empty}>
+                                    <p>Start from a blank asset or open a campaign output from Packs or Social.</p>
+                                </div>
+                            ) : (
+                                <div className={styles.empty}>
+                                    <p>The shared creative editor is currently off for CampaignCue.</p>
+                                </div>
+                            )}
+                        </section>
+                    ) : null}
                     {tab === "video" ? renderChannelStudio("video") : null}
                     {tab === "ugc" ? renderChannelStudio("ugc") : null}
                     {tab === "whatsapp" ? renderChannelStudio("whatsapp") : null}
@@ -1469,6 +1598,12 @@ export default function CampaignCueWorkspaceApp() {
                                     <h2>Photos and files</h2>
                                     <p>{data.assets.length ? "Saved assets can be checked before they are reused in packs." : "Save photos, logos, or files that may be used in campaigns."}</p>
                                 </div>
+                                {creativeEditorEnabled ? (
+                                    <button className={styles.button} onClick={openBlankCreativeEditor} type="button">
+                                        <LuImage size={16} />
+                                        Create from scratch
+                                    </button>
+                                ) : null}
                             </div>
                             <div className={styles.panel}>
                                 <div className={styles.formGrid}>
@@ -1594,7 +1729,7 @@ export default function CampaignCueWorkspaceApp() {
                                 <div>
                                     <span className={styles.eyebrow}>Results</span>
                                     <h2>Usage summary</h2>
-                                    <p>Counts update when a pack is copied, downloaded, exported, scheduled, approved, or marked used.</p>
+                                    <p>Counts update when a pack is downloaded, exported, scheduled, approved, or marked used.</p>
                                 </div>
                             </div>
                             <div className={styles.statusGrid}>
@@ -1629,7 +1764,7 @@ export default function CampaignCueWorkspaceApp() {
                                         <div className={styles.noteBox}>
                                             <strong>Confidence</strong>
                                             <ol>
-                                                <li>Copied or downloaded means the owner exported a pack.</li>
+                                                <li>Downloaded means the owner downloaded a pack.</li>
                                                 <li>Marked used means the owner says it was posted or shared.</li>
                                                 <li>Reported result is owner-entered and not treated as platform proof.</li>
                                             </ol>

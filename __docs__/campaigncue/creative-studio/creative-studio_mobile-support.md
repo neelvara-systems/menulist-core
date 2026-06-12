@@ -7,7 +7,7 @@ Creative Studio is a mobile-relevant owner workflow because owners often approve
 ## Mobile Requirements
 
 - Show one asset at a time with channel tabs.
-- Keep approve, export, copy, and regenerate actions at large touch sizes.
+- Keep approve, export, download, and regenerate actions at large touch sizes.
 - Show trust status before the export action.
 - Let owners copy captions and download images without desktop-only controls.
 - Avoid dense multi-column design controls on mobile.
@@ -20,6 +20,5 @@ Creative Studio is a mobile-relevant owner workflow because owners often approve
 
 ## Acceptance
 
-- Owner can review an Instagram/WhatsApp/Google asset, approve it, copy text, and download the image from a phone.
+- Owner can review an Instagram/WhatsApp/Google asset, approve it, and download/export the prepared text from a phone.
 - Credit and trust status remain visible before generation and export.
-

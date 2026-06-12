@@ -16,7 +16,7 @@ WhatsApp Sales Studio creates consent-aware WhatsApp campaign messages for local
 
 - Help owners create WhatsApp campaigns without encouraging spam.
 - Keep opt-in, opt-out, template, and campaign purpose visible before send/export.
-- Support manual copy/export where direct send is not enabled or policy-approved.
+- Support manual download/export where direct send is not enabled or policy-approved.
 - Track replies and outcomes without over-reading customer data.
 
 ## Requirements
@@ -24,10 +24,10 @@ WhatsApp Sales Studio creates consent-aware WhatsApp campaign messages for local
 | Requirement | Acceptance |
 | --- | --- |
 | Consent gate | Campaign cannot move to send/export until consent posture is selected and recorded. |
-| Template mode | Approved-template workflows are separated from manual copy/export workflows. |
+| Template mode | Approved-template workflows are separated from manual download/export workflows. |
 | Opt-out posture | Opt-out handling is visible in campaign review and analytics. |
 | Segment notes | Owner sees intended audience, source, and exclusion rules before use. |
-| Manual fallback | Owner can copy/download a message pack without API send. |
+| Manual fallback | Owner can download/export a message pack without API send. |
 | Trust check | Price, offer, deadline, and claim checks run before handoff. |
 | Pricing visibility | Direct-send mode shows message pricing posture before send. |
 | Preference sync | Connected mode records stop/resume preference events when available. |

@@ -56,6 +56,30 @@ export const FEATURE_FLAGS = {
     ENABLE_CAMPAIGNCUE_ANALYTICS: true,
 
     /**
+     * Shared Creative Editor runtime.
+     *
+     * The base editor is product-neutral shared infrastructure. Product
+     * adapters provide source data, trust metadata, persistence, and export
+     * behavior. The default implementation uses a Fabric.js canvas runtime
+     * mapped into the neutral CreativeEditorDocument contract, plus qrcode for
+     * QR layers.
+     */
+    ENABLE_SHARED_CREATIVE_EDITOR: true,
+    ENABLE_SHARED_CREATIVE_EDITOR_INTERACTIVE_CANVAS: true,
+    ENABLE_SHARED_CREATIVE_EDITOR_FABRIC_ADAPTER: true,
+
+    /**
+     * CampaignCue Creative Editor adapter.
+     *
+     * CampaignCue can seed the shared editor from campaign outputs or a blank
+     * Asset Library flow. Exports remain manual/download-first and register
+     * metadata through CampaignCue Asset Library; this does not enable direct
+     * posting, social account connection, ad spend mutation, or billing.
+     */
+    ENABLE_CAMPAIGNCUE_CREATIVE_EDITOR: true,
+    ENABLE_CAMPAIGNCUE_RENDERED_ASSET_EXPORTS: true,
+
+    /**
      * Enable Upstash rate limiting
      *
      * true: Use Upstash for rate limiting (production)
