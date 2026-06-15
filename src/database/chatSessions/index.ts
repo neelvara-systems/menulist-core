@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import {
@@ -17,6 +18,17 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, qu
 
 const COLLECTION = DB_COLLECTIONS.CHAT_SESSIONS;
 const USER_CHAT_SESSION_LIMIT = 50;
+
+const collectChatImageUrls = (session?: ChatSession | null): string[] => {
+    const urls = new Set<string>();
+    (session?.messages || []).forEach((message) => {
+        const url = message.image?.url || message.image?.source;
+        if (typeof url === 'string' && url && !url.includes('base64')) {
+            urls.add(url);
+        }
+    });
+    return Array.from(urls);
+};
 
 const getDocRef = async (docId: string) => {
     return doc(answerlatticeFirebaseClient, `${COLLECTION}`, docId);
@@ -173,8 +185,17 @@ export const updateChatSession = async (sessionId: string, updates: Partial<Chat
 export const deleteChatSession = async (sessionId: string) => {
     return await apiCallComposer(
         async () => {
-            await deleteDoc(await getDocRef(sessionId));
-            return { id: sessionId, deleted: true };
+            const sessionRef = await getDocRef(sessionId);
+            const sessionDoc = await getDoc(sessionRef);
+            const imageUrls = sessionDoc.exists()
+                ? collectChatImageUrls(sessionDoc.data() as ChatSession)
+                : [];
+
+            await Promise.allSettled(
+                imageUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage))
+            );
+            await deleteDoc(sessionRef);
+            return { id: sessionId, deleted: true, storageFilesDeleted: imageUrls.length };
         },
         { sessionId },
         'deleteChatSession'

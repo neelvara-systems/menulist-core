@@ -9,6 +9,7 @@ import WebsiteHeadline from '../shared/WebsiteHeadline';
 import FeatureDetailJourney from './FeatureDetailJourney';
 import FeatureDetailVisual from './FeatureDetailVisual';
 import { featureDetailConfigs, type FeatureDetailSlug } from './featureDetailConfig';
+import PrintReadyKitProofGallery from './PrintReadyKitProofGallery';
 
 type FeatureDetailPageProps = {
   slug: FeatureDetailSlug;
@@ -56,6 +57,8 @@ export default function FeatureDetailPage({ slug }: FeatureDetailPageProps) {
       </section>
 
       <FeatureDetailJourney config={config} />
+
+      {slug === 'print-ready-kit' ? <PrintReadyKitProofGallery /> : null}
 
       <section className="ws-section ws-section--subtle ws-feature-detail-support">
         <div className="ws-container">

@@ -315,6 +315,29 @@ const refreshJobCounters = async (scope: IntakeScope, jobId: string) => {
     };
 };
 
+const reviewStatusCounterField = (status?: string) => {
+    if (status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED) return 'acceptedItemCount';
+    if (status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED) return 'publishedItemCount';
+    if (status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.REJECTED) return 'rejectedItemCount';
+    return null;
+};
+
+const buildReviewStatusCounterPatch = (
+    previousStatus?: string,
+    nextStatus?: string,
+) => {
+    const patch: Record<string, any> = {};
+    if (!nextStatus || previousStatus === nextStatus) return patch;
+
+    const previousField = reviewStatusCounterField(previousStatus);
+    const nextField = reviewStatusCounterField(nextStatus);
+
+    if (previousField) patch[previousField] = FieldValue.increment(-1);
+    if (nextField) patch[nextField] = FieldValue.increment(1);
+
+    return patch;
+};
+
 export async function listKnowledgeIntakeJobs(scopeInput: IntakeScope) {
     assertEnabled();
     assertDb();
@@ -716,41 +739,57 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
     assertDb();
     const scope = assertScope(scopeInput);
     const ref = reviewItemRef(itemId);
-    const snap = await ref.get();
-    if (!snap.exists) throw new Error('Review item not found.');
-    const current = snap.data() as AnswerlatticeIntakeReviewItem;
-    if (Number(current.tId) !== scope.tId || Number(current.sId) !== scope.sId) {
-        throw new Error('Review item is not available.');
-    }
-    if (current.jobId !== jobId) {
-        throw new Error('Review item is not available for this intake job.');
-    }
-    if (current.status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED) {
-        throw new Error('Published review items cannot be edited from intake.');
-    }
+    let updatedItem: AnswerlatticeIntakeReviewItem | null = null;
 
-    const patch = sanitizeReviewItemPatch(input);
-    const nextTarget = (patch.target || current.target) as AnswerlatticeIntakeReviewItem['target'];
-    const nextStatus = (patch.status || current.status) as AnswerlatticeIntakeReviewItem['status'];
-    const nextEntityIds = patch.entityIds !== undefined ? patch.entityIds : current.entityIds;
-    if (nextTarget === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CHANGELOG && patch.status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED) {
-        throw new Error('Changelog entries are owner-managed. Use release notes as source context, not as an intake publish target.');
-    }
-    if (
-        nextTarget === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL
-        && nextStatus === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED
-        && cleanIdList(nextEntityIds, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_ENTITY_IDS).length === 0
-    ) {
-        throw new Error('Add at least one related entity before accepting a canonical answer proposal.');
-    }
-    await ref.set({
-        ...patch,
-        modifiedOn: now(),
-        ...mutableActorFields(actor),
-    }, { merge: true });
+    await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) throw new Error('Review item not found.');
+        const current = snap.data() as AnswerlatticeIntakeReviewItem;
+        if (Number(current.tId) !== scope.tId || Number(current.sId) !== scope.sId) {
+            throw new Error('Review item is not available.');
+        }
+        if (current.jobId !== jobId) {
+            throw new Error('Review item is not available for this intake job.');
+        }
+        if (current.status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED) {
+            throw new Error('Published review items cannot be edited from intake.');
+        }
 
-    await refreshJobCounters(scope, current.jobId);
-    return { id: itemId, ...current, ...patch };
+        const patch = sanitizeReviewItemPatch(input);
+        const nextTarget = (patch.target || current.target) as AnswerlatticeIntakeReviewItem['target'];
+        const nextStatus = (patch.status || current.status) as AnswerlatticeIntakeReviewItem['status'];
+        const nextEntityIds = patch.entityIds !== undefined ? patch.entityIds : current.entityIds;
+        if (nextTarget === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CHANGELOG && patch.status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED) {
+            throw new Error('Changelog entries are owner-managed. Use release notes as source context, not as an intake publish target.');
+        }
+        if (
+            nextTarget === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL
+            && nextStatus === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED
+            && cleanIdList(nextEntityIds, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_ENTITY_IDS).length === 0
+        ) {
+            throw new Error('Add at least one related entity before accepting a canonical answer proposal.');
+        }
+
+        const modifiedAt = now();
+        tx.set(ref, {
+            ...patch,
+            modifiedOn: modifiedAt,
+            ...mutableActorFields(actor),
+        }, { merge: true });
+
+        const counterPatch = buildReviewStatusCounterPatch(current.status, patch.status);
+        if (Object.keys(counterPatch).length > 0) {
+            tx.set(jobRef(current.jobId), {
+                ...counterPatch,
+                modifiedOn: modifiedAt,
+            }, { merge: true });
+        }
+
+        updatedItem = { id: itemId, ...current, ...patch };
+    });
+
+    if (!updatedItem) throw new Error('Review item update failed.');
+    return updatedItem;
 }
 
 export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: string, actor?: IntakeActor) {

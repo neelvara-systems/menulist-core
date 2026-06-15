@@ -181,24 +181,43 @@ export default function FeatureDetailVisual({ config }: FeatureDetailVisualProps
 
       case 'print-ready-kit':
         return (
-          <div className="ws-feature-visual__print-board">
-            <div className="ws-feature-visual__print-toolbar">
+          <div className="ws-feature-visual__print-workspace">
+            <div className="ws-feature-visual__print-template-panel">
+              <div className="ws-feature-visual__print-panel-top">
+                <strong>{t(`${key}.journey1Nav`)}</strong>
+                <span>{t(`${key}.journey1Summary`)}</span>
+              </div>
+              <div className="ws-feature-visual__print-template-list">
+                {[0, 1, 2].map((index) => (
+                  <span key={index}>
+                    {t(`${key}.journey1Pill${index}`)}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="ws-feature-visual__print-editor-card">
+              <div className="ws-feature-visual__print-editor-top">
+                <span>{t(`${key}.previewPill1`)}</span>
+                <span>{t(`${key}.previewPill2`)}</span>
+              </div>
+              <div className="ws-feature-visual__print-artboard">
+                <strong>{t(`${key}.journey0Card0Title`)}</strong>
+                <QrPattern />
+                <small>{t(`${key}.journey3Card0Title`)}</small>
+              </div>
+              <div className="ws-feature-visual__print-editor-actions">
+                {stripItems.slice(2, 5).map(({ Icon, label }) => (
+                  <span key={label}>
+                    <Icon size={14} aria-hidden="true" />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="ws-feature-visual__print-output-strip">
               {previewPills.map((label) => (
                 <span key={label}>{label}</span>
               ))}
-            </div>
-            <div className="ws-feature-visual__print-assets">
-              {[0, 1, 2].map((index) => {
-                const Icon = config.journeyCardIcons[0][index];
-
-                return (
-                  <article key={index}>
-                    <Icon size={18} aria-hidden="true" />
-                    <QrPattern />
-                    <strong>{t(`${key}.journey0Card${index}Title`)}</strong>
-                  </article>
-                );
-              })}
             </div>
           </div>
         );

@@ -18,7 +18,7 @@
 import { Timestamp } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from "../constants/database";
-import { isFunctionFeatureEnabled } from "../constants/features";
+import { FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from "../constants/features";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { normalizeBusinessCategory, resolveStoreBusinessCategory } from "../sharedData/businessTypes";
 import { applyCategoryIconDefaults } from "../sharedData/categoryIconSuggestions";
@@ -70,6 +70,7 @@ const PROFILE_CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number
     medium: 2,
     low: 1,
 };
+const EXTRACTION_DETAIL_RETENTION_MS = FUNCTION_RETENTION_CONFIG.MENU_EXTRACTION_DETAIL_RETENTION_HOURS * 60 * 60 * 1000;
 
 function timestampMillis(value: unknown): number | null {
     if (!value) return null;
@@ -89,6 +90,14 @@ function addTimestamp(target: Record<string, unknown>, key: string, millis?: num
     if (typeof millis === "number" && Number.isFinite(millis)) {
         target[key] = Timestamp.fromMillis(millis);
     }
+}
+
+function buildExtractionDetailRetentionFields(nowMillis: number): Record<string, unknown> {
+    return {
+        detailExpiresAt: Timestamp.fromMillis(nowMillis + EXTRACTION_DETAIL_RETENTION_MS),
+        detailRetentionHours: FUNCTION_RETENTION_CONFIG.MENU_EXTRACTION_DETAIL_RETENTION_HOURS,
+        detailRetentionMode: "summary_after_retention",
+    };
 }
 
 function addDuration(target: Record<string, unknown>, key: string, value?: number | null): void {
@@ -1175,6 +1184,7 @@ export async function processMenuImagesJobLogic(
             await jobRef.update({
                 status: MENU_PROCESSING_STATUS.COMPLETED,
                 completedAt: Timestamp.fromMillis(completedAtMillis),
+                ...buildExtractionDetailRetentionFields(completedAtMillis),
                 updatedAt: Timestamp.fromMillis(completedAtMillis),
                 progress: 100,
                 currentStep: "Completed",
@@ -1251,6 +1261,7 @@ export async function processMenuImagesJobLogic(
             await jobRef.update({
                 status: MENU_PROCESSING_STATUS.PREVIEW_READY,
                 updatedAt: Timestamp.fromMillis(previewReadyAtMillis),
+                ...buildExtractionDetailRetentionFields(previewReadyAtMillis),
                 progress: 100,
                 currentStep: "Preview ready - awaiting review",
                 isFirstExtraction: false,

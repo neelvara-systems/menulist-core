@@ -37,7 +37,7 @@ All collections are nested under:
 | Collection | Purpose | Client access |
 | --- | --- | --- |
 | `cueLayerDesigns/{designId}` | Design state, source pointer, current editor snapshot pointer, readiness, summary warnings. | Read only through rules; writes through API/Admin. |
-| `cueLayerJobs/{jobId}` | Reconstruction job state, progress, source package pointer, error code, retry metadata. | Read single job; writes through API/Admin. |
+| `cueLayerJobs/{jobId}` | Reconstruction job state, progress, source package pointer, error code, retry metadata. | Read single job through `cueLayerDesigns.current.jobId` where available; writes through API/Admin. |
 | `cueLayerJobEvents/{eventId}` | Bounded operational events for support/debug. | Admin/server read by default. |
 | `cueLayerVersions/{versionId}` | Version pointer records, not the large editor document snapshot itself. | Read list with limit. |
 | `cueLayerExports/{exportId}` | Export request/result state and download asset pointer. | Read own workspace exports. |
@@ -68,6 +68,7 @@ Small state only:
 - `current.editorProjectionAssetId`
 - `current.creativeEditorDocumentSnapshotAssetId`
 - `current.layerIndexAssetId`
+- `current.jobId`
 - `current.previewAssetId`
 - `current.revision`
 - `status`: `draft`, `processing`, `ready`, `needs_review`, `failed`, `cancelled`
@@ -261,7 +262,9 @@ Provider cost dominates Firebase cost, so the implementation should optimize for
 | Upload to Storage | 1 file | Size-limited. |
 | Create design doc | 1 write | Small pointer/state doc. |
 | Create job doc | 1 write | Small state doc. |
-| Event/cost initial record | 1-2 writes | Bounded. |
+| Event/cost initial record | 1-2 writes | Bounded; synchronous upload completion event and idempotency completion share the same Firestore batch as the design/job write. |
+
+The active flat-safe upload stores `cueLayerDesigns.current.jobId` as the current job pointer. Idempotent upload replay uses that pointer for a direct job document read and falls back to an indexed `designId` query only for legacy design records that do not have the pointer.
 
 ### Worker Processing
 
@@ -290,8 +293,8 @@ Provider cost dominates Firebase cost, so the implementation should optimize for
 | --- | ---: | --- |
 | Local IndexedDB write | free | Browser-local draft. |
 | Editor document snapshot Storage write | 1 per debounced save | Validate size first. |
-| Design pointer update | 1 write | Update current revision. |
-| Version doc write | Only explicit version/checkpoint | Not every keystroke. |
+| Design pointer update | 1 write | Update current revision; batched with the version pointer write. |
+| Version doc write | Only explicit version/checkpoint | Not every keystroke; batched with the design pointer update. |
 
 ### Export
 
@@ -301,8 +304,16 @@ Provider cost dominates Firebase cost, so the implementation should optimize for
 | Editor document snapshot Storage read | 1 | Source of truth for render. |
 | Asset reads | per asset used | Use signed URLs/server bucket access. |
 | Output Storage write | 1 | Final downloadable file; export registration is not created unless this write succeeds. |
-| Export doc update | 1 | Mark ready/failed. |
-| CampaignCue asset record write | 1 optional | If owner registers export into Asset Library. |
+| Export doc update | 1 | Mark ready/failed; batched with the CueLayers export-ready event. |
+| CampaignCue asset record write | 1 optional | If owner registers export into Asset Library; asset metadata and its audit event are already batched by the shared CampaignCue asset registration path. |
+
+### Repair
+
+| Operation | Count | Notes |
+| --- | ---: | --- |
+| Repair patch Storage write | 1 | Immutable repair intent artifact. |
+| Repair request write | 1 | Compact state record, batched with correction event metadata. |
+| Correction event write | 1 | Structured learning/support signal, batched with the repair request. |
 
 ## Job Event And Status Cost Policy
 

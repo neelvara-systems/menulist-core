@@ -35,9 +35,13 @@ The old Vue Fabric editor was used only as a feature reference. The current impl
 | Templates | Covered as local starter templates. No remote template API call. |
 | Import JSON | Covered for native editor JSON and compatible Fabric JSON normalization. |
 | Import image file | Covered for PNG/JPEG/WebP/GIF file import into image layers. |
-| Import SVG file | Covered as image-layer import. |
-| Import SVG string | Covered through pasted SVG markup in the Images drawer. |
+| Import SVG file | Intentionally not supported; unsafe SVG import is blocked by the trusted-asset boundary. |
+| Import SVG string | Intentionally not supported; pasted SVG markup is not accepted as a runtime image layer. |
 | Canvas controls | Covered: Fabric selection, move, resize, rotate, panning, wheel zoom, fit, snap guidelines, keyboard movement, delete, copy/paste, select all, and group shortcut. |
+| Contextual property toolbar | Covered: selected text, image, shape/line/QR, and multi-selection states expose high-frequency properties above the canvas while reusing inspector handlers. |
+| Floating selected-layer toolbar | Covered: selected objects show a canvas-anchored action bar for Design Cue entry, edit, color, style, flip, position/layers, lock, duplicate, delete, group, distribute, and more controls without entering export output. |
+| Searchable drawer and Brand Kit | Covered: local templates/assets/tools/text presets, approved product assets, recent insertions, brand colors/logos/font, and product text placeholders are searchable or directly actionable without remote material APIs. |
+| Page/artboard controls | Covered: optional page list with active-page mirror, add/switch/duplicate/lock page controls, active-page export, and JSON page-list preservation. |
 | Grid/ruler-style orientation | Covered as a grid overlay toggle with numeric ruler gutters. |
 | Preview | Covered through a watermark-free preview modal. |
 | Layers | Covered: list, select, hide, lock, duplicate, delete, reorder forward/back/front/back. |
@@ -66,8 +70,8 @@ The old Vue Fabric editor was used only as a feature reference. The current impl
 | Import native JSON | Added | Native `CreativeEditorDocument` import keeps product context. |
 | Import old Fabric JSON | Added | Compatible Fabric JSON normalizes into neutral layers; unsupported legacy object/plugin types may be simplified or dropped. |
 | Import image file | Added | PNG/JPEG/WebP/GIF file import into image layers. |
-| Import SVG file | Added | SVG file import as image layer. |
-| Paste SVG string | Added | Images drawer has SVG markup textarea. |
+| Import SVG file | Rejected | Arbitrary SVG import remains blocked; SVG export from the neutral document model is still supported. |
+| Paste SVG string | Rejected | Arbitrary pasted SVG markup remains blocked; the Images drawer explains the safe raster-image boundary. |
 | PSD import | Not added | Requires backend/service guardrails and cost controls. |
 | Remote template list/filter | Not added | Replaced with local templates to avoid remote API dependency. |
 | Local starter templates | Added | Square, story, wide, poster local document starters. |
@@ -76,6 +80,7 @@ The old Vue Fabric editor was used only as a feature reference. The current impl
 | Font catalog/style source panel | Partial | Safe local font family controls exist; no remote font preview catalog/API-backed font loading. |
 | Layer panel | Added | Select, hide, lock, reorder, duplicate, delete. |
 | Selection controls | Added | Fabric handles for move, resize, rotate; keyboard delete, arrows, copy/paste, select-all, group shortcut. |
+| Canvas-local selected-object actions | Added | Floating selected-layer toolbar mirrors modern editor behavior for common actions near the selected item while reusing inspector/action handlers. |
 | Snap guidelines | Added | Alignment guidelines on object move. |
 | Pan/zoom/fit | Added | Grab mode, wheel zoom, zoom in/out, fit. |
 | Numeric ruler gutters | Added | Grid toggle also shows top/left numeric ruler gutters for canvas orientation. |
@@ -122,7 +127,7 @@ The old Vue Fabric editor was used only as a feature reference. The current impl
 
 ## Result-Affecting Gaps
 
-No known old-editor result-affecting gaps remain inside the product-neutral browser editor boundary after the June 12, 2026 parity pass. Implemented coverage now includes path text, arrow variants, click-to-draw polygons, polygon vertex editing, visible export watermark, image outline, multi-stop gradients, RemoveColor/Gamma/grayscale-mode filters, richer border dash/cap variants, multi-select distribute X/Y, numeric ruler gutters, replace-image, PNG clipboard export, and base64 clipboard export.
+No known old-editor result-affecting gaps remain inside the product-neutral browser editor boundary after the June 14, 2026 parity pass. Implemented coverage now includes path text, arrow variants, click-to-draw polygons, polygon vertex editing, visible export watermark, image outline, multi-stop gradients, RemoveColor/Gamma/grayscale-mode filters, richer border dash/cap variants, multi-select distribute X/Y, numeric ruler gutters, top contextual property toolbar, floating selected-layer toolbar actions, searchable drawer, Brand Kit quick picks, text placeholders, optional page/artboard controls, replace-image, PNG clipboard export, and base64 clipboard export.
 
 Two differences remain intentional:
 

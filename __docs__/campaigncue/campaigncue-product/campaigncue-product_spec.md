@@ -2,20 +2,20 @@
 
 ## Executive Summary
 
-CampaignCue is a separate product for local-business campaign execution. It turns real restaurant, salon, agency, and multi-location business data into ready-to-use campaign packs, then checks those packs for source accuracy, claims, consent, rights, billing, and publish readiness.
+CampaignCue is a separate product for local-business campaign execution. It turns real local-business data into a deterministic Campaign Decision Engine, daily campaign desk, ready-to-use campaign packs, safe optional editor changes, manual delivery cards, local visibility cues, and result memory, then checks those packs for source accuracy, claims, consent, rights, billing, and publish readiness.
 
-The product exists because SMB owners usually do not know what to post, what to promote, what format to choose, or how to keep offers accurate. CampaignCue starts from the business facts and gives a practical campaign cue.
+The product exists because SMB owners usually do not know what to post, what to promote, what format to choose, or how to keep offers accurate. CampaignCue starts from the business facts and gives a practical campaign cue. It does not ask a model what the business should promote; the active recommendation authority is facts, recipes, timing, readiness, risk gates, owner effort, and compact result memory.
 
 ## Current Runtime Boundary
 
-The implemented runtime is export/download-first. It creates source-backed campaign packs, trust reports, schedule/manual-task records, approval requests, asset metadata, location records, read-only future provider posture, and dashboard summaries. Social account connection, direct provider publishing, WhatsApp direct send, paid generation, rendered video, billing checkout, provider metric import, and MenuList write-back remain disabled until a separate future provider layer is explicitly built.
+The implemented runtime is export/download-first. It creates source-backed campaign packs, first-class pack reviews, structured manual delivery cards, trust reports, local visibility cues, schedule/manual-task records, approval requests, asset metadata, location records, read-only future provider posture, compact result memory, and dashboard summaries. Social account connection, direct provider publishing, WhatsApp direct send, paid generation, rendered video, billing checkout, provider metric import, and MenuList write-back remain disabled until a separate future provider layer is explicitly built.
 
 ## Scope
 
 | In scope | Out of scope |
 | --- | --- |
 | Business profile and brand kit | Generic blank-canvas design tool |
-| Restaurant and salon catalogs | MenuList menu editing |
+| Restaurant, salon, retail, service, fitness, clinic, and generic local-business recipes | MenuList menu editing |
 | Campaign cues and packs | Answerlattice support answers |
 | Static creatives, scripts, videos | Fake testimonials or fake review cards |
 | WhatsApp, Google, ads, calendar outputs | Ranking, sales, ROI guarantees |
@@ -35,12 +35,14 @@ The implemented runtime is export/download-first. It creates source-backed campa
 ## Product Loop
 
 1. Add business data or source links.
-2. CampaignCue shows what is worth promoting.
-3. User creates a campaign pack.
-4. Outputs are generated and grouped by channel.
-5. Creative Trust Center checks facts, claims, source freshness, consent, and rights.
-6. User exports, copies, schedules a manual task, hands off, or sends for approval.
-7. Analytics records what was used and prepares the next cue.
+2. Campaign Decision Engine ranks campaign recipes from facts, readiness, timing, trust risk, owner effort, repetition, and compact result memory.
+3. Daily Campaign Desk shows what is worth promoting, why it is recommended, what is missing, and what pack will be prepared.
+4. User creates or opens a campaign pack.
+5. Outputs are generated and grouped by channel.
+6. Creative Trust Center checks facts, claims, source freshness, consent, and rights.
+7. User reviews manual delivery cards for WhatsApp, Google/local, social creative, ad handoff, video/script, calendar, print, or staff use.
+8. User exports, copies, follows manual delivery steps, schedules a manual task, hands off, or sends for approval.
+9. Owner records what happened with a quick result option or note, and CampaignCue prepares the next cue from compact result memory.
 
 ## Requirements
 
@@ -53,6 +55,9 @@ The implemented runtime is export/download-first. It creates source-backed campa
 | Export/download delivery | Download/export remains the active delivery path without social account connections. |
 | Credit visibility | Every paid generation shows estimate before reservation. |
 | Mobile owner workflows | Download WhatsApp-ready text, approve, upload asset, fix simple trust issue, and mark posted must work on mobile. |
+| Local visibility | CampaignCue can prepare a Google/local visibility pack and checklist without connecting or posting to Google. |
+| Result learning | CampaignCue stores compact useful/not-useful signals on the campaign so repeat/adjust recommendations do not require raw event scans. |
+| Deterministic decision engine | Recommendation cards store an auditable decision object with recipe, confidence, score, facts used, missing inputs, explanations, recommended outputs, and trust preflight. AI can assist copy/editing later but does not decide the campaign. |
 
 ## Competitive Validation
 
@@ -62,7 +67,7 @@ CampaignCue should not compete on raw generation volume or generic scheduling. I
 
 | Market surface | Existing strength | CampaignCue wedge |
 | --- | --- | --- |
-| Canva/Adobe Express | Broad design, templates, captions, scheduling, image/video tools. | Campaigns start from source-backed restaurant/salon facts and trust checks. |
+| Canva/Adobe Express | Broad design, templates, captions, scheduling, image/video tools. | Campaigns start from source-backed local-business facts, Daily Campaign Desk recommendations, trust checks, and manual delivery/result memory. |
 | Buffer/Hootsuite/Later/Meta Business Suite | Scheduling, captions, planning, inbox/reporting, platform-native publishing. | Calendar is campaign-state aware with manual tasks, approvals, trust, and source context. |
 | Predis/Creatify/ad generators | Ad variants, video ads, URL-to-video, UGC-style creative, batch generation. | Practical local campaign packs with source, consent, rights, and channel guardrails. |
 | Google/WhatsApp/Meta direct tools | Native account actions and platform-owned insights. | Multi-channel campaign pack, export/download delivery, and cross-channel learning. |

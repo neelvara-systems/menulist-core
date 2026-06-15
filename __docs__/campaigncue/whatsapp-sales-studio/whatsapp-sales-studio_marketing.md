@@ -8,13 +8,13 @@ WhatsApp Sales Studio helps local businesses prepare clear WhatsApp campaigns fr
 
 - Campaign messages start from real business facts.
 - Consent and opt-out posture stay visible.
-- Owners can use download/export first and direct send only where configured.
+- Owners download/export the prepared image and text, then paste/send manually in WhatsApp outside CampaignCue.
 - Replies and results can feed the next campaign cue.
 
 ## Proof Points
 
 - Manual export fallback.
-- Template and direct-send separation.
+- Template and direct-send separation remains a future provider layer, not the active runtime.
 - Trust checks for offers and claims.
 - Opt-out-aware campaign planning.
 

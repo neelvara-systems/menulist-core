@@ -58,7 +58,7 @@ export async function detectAndTrackAppOpen(
   if (options.trackingEnabled === false) return false;
   if (!detectInstalled()) return false;
 
-  const { tenantId, storeTimeZone, businessDayEndTime, includeLocation = true } = options;
+  const { tenantId, storeTimeZone, businessDayEndTime, includeLocation = false } = options;
 
   // One fire per session per store — prevents SPA route changes from inflating opens
   if (isSessionStorageAvailable()) {

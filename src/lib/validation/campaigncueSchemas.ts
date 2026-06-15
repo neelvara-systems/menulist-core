@@ -32,6 +32,7 @@ export const CampaignCueCampaignActionSchema = z.object({
     channel: CampaignCueChannelSchema.optional(),
     scheduledAt: z.string().datetime().optional(),
     note: z.string().trim().max(400).optional(),
+    resultSignalId: z.string().trim().regex(/^[a-zA-Z0-9_-]+$/).min(2).max(80).optional(),
     idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional(),
 });
 
@@ -55,7 +56,17 @@ export const CampaignCueAssetSchema = z.object({
 
 export const CampaignCueBusinessPatchSchema = z.object({
     name: z.string().trim().min(2).max(120).optional(),
-    businessType: z.enum(["restaurant", "salon", "multi_location", "agency_client"]).optional(),
+    businessType: z.enum([
+        "restaurant",
+        "salon",
+        "retail",
+        "local_service",
+        "fitness",
+        "clinic",
+        "multi_location",
+        "agency_client",
+        "other",
+    ]).optional(),
     locality: z.string().trim().max(120).optional(),
     website: optionalUrl(500),
     phone: z.string().trim().max(40).optional(),

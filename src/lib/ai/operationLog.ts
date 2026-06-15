@@ -1,4 +1,5 @@
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
+import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from "@constant/product";
 import { ECOMSAI_PLATFORM_STORE_ID, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM_USER_ID, ECOMSAI_PLATFORM_USER_NAME } from "@constant/user";
@@ -68,6 +69,10 @@ function serializeGeminiResponse(response: any) {
     });
 }
 
+function shouldStoreDetailedAiOperation(): boolean {
+    return FEATURE_FLAGS.AI_OPERATION_LOG_MODE === "detailed";
+}
+
 export function buildAiOperationLog(input: AiOperationLogInput): AiOperationLogInput {
     const usageMetadata = getGeminiUsageMetadata(input.geminiResponse);
     const promptTokenCount = Number(input.promptTokenCount ?? usageMetadata.promptTokenCount ?? 0);
@@ -81,13 +86,16 @@ export function buildAiOperationLog(input: AiOperationLogInput): AiOperationLogI
     const realCostPaise = Number(input.realCostPaise ?? getRealCostPaise(input.action));
     const ourChargePaise = Number(input.ourChargePaise ?? getOurChargePaise(input.action));
 
+    const detailed = shouldStoreDetailedAiOperation();
+
     return {
         ...input,
         action: input.action || AI_ACTIONS_TYPES.IMAGE_PROCESSING,
+        aiLogMode: detailed ? "detailed" : "accounting_only",
         billingMode: input.billingMode || (unitsConsumed > 0 ? "billable" : "free"),
         candidatesTokenCount,
         chargePerCredit,
-        geminiResponse: serializeGeminiResponse(input.geminiResponse),
+        geminiResponse: detailed ? serializeGeminiResponse(input.geminiResponse) : null,
         marginPaise: Number(input.marginPaise ?? (ourChargePaise - realCostPaise)),
         ourChargePaise,
         promptTokenCount,
@@ -104,6 +112,8 @@ export async function recordAiOperation(input: AiOperationLogInput): Promise<str
     const tId = String(input.tId ?? ECOMSAI_PLATFORM_TENANT_ID);
     const sId = String(input.sId ?? ECOMSAI_PLATFORM_STORE_ID);
     const now = admin.firestore.Timestamp.now();
+    const detailed = shouldStoreDetailedAiOperation();
+    const detailRetentionDays = Number(FEATURE_FLAGS.AI_OPERATION_DETAIL_RETENTION_DAYS || 14);
     const productId = String(input.pId || '').toUpperCase();
     const shouldWriteAnswerlatticeOperation = productId === PRODUCT_IDS.ANSWERLATTICE
         && answerlatticeFirestoreAdmin
@@ -117,6 +127,10 @@ export async function recordAiOperation(input: AiOperationLogInput): Promise<str
         createdBy: input.createdBy || input.modifiedBy || ECOMSAI_PLATFORM_USER_NAME,
         modifiedBy: input.modifiedBy || input.createdBy || ECOMSAI_PLATFORM_USER_NAME,
         createdOn: input.createdOn || now,
+        ...(detailed ? {
+            detailExpiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + detailRetentionDays * 24 * 60 * 60 * 1000),
+        } : {}),
+        detailRetentionDays: detailed ? detailRetentionDays : 0,
         modifiedOn: now,
     });
 

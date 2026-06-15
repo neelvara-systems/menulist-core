@@ -124,8 +124,8 @@ The export history shows when a file was created and whether the menu changed af
 
 The active dedicated page is `/features/print-ready-kit`. It must stay owner-facing and should not lead with the internal `Menu Card Export` name.
 
-- **Page Title:** Print-ready Kit - MenuList | Table, Counter, Social, and Printer Files
-- **Meta Description:** Create table cards, counter cards, stickers, posters, social images, and printer handoff files from the same owner-approved menu source.
+- **Page Title:** Print-ready Kit - MenuList | Templates, Editor, and Print Files
+- **Meta Description:** Choose finished print templates, adjust supported copy in the editor, and download QR cards, menu PDFs, images, and printer files from the current approved menu.
 - **OG Title:** Print-ready Kit - MenuList
 - **OG Description:** Create printable and social-ready files from the same menu source customers open online.
 - **Target Keywords:** print menu files, service list PDF, product catalog PDF, QR menu PDF

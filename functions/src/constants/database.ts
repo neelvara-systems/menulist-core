@@ -30,6 +30,7 @@ export const DB_COLLECTIONS = {
     CHAT_SESSIONS: 'chatSessions',              // Individual chat sessions
 
     // AI & Intelligence
+    MENULIST_AI_OPERATIONS: 'menulistAiOperations',
     MENULIST_AI_EXTRACTION_OPERATIONS: 'MENULIST_AI_OPERATIONS', // Gemini extraction audit collection
     INSIGHTS: 'insights',                       // AI-generated insights (feedback, weekly narrative)
     AI: 'ai',                                   // Nested AI insight subcollection
@@ -82,6 +83,7 @@ export const DB_COLLECTIONS = {
 
     // Guest Feedback (Internal Feedback System)
     GUEST_FEEDBACK: 'guestFeedback',
+    FEEDBACK_EVENTS: 'feedbackEvents',
 
     // Messaging Onboarding (Zero-Friction SMB Acquisition Engine)
     // @see __docs__/messaging-onboarding/

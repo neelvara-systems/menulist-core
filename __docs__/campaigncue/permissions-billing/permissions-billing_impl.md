@@ -31,7 +31,7 @@ Permissions Billing should use CampaignCue-scoped role constants, billing record
 - Workspace member roles and feature flags are visible from the owner app.
 - Billing checkout, credit purchase, usage capture, and spend-changing actions are disabled.
 - Direct publish and direct send are blocked server-side even if a user reaches the action.
-- Settings can request agency, multi-location, deterministic generation, or direct publishing posture, but unsafe provider/billing flags remain gated by repo-level CampaignCue feature flags.
+- Settings can display agency, multi-location, deterministic generation, and future direct-publishing posture, but unsafe provider/billing flags remain gated by repo-level CampaignCue feature flags and cannot activate posting from the owner UI.
 - Plan/Access shows launch-readiness checks for CampaignCue Firebase project envs, server credentials, manual runtime availability, and connected sending/spend gates. This is a visibility surface only; it does not provision external Firebase, DNS, Vercel, billing, or provider accounts.
 
 ## Data Objects

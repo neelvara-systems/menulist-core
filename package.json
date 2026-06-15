@@ -26,6 +26,7 @@
     "verify:website-resource-locales": "node scripts/verification/verify-website-resource-locales.js",
     "verify:env-targets": "node scripts/verification/verify-agent-readiness.js --env-targets-only",
     "verify:campaigncue": "node scripts/verification/verify-campaigncue-runtime.js",
+    "verify:creative-editor-smoke": "node scripts/verification/verify-creative-editor-smoke.js",
     "verify:answerlattice-pwa": "node scripts/verification/verify-answerlattice-pwa-assets.js",
     "verify:customer-app-pwa": "node scripts/verification/verify-customer-app-pwa.js",
     "verify:catalog-analytics": "npm --prefix functions run build && node scripts/verification/verify-catalog-analytics-intelligence.js",

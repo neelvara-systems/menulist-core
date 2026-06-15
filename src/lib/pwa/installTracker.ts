@@ -64,7 +64,7 @@ export async function fireInstalledEventOnce(
   // Customer App analytics are suppressed too.
   if (options.trackingEnabled === false) return;
 
-  const { tenantId, storeTimeZone, businessDayEndTime, source = 'native', includeLocation = true } = options;
+  const { tenantId, storeTimeZone, businessDayEndTime, source = 'native', includeLocation = false } = options;
   const { platform } = detectPlatform();
   // Entry/source context only. Customer App identity is store-level, so this
   // does not create or imply separate installed apps per public route.

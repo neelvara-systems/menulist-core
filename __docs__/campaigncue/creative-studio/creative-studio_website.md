@@ -11,6 +11,7 @@ Explain that CampaignCue can create static campaign assets from approved local-b
 ## Supporting Points
 
 - Creates assets from selected items, services, offers, locations, and campaign goals.
+- Lets owners adjust selected text, images, colors, and approved brand assets before download.
 - Prepares channel-specific versions instead of one generic image.
 - Keeps owner approval and trust checks in the workflow.
 - Supports export when direct publishing is unavailable.
@@ -20,4 +21,3 @@ Explain that CampaignCue can create static campaign assets from approved local-b
 - Do not promise automatic revenue growth.
 - Do not claim every platform can be published to directly.
 - Do not describe the feature as a generic image generator.
-

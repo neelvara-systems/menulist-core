@@ -1,6 +1,6 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from "@constant/AI";
 import { DB_COLLECTIONS } from "@constant/database";
-import { arrayUnion, collection, getDoc, increment, limit, query, setDoc, where } from "@firebase/firestore";
+import { collection, getDoc, increment, limit, query, runTransaction, setDoc, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
@@ -10,6 +10,7 @@ import { addDoc, doc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS;
 const ACTIVE_BATCH_JOB_QUERY_LIMIT = 5;
+const MAX_STATUS_HISTORY_ENTRIES = 20;
 
 const getCollectionRef = async () => {
     const session = await getActiveSession();
@@ -70,15 +71,13 @@ export const updateImageBatchProcessingJob = async (data: any, projectId: string
             let specialFields: any = {};
 
             // Handle statusHistory specially if it exists in the data
+            let latestStatusEntry: any = null;
             if ("statusHistory" in data && Array.isArray(data.statusHistory) && data.statusHistory.length > 0) {
                 // Extract the latest status entry (assuming it's the last one in the array)
-                const latestStatusEntry = data.statusHistory[data.statusHistory.length - 1];
+                latestStatusEntry = data.statusHistory[data.statusHistory.length - 1];
 
                 // Remove statusHistory from the processed data
                 delete processedData.statusHistory;
-
-                // Add to special fields
-                specialFields.statusHistory = arrayUnion(latestStatusEntry);
             }
 
             // Handle generatedCount increment if it's a number
@@ -99,7 +98,19 @@ export const updateImageBatchProcessingJob = async (data: any, projectId: string
             const finalUpdateData = { ...updateData, ...specialFields };
 
             const [tId, _, sId] = projectId.split("-");
-            await setDoc(await getDocRef(data.id, { tId, sId }), finalUpdateData, { merge: true });
+            const docRef = await getDocRef(data.id, { tId, sId });
+            if (latestStatusEntry) {
+                await runTransaction(firebaseClient, async (transaction) => {
+                    const snap = await transaction.get(docRef);
+                    const currentHistory = Array.isArray(snap.data()?.statusHistory) ? snap.data()?.statusHistory : [];
+                    finalUpdateData.statusHistory = [...currentHistory, latestStatusEntry].slice(-MAX_STATUS_HISTORY_ENTRIES);
+                    transaction.set(docRef, {
+                        ...finalUpdateData,
+                    }, { merge: true });
+                });
+                return finalUpdateData;
+            }
+            await setDoc(docRef, finalUpdateData, { merge: true });
 
             // Return the data in a format that matches what the caller expects
             return finalUpdateData;

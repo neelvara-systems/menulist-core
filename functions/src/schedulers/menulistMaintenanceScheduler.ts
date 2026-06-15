@@ -6,13 +6,13 @@
  * or overlapping scheduler ticks cannot duplicate sends, cleanup, or alerts.
  */
 
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { aggregateDailyChatStatsLogic } from '../aggregateDailyChatStats';
 import { SECRET_GROUPS } from '../config/secrets';
 import { DB_COLLECTIONS } from '../constants/database';
-import { isFunctionFeatureEnabled } from '../constants/features';
+import { FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from '../constants/features';
 import { firestoreAdmin as db, storageAdmin } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
 import { isAlertsMuted } from '../monitoring/deployMute';
@@ -33,6 +33,7 @@ import { messagingSessionCleanupLogic } from './messagingSessionCleanup';
 const logger = functions.logger;
 
 const MINUTE_MS = 60 * 1000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
 const SCHEDULER_NAME = 'menulistMaintenanceScheduler';
 const STATE_DOC_ID = 'menulistMaintenanceScheduler';
 const LOCK_DOC_PREFIX = 'menulistMaintenanceTaskLock_';
@@ -298,6 +299,9 @@ async function persistMeaningfulRunLog(params: {
         triggeredBy: 'system',
         startedAt: Timestamp.fromDate(params.startedAt),
         completedAt: Timestamp.fromDate(params.finishedAt),
+        expiresAt: Timestamp.fromMillis(
+            params.startedAt.getTime() + FUNCTION_RETENTION_CONFIG.SCHEDULER_RUN_LOG_RETENTION_DAYS * DAY_MS,
+        ),
         durationMs: params.finishedAt.getTime() - params.startedAt.getTime(),
         status: params.summaries.some((summary) => summary.status === 'failed') ? 'partial' : 'success',
         tasks: params.summaries.map((summary) => ({
@@ -566,6 +570,272 @@ async function deleteExpiredDocs(params: {
     return { scanned: snapshot.size, deleted };
 }
 
+async function deleteLegacyFeedbackEvents(params: {
+    now: Timestamp;
+    limit?: number;
+}): Promise<{ scanned: number; deleted: number; skipped: number }> {
+    const cutoff = Timestamp.fromMillis(
+        params.now.toMillis() - FUNCTION_RETENTION_CONFIG.FEEDBACK_EVENT_RETENTION_DAYS * DAY_MS,
+    );
+    const snapshot = await db
+        .collection(DB_COLLECTIONS.FEEDBACK_EVENTS)
+        .where('timestamp', '<=', cutoff)
+        .limit(params.limit || 50)
+        .get();
+    const batch = db.batch();
+    let deleted = 0;
+    let skipped = 0;
+
+    for (const doc of snapshot.docs) {
+        if (doc.data().expiresAt) {
+            skipped++;
+            continue;
+        }
+        batch.delete(doc.ref);
+        deleted++;
+    }
+
+    if (deleted > 0) {
+        await batch.commit();
+    }
+
+    return { scanned: snapshot.size, deleted, skipped };
+}
+
+async function deleteLegacySchedulerRunLogs(params: {
+    now: Timestamp;
+    limit?: number;
+}): Promise<{ scanned: number; deleted: number; skipped: number }> {
+    const cutoff = Timestamp.fromMillis(
+        params.now.toMillis() - FUNCTION_RETENTION_CONFIG.SCHEDULER_RUN_LOG_RETENTION_DAYS * DAY_MS,
+    );
+    const snapshot = await db
+        .collection(DB_COLLECTIONS.SCHEDULER_RUN_LOGS)
+        .where('startedAt', '<=', cutoff)
+        .limit(params.limit || 50)
+        .get();
+    const batch = db.batch();
+    let deleted = 0;
+    let skipped = 0;
+
+    for (const doc of snapshot.docs) {
+        if (doc.data().expiresAt) {
+            skipped++;
+            continue;
+        }
+        batch.delete(doc.ref);
+        deleted++;
+    }
+
+    if (deleted > 0) {
+        await batch.commit();
+    }
+
+    return { scanned: snapshot.size, deleted, skipped };
+}
+
+async function deleteExpiredDocsInCollectionRef(params: {
+    collectionRef: FirebaseFirestore.CollectionReference;
+    now: Timestamp;
+    limit?: number;
+}): Promise<{ scanned: number; deleted: number }> {
+    const snapshot = await params.collectionRef
+        .where('expiresAt', '<=', params.now)
+        .limit(params.limit || 25)
+        .get();
+    const batch = db.batch();
+    let deleted = 0;
+
+    for (const doc of snapshot.docs) {
+        batch.delete(doc.ref);
+        deleted++;
+    }
+
+    if (deleted > 0) {
+        await batch.commit();
+    }
+
+    return { scanned: snapshot.size, deleted };
+}
+
+async function compactAiOperationDetailsInCollectionRef(params: {
+    collectionRef: FirebaseFirestore.CollectionReference;
+    now: Timestamp;
+    limit?: number;
+}): Promise<{ scanned: number; compacted: number }> {
+    const snapshot = await params.collectionRef
+        .where('detailExpiresAt', '<=', params.now)
+        .limit(params.limit || 25)
+        .get();
+    const batch = db.batch();
+    let compacted = 0;
+
+    for (const doc of snapshot.docs) {
+        batch.update(doc.ref, {
+            clientResponse: FieldValue.delete(),
+            detailExpiresAt: FieldValue.delete(),
+            detailPrunedAt: params.now,
+            detailPrunedReason: 'retention_window_expired',
+            files: FieldValue.delete(),
+            geminiResponse: FieldValue.delete(),
+            rawBatchResponses: FieldValue.delete(),
+        });
+        compacted++;
+    }
+
+    if (compacted > 0) {
+        await batch.commit();
+    }
+
+    return { scanned: snapshot.size, compacted };
+}
+
+async function runAiOperationDetailCleanup(): Promise<MaintenanceTaskResult> {
+    const now = Timestamp.now();
+    const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
+    const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
+    const storeEntries = Object.entries(storesSummary)
+        .filter((entry) => {
+            const storeInfo = entry[1] as any;
+            return storeInfo?.active !== false && storeInfo?.tId != null;
+        })
+        .slice(0, 200);
+
+    const extraction = await compactAiOperationDetailsInCollectionRef({
+        collectionRef: db.collection(DB_COLLECTIONS.MENULIST_AI_EXTRACTION_OPERATIONS),
+        now,
+        limit: 100,
+    });
+
+    let scanned = extraction.scanned;
+    let compacted = extraction.compacted;
+    let storesScanned = 0;
+
+    for (const [sId, storeInfo] of storeEntries as [string, any][]) {
+        const tId = String(storeInfo.tId);
+        if (!tId || !sId) continue;
+        const result = await compactAiOperationDetailsInCollectionRef({
+            collectionRef: db.collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS).doc(tId).collection(String(sId)),
+            now,
+            limit: 10,
+        });
+        scanned += result.scanned;
+        compacted += result.compacted;
+        storesScanned++;
+    }
+
+    return {
+        activity: compacted > 0,
+        details: {
+            mode: FUNCTION_RETENTION_CONFIG.AI_OPERATION_LOG_MODE,
+            storesScanned,
+            scanned,
+            compacted,
+            extraction,
+        },
+    };
+}
+
+async function runMenuSnapshotCleanup(): Promise<MaintenanceTaskResult> {
+    const now = Timestamp.now();
+    const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
+    const storesSummary = storesSummaryDoc.exists ? storesSummaryDoc.data()?.stores || {} : {};
+    const storeEntries = Object.entries(storesSummary)
+        .filter((entry) => {
+            const storeInfo = entry[1] as any;
+            return storeInfo?.active !== false && storeInfo?.tId != null;
+        })
+        .slice(0, 200);
+
+    let scanned = 0;
+    let deleted = 0;
+    let storesScanned = 0;
+
+    for (const [sId, storeInfo] of storeEntries as [string, any][]) {
+        const tId = String(storeInfo.tId);
+        if (!tId || !sId) continue;
+        const result = await deleteExpiredDocsInCollectionRef({
+            collectionRef: db.collection(DB_COLLECTIONS.MENU_SNAPSHOTS).doc(tId).collection(String(sId)),
+            now,
+            limit: 10,
+        });
+        scanned += result.scanned;
+        deleted += result.deleted;
+        storesScanned++;
+    }
+
+    return {
+        activity: deleted > 0,
+        details: {
+            retentionDays: FUNCTION_RETENTION_CONFIG.MENU_SNAPSHOT_RETENTION_DAYS,
+            storesScanned,
+            scanned,
+            deleted,
+        },
+    };
+}
+
+async function runOwnerNotificationRetentionCleanup(): Promise<MaintenanceTaskResult> {
+    const now = Timestamp.now();
+    const [events, deliveries, rateLimits, legacyMessages] = await Promise.all([
+        deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_EVENTS, now, limit: 50 }),
+        deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_DELIVERIES, now, limit: 50 }),
+        deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_RATE_LIMITS, now, limit: 50 }),
+        deleteExpiredDocs({ collection: DB_COLLECTIONS.MESSAGE_LOGS, now, limit: 50 }),
+    ]);
+    const deleted = events.deleted + deliveries.deleted + rateLimits.deleted + legacyMessages.deleted;
+
+    return {
+        activity: deleted > 0,
+        details: {
+            retentionDays: FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS,
+            deleted,
+            events,
+            deliveries,
+            rateLimits,
+            legacyMessages,
+        },
+    };
+}
+
+async function runFeedbackEventRetentionCleanup(): Promise<MaintenanceTaskResult> {
+    const now = Timestamp.now();
+    const [expired, legacy] = await Promise.all([
+        deleteExpiredDocs({ collection: DB_COLLECTIONS.FEEDBACK_EVENTS, now, limit: 100 }),
+        deleteLegacyFeedbackEvents({ now, limit: 100 }),
+    ]);
+    const deleted = expired.deleted + legacy.deleted;
+
+    return {
+        activity: deleted > 0,
+        details: {
+            retentionDays: FUNCTION_RETENTION_CONFIG.FEEDBACK_EVENT_RETENTION_DAYS,
+            deleted,
+            expired,
+            legacy,
+        },
+    };
+}
+
+async function runSchedulerRunLogRetentionCleanup(): Promise<MaintenanceTaskResult> {
+    const now = Timestamp.now();
+    const [expired, legacy] = await Promise.all([
+        deleteExpiredDocs({ collection: DB_COLLECTIONS.SCHEDULER_RUN_LOGS, now, limit: 100 }),
+        deleteLegacySchedulerRunLogs({ now, limit: 100 }),
+    ]);
+    const deleted = expired.deleted + legacy.deleted;
+
+    return {
+        activity: deleted > 0,
+        details: {
+            retentionDays: FUNCTION_RETENTION_CONFIG.SCHEDULER_RUN_LOG_RETENTION_DAYS,
+            deleted,
+            expired,
+            legacy,
+        },
+    };
+}
+
 async function runOwnerBusinessAssistantCleanup(): Promise<MaintenanceTaskResult> {
     const healthEnabled = isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_HEALTH');
     const actionEnabled = isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_ACTION_SUPPORT');
@@ -730,6 +1000,36 @@ const TASKS: MaintenanceTask[] = [
         cadence: { type: 'daily', hourUtc: 4, minuteUtc: 30, retryAfterMinutes: 120 },
         lockTtlMs: 10 * MINUTE_MS,
         run: runOwnerBusinessAssistantCleanup,
+    },
+    {
+        name: 'ai_operation_detail_cleanup',
+        cadence: { type: 'daily', hourUtc: 4, minuteUtc: 45, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runAiOperationDetailCleanup,
+    },
+    {
+        name: 'menu_snapshot_cleanup',
+        cadence: { type: 'daily', hourUtc: 5, minuteUtc: 0, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runMenuSnapshotCleanup,
+    },
+    {
+        name: 'owner_notification_retention_cleanup',
+        cadence: { type: 'daily', hourUtc: 5, minuteUtc: 30, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runOwnerNotificationRetentionCleanup,
+    },
+    {
+        name: 'feedback_event_retention_cleanup',
+        cadence: { type: 'daily', hourUtc: 5, minuteUtc: 45, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runFeedbackEventRetentionCleanup,
+    },
+    {
+        name: 'scheduler_run_log_retention_cleanup',
+        cadence: { type: 'daily', hourUtc: 6, minuteUtc: 0, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runSchedulerRunLogRetentionCleanup,
     },
 ];
 

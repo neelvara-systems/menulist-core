@@ -2,7 +2,7 @@
 
 ## Base Editor
 
-The shared base editor performs no Firebase reads, writes, deletes, listeners, Cloud Functions, or Storage uploads. Fabric editing is browser-local until a product adapter calls a product-owned save/export callback.
+The shared base editor performs no Firebase reads, writes, deletes, listeners, Cloud Functions, or Storage uploads. Fabric editing, contextual toolbar actions, drawer search, recent insertions, My Stuff upload/recent display, project style presets, ready-made text templates, Brand Kit quick picks, text placeholders, page controls, floating selected-layer toolbar actions, Active Layers drag reorder, and optional template-save button rendering are browser-local until a product adapter calls a product-owned save/export callback.
 
 ## Product Adapter Rule
 
@@ -20,9 +20,11 @@ Each product must own its own persistence.
 | --- | --- | --- | --- |
 | Open blank editor | 0 | 0 | Uses already-loaded CampaignCue overview data in the client. |
 | Open campaign output in editor | 0 | 0 | Uses already-loaded campaign output data. |
-| Edit layers/properties | 0 | 0 | Browser state only. |
+| Edit layers/properties, including contextual toolbar, floating toolbar, and Active Layers reorder actions | 0 | 0 | Browser state only. |
+| Search drawer, use My Stuff, apply Styles, add ready-made text templates, use Brand Kit, add placeholders, add/switch/duplicate/lock pages | 0 | 0 | Uses static local template JSON, the current document metadata, and already-loaded adapter asset sources. |
 | Download SVG/PNG/JSON | 0 | 0 | Browser download only. |
 | Register exported asset | 1 workspace guard read | 1 asset write + 1 event write | Existing `POST /api/campaigncue/assets` path. |
+| Save as template through product callback | Product-owned | Product-owned | The shared editor provides document + optional preview only; MenuList printable assets use the MenuList-owned template registry DAL. |
 
 ## Storage
 
@@ -37,6 +39,8 @@ Future Storage upload must use product-owned prefixes:
 ## Cost Guardrails
 
 - Do not write on every drag or property edit.
+- Do not write from contextual toolbar, drawer search, My Stuff, Styles, ready-made text template, Brand Kit, placeholder, page, floating toolbar, or Active Layers reorder actions unless a product-owned explicit save path is invoked.
+- Do not write platform/default templates when the owner only opens, previews, customizes, or downloads them.
 - Do not embed base64 files in Firestore.
 - Do not open realtime listeners for editor state.
 - Persist compact document JSON only after an explicit save path exists.

@@ -12,11 +12,10 @@
 | --- | --- |
 | No blank prompt | Start from a real business cue. |
 | Ready work first | See campaigns ready, missing assets, and issues that need review. |
-| Fits the business | Restaurant, salon, agency, and location cues use different signals. |
+| Fits the business | Restaurant, salon, retail, local-service, fitness, clinic, agency, and location cues use different signals. |
 
 ## SEO Meta
 
 - **Page Title:** Campaign cues for local businesses
 - **Meta Description:** CampaignCue shows what to promote next from business data, source changes, and campaign readiness.
-- **Target Keywords:** campaign cue, local business campaign ideas, restaurant campaign ideas, salon campaign ideas
-
+- **Target Keywords:** campaign cue, local business campaign ideas, restaurant campaign ideas, salon campaign ideas, retail campaign ideas, local service reminders

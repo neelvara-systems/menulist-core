@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** June 10, 2026
+**Last Updated:** June 15, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -30,6 +30,8 @@
 > Featured Choices website note (June 9, 2026): Decision Intelligence is publicly exposed as Featured Choices at `/features/featured-choices`. Public copy should say Featured, Quick, and Value choices help customers choose from the current approved menu. Do not use internal names, algorithm language, exact decision-time claims, or guaranteed sales-lift claims.
 
 > Final readiness QA note (June 10, 2026): Public brand wording in the website locale payload must stay `MenuList`, not `MenuList AI`, unless a legal/account context explicitly requires otherwise. Support-feedback labels bundled into the public website locale pack now follow this rule too.
+
+> Print-ready Kit editor proof note (June 15, 2026): `/features/print-ready-kit` now needs to sell the template-to-editor workflow, not only static print-file export. Keep print off the homepage as a full section, but use the dedicated feature page to show owners the practical path: choose an asset/template, preview the generated output, open supported assets in the editor when needed, keep QR/required links protected, then download image/PDF/printer files.
 
 ---
 
@@ -853,6 +855,7 @@ The desktop `Features` label is a menu trigger, not a direct route. The `/featur
 - v3.6.49 replaces the generic hero preview card on generic campaign pages with `FeatureDetailVisual`, a shared product-proof visual renderer. Keep these visuals meaningful and feature-specific: they should show the source flow, public output, owner review state, correction loop, print assets, phone dashboard, or discovery source that the page is selling. Do not use stock artwork, fake screenshots, decorative AI art, or visual claims that are not already supported by page copy and product behavior.
 - v3.6.51 tightens those feature hero visuals for launch readiness. Treat each visual as one clean proof canvas: no repeated internal headline copy, no unnecessary nested browser/card borders, no redundant surface tags when the same meaning is already shown, and no sub-13px micro labels on mobile. Official Business Page uses the public-surface preview without the old browser border or duplicated bottom pills; Print-ready Kit uses readable row cards on mobile instead of squeezed mini columns.
 - v3.6.53 removes the shared trailing proof-chip row from `FeatureDetailVisual` across all generic dedicated feature pages. Keep internal chips only when they are part of the visual story, and keep the separate signal strip as the page-level proof row. Do not re-add a generic bottom tag row under the visual because it repeats the same tags on mobile pages.
+- v3.6.56 strengthens `/features/print-ready-kit` around the editor-backed print-assets flow. The hero visual should communicate template choice plus editor/export proof, and the dedicated proof section should show the supported asset types, an Assets template-list view, and a customization/editor view. Use an always-visible rail for asset types rather than a carousel because SMB owners should not need to advance slides to understand what files are available. The proof gallery now uses current product screenshots from `public/images/website/print-ready-kit/`; keep the dashboard capture cropped away from account-header details and do not replace it with decorative artwork.
 - Use the sticky journey to show the end-to-end owner/customer logic for each feature page. Do not add one-off tab systems or carousels unless a future feature genuinely needs different interaction.
 - v3.6.45 keeps the shared desktop sticky journey as a left tab rail plus right story panel, but the right panel is one parent story card with a top narrative row and bottom full-width proof-card row. v3.6.46 keeps desktop panel height responsive with a tighter `32rem -> 72vh -> 39rem` clamp so taller screens do not create excessive empty card space. Do not return to a nested side-by-side copy/proof layout or internal copy/proof divider because it compresses copy-heavy proof cards and makes the panel feel split.
 - v3.6.42 completed the feature-detail parity pass after the Print-ready Kit page update. Menu Import now includes permission-confirmed public link intake; Menu Content Prep now owns descriptions, item images, and languages as one setup-relief story; Featured Choices now emphasizes owner pinning and availability-safe customer guidance; Official Business Page now includes QR options, photos, actions, and structured public facts; QR Menu and Links now focuses on stable access and customer shortcuts while leaving print depth to Print-ready Kit; Owner Phone Dashboard originally named the mobile/PWA daily operations path; Public Discovery now includes sitemap, crawler, and LLM context without placement promises; Menu Quality Validation now has full key parity and no internal process language.
@@ -946,7 +949,8 @@ Keep print capability out of the homepage as a full section, but expose it as a 
 - `Print files` means paper menu PDF, table card, counter card, or printer handoff packet from the current approved menu.
 - `Instant launch kit` can list table tent, single table card, counter card, entrance poster, delivery bag sticker, takeaway card, WhatsApp link, and Instagram story.
 - `Menu Kit: print-ready cards` can explain branded table/counter/entrance/takeaway files with QR code and business color, ready for a local printer.
-- `/features/print-ready-kit` can now mention Assets as a finished workflow: pick asset type, choose supported style family, preview generated output, then download PDF/image or Menu Kit ZIP. QR/display assets can reference up to nine materially different style families; assets with fewer real unique layouts should not be described as having nine choices.
+- `/features/print-ready-kit` can now mention Assets as an editor-backed workflow: pick asset type, choose a supported template family, preview generated output, optionally customize supported desktop assets in the editor, then download image/PDF/printer files or the Menu Kit bundle. QR/display assets can reference materially different template families; assets with fewer real unique layouts should not be described as having unsupported choices.
+- Dedicated page visuals should highlight both steps owners care about: the template list/dashboard view and the editor screen. The editor claim must stay practical: owners can adjust supported copy, placement, and brand details; protected QR/required link areas stay reliable.
 
 **Notes:**
 

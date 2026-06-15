@@ -22,6 +22,10 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 const withNextIntl = createNextIntlPlugin();
+const firebaseAdminExternals = [
+    'firebase-admin',
+    'firebase-admin/firestore',
+];
 
 // Disable memory-heavy webpack plugins on Vercel preview builds
 // Production deploys (VERCEL_ENV=production) get full PWA
@@ -30,6 +34,106 @@ const buildCreatedAt = process.env.NEXT_PUBLIC_BUILD_CREATED_AT || new Date().to
 const skipNextBuildChecks = process.env.NEXT_SKIP_NEXT_BUILD_CHECKS === '1';
 
 class MenuListServerChunkCompatPlugin {
+    async writeRoutesManifest(outputPath) {
+        if (!outputPath) return;
+
+        const pageToRoute = (page) => {
+            const routeRegex = getNamedRouteRegex(page, true);
+            return {
+                page,
+                regex: normalizeRouteRegex(routeRegex.re.source),
+                routeKeys: routeRegex.routeKeys,
+                namedRegex: routeRegex.namedRegex,
+            };
+        };
+        const readJson = async (filePath, fallback) => {
+            try {
+                return JSON.parse(await fs.readFile(filePath, 'utf8'));
+            } catch {
+                return fallback;
+            }
+        };
+        const rootDistPaths = [
+            path.dirname(outputPath),
+            path.dirname(path.dirname(outputPath)),
+        ].filter((candidate, index, candidates) => (
+            candidate
+            && candidate !== path.dirname(candidate)
+            && candidates.indexOf(candidate) === index
+        ));
+
+        await Promise.all(rootDistPaths.map(async (rootDistPath) => {
+            const routesManifestPath = path.join(rootDistPath, 'routes-manifest.json');
+            try {
+                await fs.access(routesManifestPath);
+                return;
+            } catch {
+                // Continue and create the compatibility manifest.
+            }
+
+            const appPathRoutesManifest = await readJson(
+                path.join(rootDistPath, 'app-path-routes-manifest.json'),
+                {},
+            );
+            const serverPagesManifest = await readJson(
+                path.join(rootDistPath, 'server', 'pages-manifest.json'),
+                await readJson(path.join(outputPath, 'pages-manifest.json'), {}),
+            );
+            if (!Object.keys(appPathRoutesManifest).length && !Object.keys(serverPagesManifest).length) {
+                return;
+            }
+
+            const reservedPages = new Set(['/_app', '/_document', '/_error']);
+            const routePages = [
+                ...new Set([
+                    ...Object.keys(serverPagesManifest),
+                    ...Object.values(appPathRoutesManifest),
+                ]),
+            ].filter((route) => route && !reservedPages.has(route));
+            const sortedRoutes = getSortedRoutes(routePages);
+            const dynamicRoutes = [];
+            const staticRoutes = [];
+            for (const route of sortedRoutes) {
+                if (isDynamicRoute(route)) {
+                    dynamicRoutes.push(pageToRoute(route));
+                } else {
+                    staticRoutes.push(pageToRoute(route));
+                }
+            }
+
+            let redirects = [];
+            if (typeof nextConfig.redirects === 'function') {
+                redirects = await nextConfig.redirects();
+            }
+            const restrictedRedirectPaths = ['/_next'];
+            const routesManifest = {
+                version: 3,
+                pages404: true,
+                caseSensitive: Boolean(nextConfig.experimental?.caseSensitiveRoutes),
+                basePath: '',
+                redirects: redirects.map((route) => (
+                    buildCustomRoute('redirect', route, restrictedRedirectPaths)
+                )),
+                headers: [],
+                dynamicRoutes,
+                staticRoutes,
+                dataRoutes: [],
+                rsc: {
+                    header: RSC_HEADER,
+                    varyHeader: `${RSC_HEADER}, ${NEXT_ROUTER_STATE_TREE}, ${NEXT_ROUTER_PREFETCH_HEADER}`,
+                    prefetchHeader: NEXT_ROUTER_PREFETCH_HEADER,
+                    didPostponeHeader: NEXT_DID_POSTPONE_HEADER,
+                    contentTypeHeader: RSC_CONTENT_TYPE_HEADER,
+                    suffix: RSC_SUFFIX,
+                    prefetchSuffix: RSC_PREFETCH_SUFFIX,
+                },
+                rewrites: [],
+                skipMiddlewareUrlNormalize: Boolean(nextConfig.skipMiddlewareUrlNormalize),
+            };
+            await fs.writeFile(routesManifestPath, JSON.stringify(routesManifest, null, 2));
+        }));
+    }
+
     apply(compiler) {
         compiler.hooks.afterEmit.tapPromise('MenuListServerChunkCompatPlugin', async () => {
             const outputPath = compiler.options.output.path;
@@ -160,83 +264,11 @@ class MenuListServerChunkCompatPlugin {
                 }
             }
 
-            const rootDistPath = path.dirname(outputPath);
-            const routesManifestPath = path.join(rootDistPath, 'routes-manifest.json');
-            try {
-                await fs.access(routesManifestPath);
-            } catch {
-                const pageToRoute = (page) => {
-                    const routeRegex = getNamedRouteRegex(page, true);
-                    return {
-                        page,
-                        regex: normalizeRouteRegex(routeRegex.re.source),
-                        routeKeys: routeRegex.routeKeys,
-                        namedRegex: routeRegex.namedRegex,
-                    };
-                };
-                const readJson = async (filePath, fallback) => {
-                    try {
-                        return JSON.parse(await fs.readFile(filePath, 'utf8'));
-                    } catch {
-                        return fallback;
-                    }
-                };
-                const appPathRoutesManifest = await readJson(
-                    path.join(rootDistPath, 'app-path-routes-manifest.json'),
-                    {},
-                );
-                const serverPagesManifest = await readJson(
-                    path.join(outputPath, 'pages-manifest.json'),
-                    {},
-                );
-                const reservedPages = new Set(['/_app', '/_document', '/_error']);
-                const routePages = [
-                    ...new Set([
-                        ...Object.keys(serverPagesManifest),
-                        ...Object.values(appPathRoutesManifest),
-                    ]),
-                ].filter((route) => route && !reservedPages.has(route));
-                const sortedRoutes = getSortedRoutes(routePages);
-                const dynamicRoutes = [];
-                const staticRoutes = [];
-                for (const route of sortedRoutes) {
-                    if (isDynamicRoute(route)) {
-                        dynamicRoutes.push(pageToRoute(route));
-                    } else {
-                        staticRoutes.push(pageToRoute(route));
-                    }
-                }
-                let redirects = [];
-                if (typeof nextConfig.redirects === 'function') {
-                    redirects = await nextConfig.redirects();
-                }
-                const restrictedRedirectPaths = ['/_next'];
-                const routesManifest = {
-                    version: 3,
-                    pages404: true,
-                    caseSensitive: Boolean(nextConfig.experimental?.caseSensitiveRoutes),
-                    basePath: '',
-                    redirects: redirects.map((route) => (
-                        buildCustomRoute('redirect', route, restrictedRedirectPaths)
-                    )),
-                    headers: [],
-                    dynamicRoutes,
-                    staticRoutes,
-                    dataRoutes: [],
-                    rsc: {
-                        header: RSC_HEADER,
-                        varyHeader: `${RSC_HEADER}, ${NEXT_ROUTER_STATE_TREE}, ${NEXT_ROUTER_PREFETCH_HEADER}`,
-                        prefetchHeader: NEXT_ROUTER_PREFETCH_HEADER,
-                        didPostponeHeader: NEXT_DID_POSTPONE_HEADER,
-                        contentTypeHeader: RSC_CONTENT_TYPE_HEADER,
-                        suffix: RSC_SUFFIX,
-                        prefetchSuffix: RSC_PREFETCH_SUFFIX,
-                    },
-                    rewrites: [],
-                    skipMiddlewareUrlNormalize: Boolean(nextConfig.skipMiddlewareUrlNormalize),
-                };
-                await fs.writeFile(routesManifestPath, JSON.stringify(routesManifest, null, 2));
-            }
+            await this.writeRoutesManifest(outputPath);
+        });
+
+        compiler.hooks.done.tapPromise('MenuListServerChunkCompatPluginRoutesManifest', async () => {
+            await this.writeRoutesManifest(compiler.options.output.path);
         });
     }
 }
@@ -313,7 +345,7 @@ const nextConfig = {
         if (isServer) {
             config.externals = [
                 ...config.externals,
-                'firebase-admin',
+                ...firebaseAdminExternals,
                 '@google-cloud/tasks',
                 'exceljs',
                 'pdfjs-dist',
@@ -329,7 +361,7 @@ const nextConfig = {
         if (!isServer) {
             config.resolve.alias = {
                 ...config.resolve.alias,
-                'firebase-admin': false,
+                ...Object.fromEntries(firebaseAdminExternals.map((external) => [external, false])),
             };
             config.resolve.fallback = {
                 ...config.resolve.fallback,

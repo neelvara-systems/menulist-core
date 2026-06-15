@@ -1,8 +1,10 @@
 # Printable Asset Templates - Website Content
 
+**Last Updated:** June 15, 2026
+
 ## Publication Decision
 
-The dashboard route has shipped, so the public website should explain this capability inside `/features/print-ready-kit`. Do not create a separate public "template gallery" page. Keep template choice attached to the owner outcome: finished print files from the current approved menu source.
+The dashboard route has shipped, and supported print assets can now open into the shared editor flow. The public website should explain this capability inside `/features/print-ready-kit`. Do not create a separate public "template gallery" page. Keep template choice attached to the owner outcome: finished print files from the current approved menu source, with supported editor customization when useful.
 
 ## Website Section Draft
 
@@ -12,11 +14,13 @@ Print files that look ready.
 
 ### Subheadline
 
-Download table, counter, entrance, feedback, and paper menu files with your logo, color, and current menu link already applied.
+Download table, counter, entrance, feedback, and paper menu files with your logo, color, current menu link, and supported editor customization already connected.
 
-Add one explicit proof point:
+Add two explicit proof points:
 
 Owners can choose supported finished template families for each asset type. QR/display assets can expose up to nine materially different style families; full Print Menu should show only its real unique PDF layouts until all nine families are genuinely supported.
+
+Supported desktop assets can open in the editor from the selected template. Owners can adjust copy, placement, and brand details without breaking the QR link or required scan-safe placement.
 
 ### CTA
 
@@ -37,19 +41,25 @@ MenuList creates finished print files from the current approved menu. The owner 
 | Ready for tables and counters | Table cards, counter stickers, entrance posters, feedback QR, and paper menu files are in one place. | Screenshot of Assets screen with asset type rail. |
 | Uses the business identity | Store name, logo, and brand color are applied automatically. | Close-up of template preview. |
 | Current menu link | QR files point back to the current menu source. | QR card preview with short link. |
-| No design work | The owner chooses a finished style and downloads. | Template grid. |
+| No blank design work | The owner chooses a finished style, optionally adjusts supported desktop assets from that template, and downloads. | Template grid and editor-backed preview. |
+| Visible workflow proof | The page should show both the template list/dashboard view and the editor screen. | Maintained screenshots in `public/images/website/print-ready-kit/`, with account-header details cropped out of the dashboard capture. |
+| No hidden carousel dependency | Supported asset types should be visible before the screenshots. | Static asset-type rail, horizontally scrollable on narrow screens. |
 
 ## How It Works
 
 1. Open **Assets**.
 2. Pick the file and style.
 3. Preview the generated output.
-4. Download the print-ready file as PDF or image where supported.
+4. Optionally adjust supported desktop assets from the finished template.
+5. Download the print-ready file as PDF or image where supported.
 
 ## FAQ
 
 **Q: Do I need to design the card myself?**  
 **A:** No. The templates are already prepared.
+
+**Q: Can I change the words or layout if needed?**
+**A:** Supported desktop assets can be adjusted from the prepared template. The QR link stays protected.
 
 **Q: Can I use my logo and color?**  
 **A:** Yes. MenuList uses the business identity already saved in the store.
@@ -84,7 +94,7 @@ Avoid:
 - "AI-powered"
 - "smart"
 - "dynamic"
-- "customize"
+- "unlimited design"
 - "template gallery"
 - "unlimited design"
 - "advanced"

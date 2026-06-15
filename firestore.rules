@@ -84,6 +84,24 @@ service cloud.firestore {
       allow create, update: if isAuthenticated() && isPlatformAdmin();
       allow delete: if false;
     }
+
+    // Creative Editor Template Registry
+    // Platform template catalogs are one metadata document per business category.
+    match /platformAssetTemplates/{businessCategory} {
+      allow read: if isAuthenticated();
+      allow create, update: if isPlatformAdmin()
+        && isValidCreativeEditorPlatformTemplateCatalog(request.resource.data, businessCategory);
+      allow delete: if isPlatformAdmin();
+    }
+
+    // Owner saved editor templates. The Firestore document stores summary metadata
+    // only; full editor documents and previews live in Firebase Storage.
+    match /storeAssetTemplates/{tId}/{sId}/{docId} {
+      allow read: if canAccessCreativeEditorTemplateStore(tId, sId);
+      allow create, update: if canAccessCreativeEditorTemplateStore(tId, sId)
+        && isValidCreativeEditorTemplateIndex(request.resource.data, docId, tId, sId);
+      allow delete: if false;
+    }
     
     // ═══════════════════════════════════════════════════════════
     // PAYMENT & ONBOARDING SECURITY (Phase 1-3 Implementation)
@@ -1118,6 +1136,34 @@ service cloud.firestore {
     function isPlatformAdmin() {
       return request.auth != null
         && request.auth.token.platformRole == 'PLATFORM';
+    }
+
+    function canAccessCreativeEditorTemplateStore(tId, sId) {
+      return isAuthenticated()
+        && belongsToTenantById(tId)
+        && belongsToStoreById(sId);
+    }
+
+    function isValidCreativeEditorPlatformTemplateCatalog(data, businessCategory) {
+      return data.keys().hasOnly(['businessCategory', 'data', 'schemaVersion', 'updatedAt', 'updatedAtMs'])
+        && data.businessCategory is string
+        && data.businessCategory == businessCategory
+        && data.schemaVersion is number
+        && data.data is list
+        && data.data.size() <= 200;
+    }
+
+    function isValidCreativeEditorTemplateIndex(data, docId, tId, sId) {
+      return docId == 'default'
+        && data.keys().hasOnly(['createdBy', 'createdOn', 'data', 'id', 'modifiedBy', 'modifiedOn', 'pId', 'role', 'sId', 'schemaVersion', 'tId', 'uId', 'updatedAt', 'updatedAtMs'])
+        && data.keys().hasAll(['data', 'id', 'schemaVersion', 'tId', 'sId'])
+        && data.data is list
+        && data.data.size() <= 100
+        && data.id is string
+        && data.id == 'default'
+        && string(data.tId) == string(tId)
+        && string(data.sId) == string(sId)
+        && data.schemaVersion is number;
     }
 
     function isAnswerlatticePlatformSummaryDoc(document) {

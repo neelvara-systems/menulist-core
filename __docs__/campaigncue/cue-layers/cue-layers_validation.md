@@ -77,7 +77,7 @@ CueLayers currently supports the conservative production path:
 | --- | --- |
 | Entry point | Owner can start CueLayers from Editor or Asset Library with "Turn image into layers". |
 | First render | The original image opens unchanged as a locked reference. |
-| Editing | Owner can use the existing shared editor to add text, shapes, QR, and drawing layers. Image/SVG/JSON imports are disabled while a CueLayers design is active because added images do not yet have product-owned CueLayers asset hydration. |
+| Editing | Owner can use the existing shared editor to add text, shapes, QR, and drawing layers. New image imports and browser SVG/JSON exports are disabled while a CueLayers design is active because added images and hydrated runtime URLs do not yet have a product-owned handoff contract. |
 | Recent work | Recent CueLayers designs appear in the editor tab with status and revision. |
 | Recovery | Restore original records a fallback repair request without pretending provider repair ran. |
 | Mobile | The workspace primitives already use 44px touch targets and responsive layout; no separate dense mobile editor route was added. |

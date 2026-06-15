@@ -13,6 +13,8 @@ CampaignCue may mention that users can create and download campaign visuals, but
 - social posts
 - manual downloads
 - asset library reuse
+- brand asset reuse
+- multi-size draft review
 
 Do not mention internal shared module names, schema, adapters, Fabric, Konva, SVG serialization, or Firebase.
 
@@ -21,6 +23,7 @@ Do not mention internal shared module names, schema, adapters, Fabric, Konva, SV
 Allowed:
 
 - "Create campaign visuals from a pack or from a blank canvas."
+- "Adjust text, colors, and approved brand assets before download."
 - "Download image files for manual posting."
 - "Save assets with rights notes before reuse."
 

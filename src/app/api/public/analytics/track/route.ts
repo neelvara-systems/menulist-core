@@ -4,6 +4,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { getBusinessAnalyticsDateKey, resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { addDaysToAnalyticsDateKey } from '@lib/analytics/dateKey';
 import { getResolvedAnalyticsPreferences, type ResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
+import { filterAnalyticsUpdateData } from '@lib/analytics/writePolicy';
 import { writePublicAnalyticsEventAdmin } from '@lib/analytics/serverWrite';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
@@ -167,10 +168,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: true, skipped: true });
         }
 
-        const filteredUpdateData = filterAnalyticsFieldsForPreferences(
+        const filteredUpdateData = filterAnalyticsUpdateData(filterAnalyticsFieldsForPreferences(
             data.updateData,
             validTarget.analyticsPreferences,
-        );
+        ));
         if (Object.keys(filteredUpdateData).length === 0) {
             return NextResponse.json({ success: true, skipped: true });
         }

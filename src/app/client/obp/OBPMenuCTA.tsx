@@ -75,7 +75,7 @@ export default function OBPMenuCTA({
     projects = [],
     obpSurface = 'brand',
     trackingEnabled = true,
-    includeLocation = true,
+    includeLocation = false,
     storeTimeZone,
     businessDayEndTime,
 }: OBPMenuCTAProps) {

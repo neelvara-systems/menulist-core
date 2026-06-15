@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import type { IconType } from "react-icons";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ComponentType, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import type { fabric } from "fabric";
 import {
     LuAlignCenter,
@@ -18,8 +17,6 @@ import {
     LuArrowUp,
     LuArrowUpToLine,
     LuBold,
-    LuBot,
-    LuBoxSelect,
     LuCircle,
     LuCopy,
     LuDownload,
@@ -31,8 +28,6 @@ import {
     LuFilter,
     LuFlipHorizontal2,
     LuFlipVertical2,
-    LuGift,
-    LuGrid,
     LuGroup,
     LuHand,
     LuHash,
@@ -40,11 +35,12 @@ import {
     LuHexagon,
     LuHome,
     LuImage,
-    LuImport,
     LuItalic,
+    LuKeyboard,
     LuLayers,
     LuLock,
     LuMaximize,
+    LuMessageSquare,
     LuMoon,
     LuMousePointer2,
     LuPanelLeftOpen,
@@ -56,6 +52,9 @@ import {
     LuRotateCcw,
     LuShapes,
     LuShare2,
+    LuShieldCheck,
+    LuShuffle,
+    LuSparkles,
     LuSquare,
     LuStar,
     LuStrikethrough,
@@ -67,10 +66,12 @@ import {
     LuUnderline,
     LuUnlock,
     LuUploadCloud,
-    LuUser2,
+    LuGrid,
+    LuGripVertical,
     LuZoomIn,
     LuZoomOut,
 } from "react-icons/lu";
+import { SOLID_COLORS_LIST } from "@constant/craftBuilder";
 import {
     buildCreativeEditorArrowElement,
     buildCreativeEditorEggElement,
@@ -110,17 +111,50 @@ import {
 } from "./fabricAdapter";
 import {
     CreativeEditorAssetSource,
+    CreativeEditorAiToolAction,
+    CreativeEditorAiToolFinding,
+    CreativeEditorAiToolHandler,
+    CreativeEditorAiToolResult,
+    CreativeEditorAiToolSuggestion,
+    CreativeEditorDesignCueApplyHandler,
+    CreativeEditorDesignCueCommand,
+    CreativeEditorDesignCueHandler,
+    CreativeEditorDesignCuePatchSet,
+    CreativeEditorDesignCueRequest,
     CreativeEditorDocument,
     CreativeEditorElement,
+    CreativeEditorExportFormat,
     CreativeEditorExportResult,
     CreativeEditorGradientStop,
     CreativeEditorImageFilter,
     CreativeEditorImageFilterAdjustments,
     CreativeEditorLinearGradient,
+    CreativeEditorPage,
+    CreativeEditorShadow,
     CreativeEditorStrokeLineCap,
     CreativeEditorStrokeStyle,
+    CreativeEditorTemplateSaveHandler,
+    CreativeEditorTextPlaceholder,
     CreativeEditorVisibleWatermark,
 } from "./types";
+import {
+    CraftAiToolsIcon,
+    CraftBackgroundIcon,
+    CraftBarcodeIcon,
+    CraftBrandKitIcon,
+    CraftCharacterIcon,
+    CraftGraphicsIcon,
+    CraftIllustrationsIcon,
+    CraftImagesIcon,
+    CraftMyStuffIcon,
+    CraftQrCodeIcon,
+    CraftShapesIcon,
+    CraftStylesIcon,
+    CraftTemplateIcon,
+    CraftTextIcon,
+} from "./icons/craft-builder";
+import DesignCuePanel from "./DesignCuePanel";
+import textTemplateLibrary from "./textTemplates.json";
 import styles from "./CreativeEditor.module.scss";
 
 type EditorTheme = "light" | "dark";
@@ -131,50 +165,371 @@ type EditorToolId =
     | "illustrations"
     | "images"
     | "text"
+    | "styles"
     | "graphics"
     | "characters"
     | "shapes"
-    | "qr";
+    | "qr"
+    | "barcode"
+    | "myStuff"
+    | "brandKit";
 type InteractionMode = "selection" | "grab" | "draw" | "polygon";
 type LayerAction = "back" | "backward" | "forward" | "front";
 type AlignmentAction = "bottom" | "center" | "centerX" | "centerY" | "left" | "right" | "top";
+type FloatingSelectionToolbarVariant = "group" | "multi" | "single";
+type FloatingSelectionToolbarState = {
+    activeObjectType: string;
+    anchorLeft: number;
+    isMultiSelection: boolean;
+    left: number;
+    locked: boolean;
+    selectionBottom: number;
+    selectionCount: number;
+    top: number;
+    variant: FloatingSelectionToolbarVariant;
+};
+
+type WorkspaceViewportState = {
+    height: number;
+    left: number;
+    top: number;
+    width: number;
+};
+
+type RightPanelMode = "layers" | "properties";
+
+type KeyboardShortcutItem = {
+    action: string;
+    keys: string[];
+};
+
+type KeyboardShortcutGroup = {
+    id: string;
+    items: KeyboardShortcutItem[];
+    title: string;
+};
+
+type DrawerSearchItem = {
+    description?: string;
+    id: string;
+    label: string;
+    search: string;
+};
+
+type TextPreset = {
+    color?: string;
+    fontSize: number;
+    fontFamily?: string;
+    fontWeight: Extract<CreativeEditorElement, { type: "text" }>["fontWeight"];
+    id: string;
+    label: string;
+    lineHeight?: number;
+    shadow?: CreativeEditorShadow;
+    textBackgroundColor?: string;
+    text: string;
+};
+
+type TextTemplateLayerDefinition = {
+    align?: Extract<CreativeEditorElement, { type: "text" }>["align"];
+    charSpacing?: number;
+    color?: string;
+    fontFamily?: string;
+    fontSize?: number;
+    fontStyle?: Extract<CreativeEditorElement, { type: "text" }>["fontStyle"];
+    fontWeight?: Extract<CreativeEditorElement, { type: "text" }>["fontWeight"];
+    height?: number;
+    id: string;
+    lineHeight?: number;
+    name?: string;
+    opacity?: number;
+    rotation?: number;
+    shadow?: CreativeEditorShadow;
+    text: string;
+    textBackgroundColor?: string;
+    underline?: boolean;
+    width?: number;
+    x?: number;
+    y?: number;
+};
+
+type TextTemplateDefinition = {
+    category: string;
+    description: string;
+    id: string;
+    label: string;
+    layers: TextTemplateLayerDefinition[];
+    previewBackground?: string;
+    search: string;
+    tags?: string[];
+    type: "composition" | "single";
+};
+
+type ProjectStylePreset = {
+    accentColor: string;
+    backgroundColor: string;
+    description: string;
+    fontFamily: string;
+    id: string;
+    label: string;
+    mutedColor: string;
+    secondaryColor: string;
+    textColor: string;
+};
+
+type CanvasSizePreset = {
+    description: string;
+    height: number;
+    id: string;
+    label: string;
+    width: number;
+};
+
+type ExportBundlePreset = {
+    height: number;
+    id: string;
+    label: string;
+    width: number;
+};
+
+type CampaignStarterAction = {
+    backgroundColor: string;
+    description: string;
+    id: string;
+    includeQr?: boolean;
+    label: string;
+    templateSearch: string;
+};
+
+type ReadinessIssue = {
+    actionLabel?: string;
+    detail: string;
+    elementId?: string;
+    id: string;
+    label: string;
+    tone: "danger" | "good" | "note" | "warning";
+};
+
+type RulerTick = {
+    id: string;
+    label?: string;
+    major: boolean;
+    position: number;
+};
+
+const buildRulerTicks = (total: number, minorStep = 40, majorStep = 160): RulerTick[] => {
+    const safeTotal = Math.max(1, Math.round(total));
+    const ticks: RulerTick[] = [];
+    for (let value = 0; value <= safeTotal; value += minorStep) {
+        const major = value % majorStep === 0;
+        ticks.push({
+            id: `tick-${value}`,
+            label: major ? String(value) : undefined,
+            major,
+            position: (value / safeTotal) * 100,
+        });
+    }
+    const last = ticks[ticks.length - 1];
+    if (!last || last.position < 100) {
+        ticks.push({
+            id: `tick-${safeTotal}`,
+            label: safeTotal - Number(last?.label || 0) >= majorStep / 2 ? String(safeTotal) : undefined,
+            major: true,
+            position: 100,
+        });
+    }
+    return ticks;
+};
+
+const createDocumentPageSnapshot = (
+    documentValue: CreativeEditorDocument,
+    page?: Partial<CreativeEditorPage>,
+): CreativeEditorPage => ({
+    canvas: {
+        ...documentValue.canvas,
+        ...page?.canvas,
+    },
+    elements: page?.elements || documentValue.elements,
+    id: page?.id || buildCreativeEditorId("page"),
+    locked: Boolean(page?.locked),
+    title: page?.title || "Page 1",
+    updatedAt: page?.updatedAt || documentValue.metadata?.updatedAt || documentValue.metadata?.createdAt,
+});
+
+const normalizeCreativeEditorDocumentPages = (documentValue: CreativeEditorDocument): CreativeEditorDocument => {
+    const fallbackPage = createDocumentPageSnapshot(documentValue, {
+        id: documentValue.activePageId || "page_1",
+        title: "Page 1",
+    });
+    const pages = (documentValue.pages?.length ? documentValue.pages : [fallbackPage])
+        .map((page, index) => createDocumentPageSnapshot(documentValue, {
+            ...page,
+            title: page.title || `Page ${index + 1}`,
+        }));
+    const activePageId = pages.some((page) => page.id === documentValue.activePageId)
+        ? documentValue.activePageId
+        : pages[0].id;
+    const activePage = pages.find((page) => page.id === activePageId) || pages[0];
+    return {
+        ...documentValue,
+        activePageId,
+        canvas: activePage.canvas,
+        elements: activePage.elements,
+        pages,
+    };
+};
+
+const syncActivePageSnapshot = (documentValue: CreativeEditorDocument): CreativeEditorDocument => {
+    const activeCanvas = documentValue.canvas;
+    const activeElements = documentValue.elements;
+    const normalized = normalizeCreativeEditorDocumentPages(documentValue);
+    const activePageId = normalized.activePageId || normalized.pages?.[0]?.id;
+    const pages = (normalized.pages || []).map((page) => (
+        page.id === activePageId
+            ? {
+                ...page,
+                canvas: activeCanvas,
+                elements: activeElements,
+                updatedAt: new Date().toISOString(),
+            }
+            : page
+    ));
+    return {
+        ...normalized,
+        canvas: activeCanvas,
+        elements: activeElements,
+        pages,
+    };
+};
+
+const cloneElementForPage = (element: CreativeEditorElement): CreativeEditorElement => ({
+    ...element,
+    id: buildCreativeEditorId("layer"),
+    name: `${element.name} copy`,
+    sourceRefs: element.sourceRefs ? [...element.sourceRefs] : undefined,
+} as CreativeEditorElement);
+
+const matchesDrawerSearch = (item: DrawerSearchItem, query: string) => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return true;
+    return item.search.toLowerCase().includes(normalized);
+};
+
+const getTextTemplateScale = (canvas: CreativeEditorDocument["canvas"]) => (
+    Math.max(0.36, Math.min(1.15, Math.min(canvas.width, canvas.height) / 1080))
+);
+
+const resolveTemplateMetric = (value: number | undefined, total: number, fallback: number, min = 1) => {
+    const resolved = typeof value === "number"
+        ? (Math.abs(value) <= 1 ? value * total : value)
+        : fallback;
+    return Math.max(min, Math.round(resolved));
+};
+
+const renderTextTemplatePreview = (template: TextTemplateDefinition) => (
+    <span className={styles.textTemplatePreview} style={{ background: template.previewBackground || "var(--field-bg)" }}>
+        {template.layers.slice(0, 3).map((layer) => (
+            <span
+                key={layer.id}
+                style={{
+                    background: layer.textBackgroundColor || "transparent",
+                    color: layer.color || "var(--ink)",
+                    fontFamily: layer.fontFamily,
+                    fontSize: Math.min(30, Math.max(13, (layer.fontSize || 28) * 0.36)),
+                    fontStyle: layer.fontStyle,
+                    fontWeight: layer.fontWeight || "700",
+                    lineHeight: layer.lineHeight || 1.05,
+                    textAlign: layer.align || "left",
+                    textShadow: layer.shadow
+                        ? `${Math.round(layer.shadow.offsetX * 0.25)}px ${Math.round(layer.shadow.offsetY * 0.25)}px ${Math.round(layer.shadow.blur * 0.25)}px ${layer.shadow.color}`
+                        : undefined,
+                }}
+            >
+                {layer.text}
+            </span>
+        ))}
+    </span>
+);
 
 type EditorTool = {
     disabled?: boolean;
-    icon: IconType;
+    icon: ComponentType<{ active?: boolean }>;
     id: EditorToolId;
     label: string;
 };
+
+export type CreativeEditorHeaderActionTone = "accent" | "default" | "primary";
+
+export interface CreativeEditorHeaderAction {
+    ariaLabel?: string;
+    disabled?: boolean;
+    icon?: ReactNode;
+    id: string;
+    label: string;
+    loading?: boolean;
+    onClick: () => Promise<void> | void;
+    tone?: CreativeEditorHeaderActionTone;
+}
 
 export interface CreativeEditorProps {
     allowDesignImport?: boolean;
     allowNewDesign?: boolean;
     allowRasterImports?: boolean;
     assetSources?: CreativeEditorAssetSource[];
+    aiToolActions?: CreativeEditorAiToolAction[];
+    chromeMode?: "embedded" | "full";
+    designCueCommands?: CreativeEditorDesignCueCommand[];
+    disabledExportFormats?: CreativeEditorExportFormat[];
+    headerActions?: CreativeEditorHeaderAction[];
     initialDocument: CreativeEditorDocument;
+    onAiToolAction?: CreativeEditorAiToolHandler;
+    onDesignCueApply?: CreativeEditorDesignCueApplyHandler;
+    onDesignCueRequest?: CreativeEditorDesignCueHandler;
     onDocumentChange?: (documentValue: CreativeEditorDocument) => void;
     onExport?: (result: CreativeEditorExportResult) => Promise<void> | void;
+    onTemplateSave?: CreativeEditorTemplateSaveHandler;
     productLabel?: string;
     sourceLabel?: string;
+    templateSaveLabel?: string;
+    templateSavePreview?: boolean;
 }
 
 const EDITOR_TOOLS: EditorTool[] = [
-    { id: "ai", label: "AI Tools", icon: LuBot, disabled: true },
-    { id: "templates", label: "Templates", icon: LuGrid },
-    { id: "background", label: "Background", icon: LuImage },
-    { id: "illustrations", label: "Illustrations", icon: LuBoxSelect },
-    { id: "images", label: "Images", icon: LuImage },
-    { id: "text", label: "Text", icon: LuType },
-    { id: "graphics", label: "Graphics", icon: LuGift },
-    { id: "characters", label: "Characters", icon: LuUser2 },
-    { id: "shapes", label: "Shapes", icon: LuShapes },
-    { id: "qr", label: "QR", icon: LuQrCode },
+    { id: "ai", label: "AI Tools", icon: CraftAiToolsIcon },
+    { id: "templates", label: "Templates", icon: CraftTemplateIcon },
+    { id: "background", label: "Background", icon: CraftBackgroundIcon },
+    { id: "illustrations", label: "Illustrations", icon: CraftIllustrationsIcon },
+    { id: "graphics", label: "Graphics", icon: CraftGraphicsIcon },
+    { id: "characters", label: "Characters", icon: CraftCharacterIcon },
+    { id: "images", label: "Images", icon: CraftImagesIcon },
+    { id: "text", label: "Text", icon: CraftTextIcon },
+    { id: "styles", label: "Styles", icon: CraftStylesIcon },
+    { id: "shapes", label: "Tools", icon: CraftShapesIcon },
+    { id: "qr", label: "QRCode", icon: CraftQrCodeIcon },
+    { id: "barcode", label: "Barcode", icon: CraftBarcodeIcon },
+    { id: "myStuff", label: "My Stuff", icon: CraftMyStuffIcon },
+    { id: "brandKit", label: "Brand Kit", icon: CraftBrandKitIcon },
 ];
 
 const TOOL_LABELS = EDITOR_TOOLS.reduce<Record<EditorToolId, string>>((labels, tool) => {
     labels[tool.id] = tool.label;
     return labels;
 }, {} as Record<EditorToolId, string>);
+
+const AI_TOOL_CATEGORY_LABELS: Record<CreativeEditorAiToolAction["category"], string> = {
+    check: "Checks",
+    copy: "Copy",
+    export: "Export",
+    image: "Image",
+    recommended: "Recommended",
+};
+
+const AI_TOOL_CATEGORY_ORDER: CreativeEditorAiToolAction["category"][] = [
+    "recommended",
+    "copy",
+    "check",
+    "image",
+    "export",
+];
 
 const COLOR_SWATCHES = [
     "#6563ff",
@@ -198,6 +553,92 @@ const FONT_FAMILY_OPTIONS = [
 ];
 
 const FONT_WEIGHT_OPTIONS = ["normal", "400", "600", "700", "800", "bold"] as const;
+
+const TEXT_TEMPLATE_LIBRARY = textTemplateLibrary as TextTemplateDefinition[];
+
+const createTextPresetFromTemplate = (template: TextTemplateDefinition): TextPreset => {
+    const layer = template.layers[0] || {
+        id: template.id,
+        text: template.label,
+    };
+    return {
+        color: layer.color,
+        fontFamily: layer.fontFamily,
+        fontSize: layer.fontSize || 36,
+        fontWeight: layer.fontWeight || "700",
+        id: template.id,
+        label: template.label,
+        lineHeight: layer.lineHeight,
+        shadow: layer.shadow,
+        text: layer.text,
+        textBackgroundColor: layer.textBackgroundColor,
+    };
+};
+
+const getTextTemplateSearch = (template: TextTemplateDefinition) => (
+    [
+        template.label,
+        template.category,
+        template.description,
+        template.search,
+        ...(template.tags || []),
+        ...template.layers.map((layer) => `${layer.name || ""} ${layer.text}`),
+    ].join(" ")
+);
+
+const TEXT_PRESETS = TEXT_TEMPLATE_LIBRARY
+    .filter((template) => template.type === "single")
+    .map(createTextPresetFromTemplate);
+
+const TEXT_TEMPLATE_COMBINATIONS = TEXT_TEMPLATE_LIBRARY
+    .filter((template) => template.type === "composition");
+
+const PROJECT_STYLE_PRESETS: ProjectStylePreset[] = [
+    {
+        accentColor: "#e7782c",
+        backgroundColor: "#fff3d6",
+        description: "Warm offer posts, food specials, salon deals.",
+        fontFamily: "Inter, Arial, sans-serif",
+        id: "warm-offer",
+        label: "Warm offer",
+        mutedColor: "#f8c961",
+        secondaryColor: "#7a4a2e",
+        textColor: "#16231f",
+    },
+    {
+        accentColor: "#4ab8f1",
+        backgroundColor: "#e9f7ff",
+        description: "Clean announcements, service updates, reminders.",
+        fontFamily: "Trebuchet MS, sans-serif",
+        id: "fresh-local",
+        label: "Fresh local",
+        mutedColor: "#bde7f3",
+        secondaryColor: "#24564d",
+        textColor: "#111827",
+    },
+    {
+        accentColor: "#ef6680",
+        backgroundColor: "#fff0f4",
+        description: "Beauty, retail, launch, and limited-time messages.",
+        fontFamily: "Georgia, serif",
+        id: "soft-premium",
+        label: "Soft premium",
+        mutedColor: "#f3b4b4",
+        secondaryColor: "#3c3a55",
+        textColor: "#2d1f28",
+    },
+    {
+        accentColor: "#6563ff",
+        backgroundColor: "#f4f3ff",
+        description: "Bold social posts, events, and high-contrast promos.",
+        fontFamily: "Impact, Haettenschweiler, sans-serif",
+        id: "bold-social",
+        label: "Bold social",
+        mutedColor: "#c8c7ff",
+        secondaryColor: "#303052",
+        textColor: "#111827",
+    },
+];
 
 const IMAGE_FILTER_OPTIONS: Array<{ label: string; value: CreativeEditorImageFilter }> = [
     { label: "None", value: "none" },
@@ -275,11 +716,217 @@ const DEFAULT_VISIBLE_WATERMARK: CreativeEditorVisibleWatermark = {
     text: "Watermark",
 };
 
+const RASTER_IMAGE_MIME_TYPES = new Set(["image/gif", "image/jpeg", "image/png", "image/webp"]);
+const UNSAFE_OWNER_IMAGE_URL_PATTERN = /^(?:data|file|javascript|vbscript):/i;
+const SVG_IMAGE_URL_PATTERN = /(?:^data:image\/svg|\.(?:svg|svgz)(?:[?#]|$))/i;
+const RASTER_IMAGE_URL_PATTERN = /\.(?:gif|jpe?g|png|webp)(?:[?#]|$)/i;
+const SAFE_AREA_INSET_RATIO = 0.075;
+
+const CANVAS_SIZE_PRESETS: CanvasSizePreset[] = [
+    { description: "1:1", height: 1080, id: "square-post", label: "Square post", width: 1080 },
+    { description: "4:5", height: 1350, id: "portrait-post", label: "Portrait post", width: 1080 },
+    { description: "9:16", height: 1920, id: "story-status", label: "Story / status", width: 1080 },
+    { description: "A4", height: 1754, id: "flyer", label: "Flyer", width: 1240 },
+    { description: "16:9", height: 1080, id: "menu-screen", label: "Menu screen", width: 1920 },
+    { description: "3:4", height: 1200, id: "qr-table-card", label: "QR table card", width: 900 },
+];
+
+const DRAWER_ITEM_LIMIT = 24;
+
+const EXPORT_BUNDLE_PRESETS: ExportBundlePreset[] = [
+    { height: 1080, id: "instagram-square", label: "Instagram square", width: 1080 },
+    { height: 1350, id: "instagram-portrait", label: "Instagram portrait", width: 1080 },
+    { height: 1920, id: "story-status", label: "Story / status", width: 1080 },
+    { height: 1754, id: "flyer-a4", label: "Flyer", width: 1240 },
+];
+
+const TEMPLATE_THUMBNAIL_PRESET: ExportBundlePreset = {
+    height: 260,
+    id: "template-thumbnail",
+    label: "Template thumbnail",
+    width: 260,
+};
+const TEMPLATE_THUMBNAIL_MAX_DATA_URL_CHARS = 180_000;
+
+const CAMPAIGN_STARTER_ACTIONS: CampaignStarterAction[] = [
+    {
+        backgroundColor: "#fff3d6",
+        description: "Offer copy, CTA, and warm sale styling.",
+        id: "weekend-offer",
+        includeQr: true,
+        label: "Weekend offer",
+        templateSearch: "sale offer callout",
+    },
+    {
+        backgroundColor: "#e9f7ff",
+        description: "Clear announcement layout for updates.",
+        id: "new-arrival",
+        label: "New arrival",
+        templateSearch: "new arrival",
+    },
+    {
+        backgroundColor: "#fff0f4",
+        description: "Short premium reminder with business text.",
+        id: "appointment-reminder",
+        includeQr: true,
+        label: "Appointment reminder",
+        templateSearch: "thank you soft",
+    },
+    {
+        backgroundColor: "#f4f3ff",
+        description: "Bold customer action and contact prompt.",
+        id: "follow-share",
+        label: "Follow or share",
+        templateSearch: "call to action",
+    },
+];
+
+const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
+    {
+        id: "general",
+        items: [
+            { action: "Show shortcuts", keys: ["? / Cmd Ctrl + Shift + ?"] },
+            { action: "Undo", keys: ["Cmd/Ctrl + Z"] },
+            { action: "Redo", keys: ["Cmd/Ctrl + Shift + Z", "Cmd/Ctrl + Y"] },
+            { action: "Save PNG to product library", keys: ["Cmd/Ctrl + S"] },
+            { action: "Preview", keys: ["Cmd/Ctrl + Enter"] },
+            { action: "Review before download", keys: ["Cmd/Ctrl + Shift + K"] },
+            { action: "Close panel, clear selection, then hide drawer", keys: ["Esc"] },
+        ],
+        title: "General",
+    },
+    {
+        id: "create",
+        items: [
+            { action: "Add text", keys: ["T"] },
+            { action: "Add rectangle", keys: ["R"] },
+            { action: "Add circle", keys: ["C"] },
+            { action: "Add line", keys: ["L"] },
+            { action: "Add QR code", keys: ["Q"] },
+        ],
+        title: "Create",
+    },
+    {
+        id: "select-edit",
+        items: [
+            { action: "Select all layers", keys: ["Cmd/Ctrl + A"] },
+            { action: "Delete selected layer", keys: ["Delete", "Backspace"] },
+            { action: "Copy selected layer", keys: ["Cmd/Ctrl + C"] },
+            { action: "Paste copied layer", keys: ["Cmd/Ctrl + V"] },
+            { action: "Duplicate selected layer", keys: ["Cmd/Ctrl + D"] },
+            { action: "Open selected item properties", keys: ["Cmd/Ctrl + /"] },
+            { action: "Open Active Layers", keys: ["Cmd/Ctrl + Shift + L"] },
+        ],
+        title: "Select And Edit",
+    },
+    {
+        id: "move-resize",
+        items: [
+            { action: "Nudge selected layer", keys: ["Arrow keys"] },
+            { action: "Large nudge", keys: ["Shift + Arrow", "Alt + Arrow"] },
+            { action: "Resize selected layer", keys: ["Cmd/Ctrl + Arrow"] },
+            { action: "Large resize", keys: ["Cmd/Ctrl + Shift + Arrow"] },
+            { action: "Temporarily grab canvas", keys: ["Hold Space"] },
+        ],
+        title: "Move And Resize",
+    },
+    {
+        id: "arrange",
+        items: [
+            { action: "Group selection", keys: ["Cmd/Ctrl + G"] },
+            { action: "Ungroup selection", keys: ["Cmd/Ctrl + Shift + G"] },
+            { action: "Move forward/backward", keys: ["Cmd/Ctrl + ]", "Cmd/Ctrl + ["] },
+            { action: "Move to front/back", keys: ["Cmd/Ctrl + Alt + ]", "Cmd/Ctrl + Alt + ["] },
+            { action: "Align left/center/right", keys: ["Alt + Shift + L/C/R"] },
+            { action: "Align top/middle/bottom", keys: ["Alt + Shift + T/M/B"] },
+            { action: "Distribute X/Y", keys: ["Cmd/Ctrl + Shift + H/V"] },
+        ],
+        title: "Arrange",
+    },
+    {
+        id: "text",
+        items: [
+            { action: "Bold", keys: ["Cmd/Ctrl + B"] },
+            { action: "Italic", keys: ["Cmd/Ctrl + I"] },
+            { action: "Underline", keys: ["Cmd/Ctrl + U"] },
+            { action: "Strike", keys: ["Cmd/Ctrl + Shift + X"] },
+            { action: "Increase/decrease text size", keys: ["Cmd/Ctrl + Shift + .", "Cmd/Ctrl + Shift + ,"] },
+            { action: "Text align left/center/right", keys: ["Alt + Shift + L/C/R"] },
+        ],
+        title: "Text",
+    },
+    {
+        id: "view",
+        items: [
+            { action: "Zoom in/out", keys: ["Cmd/Ctrl + +", "Cmd/Ctrl + -"] },
+            { action: "Fit to screen", keys: ["Cmd/Ctrl + 0"] },
+            { action: "100% zoom", keys: ["Cmd/Ctrl + Alt + 0"] },
+            { action: "Toggle grid and rulers", keys: ["Cmd/Ctrl + '"] },
+            { action: "Toggle safe area", keys: ["Cmd/Ctrl + Shift + '"] },
+        ],
+        title: "View",
+    },
+];
+
 const clampNumber = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const FLOATING_SELECTION_TOOLBAR_GAP = 10;
+const FLOATING_SELECTION_TOOLBAR_EDGE_PADDING = 8;
+const FLOATING_SELECTION_TOOLBAR_FALLBACK_SIZE: Record<FloatingSelectionToolbarVariant, { height: number; width: number }> = {
+    group: { height: 50, width: 152 },
+    multi: { height: 50, width: 290 },
+    single: { height: 50, width: 330 },
+};
+
+const TEXT_ACTION_PATTERN = /\b(book|buy|call|contact|dm|join|learn|message|order|reserve|shop|visit|whatsapp)\b/i;
+const CONTACT_PLACEHOLDER_PATTERN = /(booking|contact|link|menu|phone|site|url|web|whatsapp)/i;
+const CTA_PLACEHOLDER_PATTERN = /(action|book|buy|call|cta|message|order|reserve|shop|visit)/i;
 
 const numberInput = (value: number, fallback = 0) => {
     const next = Number(value);
     return Number.isFinite(next) ? next : fallback;
+};
+
+const normalizeHexColor = (color: string) => {
+    const value = color.trim();
+    if (/^#[0-9a-f]{3}$/i.test(value)) {
+        return `#${value.slice(1).split("").map((part) => `${part}${part}`).join("")}`.toLowerCase();
+    }
+    if (/^#[0-9a-f]{6}$/i.test(value)) return value.toLowerCase();
+    return "";
+};
+
+const getRelativeLuminance = (color: string) => {
+    const normalized = normalizeHexColor(color);
+    if (!normalized) return null;
+    const channels = [1, 3, 5].map((index) => Number.parseInt(normalized.slice(index, index + 2), 16) / 255)
+        .map((channel) => (
+            channel <= 0.03928
+                ? channel / 12.92
+                : ((channel + 0.055) / 1.055) ** 2.4
+        ));
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+};
+
+const getContrastRatio = (foreground: string, background: string) => {
+    const foregroundLuminance = getRelativeLuminance(foreground);
+    const backgroundLuminance = getRelativeLuminance(background);
+    if (foregroundLuminance === null || backgroundLuminance === null) return null;
+    const lighter = Math.max(foregroundLuminance, backgroundLuminance);
+    const darker = Math.min(foregroundLuminance, backgroundLuminance);
+    return (lighter + 0.05) / (darker + 0.05);
+};
+
+const getReadableTextColor = (background: string) => {
+    const blackContrast = getContrastRatio("#111111", background) || 0;
+    const whiteContrast = getContrastRatio("#ffffff", background) || 0;
+    return blackContrast >= whiteContrast ? "#111111" : "#ffffff";
+};
+
+const shortenBusinessText = (text: string, maxWords = 8) => {
+    const normalized = text.trim().replace(/\s+/g, " ");
+    const words = normalized.split(" ").filter(Boolean);
+    if (words.length <= maxWords && normalized.length <= 64) return normalized;
+    return words.slice(0, maxWords).join(" ").replace(/[,:;.-]+$/, "");
 };
 
 const normalizeGradientStops = (gradient: CreativeEditorLinearGradient): CreativeEditorGradientStop[] => {
@@ -303,6 +950,91 @@ const getPrimaryColor = (documentValue: CreativeEditorDocument) => (
 
 const encodeSvgDataUri = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
+const escapeSvgValue = (value: unknown) => String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+const CODE128_PATTERNS = [
+    "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312",
+    "132212", "221213", "221312", "231212", "112232", "122132", "122231", "113222",
+    "123122", "123221", "223211", "221132", "221231", "213212", "223112", "312131",
+    "311222", "321122", "321221", "312212", "322112", "322211", "212123", "212321",
+    "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313",
+    "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121",
+    "313121", "211331", "231131", "213113", "213311", "213131", "311123", "311321",
+    "331121", "312113", "312311", "332111", "314111", "221411", "431111", "111224",
+    "111422", "121124", "121421", "141122", "141221", "112214", "112412", "122114",
+    "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111",
+    "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112",
+    "421211", "212141", "214121", "412121", "111143", "111341", "131141", "114113",
+    "114311", "411113", "411311", "113141", "114131", "311141", "411131", "211412",
+    "211214", "211232", "2331112",
+];
+
+function normalizeBarcodeValue(value: string) {
+    const ascii = Array.from(value)
+        .filter((character) => {
+            const code = character.charCodeAt(0);
+            return code >= 32 && code <= 126;
+        })
+        .join("")
+        .trim();
+    return ascii || "Sample";
+}
+
+function buildCode128Values(value: string) {
+    const data = Array.from(normalizeBarcodeValue(value)).map((character) => character.charCodeAt(0) - 32);
+    const checksum = data.reduce((sum, code, index) => sum + code * (index + 1), 104) % 103;
+    return [104, ...data, checksum, 106];
+}
+
+function buildCode128BarcodeSvg(params: {
+    backgroundColor: string;
+    displayText: boolean;
+    lineColor: string;
+    text: string;
+    value: string;
+}) {
+    const encodedValues = buildCode128Values(params.value);
+    const moduleWidth = 2;
+    const quietZone = 20;
+    const barHeight = 92;
+    const textHeight = params.displayText ? 30 : 0;
+    const patterns = encodedValues.map((code) => CODE128_PATTERNS[code]).join("");
+    const totalUnits = Array.from(patterns).reduce((sum, width) => sum + Number(width), 0);
+    const width = quietZone * 2 + totalUnits * moduleWidth;
+    const height = barHeight + textHeight + 18;
+    let cursor = quietZone;
+    const rects: string[] = [];
+    Array.from(patterns).forEach((rawWidth, index) => {
+        const segmentWidth = Number(rawWidth) * moduleWidth;
+        if (index % 2 === 0) {
+            rects.push(`<rect x="${cursor}" y="10" width="${segmentWidth}" height="${barHeight}" fill="${escapeSvgValue(params.lineColor)}" />`);
+        }
+        cursor += segmentWidth;
+    });
+    const label = params.text.trim() || normalizeBarcodeValue(params.value);
+    return [
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Barcode">`,
+        `<rect width="${width}" height="${height}" fill="${escapeSvgValue(params.backgroundColor)}" />`,
+        `<g shape-rendering="crispEdges">${rects.join("")}</g>`,
+        params.displayText
+            ? `<text x="${width / 2}" y="${barHeight + 38}" text-anchor="middle" fill="${escapeSvgValue(params.lineColor)}" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">${escapeSvgValue(label)}</text>`
+            : "",
+        "</svg>",
+    ].join("");
+}
+
+const buildBarcodeDataUri = (params: {
+    backgroundColor: string;
+    displayText: boolean;
+    lineColor: string;
+    text: string;
+    value: string;
+}) => encodeSvgDataUri(buildCode128BarcodeSvg(params));
+
 const buildCuratedSvg = (index: number, accent = "#6563ff") => {
     const pink = ["#ef6680", "#f3b4b4", "#ff7f96"][index % 3];
     const dark = ["#3c3a55", "#303052", "#22253c"][index % 3];
@@ -325,6 +1057,30 @@ const buildCuratedSvg = (index: number, accent = "#6563ff") => {
         </svg>
     `);
 };
+
+const buildStickerSvg = (label: string, accent: string, secondary: string, shape: "burst" | "pill" | "tag" | "bubble") => {
+    const content = escapeSvgValue(label);
+    const shapeMarkup = {
+        bubble: `<path d="M38 44 h164 a24 24 0 0 1 24 24 v50 a24 24 0 0 1-24 24 h-83 l-34 29 8-29 H38 a24 24 0 0 1-24-24 V68 a24 24 0 0 1 24-24Z" fill="${escapeSvgValue(accent)}"/>`,
+        burst: `<path d="m120 13 18 34 37-10 1 38 36 12-30 23 18 34-38 1-14 35-28-26-29 26-14-35-38-1 18-34-30-23 36-12 1-38 37 10 19-34Z" fill="${escapeSvgValue(accent)}"/>`,
+        pill: `<rect x="18" y="52" width="204" height="96" rx="48" fill="${escapeSvgValue(accent)}"/>`,
+        tag: `<path d="M28 54 a26 26 0 0 1 26-26 h75 l83 83-74 74-83-83 V54Z" fill="${escapeSvgValue(accent)}"/> <circle cx="67" cy="68" r="9" fill="${escapeSvgValue(secondary)}"/>`,
+    }[shape];
+    return encodeSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="240" height="200" viewBox="0 0 240 200">
+            <rect width="240" height="200" rx="24" fill="#f8fafc"/>
+            ${shapeMarkup}
+            <text x="120" y="${shape === "tag" ? 118 : 108}" text-anchor="middle" fill="${escapeSvgValue(secondary)}" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="900">${content}</text>
+        </svg>
+    `);
+};
+
+const STICKER_ASSETS = [
+    { id: "sticker-sale", label: "Sale sticker", src: buildStickerSvg("SALE", "#f97316", "#ffffff", "burst") },
+    { id: "sticker-new", label: "New sticker", src: buildStickerSvg("NEW", "#10b981", "#ffffff", "pill") },
+    { id: "sticker-offer", label: "Offer tag", src: buildStickerSvg("OFFER", "#6366f1", "#ffffff", "tag") },
+    { id: "sticker-call", label: "Callout bubble", src: buildStickerSvg("TODAY", "#facc15", "#111827", "bubble") },
+];
 
 const CURATED_ASSETS = Array.from({ length: 12 }, (_, index) => ({
     id: `curated-${index}`,
@@ -391,6 +1147,50 @@ const canEditTextElement = (
     Boolean(element && (element.type === "pathText" || element.type === "text"))
 );
 
+const SELECTED_PATCH_RELOAD_KEYS = new Set([
+    "filter",
+    "filterAdjustments",
+    "outlineColor",
+    "outlineEnabled",
+    "outlineOnly",
+    "outlineWidth",
+    "points",
+    "src",
+]);
+
+const getLiveDashArray = (strokeStyle?: CreativeEditorStrokeStyle, strokeWidth = 1) => {
+    if (strokeStyle === "dashed" || strokeStyle === "dashed-round") return [Math.max(6, strokeWidth * 4), Math.max(4, strokeWidth * 3)];
+    if (strokeStyle === "long-dashed" || strokeStyle === "long-dashed-round") return [Math.max(12, strokeWidth * 7), Math.max(5, strokeWidth * 3)];
+    if (strokeStyle === "dash-dot" || strokeStyle === "dash-dot-round") return [Math.max(9, strokeWidth * 5), Math.max(4, strokeWidth * 2), Math.max(2, strokeWidth), Math.max(4, strokeWidth * 2)];
+    if (strokeStyle === "dotted" || strokeStyle === "dotted-round") return [Math.max(1, strokeWidth), Math.max(4, strokeWidth * 2.5)];
+    return undefined;
+};
+
+const getLiveStrokeLineCap = (
+    strokeStyle?: CreativeEditorStrokeStyle,
+    explicit?: CreativeEditorStrokeLineCap,
+): CreativeEditorStrokeLineCap => {
+    if (explicit) return explicit;
+    if (strokeStyle?.endsWith("-round")) return "round";
+    if (strokeStyle === "dotted") return "round";
+    return "butt";
+};
+
+const getFabricGroupChildren = (object: CreativeFabricObject) => (
+    object.type === "group" && typeof (object as fabric.Group).getObjects === "function"
+        ? (object as fabric.Group).getObjects()
+        : []
+);
+
+const getFabricTextChild = (object: CreativeFabricObject) => {
+    if (object.type === "textbox" || object.type === "text" || object.type === "i-text") {
+        return object as unknown as fabric.Textbox;
+    }
+    return getFabricGroupChildren(object).find((item) => (
+        item.type === "textbox" || item.type === "text" || item.type === "i-text"
+    )) as fabric.Textbox | undefined;
+};
+
 const isFormTarget = (target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) return false;
     const tag = target.tagName.toLowerCase();
@@ -406,6 +1206,25 @@ const triggerDownload = (href: string, filename: string) => {
     anchor.remove();
 };
 
+const getTextFromElement = (element: CreativeEditorElement | null) => (
+    canEditTextElement(element) ? element.text : ""
+);
+
+const getAiToolIcon = (action: CreativeEditorAiToolAction) => {
+    if (action.category === "copy") return LuMessageSquare;
+    if (action.category === "check") return LuShieldCheck;
+    if (action.category === "image") return LuImage;
+    if (action.category === "export") return LuDownload;
+    return LuSparkles;
+};
+
+const getAiFindingToneLabel = (finding: CreativeEditorAiToolFinding) => {
+    if (finding.tone === "danger") return "Blocked";
+    if (finding.tone === "warning") return "Review";
+    if (finding.tone === "success") return "Ready";
+    return "Note";
+};
+
 const readFileAsText = (file: File) => new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("File could not be read."));
@@ -419,6 +1238,20 @@ const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) 
     reader.onload = () => resolve(String(reader.result || ""));
     reader.readAsDataURL(file);
 });
+
+const normalizeOwnerImageUrl = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed || UNSAFE_OWNER_IMAGE_URL_PATTERN.test(trimmed) || SVG_IMAGE_URL_PATTERN.test(trimmed)) return "";
+    try {
+        const url = new URL(trimmed, window.location.origin);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+        const normalizedPath = `${url.pathname}${url.search}`;
+        if (SVG_IMAGE_URL_PATTERN.test(normalizedPath) || !RASTER_IMAGE_URL_PATTERN.test(normalizedPath)) return "";
+        return url.toString();
+    } catch {
+        return "";
+    }
+};
 
 const isCreativeEditorDocument = (value: unknown): value is CreativeEditorDocument => {
     if (!value || typeof value !== "object") return false;
@@ -450,41 +1283,120 @@ export default function CreativeEditor({
     allowNewDesign = true,
     allowRasterImports = true,
     assetSources = [],
+    aiToolActions = [],
+    chromeMode = "full",
+    designCueCommands = [],
+    disabledExportFormats = [],
+    headerActions = [],
     initialDocument,
+    onAiToolAction,
+    onDesignCueApply,
+    onDesignCueRequest,
     onDocumentChange,
     onExport,
+    onTemplateSave,
     productLabel = "Product",
     sourceLabel = "Blank asset",
+    templateSaveLabel = "Save as template",
+    templateSavePreview = false,
 }: CreativeEditorProps) {
-    const [documentValue, setDocumentValue] = useState<CreativeEditorDocument>(initialDocument);
-    const [selectedId, setSelectedIdState] = useState(initialDocument.elements[0]?.id || "");
-    const [activeTool, setActiveTool] = useState<EditorToolId>("illustrations");
-    const [theme, setTheme] = useState<EditorTheme>("light");
+    const initialEditorDocument = useMemo(
+        () => normalizeCreativeEditorDocumentPages(initialDocument),
+        [initialDocument],
+    );
+    const browserDraftsEnabled = chromeMode === "full";
+    const showInternalExportTools = chromeMode === "full";
+    const showDesignManagementActions = chromeMode === "full";
+    const showWorkspaceNavigationActions = chromeMode === "full";
+    const initialBarcodeText = initialEditorDocument.metadata?.brand?.name || productLabel || "Product";
+    const [documentValue, setDocumentValue] = useState<CreativeEditorDocument>(initialEditorDocument);
+    const [selectedId, setSelectedIdState] = useState(initialEditorDocument.elements[0]?.id || "");
+    const [activeTool, setActiveTool] = useState<EditorToolId>("background");
+    const [drawerSearch, setDrawerSearch] = useState("");
+    const [recentInsertions, setRecentInsertions] = useState<DrawerSearchItem[]>([]);
+    const [theme, setTheme] = useState<EditorTheme>("dark");
     const [interactionMode, setInteractionModeState] = useState<InteractionMode>("selection");
-    const [zoom, setZoom] = useState(0.72);
+    const [zoom, setZoom] = useState(0.61);
     const [notice, setNotice] = useState("");
     const [imageUrl, setImageUrl] = useState("");
-    const [svgMarkup, setSvgMarkup] = useState("");
+    const [qrValue, setQrValue] = useState("https://example.com/");
+    const [qrDarkColor, setQrDarkColor] = useState("#16231f");
+    const [qrLightColor, setQrLightColor] = useState("#ffffff");
+    const [qrSize, setQrSize] = useState(164);
+    const [backgroundMode, setBackgroundMode] = useState<"solid" | "gradient">(
+        initialDocument.canvas.backgroundGradient?.enabled ? "gradient" : "solid",
+    );
+    const [barcodeValue, setBarcodeValue] = useState("https://example.com/");
+    const [barcodeText, setBarcodeText] = useState(initialBarcodeText);
+    const [barcodeLineColor, setBarcodeLineColor] = useState("#000000");
+    const [barcodeBackgroundColor, setBarcodeBackgroundColor] = useState("#ffffff");
+    const [barcodeDisplayText, setBarcodeDisplayText] = useState(true);
     const [fabricReady, setFabricReady] = useState(false);
     const [historyState, setHistoryState] = useState({ version: 0 });
     const [drawerCollapsed, setDrawerCollapsed] = useState(false);
-    const [showGrid, setShowGrid] = useState(true);
+    const [showGrid, setShowGrid] = useState(false);
+    const [showSafeArea, setShowSafeArea] = useState(false);
+    const [inspectorOpen, setInspectorOpen] = useState(false);
+    const [rightPanelModeState, setRightPanelModeState] = useState<RightPanelMode>("properties");
+    const [styleShuffleIndex, setStyleShuffleIndex] = useState(0);
     const [previewDataUrl, setPreviewDataUrl] = useState("");
+    const [aiToolBusyId, setAiToolBusyId] = useState("");
+    const [aiToolResult, setAiToolResult] = useState<{
+        action: CreativeEditorAiToolAction;
+        result: CreativeEditorAiToolResult;
+    } | null>(null);
+    const [designCueBusy, setDesignCueBusy] = useState(false);
+    const [designCuePatchSet, setDesignCuePatchSet] = useState<CreativeEditorDesignCuePatchSet | null>(null);
+    const [floatingSelectionToolbar, setFloatingSelectionToolbar] = useState<FloatingSelectionToolbarState | null>(null);
+    const [autosaveDraft, setAutosaveDraft] = useState<CreativeEditorDocument | null>(null);
+    const [readinessIssues, setReadinessIssues] = useState<ReadinessIssue[]>([]);
+    const [readinessPanelOpen, setReadinessPanelOpen] = useState(false);
+    const [historyLabelState, setHistoryLabelState] = useState({ current: "Opened design" });
+    const [reviewMode, setReviewMode] = useState(false);
+    const [shortcutPanelOpen, setShortcutPanelOpen] = useState(false);
+    const [draggedLayerId, setDraggedLayerId] = useState("");
+    const [workspaceViewport, setWorkspaceViewport] = useState<WorkspaceViewportState>({
+        height: 0,
+        left: 0,
+        top: 0,
+        width: 0,
+    });
 
+    const canvasHostRef = useRef<HTMLDivElement | null>(null);
     const canvasElementRef = useRef<HTMLCanvasElement | null>(null);
+    const stageScrollerRef = useRef<HTMLDivElement | null>(null);
+    const floatingSelectionToolbarRef = useRef<HTMLDivElement | null>(null);
     const fabricApiRef = useRef<FabricStatic | null>(null);
     const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
     const jsonInputRef = useRef<HTMLInputElement | null>(null);
     const imageInputRef = useRef<HTMLInputElement | null>(null);
     const replaceImageInputRef = useRef<HTMLInputElement | null>(null);
-    const svgInputRef = useRef<HTMLInputElement | null>(null);
-    const documentRef = useRef<CreativeEditorDocument>(initialDocument);
+    const shortcutButtonRef = useRef<HTMLButtonElement | null>(null);
+    const shortcutCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+    const previewButtonRef = useRef<HTMLButtonElement | null>(null);
+    const previewCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+    const documentRef = useRef<CreativeEditorDocument>(initialEditorDocument);
     const selectedIdRef = useRef(selectedId);
     const interactionModeRef = useRef(interactionMode);
+    const zoomRef = useRef(zoom);
+    const rightPanelModeRef = useRef<RightPanelMode>("properties");
     const isLoadingRef = useRef(false);
     const clipboardRef = useRef<fabric.Object | fabric.ActiveSelection | null>(null);
-    const historyRef = useRef<CreativeEditorDocument[]>([initialDocument]);
+    const historyRef = useRef<CreativeEditorDocument[]>([initialEditorDocument]);
+    const historyLabelsRef = useRef<string[]>(["Opened design"]);
     const historyIndexRef = useRef(0);
+    const autosaveReadyRef = useRef(false);
+    const lastReadinessSignatureRef = useRef("");
+    const spacebarModeRestoreRef = useRef<InteractionMode | null>(null);
+    const pendingFloatingToolbarRefreshRef = useRef(false);
+    const floatingToolbarFrameRef = useRef<number | null>(null);
+    const floatingToolbarSizeRef = useRef<{ height: number; variant: FloatingSelectionToolbarVariant | ""; width: number }>({
+        height: FLOATING_SELECTION_TOOLBAR_FALLBACK_SIZE.single.height,
+        variant: "",
+        width: FLOATING_SELECTION_TOOLBAR_FALLBACK_SIZE.single.width,
+    });
+    const workspaceViewportFrameRef = useRef<number | null>(null);
+    const lastDesignCueRequestRef = useRef<Omit<CreativeEditorDesignCueRequest, "document" | "selectedElement" | "selectedText"> | null>(null);
     const polygonDraftRef = useRef<{
         points: Array<{ x: number; y: number }>;
         preview: CreativeFabricObject | null;
@@ -494,17 +1406,438 @@ export default function CreativeEditor({
         () => documentValue.elements.find((element) => element.id === selectedId) || null,
         [documentValue.elements, selectedId],
     );
+    const pageList = documentValue.pages?.length ? documentValue.pages : [];
+    const activePage = pageList.find((page) => page.id === documentValue.activePageId) || pageList[0] || null;
+    const activePageIndex = Math.max(0, pageList.findIndex((page) => page.id === activePage?.id));
+    const activePageLocked = Boolean(activePage?.locked);
+    const showPageNavigation = pageList.length > 1;
     const canUndo = historyState.version >= 0 && historyIndexRef.current > 0;
     const canRedo = historyState.version >= 0 && historyIndexRef.current < historyRef.current.length - 1;
     const layerList = [...documentValue.elements].reverse();
     const primaryColor = getPrimaryColor(documentValue);
-    const scaledWidth = Math.max(180, documentValue.canvas.width * zoom);
-    const scaledHeight = Math.max(140, documentValue.canvas.height * zoom);
+    const brand = documentValue.metadata?.brand;
+    const brandColorItems = [
+        { id: "primary", label: "Primary", value: brand?.primaryColor },
+        { id: "secondary", label: "Secondary", value: brand?.secondaryColor },
+        { id: "accent", label: "Accent", value: brand?.accentColor },
+    ].filter((item): item is { id: string; label: string; value: string } => Boolean(item.value));
+    const brandLogoAssets = [
+        ...(brand?.logoUrl ? [{
+            id: "document-brand-logo",
+            label: `${brand.name || "Business"} logo`,
+            sourceRef: "document_brand",
+            type: "logo" as const,
+            url: brand.logoUrl,
+        }] : []),
+        ...assetSources.filter((asset) => asset.type === "logo"),
+    ].slice(0, 6);
+    const textPlaceholders = documentValue.metadata?.textPlaceholders || [];
+    const selectedText = getTextFromElement(selectedElement);
+    const horizontalRulerTicks = useMemo(
+        () => buildRulerTicks(documentValue.canvas.width),
+        [documentValue.canvas.width],
+    );
+    const verticalRulerTicks = useMemo(
+        () => buildRulerTicks(documentValue.canvas.height),
+        [documentValue.canvas.height],
+    );
+    const activeObjectType = floatingSelectionToolbar?.activeObjectType || "";
+    const isGroupedSelection = activeObjectType === "group";
+    const isActiveMultiSelection = Boolean(floatingSelectionToolbar?.isMultiSelection && activeObjectType === "activeSelection");
+    const selectionCount = floatingSelectionToolbar?.selectionCount || (selectedElement ? 1 : 0);
+    const canGroupActiveSelection = isActiveMultiSelection && selectionCount > 1 && !floatingSelectionToolbar?.locked && !activePageLocked;
+    const canUngroupActiveSelection = isGroupedSelection && !floatingSelectionToolbar?.locked && !activePageLocked;
+    const canDistributeActiveSelection = canGroupActiveSelection && selectionCount > 2;
+    const selectedLayerLocked = Boolean(selectedElement?.locked);
+    const selectedLayerReadOnly = Boolean(selectedLayerLocked || activePageLocked);
+    const visibleLayerCount = documentValue.elements.filter((element) => element.visible !== false).length;
+    const lockedLayerCount = documentValue.elements.filter((element) => element.locked).length;
+    const currentHistoryLabel = historyLabelsRef.current[historyIndexRef.current] || historyLabelState.current;
+    const autosaveKey = useMemo(() => (
+        `creative-editor-draft:${documentValue.productContext.productId}:${documentValue.productContext.workspaceId || "workspace"}:${sourceLabel}:${initialEditorDocument.id}`
+    ), [documentValue.productContext.productId, documentValue.productContext.workspaceId, initialEditorDocument.id, sourceLabel]);
+
+    const setRightPanelMode = (mode: RightPanelMode) => {
+        rightPanelModeRef.current = mode;
+        setRightPanelModeState((current) => current === mode ? current : mode);
+    };
+
+    const restoreFocusToElement = (element: HTMLElement | null) => {
+        if (!element) return;
+        window.requestAnimationFrame(() => {
+            element.focus({ preventScroll: true });
+        });
+    };
+
+    const openShortcutPanel = () => {
+        setShortcutPanelOpen(true);
+    };
+
+    const closeShortcutPanel = () => {
+        setShortcutPanelOpen(false);
+        restoreFocusToElement(shortcutButtonRef.current);
+    };
+
+    const closePreviewPanel = () => {
+        setPreviewDataUrl("");
+        restoreFocusToElement(previewButtonRef.current);
+    };
+
+    const trapDialogFocus = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== "Tab") return;
+        const focusableElements = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+            "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+        )).filter((element) => element.offsetParent !== null || element === document.activeElement);
+        if (!focusableElements.length) return;
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus({ preventScroll: true });
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus({ preventScroll: true });
+        }
+    };
+
+    function getStageViewportSize() {
+        const stage = stageScrollerRef.current;
+        return {
+            height: Math.max(1, Math.round(stage?.clientHeight || documentRef.current.canvas.height)),
+            width: Math.max(1, Math.round(stage?.clientWidth || documentRef.current.canvas.width)),
+        };
+    }
+
+    function syncZoomStateFromCanvas() {
+        const canvas = fabricCanvasRef.current;
+        const nextZoom = clampNumber(canvas?.getZoom() || zoomRef.current || 1, 0.05, 4);
+        zoomRef.current = nextZoom;
+        setZoom((current) => Math.abs(current - nextZoom) < 0.001 ? current : nextZoom);
+    }
+
+    function refreshWorkspaceViewportMetrics() {
+        const canvas = fabricCanvasRef.current;
+        const workspace = canvas ? findWorkspaceObject(canvas) : null;
+        if (!canvas || !workspace) {
+            setWorkspaceViewport((current) => current.width || current.height
+                ? { height: 0, left: 0, top: 0, width: 0 }
+                : current);
+            return;
+        }
+        const rect = workspace.getBoundingRect(false, true);
+        const nextRect = {
+            height: Math.max(0, rect.height),
+            left: rect.left,
+            top: rect.top,
+            width: Math.max(0, rect.width),
+        };
+        setWorkspaceViewport((current) => (
+            Math.abs(current.left - nextRect.left) < 0.5
+            && Math.abs(current.top - nextRect.top) < 0.5
+            && Math.abs(current.width - nextRect.width) < 0.5
+            && Math.abs(current.height - nextRect.height) < 0.5
+                ? current
+                : nextRect
+        ));
+    }
+
+    function scheduleWorkspaceViewportMetricsRefresh() {
+        if (workspaceViewportFrameRef.current !== null) return;
+        workspaceViewportFrameRef.current = window.requestAnimationFrame(() => {
+            workspaceViewportFrameRef.current = null;
+            refreshWorkspaceViewportMetrics();
+        });
+    }
+
+    function centerWorkspaceAtZoom(nextZoom: number) {
+        const canvas = fabricCanvasRef.current;
+        const workspace = canvas ? findWorkspaceObject(canvas) : null;
+        if (!canvas || !workspace) return;
+        const safeZoom = clampNumber(nextZoom, 0.05, 4);
+        const workspaceCenter = workspace.getCenterPoint();
+        canvas.setViewportTransform([
+            safeZoom,
+            0,
+            0,
+            safeZoom,
+            canvas.getWidth() / 2 - workspaceCenter.x * safeZoom,
+            canvas.getHeight() / 2 - workspaceCenter.y * safeZoom,
+        ]);
+        canvas.calcOffset();
+        canvas.requestRenderAll();
+        syncZoomStateFromCanvas();
+        refreshWorkspaceViewportMetrics();
+        scheduleFloatingSelectionToolbarRefresh();
+    }
+
+    function resizeFabricViewportToStage() {
+        const canvas = fabricCanvasRef.current;
+        if (!canvas) return;
+        const size = getStageViewportSize();
+        canvas.setDimensions(size);
+        canvas.calcOffset();
+        canvas.requestRenderAll();
+        refreshWorkspaceViewportMetrics();
+        scheduleFloatingSelectionToolbarRefresh();
+    }
+
+    const fitZoomToStage = useCallback(() => {
+        const canvas = fabricCanvasRef.current;
+        if (!canvas) return;
+        resizeFabricViewportToStage();
+        const availableWidth = Math.max(260, canvas.getWidth() - 136);
+        const availableHeight = Math.max(220, canvas.getHeight() - 156);
+        const nextZoom = clampNumber(
+            Math.min(
+                availableWidth / Math.max(1, documentRef.current.canvas.width),
+                availableHeight / Math.max(1, documentRef.current.canvas.height),
+                1,
+            ),
+            0.05,
+            1,
+        );
+        centerWorkspaceAtZoom(nextZoom);
+        // fitZoomToStage is intentionally bound to the current Fabric refs.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    function zoomFabricViewport(delta: number) {
+        const canvas = fabricCanvasRef.current;
+        const fabricApi = fabricApiRef.current;
+        if (!canvas || !fabricApi) return;
+        const center = canvas.getCenter();
+        const nextZoom = clampNumber(canvas.getZoom() + delta, 0.05, 4);
+        canvas.zoomToPoint(new fabricApi.Point(center.left, center.top), nextZoom);
+        canvas.requestRenderAll();
+        syncZoomStateFromCanvas();
+        refreshWorkspaceViewportMetrics();
+        scheduleFloatingSelectionToolbarRefresh();
+    }
+
+    const blockIfActivePageLocked = () => {
+        if (!activePageLocked) return false;
+        setNotice("Unlock this page before editing it.");
+        return true;
+    };
+
+    const recordRecentInsertion = (item: DrawerSearchItem) => {
+        setRecentInsertions((current) => [
+            item,
+            ...current.filter((existing) => existing.id !== item.id),
+        ].slice(0, 6));
+    };
+
+    const getDocumentTimestampMs = (documentSnapshot: CreativeEditorDocument) => (
+        Date.parse(documentSnapshot.metadata?.updatedAt || documentSnapshot.metadata?.createdAt || "") || 0
+    );
+
+    const isAutosaveDraftNewer = (draft: CreativeEditorDocument, current: CreativeEditorDocument) => {
+        const draftTime = getDocumentTimestampMs(draft);
+        const currentTime = getDocumentTimestampMs(current);
+        if (draftTime && currentTime) return draftTime > currentTime + 1000;
+        return JSON.stringify({
+            canvas: draft.canvas,
+            elements: draft.elements,
+            pages: draft.pages,
+            title: draft.title,
+        }) !== JSON.stringify({
+            canvas: current.canvas,
+            elements: current.elements,
+            pages: current.pages,
+            title: current.title,
+        });
+    };
+
+    const describeSelectedPatch = (
+        element: CreativeEditorElement,
+        patch: Partial<CreativeEditorElement>,
+    ) => {
+        const keys = new Set(Object.keys(patch));
+        if (keys.has("name")) return `Renamed ${element.name}`;
+        if (keys.has("text")) return `Edited ${element.name}`;
+        if (keys.has("src")) return `Replaced ${element.name}`;
+        if (keys.has("filter") || keys.has("filterAdjustments")) return `Adjusted ${element.name}`;
+        if (keys.has("color") || keys.has("fill") || keys.has("darkColor") || keys.has("lightColor")) return `Changed color`;
+        if (keys.has("fontFamily") || keys.has("fontSize") || keys.has("fontWeight") || keys.has("fontStyle") || keys.has("lineHeight")) return `Changed text style`;
+        if (keys.has("x") || keys.has("y") || keys.has("width") || keys.has("height") || keys.has("rotation")) return `Moved or resized ${element.name}`;
+        if (keys.has("opacity")) return `Changed opacity`;
+        if (keys.has("gradient") || keys.has("stroke") || keys.has("strokeWidth") || keys.has("strokeStyle")) return `Styled ${element.name}`;
+        return `Edited ${element.name}`;
+    };
+
+    const describeCanvasPatch = (patch: Partial<CreativeEditorDocument["canvas"]>) => {
+        if (patch.width || patch.height) return "Resized canvas";
+        if (patch.backgroundGradient) return "Changed background gradient";
+        if (patch.backgroundColor) return "Changed background color";
+        return "Changed canvas";
+    };
 
     const setSelectedId = (id: string) => {
         selectedIdRef.current = id;
-        setSelectedIdState(id);
+        setSelectedIdState((current) => current === id ? current : id);
     };
+
+    function clearFloatingSelectionToolbar() {
+        setFloatingSelectionToolbar((current) => current ? null : current);
+    }
+
+    function getFloatingToolbarSize(variant: FloatingSelectionToolbarVariant) {
+        const measuredSize = floatingToolbarSizeRef.current;
+        if (measuredSize.variant === variant && measuredSize.width > 0 && measuredSize.height > 0) {
+            return measuredSize;
+        }
+        return {
+            ...FLOATING_SELECTION_TOOLBAR_FALLBACK_SIZE[variant],
+            variant,
+        };
+    }
+
+    function resolveFloatingToolbarPosition({
+        anchorLeft,
+        canvasHeight,
+        canvasWidth,
+        selectionBottom,
+        toolbarHeight,
+        toolbarWidth,
+    }: {
+        anchorLeft: number;
+        canvasHeight: number;
+        canvasWidth: number;
+        selectionBottom: number;
+        toolbarHeight: number;
+        toolbarWidth: number;
+    }) {
+        const safeToolbarWidth = Math.min(
+            Math.max(1, toolbarWidth),
+            Math.max(1, canvasWidth - FLOATING_SELECTION_TOOLBAR_EDGE_PADDING * 2),
+        );
+        const safeToolbarHeight = Math.max(1, toolbarHeight);
+        const minLeft = FLOATING_SELECTION_TOOLBAR_EDGE_PADDING;
+        const maxLeft = Math.max(minLeft, canvasWidth - safeToolbarWidth - FLOATING_SELECTION_TOOLBAR_EDGE_PADDING);
+        const minTop = FLOATING_SELECTION_TOOLBAR_EDGE_PADDING;
+        const maxTop = Math.max(minTop, canvasHeight - safeToolbarHeight - FLOATING_SELECTION_TOOLBAR_EDGE_PADDING);
+
+        return {
+            left: clampNumber(anchorLeft - safeToolbarWidth / 2, minLeft, maxLeft),
+            top: clampNumber(selectionBottom + FLOATING_SELECTION_TOOLBAR_GAP, minTop, maxTop),
+        };
+    }
+
+    function measureFloatingSelectionToolbar() {
+        const toolbar = floatingSelectionToolbarRef.current;
+        if (!toolbar || !floatingSelectionToolbar) return false;
+        const nextSize = {
+            height: Math.ceil(toolbar.offsetHeight || toolbar.getBoundingClientRect().height || FLOATING_SELECTION_TOOLBAR_FALLBACK_SIZE[floatingSelectionToolbar.variant].height),
+            variant: floatingSelectionToolbar.variant,
+            width: Math.ceil(toolbar.offsetWidth || toolbar.getBoundingClientRect().width || FLOATING_SELECTION_TOOLBAR_FALLBACK_SIZE[floatingSelectionToolbar.variant].width),
+        };
+        const currentSize = floatingToolbarSizeRef.current;
+        const changed = currentSize.variant !== nextSize.variant
+            || Math.abs(currentSize.width - nextSize.width) > 1
+            || Math.abs(currentSize.height - nextSize.height) > 1;
+        if (changed) {
+            floatingToolbarSizeRef.current = nextSize;
+        }
+        return changed;
+    }
+
+    function isSameFloatingSelectionToolbar(
+        current: FloatingSelectionToolbarState | null,
+        next: FloatingSelectionToolbarState,
+    ) {
+        return Boolean(current
+            && current.activeObjectType === next.activeObjectType
+            && current.variant === next.variant
+            && current.isMultiSelection === next.isMultiSelection
+            && current.locked === next.locked
+            && current.selectionCount === next.selectionCount
+            && Math.abs(current.anchorLeft - next.anchorLeft) < 0.5
+            && Math.abs(current.selectionBottom - next.selectionBottom) < 0.5
+            && Math.abs(current.left - next.left) < 0.5
+            && Math.abs(current.top - next.top) < 0.5);
+    }
+
+    function refreshFloatingSelectionToolbar() {
+        const canvas = fabricCanvasRef.current;
+        const activeObject = canvas?.getActiveObject();
+        if (!canvas || !activeObject || interactionModeRef.current !== "selection") {
+            clearFloatingSelectionToolbar();
+            return;
+        }
+        const activeObjectType = activeObject.type || "";
+        const activeIsTemporaryGroup = activeObjectType === "group";
+        if (!activeIsTemporaryGroup && !isEditableFabricObject(activeObject)) {
+            clearFloatingSelectionToolbar();
+            return;
+        }
+        const activeObjects = activeIsTemporaryGroup
+            ? (activeObject as fabric.Group).getObjects().filter(isEditableFabricObject)
+            : canvas.getActiveObjects().filter(isEditableFabricObject);
+        if (!activeObjects.length) {
+            clearFloatingSelectionToolbar();
+            return;
+        }
+        const rect = activeObject.getBoundingRect(false, true);
+        const canvasWidth = Math.max(1, canvas.getWidth());
+        const canvasHeight = Math.max(1, canvas.getHeight());
+        const anchorLeft = rect.left + rect.width / 2;
+        const selectionBottom = rect.top + rect.height;
+        if (![rect.left, rect.top, rect.width, rect.height, anchorLeft, selectionBottom].every(Number.isFinite)) {
+            clearFloatingSelectionToolbar();
+            return;
+        }
+        const variant: FloatingSelectionToolbarVariant = activeIsTemporaryGroup
+            ? "group"
+            : activeObjects.length > 1 || activeObjectType === "activeSelection"
+                ? "multi"
+                : "single";
+        const toolbarSize = getFloatingToolbarSize(variant);
+        const { left, top } = resolveFloatingToolbarPosition({
+            anchorLeft,
+            canvasHeight,
+            canvasWidth,
+            selectionBottom,
+            toolbarHeight: toolbarSize.height,
+            toolbarWidth: toolbarSize.width,
+        });
+        const nextToolbar = {
+            activeObjectType,
+            anchorLeft,
+            isMultiSelection: activeObjects.length > 1 || activeObjectType === "activeSelection",
+            left,
+            locked: activeObjects.some((object) => Boolean((object as CreativeFabricObject).locked)),
+            selectionBottom,
+            selectionCount: activeObjects.length,
+            top,
+            variant,
+        };
+        setFloatingSelectionToolbar((current) => (
+            isSameFloatingSelectionToolbar(current, nextToolbar) ? current : nextToolbar
+        ));
+    }
+
+    function scheduleFloatingSelectionToolbarRefresh(options: { force?: boolean } | fabric.IEvent<Event> = {}) {
+        const force = "force" in options ? Boolean(options.force) : false;
+        if (!force && isFormTarget(document.activeElement)) {
+            pendingFloatingToolbarRefreshRef.current = true;
+            return;
+        }
+        pendingFloatingToolbarRefreshRef.current = false;
+        if (floatingToolbarFrameRef.current !== null) return;
+        floatingToolbarFrameRef.current = window.requestAnimationFrame(() => {
+            floatingToolbarFrameRef.current = null;
+            refreshFloatingSelectionToolbar();
+        });
+    }
+
+    function flushPendingFloatingToolbarRefresh() {
+        if (!pendingFloatingToolbarRefreshRef.current) return;
+        window.requestAnimationFrame(() => {
+            if (!isFormTarget(document.activeElement)) {
+                scheduleFloatingSelectionToolbarRefresh({ force: true });
+            }
+        });
+    }
 
     const configureDrawingBrush = (canvas: fabric.Canvas) => {
         const fabricApi = fabricApiRef.current;
@@ -609,27 +1942,37 @@ export default function CreativeEditor({
     const setInteractionMode = (mode: InteractionMode) => {
         if (mode !== "polygon") cancelPolygonDraft();
         interactionModeRef.current = mode;
-        setInteractionModeState(mode);
+        setInteractionModeState((current) => current === mode ? current : mode);
+        if (mode !== "selection") {
+            clearFloatingSelectionToolbar();
+        } else {
+            scheduleFloatingSelectionToolbarRefresh();
+        }
         const canvas = fabricCanvasRef.current;
         if (!canvas) return;
         const isDrawing = mode === "draw";
+        const pageLocked = Boolean(documentRef.current.pages?.find((page) => page.id === documentRef.current.activePageId)?.locked);
         canvas.isDrawingMode = isDrawing;
         if (isDrawing) configureDrawingBrush(canvas);
         canvas.defaultCursor = mode === "grab" ? "grab" : (isDrawing || mode === "polygon") ? "crosshair" : "default";
         canvas.getObjects().forEach((object) => {
             if (isEditableFabricObject(object)) {
-                object.selectable = mode === "selection" && !(object as CreativeFabricObject).locked;
+                object.selectable = mode === "selection" && !pageLocked;
+                object.evented = !pageLocked;
             }
         });
-        canvas.selection = mode === "selection";
+        canvas.selection = mode === "selection" && !pageLocked;
         canvas.requestRenderAll();
         if (mode === "polygon") setNotice("Click points on the canvas, then double-click or press Enter to finish.");
     };
 
-    function pushHistory(documentSnapshot: CreativeEditorDocument) {
+    function pushHistory(documentSnapshot: CreativeEditorDocument, label = "Changed design") {
         const baseHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
+        const baseLabels = historyLabelsRef.current.slice(0, historyIndexRef.current + 1);
         historyRef.current = [...baseHistory, documentSnapshot].slice(-60);
+        historyLabelsRef.current = [...baseLabels, label].slice(-60);
         historyIndexRef.current = historyRef.current.length - 1;
+        setHistoryLabelState({ current: label });
         setHistoryState((current) => ({ version: current.version + 1 }));
     }
 
@@ -645,9 +1988,25 @@ export default function CreativeEditor({
                 fabricApi,
                 productLabel,
                 selectedId: nextSelectedId,
+                viewportSize: getStageViewportSize(),
             });
+            canvasElementRef.current?.setAttribute("data-creative-object-count", String(canvas.getObjects().length));
             const active = canvas.getActiveObject() as CreativeFabricObject | undefined;
             setSelectedId(active?.id && isEditableFabricObject(active) ? active.id : nextSelectedId || "");
+            const page = documentSnapshot.pages?.find((item) => item.id === documentSnapshot.activePageId);
+            if (page?.locked) {
+                canvas.discardActiveObject();
+                canvas.selection = false;
+                canvas.getObjects().forEach((object) => {
+                    if (isEditableFabricObject(object)) {
+                        object.selectable = false;
+                        object.evented = false;
+                    }
+                });
+                setSelectedId("");
+            }
+            scheduleFloatingSelectionToolbarRefresh();
+            refreshWorkspaceViewportMetrics();
         } catch (error) {
             setNotice(error instanceof Error ? error.message : "Canvas could not load.");
         } finally {
@@ -669,31 +2028,233 @@ export default function CreativeEditor({
         recordHistory = true,
         nextSelectedId = selectedIdRef.current,
         reloadCanvas = true,
+        historyLabel = "Changed design",
     ) {
+        const synced = syncActivePageSnapshot(next);
         const stamped = {
-            ...next,
+            ...synced,
             metadata: {
-                ...next.metadata,
+                ...synced.metadata,
                 updatedAt: new Date().toISOString(),
             },
         };
         documentRef.current = stamped;
         setDocumentValue(stamped);
         setSelectedId(nextSelectedId);
-        if (recordHistory) pushHistory(stamped);
+        if (recordHistory) pushHistory(stamped, historyLabel);
         if (reloadCanvas) void loadDocument(stamped, nextSelectedId);
     }
 
-    function syncDocumentFromCanvas(recordHistory = true) {
+    function shouldReloadCanvasForSelectedPatch(
+        element: CreativeEditorElement,
+        patch: Partial<CreativeEditorElement>,
+    ) {
+        const patchKeys = Object.keys(patch);
+        if (patchKeys.some((key) => SELECTED_PATCH_RELOAD_KEYS.has(key))) return true;
+        if (element.type === "qr" && patchKeys.some((key) => key === "value" || key === "darkColor" || key === "lightColor")) return true;
+        if ((element.type === "path" || element.type === "pathText") && patchKeys.includes("path")) return true;
+        if (element.type === "pathText" && patchKeys.some((key) => key === "pathStroke" || key === "pathVisible")) return true;
+        if (element.type === "line" && patchKeys.includes("arrowStyle")) return true;
+        return false;
+    }
+
+    function selectedElementPatchHasChanges(
+        element: CreativeEditorElement,
+        patch: Partial<CreativeEditorElement>,
+    ) {
+        return Object.entries(patch).some(([key, value]) => (
+            !Object.is((element as unknown as Record<string, unknown>)[key], value)
+        ));
+    }
+
+    function findFabricObjectByElementId(id: string) {
+        const canvas = fabricCanvasRef.current;
+        if (!canvas) return null;
+        const object = canvas.getObjects().find((item) => (
+            (item as CreativeFabricObject).id === id && isEditableFabricObject(item)
+        )) as CreativeFabricObject | undefined;
+        return object || null;
+    }
+
+    function createLiveGradientFill(element: CreativeEditorElement, fallback: string) {
+        const fabricApi = fabricApiRef.current;
+        const gradient = "gradient" in element ? element.gradient : undefined;
+        if (!fabricApi || !gradient?.enabled) return fallback;
+        const colorStops = normalizeGradientStops(gradient);
+        const angle = -gradient.angle * (Math.PI / 180);
+        const coords = {
+            x1: Math.round(50 + Math.sin(angle) * 50) / 100,
+            x2: Math.round(50 + Math.sin(angle + Math.PI) * 50) / 100,
+            y1: Math.round(50 + Math.cos(angle) * 50) / 100,
+            y2: Math.round(50 + Math.cos(angle + Math.PI) * 50) / 100,
+        };
+        return new fabricApi.Gradient({
+            colorStops,
+            coords: {
+                x1: coords.x1 * element.width,
+                x2: coords.x2 * element.width,
+                y1: coords.y1 * element.height,
+                y2: coords.y2 * element.height,
+            },
+            gradientUnits: "pixels",
+            type: "linear",
+        });
+    }
+
+    function applyLiveObjectSize(object: CreativeFabricObject, element: CreativeEditorElement) {
+        if (element.type === "line" && object.type === "line") {
+            (object as unknown as fabric.Line).set({
+                x1: element.x,
+                x2: element.x + element.width,
+                y1: element.y,
+                y2: element.y + element.height,
+            });
+            return;
+        }
+        if (object.type === "ellipse") {
+            (object as unknown as fabric.Ellipse).set({
+                rx: Math.max(1, element.width / 2),
+                ry: Math.max(1, element.height / 2),
+            });
+            return;
+        }
+        if (object.type === "image" || object.type === "path" || object.type === "polygon") {
+            const naturalWidth = object.width || element.width;
+            const naturalHeight = object.height || element.height;
+            object.set({
+                scaleX: naturalWidth ? element.width / naturalWidth : 1,
+                scaleY: naturalHeight ? element.height / naturalHeight : 1,
+            });
+            return;
+        }
+        if (object.type !== "group") {
+            object.set({
+                height: element.height,
+                width: element.width,
+            });
+        }
+    }
+
+    function applyLiveStroke(object: CreativeFabricObject, element: CreativeEditorElement) {
+        if (!canStrokeElement(element)) return;
+        const stroke = element.stroke || "transparent";
+        const strokeWidth = element.strokeWidth || 0;
+        const strokeDashArray = getLiveDashArray(element.strokeStyle, Math.max(1, strokeWidth));
+        const strokeLineCap = getLiveStrokeLineCap(element.strokeStyle, element.strokeLineCap);
+        object.set({
+            stroke,
+            strokeDashArray,
+            strokeLineCap,
+            strokeWidth,
+        });
+        object.strokeLineCap = strokeLineCap;
+        if (element.type === "line" && object.type === "group") {
+            getFabricGroupChildren(object).forEach((child) => {
+                child.set({
+                    fill: stroke,
+                    stroke,
+                    strokeDashArray,
+                    strokeLineCap,
+                    strokeWidth,
+                });
+            });
+        }
+    }
+
+    function applySelectedElementPatchToFabricObject(element: CreativeEditorElement) {
+        const fabricApi = fabricApiRef.current;
+        const canvas = fabricCanvasRef.current;
+        const object = findFabricObjectByElementId(element.id);
+        if (!fabricApi || !canvas || !object) return false;
+        object.id = element.id;
+        object.name = element.name;
+        object.creativeEditorType = element.type;
+        object.sourceRefs = element.sourceRefs;
+        object.gradient = "gradient" in element ? element.gradient : undefined;
+        object.set({
+            angle: element.rotation || 0,
+            flipX: Boolean(element.flipX),
+            flipY: Boolean(element.flipY),
+            left: element.x,
+            opacity: element.opacity ?? 1,
+            top: element.y,
+            visible: element.visible !== false,
+        });
+        setObjectLocked(object, Boolean(element.locked));
+        if (element.shadow) {
+            object.set("shadow", new fabricApi.Shadow({
+                blur: element.shadow.blur,
+                color: element.shadow.color,
+                offsetX: element.shadow.offsetX,
+                offsetY: element.shadow.offsetY,
+            }));
+        } else if (element.blur) {
+            object.set("shadow", new fabricApi.Shadow({
+                blur: element.blur,
+                color: "rgba(0,0,0,0.22)",
+                offsetX: 0,
+                offsetY: 0,
+            }));
+        } else {
+            object.set("shadow", undefined);
+        }
+        applyLiveObjectSize(object, element);
+        if (canEditTextElement(element)) {
+            const textObject = getFabricTextChild(object);
+            if (!textObject) return false;
+            textObject.set({
+                charSpacing: element.charSpacing || 0,
+                fill: createLiveGradientFill(element, element.color),
+                fontFamily: element.fontFamily || "Inter, Arial, sans-serif",
+                fontSize: element.fontSize,
+                fontStyle: element.fontStyle || "normal",
+                fontWeight: element.fontWeight || "700",
+                height: element.height,
+                lineHeight: element.lineHeight || 1.12,
+                linethrough: Boolean(element.linethrough),
+                text: element.text,
+                textAlign: element.align || (element.type === "pathText" ? "center" : "left"),
+                textBackgroundColor: element.textBackgroundColor || "",
+                underline: Boolean(element.underline),
+                width: element.width,
+            } as fabric.ITextboxOptions);
+        } else if (canFillElement(element)) {
+            object.set({
+                fill: createLiveGradientFill(element, element.fill),
+            });
+            if (element.type === "rect") {
+                (object as unknown as fabric.Rect).set({
+                    rx: element.radius || 0,
+                    ry: element.radius || 0,
+                });
+            }
+        } else if (element.type === "line") {
+            object.set({ fill: element.stroke });
+        } else if (element.type === "image") {
+            object.set({
+                src: element.src,
+            } as Partial<CreativeFabricObject>);
+        }
+        applyLiveStroke(object, element);
+        object.setCoords();
+        getFabricGroupChildren(object).forEach((child) => child.setCoords());
+        if (canvas.getActiveObject() !== object) canvas.setActiveObject(object);
+        canvas.requestRenderAll();
+        scheduleFloatingSelectionToolbarRefresh();
+        return true;
+    }
+
+    function syncDocumentFromCanvas(recordHistory = true, historyLabel = "Changed design") {
         const canvas = fabricCanvasRef.current;
         if (!canvas || isLoadingRef.current) return;
         releaseActiveGroupForPersistence(canvas);
-        const next = serializeFabricCanvasToDocument(canvas, documentRef.current);
+        const next = syncActivePageSnapshot(serializeFabricCanvasToDocument(canvas, documentRef.current));
         documentRef.current = next;
         setDocumentValue(next);
         const active = canvas.getActiveObject() as CreativeFabricObject | undefined;
         setSelectedId(active?.id && isEditableFabricObject(active) ? active.id : selectedIdRef.current);
-        if (recordHistory) pushHistory(next);
+        scheduleFloatingSelectionToolbarRefresh();
+        if (recordHistory) pushHistory(next, historyLabel);
     }
 
     useEffect(() => {
@@ -702,11 +2263,66 @@ export default function CreativeEditor({
     }, [documentValue, onDocumentChange]);
 
     useEffect(() => {
+        if (!browserDraftsEnabled) {
+            autosaveReadyRef.current = false;
+            setAutosaveDraft(null);
+            return;
+        }
+        autosaveReadyRef.current = false;
+        setAutosaveDraft(null);
+        try {
+            const stored = window.localStorage.getItem(autosaveKey);
+            if (!stored) {
+                autosaveReadyRef.current = true;
+                return;
+            }
+            const payload = JSON.parse(stored) as unknown;
+            if (!isCreativeEditorDocument(payload)) {
+                window.localStorage.removeItem(autosaveKey);
+                autosaveReadyRef.current = true;
+                return;
+            }
+            const normalizedDraft = normalizeCreativeEditorDocumentPages({
+                ...payload,
+                productContext: documentRef.current.productContext,
+            });
+            if (isAutosaveDraftNewer(normalizedDraft, documentRef.current)) {
+                setAutosaveDraft(normalizedDraft);
+                return;
+            }
+            autosaveReadyRef.current = true;
+        } catch {
+            autosaveReadyRef.current = true;
+        }
+    }, [autosaveKey, browserDraftsEnabled]);
+
+    useEffect(() => {
+        if (!browserDraftsEnabled) return undefined;
+        if (!autosaveReadyRef.current || autosaveDraft) return undefined;
+        const timeout = window.setTimeout(() => {
+            try {
+                window.localStorage.setItem(autosaveKey, JSON.stringify(documentValue));
+            } catch {
+                // Ignore local storage failures; exporting and template save still work.
+            }
+        }, 700);
+        return () => window.clearTimeout(timeout);
+    }, [autosaveDraft, autosaveKey, browserDraftsEnabled, documentValue]);
+
+    useEffect(() => {
         let cancelled = false;
         void import("fabric").then(({ fabric: fabricApi }) => {
-            if (cancelled || !canvasElementRef.current) return;
+            const canvasHost = canvasHostRef.current;
+            if (cancelled || !canvasHost) return;
+            const canvasElement = document.createElement("canvas");
+            canvasElement.className = styles.canvasSurface;
+            canvasElement.setAttribute("aria-label", documentRef.current.title);
+            canvasElement.setAttribute("data-creative-editor-canvas", "true");
+            canvasElement.setAttribute("role", "img");
+            canvasHost.replaceChildren(canvasElement);
+            canvasElementRef.current = canvasElement;
             configureCreativeFabric(fabricApi);
-            const canvas = new fabricApi.Canvas(canvasElementRef.current, {
+            const canvas = new fabricApi.Canvas(canvasElement, {
                 allowTouchScrolling: true,
                 controlsAboveOverlay: true,
                 fireRightClick: true,
@@ -718,12 +2334,24 @@ export default function CreativeEditor({
             });
             fabricApiRef.current = fabricApi;
             fabricCanvasRef.current = canvas;
-            initFabricDragging(fabricApi, canvas, () => interactionModeRef.current === "grab");
+            canvas.setDimensions(getStageViewportSize());
+            initFabricDragging(fabricApi, canvas, () => interactionModeRef.current === "grab", () => {
+                syncZoomStateFromCanvas();
+                scheduleWorkspaceViewportMetricsRefresh();
+                scheduleFloatingSelectionToolbarRefresh();
+            });
             initFabricAlignmentGuidelines(fabricApi, canvas, "#45b99f");
 
             const handleSelection = () => {
                 const active = canvas.getActiveObject() as CreativeFabricObject | undefined;
-                setSelectedId(active?.id && isEditableFabricObject(active) ? active.id : "");
+                const selectedObjectId = active?.id && isEditableFabricObject(active) ? active.id : "";
+                const keepLayerPanelOpen = rightPanelModeRef.current === "layers" && isLoadingRef.current;
+                setSelectedId(selectedObjectId);
+                if (!keepLayerPanelOpen) {
+                    setRightPanelMode("properties");
+                }
+                setInspectorOpen(Boolean(selectedObjectId || active?.type === "activeSelection" || active?.type === "group"));
+                scheduleFloatingSelectionToolbarRefresh();
             };
             const handlePathCreated = (event: fabric.IEvent<Event> & { path?: fabric.Path }) => {
                 const path = event.path as CreativeFabricObject | undefined;
@@ -738,67 +2366,334 @@ export default function CreativeEditor({
                 path.strokeWidth = typeof path.strokeWidth === "number" ? path.strokeWidth : 4;
                 path.objectCaching = false;
                 canvas.setActiveObject(path);
-                syncDocumentFromCanvas(true);
+                syncDocumentFromCanvas(true, "Added drawing");
             };
             canvas.on("selection:created", handleSelection);
             canvas.on("selection:updated", handleSelection);
-            canvas.on("selection:cleared", () => setSelectedId(""));
+            canvas.on("selection:cleared", () => {
+                setSelectedId("");
+                if (rightPanelModeRef.current === "properties") {
+                    setInspectorOpen(false);
+                }
+                clearFloatingSelectionToolbar();
+            });
             canvas.on("mouse:down", handlePolygonPointer);
             canvas.on("mouse:dblclick", () => finishPolygonDraft());
-            canvas.on("object:modified", () => syncDocumentFromCanvas(true));
+            canvas.on("object:moving", scheduleFloatingSelectionToolbarRefresh);
+            canvas.on("object:scaling", scheduleFloatingSelectionToolbarRefresh);
+            canvas.on("object:rotating", scheduleFloatingSelectionToolbarRefresh);
+            canvas.on("object:modified", () => {
+                syncDocumentFromCanvas(true, "Moved or resized layer");
+                scheduleFloatingSelectionToolbarRefresh();
+            });
             canvas.on("path:created", handlePathCreated);
-            void loadDocument(initialDocument, initialDocument.elements[0]?.id || "").then(() => {
-                if (!cancelled) setFabricReady(true);
+            void loadDocument(initialEditorDocument, initialEditorDocument.elements[0]?.id || "").then(() => {
+                if (!cancelled) {
+                    fitZoomToStage();
+                    setFabricReady(true);
+                }
             });
         }).catch((error) => {
             setNotice(error instanceof Error ? error.message : "Fabric could not load.");
         });
         return () => {
             cancelled = true;
+            if (floatingToolbarFrameRef.current !== null) {
+                window.cancelAnimationFrame(floatingToolbarFrameRef.current);
+                floatingToolbarFrameRef.current = null;
+            }
+            if (workspaceViewportFrameRef.current !== null) {
+                window.cancelAnimationFrame(workspaceViewportFrameRef.current);
+                workspaceViewportFrameRef.current = null;
+            }
             fabricCanvasRef.current?.dispose();
             fabricCanvasRef.current = null;
             fabricApiRef.current = null;
+            canvasElementRef.current = null;
+            canvasHostRef.current?.replaceChildren();
         };
         // Fabric is intentionally initialized once; document changes are loaded through commitDocument.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
-        documentRef.current = initialDocument;
-        historyRef.current = [initialDocument];
+        const canvasElement = canvasElementRef.current;
+        if (!canvasElement) return;
+        canvasElement.setAttribute("aria-label", documentValue.title);
+        canvasElement.setAttribute("data-frame-left", String(Math.round(workspaceViewport.left)));
+        canvasElement.setAttribute("data-frame-top", String(Math.round(workspaceViewport.top)));
+        canvasElement.setAttribute("data-viewport-height", String(Math.round(workspaceViewport.height)));
+        canvasElement.setAttribute("data-viewport-width", String(Math.round(workspaceViewport.width)));
+    }, [documentValue.title, workspaceViewport.height, workspaceViewport.left, workspaceViewport.top, workspaceViewport.width]);
+
+    useEffect(() => {
+        documentRef.current = initialEditorDocument;
+        historyRef.current = [initialEditorDocument];
+        historyLabelsRef.current = ["Opened design"];
         historyIndexRef.current = 0;
+        setHistoryLabelState({ current: "Opened design" });
         setHistoryState((current) => ({ version: current.version + 1 }));
         setNotice("");
         setImageUrl("");
-        setSvgMarkup("");
-        setDocumentValue(initialDocument);
-        setSelectedId(initialDocument.elements[0]?.id || "");
-        void loadDocument(initialDocument, initialDocument.elements[0]?.id || "");
+        setQrValue("https://example.com/");
+        setQrDarkColor("#16231f");
+        setQrLightColor("#ffffff");
+        setQrSize(164);
+        setDrawerSearch("");
+        setRecentInsertions([]);
+        setStyleShuffleIndex(0);
+        setAiToolBusyId("");
+        setAiToolResult(null);
+        setDesignCueBusy(false);
+        setDesignCuePatchSet(null);
+        setAutosaveDraft(null);
+        setReadinessIssues([]);
+        setReadinessPanelOpen(false);
+        setReviewMode(false);
+        setShortcutPanelOpen(false);
+        autosaveReadyRef.current = false;
+        lastReadinessSignatureRef.current = "";
+        spacebarModeRestoreRef.current = null;
+        clearFloatingSelectionToolbar();
+        setInspectorOpen(false);
+        setRightPanelMode("properties");
+        lastDesignCueRequestRef.current = null;
+        setBarcodeText(initialEditorDocument.metadata?.brand?.name || productLabel || "Product");
+        setBarcodeValue("https://example.com/");
+        setBackgroundMode(initialEditorDocument.canvas.backgroundGradient?.enabled ? "gradient" : "solid");
+        setDocumentValue(initialEditorDocument);
+        setSelectedId(initialEditorDocument.elements[0]?.id || "");
+        void loadDocument(initialEditorDocument, initialEditorDocument.elements[0]?.id || "").then(() => fitZoomToStage());
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialDocument]);
+    }, [initialEditorDocument]);
+
+    useEffect(() => {
+        zoomRef.current = zoom;
+        scheduleFloatingSelectionToolbarRefresh();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [zoom]);
+
+    useEffect(() => {
+        if (!floatingSelectionToolbar || !fabricReady) return;
+        if (measureFloatingSelectionToolbar()) {
+            scheduleFloatingSelectionToolbarRefresh({ force: true });
+        }
+    });
+
+    useEffect(() => {
+        if (!shortcutPanelOpen) return undefined;
+        const frame = window.requestAnimationFrame(() => {
+            shortcutCloseButtonRef.current?.focus({ preventScroll: true });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [shortcutPanelOpen]);
+
+    useEffect(() => {
+        if (!previewDataUrl) return undefined;
+        const frame = window.requestAnimationFrame(() => {
+            previewCloseButtonRef.current?.focus({ preventScroll: true });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [previewDataUrl]);
+
+    useEffect(() => {
+        fitZoomToStage();
+        const stage = stageScrollerRef.current;
+        if (!stage) return undefined;
+        const observer = new ResizeObserver(() => fitZoomToStage());
+        observer.observe(stage);
+        return () => observer.disconnect();
+    }, [documentValue.canvas.height, documentValue.canvas.width, drawerCollapsed, fitZoomToStage]);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            const canvas = fabricCanvasRef.current;
-            const fabricApi = fabricApiRef.current;
-            if (!canvas || !fabricApi || isFormTarget(event.target)) return;
+            const key = event.key.toLowerCase();
             const isMod = event.metaKey || event.ctrlKey;
-            const activeObject = canvas.getActiveObject();
-            if (interactionModeRef.current === "polygon" && (event.key === "Enter" || event.key === "Escape")) {
+            const targetIsForm = isFormTarget(event.target);
+            const isAlt = event.altKey;
+            const isShortcutPanelKey = !targetIsForm && (event.key === "?" || (event.shiftKey && event.key === "/")) && (isMod || event.shiftKey);
+            if (isShortcutPanelKey) {
                 event.preventDefault();
-                if (event.key === "Enter") finishPolygonDraft();
-                if (event.key === "Escape") {
-                    cancelPolygonDraft();
-                    setInteractionMode("selection");
+                if (shortcutPanelOpen) {
+                    closeShortcutPanel();
+                } else {
+                    openShortcutPanel();
                 }
                 return;
+            }
+            const canvas = fabricCanvasRef.current;
+            const fabricApi = fabricApiRef.current;
+            const activeObject = canvas?.getActiveObject() as CreativeFabricObject | fabric.ActiveSelection | undefined;
+            const activeTextChild = activeObject ? getFabricTextChild(activeObject as CreativeFabricObject) : undefined;
+            if (activeTextChild?.isEditing) return;
+            if (event.key === "Escape") {
+                event.preventDefault();
+                if (shortcutPanelOpen) {
+                    closeShortcutPanel();
+                    return;
+                }
+                if (previewDataUrl) {
+                    closePreviewPanel();
+                    return;
+                }
+                if (readinessPanelOpen) {
+                    setReadinessPanelOpen(false);
+                    return;
+                }
+                if (designCuePatchSet) {
+                    cancelDesignCuePatchSet();
+                    return;
+                }
+                if (aiToolResult) {
+                    setAiToolResult(null);
+                    setNotice("");
+                    return;
+                }
+                if (interactionModeRef.current === "polygon") {
+                    cancelPolygonDraft();
+                    setInteractionMode("selection");
+                    return;
+                }
+                if (activeObject || selectedIdRef.current) {
+                    clearSelection();
+                    setInspectorOpen(false);
+                    setRightPanelMode("properties");
+                    return;
+                }
+                if (inspectorOpen) {
+                    setInspectorOpen(false);
+                    setRightPanelMode("properties");
+                    return;
+                }
+                if (!drawerCollapsed) {
+                    setDrawerCollapsed(true);
+                    setDrawerSearch("");
+                }
+                return;
+            }
+            if (!canvas || !fabricApi || targetIsForm) return;
+            const pageLocked = Boolean(documentRef.current.pages?.find((page) => page.id === documentRef.current.activePageId)?.locked);
+            const activeObjects = activeObject?.type === "activeSelection"
+                ? (activeObject as fabric.ActiveSelection).getObjects().filter(isEditableFabricObject)
+                : activeObject && isEditableFabricObject(activeObject)
+                    ? [activeObject as CreativeFabricObject]
+                    : [];
+            const selectedSelectionLocked = activeObjects.some((object) => Boolean((object as CreativeFabricObject).locked));
+            const isArrowKey = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key);
+            const isMutationShortcut = event.key === "Backspace"
+                || event.key === "Delete"
+                || (!isMod && !event.altKey && !event.shiftKey && ["c", "l", "q", "r", "t"].includes(key))
+                || (isMod && ["a", "c", "d", "g", "s", "v", "x", "y", "z", "[", "]"].includes(key))
+                || isArrowKey;
+            if (pageLocked && isMutationShortcut) {
+                event.preventDefault();
+                setNotice("Unlock this page before editing it.");
+                return;
+            }
+            if (interactionModeRef.current === "polygon" && event.key === "Enter") {
+                event.preventDefault();
+                finishPolygonDraft();
+                return;
+            }
+            if (event.key === " " && !event.repeat && !event.metaKey && !event.ctrlKey && !event.altKey) {
+                event.preventDefault();
+                spacebarModeRestoreRef.current = interactionModeRef.current;
+                setInteractionMode("grab");
+                return;
+            }
+            if (isMod && event.shiftKey && key === "k") {
+                event.preventDefault();
+                enterReviewMode();
+                return;
+            }
+            if (isMod && event.key === "Enter" && showInternalExportTools) {
+                event.preventDefault();
+                openPreview();
+                return;
+            }
+            if (isMod && key === "s") {
+                event.preventDefault();
+                if (onTemplateSave) {
+                    void saveTemplate();
+                } else if (showInternalExportTools) {
+                    void registerAsset();
+                }
+                return;
+            }
+            if (isMod && (event.key === "=" || event.key === "+")) {
+                event.preventDefault();
+                zoomFabricViewport(0.1);
+                return;
+            }
+            if (isMod && (event.key === "-" || event.key === "_")) {
+                event.preventDefault();
+                zoomFabricViewport(-0.1);
+                return;
+            }
+            if (isMod && key === "0") {
+                event.preventDefault();
+                if (event.altKey) {
+                    centerWorkspaceAtZoom(1);
+                } else {
+                    fitZoomToStage();
+                }
+                return;
+            }
+            if (isMod && (event.key === "'" || event.key === "\"")) {
+                event.preventDefault();
+                if (event.shiftKey) {
+                    setShowSafeArea((current) => !current);
+                } else {
+                    setShowGrid((current) => !current);
+                }
+                return;
+            }
+            if (isMod && !event.shiftKey && event.key === "/") {
+                event.preventDefault();
+                openSelectionInspector();
+                return;
+            }
+            if (isMod && event.shiftKey && key === "l") {
+                event.preventDefault();
+                openLayerPanel();
+                return;
+            }
+            if (!isMod && !event.altKey && !event.shiftKey && !event.repeat) {
+                if (key === "t") {
+                    event.preventDefault();
+                    setActiveTool("text");
+                    setDrawerSearch("");
+                    addTextPreset(TEXT_PRESETS[0]);
+                    return;
+                }
+                if (key === "r") {
+                    event.preventDefault();
+                    addElement(buildCreativeEditorRectElement());
+                    return;
+                }
+                if (key === "c") {
+                    event.preventDefault();
+                    addElement(buildCreativeEditorEllipseElement());
+                    return;
+                }
+                if (key === "l") {
+                    event.preventDefault();
+                    addElement(buildCreativeEditorLineElement());
+                    return;
+                }
+                if (key === "q") {
+                    event.preventDefault();
+                    addElement(buildCreativeEditorQrElement(qrValue));
+                    return;
+                }
             }
             if ((event.key === "Backspace" || event.key === "Delete") && activeObject) {
                 event.preventDefault();
                 canvas.getActiveObjects().filter(isEditableFabricObject).forEach((object) => canvas.remove(object));
                 canvas.discardActiveObject();
                 canvas.requestRenderAll();
-                syncDocumentFromCanvas(true);
+                clearFloatingSelectionToolbar();
+                syncDocumentFromCanvas(true, "Deleted layer");
                 return;
             }
             if (isMod && event.key.toLowerCase() === "a") {
@@ -808,7 +2703,13 @@ export default function CreativeEditor({
                     canvas.discardActiveObject();
                     canvas.setActiveObject(new fabricApi.ActiveSelection(selectableObjects, { canvas }));
                     canvas.requestRenderAll();
+                    scheduleFloatingSelectionToolbarRefresh();
                 }
+                return;
+            }
+            if (isMod && key === "d" && activeObject) {
+                event.preventDefault();
+                duplicateSelected();
                 return;
             }
             if (isMod && event.key.toLowerCase() === "c" && activeObject) {
@@ -839,22 +2740,29 @@ export default function CreativeEditor({
                     }
                     canvas.setActiveObject(cloned);
                     canvas.requestRenderAll();
-                    syncDocumentFromCanvas(true);
+                    syncDocumentFromCanvas(true, "Pasted layer");
+                    scheduleFloatingSelectionToolbarRefresh();
                 }, CREATIVE_EDITOR_FABRIC_ATTRIBUTES);
                 return;
             }
-            if (isMod && event.key.toLowerCase() === "g" && activeObject) {
+            if (isMod && key === "g" && activeObject) {
                 event.preventDefault();
-                if (activeObject.type === "activeSelection") {
-                    (activeObject as fabric.ActiveSelection).toGroup();
-                } else if (activeObject.type === "group") {
+                if (event.shiftKey && activeObject.type === "group") {
                     (activeObject as fabric.Group).toActiveSelection();
+                    canvas.requestRenderAll();
+                    syncDocumentFromCanvas(true, "Ungrouped layers");
+                    scheduleFloatingSelectionToolbarRefresh();
+                } else if (!event.shiftKey && activeObject.type === "activeSelection") {
+                    (activeObject as fabric.ActiveSelection).toGroup();
+                    canvas.requestRenderAll();
+                    syncDocumentFromCanvas(true, "Grouped layers");
+                    scheduleFloatingSelectionToolbarRefresh();
+                } else {
+                    setNotice(event.shiftKey ? "Select a grouped layer first." : "Select more than one layer first.");
                 }
-                canvas.requestRenderAll();
-                syncDocumentFromCanvas(true);
                 return;
             }
-            if (isMod && event.key.toLowerCase() === "z") {
+            if (isMod && key === "z") {
                 event.preventDefault();
                 if (event.shiftKey) {
                     redo();
@@ -863,53 +2771,512 @@ export default function CreativeEditor({
                 }
                 return;
             }
-            if (isMod && event.key.toLowerCase() === "y") {
+            if (isMod && key === "y") {
                 event.preventDefault();
                 redo();
                 return;
             }
-            if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key) && activeObject && isEditableFabricObject(activeObject)) {
+            if (isMod && ["[", "]"].includes(key) && selectedIdRef.current) {
                 event.preventDefault();
-                const delta = event.shiftKey ? 10 : 2;
-                const patch = {
-                    left: (activeObject.left || 0) + (event.key === "ArrowLeft" ? -delta : event.key === "ArrowRight" ? delta : 0),
-                    top: (activeObject.top || 0) + (event.key === "ArrowUp" ? -delta : event.key === "ArrowDown" ? delta : 0),
-                };
-                activeObject.set(patch);
-                activeObject.setCoords();
+                moveLayerById(selectedIdRef.current, key === "]" ? (event.altKey ? "front" : "forward") : (event.altKey ? "back" : "backward"));
+                return;
+            }
+            if (isMod && event.shiftKey && ["h", "v"].includes(key)) {
+                event.preventDefault();
+                distributeSelection(key === "h" ? "x" : "y");
+                return;
+            }
+            if (event.altKey && event.shiftKey && ["b", "c", "l", "m", "r", "t"].includes(key)) {
+                event.preventDefault();
+                if (selectedElement && canEditTextElement(selectedElement) && ["c", "l", "r"].includes(key)) {
+                    updateSelected({ align: key === "c" ? "center" : key === "l" ? "left" : "right" } as Partial<CreativeEditorElement>);
+                    return;
+                }
+                const alignment: AlignmentAction = key === "l" ? "left"
+                    : key === "r" ? "right"
+                        : key === "c" ? "centerX"
+                            : key === "t" ? "top"
+                                : key === "m" ? "centerY"
+                                    : "bottom";
+                alignSelected(alignment);
+                return;
+            }
+            if (selectedElement && canEditTextElement(selectedElement) && isMod) {
+                if (key === "b") {
+                    event.preventDefault();
+                    const isBold = selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" || selectedElement.fontWeight === "700";
+                    updateSelected({ fontWeight: isBold ? "normal" : "bold" } as Partial<CreativeEditorElement>);
+                    return;
+                }
+                if (key === "i") {
+                    event.preventDefault();
+                    updateSelected({ fontStyle: selectedElement.fontStyle === "italic" ? "normal" : "italic" } as Partial<CreativeEditorElement>);
+                    return;
+                }
+                if (key === "u") {
+                    event.preventDefault();
+                    updateSelected({ underline: !selectedElement.underline } as Partial<CreativeEditorElement>);
+                    return;
+                }
+                if (event.shiftKey && key === "x") {
+                    event.preventDefault();
+                    updateSelected({ linethrough: !selectedElement.linethrough } as Partial<CreativeEditorElement>);
+                    return;
+                }
+                if (event.shiftKey && (event.key === "." || event.key === ">")) {
+                    event.preventDefault();
+                    updateSelected({ fontSize: clampNumber((selectedElement.fontSize || 28) + 2, 8, 240) } as Partial<CreativeEditorElement>);
+                    return;
+                }
+                if (event.shiftKey && (event.key === "," || event.key === "<")) {
+                    event.preventDefault();
+                    updateSelected({ fontSize: clampNumber((selectedElement.fontSize || 28) - 2, 8, 240) } as Partial<CreativeEditorElement>);
+                    return;
+                }
+            }
+            if (isArrowKey && activeObject && activeObjects.length) {
+                event.preventDefault();
+                if (selectedSelectionLocked) {
+                    setNotice("Unlock selected layers before editing them.");
+                    return;
+                }
+                const transformTarget = activeObject as fabric.Object;
+                const delta = event.shiftKey || event.altKey ? 10 : 1;
+                if (isMod) {
+                    const width = Math.max(1, transformTarget.getScaledWidth());
+                    const height = Math.max(1, transformTarget.getScaledHeight());
+                    const nextWidth = clampNumber(width + (event.key === "ArrowLeft" ? -delta : event.key === "ArrowRight" ? delta : 0), 8, 8000);
+                    const nextHeight = clampNumber(height + (event.key === "ArrowUp" ? -delta : event.key === "ArrowDown" ? delta : 0), 8, 8000);
+                    transformTarget.set({
+                        scaleX: (transformTarget.scaleX || 1) * (nextWidth / width),
+                        scaleY: (transformTarget.scaleY || 1) * (nextHeight / height),
+                    });
+                } else {
+                    transformTarget.set({
+                        left: (transformTarget.left || 0) + (event.key === "ArrowLeft" ? -delta : event.key === "ArrowRight" ? delta : 0),
+                        top: (transformTarget.top || 0) + (event.key === "ArrowUp" ? -delta : event.key === "ArrowDown" ? delta : 0),
+                    });
+                }
+                transformTarget.setCoords();
                 canvas.requestRenderAll();
-                syncDocumentFromCanvas(true);
+                syncDocumentFromCanvas(true, isMod ? "Resized layer" : "Moved layer");
+                scheduleFloatingSelectionToolbarRefresh();
+                return;
+            }
+            if (isArrowKey && !activeObject) {
+                event.preventDefault();
+                const viewport = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
+                const delta = event.shiftKey ? 80 : 24;
+                viewport[4] += event.key === "ArrowLeft" ? delta : event.key === "ArrowRight" ? -delta : 0;
+                viewport[5] += event.key === "ArrowUp" ? delta : event.key === "ArrowDown" ? -delta : 0;
+                canvas.setViewportTransform(viewport);
+                canvas.requestRenderAll();
+                refreshWorkspaceViewportMetrics();
+                scheduleFloatingSelectionToolbarRefresh();
             }
         };
+        const handleKeyUp = (event: KeyboardEvent) => {
+            if (event.key !== " " || !spacebarModeRestoreRef.current || isFormTarget(event.target)) return;
+            event.preventDefault();
+            setInteractionMode(spacebarModeRestoreRef.current);
+            spacebarModeRestoreRef.current = null;
+        };
         window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
+        window.addEventListener("keyup", handleKeyUp);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("keyup", handleKeyUp);
+        };
     });
 
     const updateDocumentTitle = (title: string) => {
-        commitDocument({ ...documentRef.current, title }, true, selectedIdRef.current, false);
+        commitDocument({ ...documentRef.current, title }, true, selectedIdRef.current, false, "Renamed design");
     };
 
     const addElement = (element: CreativeEditorElement) => {
+        if (blockIfActivePageLocked()) return;
+        setRightPanelMode("properties");
+        setInspectorOpen(true);
         commitDocument({
             ...documentRef.current,
             elements: [...documentRef.current.elements, element],
-        }, true, element.id);
+        }, true, element.id, true, `Added ${element.name}`);
+        recordRecentInsertion({
+            id: `recent-layer-${element.id}`,
+            label: element.name,
+            search: `${element.name} ${element.type}`,
+        });
         setNotice(`${element.name} added.`);
     };
 
+    const getAiToolDisabledReason = (action: CreativeEditorAiToolAction) => {
+        if (action.disabled) return action.disabledReason || "This tool is not active.";
+        if (action.requiresSelection && !selectedText) return "Select a text layer first.";
+        if (action.requiresImageSelection && selectedElement?.type !== "image") return "Select an image layer first.";
+        if (!onAiToolAction) return "This product has not connected AI Tools yet.";
+        return "";
+    };
+
+    const addTextPreset = (preset: TextPreset) => {
+        const baseElement = buildCreativeEditorTextElement(preset.text);
+        const scale = getTextTemplateScale(documentRef.current.canvas);
+        const element = {
+            ...baseElement,
+            color: preset.color || baseElement.color,
+            fontFamily: preset.fontFamily || documentRef.current.metadata?.brand?.fontFamily || FONT_FAMILY_OPTIONS[0],
+            fontSize: Math.max(8, Math.round(preset.fontSize * scale)),
+            fontWeight: preset.fontWeight,
+            height: Math.round((preset.id === "body" ? 170 : 120) * scale),
+            lineHeight: preset.lineHeight,
+            name: preset.label,
+            shadow: preset.shadow,
+            textBackgroundColor: preset.textBackgroundColor,
+            width: Math.min(700, Math.max(320, documentRef.current.canvas.width - 180)),
+            x: Math.round(documentRef.current.canvas.width * 0.1),
+            y: Math.round(documentRef.current.canvas.height * 0.15),
+        };
+        addElement(element);
+    };
+
+    const buildTextTemplateElements = (template: TextTemplateDefinition, canvas = documentRef.current.canvas) => {
+        const scale = getTextTemplateScale(canvas);
+        const brandFont = documentRef.current.metadata?.brand?.fontFamily || FONT_FAMILY_OPTIONS[0];
+        return template.layers.map((layer, index) => {
+            const baseElement = buildCreativeEditorTextElement(layer.text);
+            return {
+                ...baseElement,
+                align: layer.align || baseElement.align,
+                charSpacing: layer.charSpacing,
+                color: layer.color || baseElement.color,
+                fontFamily: layer.fontFamily || brandFont,
+                fontSize: Math.max(8, Math.round((layer.fontSize || baseElement.fontSize) * scale)),
+                fontStyle: layer.fontStyle,
+                fontWeight: layer.fontWeight || baseElement.fontWeight,
+                height: resolveTemplateMetric(layer.height, canvas.height, baseElement.height * scale, 18),
+                lineHeight: layer.lineHeight || baseElement.lineHeight,
+                linethrough: false,
+                name: layer.name || `${template.label} ${index + 1}`,
+                opacity: typeof layer.opacity === "number" ? layer.opacity : baseElement.opacity,
+                rotation: layer.rotation,
+                shadow: layer.shadow,
+                textBackgroundColor: layer.textBackgroundColor,
+                underline: layer.underline,
+                visible: true,
+                width: resolveTemplateMetric(layer.width, canvas.width, baseElement.width * scale, 24),
+                x: resolveTemplateMetric(layer.x, canvas.width, canvas.width * 0.1, 0),
+                y: resolveTemplateMetric(layer.y, canvas.height, canvas.height * 0.16, 0),
+            } as Extract<CreativeEditorElement, { type: "text" }>;
+        });
+    };
+
+    const addTextTemplate = (template: TextTemplateDefinition) => {
+        if (blockIfActivePageLocked()) return;
+        const elements = buildTextTemplateElements(template);
+        if (!elements.length) return;
+        setRightPanelMode("properties");
+        setInspectorOpen(true);
+        commitDocument({
+            ...documentRef.current,
+            elements: [...documentRef.current.elements, ...elements],
+        }, true, elements[0].id, true, `Added ${template.label}`);
+        recordRecentInsertion({
+            id: `recent-template-${template.id}-${Date.now().toString(36)}`,
+            label: template.label,
+            search: `${template.label} text template ${template.category}`,
+        });
+        setNotice(`${template.label} text template added. Edit or delete each text layer from the canvas or Layers.`);
+    };
+
+    const applyCampaignStarter = (action: CampaignStarterAction) => {
+        if (blockIfActivePageLocked()) return;
+        const current = documentRef.current;
+        const canvas = current.canvas;
+        const nextElements: CreativeEditorElement[] = [];
+        const query = action.templateSearch.toLowerCase();
+        const template = TEXT_TEMPLATE_COMBINATIONS.find((item) => (
+            getTextTemplateSearch(item).toLowerCase().includes(query)
+        )) || TEXT_TEMPLATE_COMBINATIONS.find((item) => (
+            query.split(/\s+/).some((term) => getTextTemplateSearch(item).toLowerCase().includes(term))
+        ));
+        if (template) {
+            nextElements.push(...buildTextTemplateElements(template, canvas));
+            recordRecentInsertion({
+                id: `recent-template-${template.id}-${Date.now().toString(36)}`,
+                label: template.label,
+                search: `${template.label} text template ${template.category}`,
+            });
+        }
+        if (action.includeQr) {
+            const destinationPlaceholder = textPlaceholders.find((placeholder) => CONTACT_PLACEHOLDER_PATTERN.test(`${placeholder.id} ${placeholder.label}`));
+            const value = destinationPlaceholder?.value || qrValue;
+            const size = Math.round(Math.min(canvas.width, canvas.height) * 0.14);
+            nextElements.push({
+                ...buildCreativeEditorQrElement(value),
+                darkColor: getReadableTextColor(action.backgroundColor),
+                height: size,
+                lightColor: action.backgroundColor,
+                name: "Customer link QR",
+                width: size,
+                x: Math.round(canvas.width - size - canvas.width * 0.07),
+                y: Math.round(canvas.height - size - canvas.height * 0.07),
+            });
+        }
+        setRightPanelMode("properties");
+        setInspectorOpen(Boolean(nextElements.length));
+        commitDocument({
+            ...current,
+            canvas: {
+                ...canvas,
+                backgroundColor: action.backgroundColor,
+                backgroundGradient: undefined,
+            },
+            elements: [...current.elements, ...nextElements],
+        }, true, nextElements[0]?.id || selectedIdRef.current, true, `Added ${action.label} starter`);
+        setActiveTool("text");
+        setDrawerSearch("");
+        setNotice(`${action.label} starter added.`);
+    };
+
+    const addPlaceholderText = (placeholder: CreativeEditorTextPlaceholder) => {
+        const text = placeholder.value.trim();
+        if (!text) return;
+        const element = {
+            ...buildCreativeEditorTextElement(text),
+            fontFamily: documentRef.current.metadata?.brand?.fontFamily || FONT_FAMILY_OPTIONS[0],
+            fontSize: text.length > 90 ? 24 : text.length > 42 ? 30 : 38,
+            fontWeight: placeholder.id.includes("cta") ? "800" as const : "700" as const,
+            height: text.length > 90 ? 210 : 130,
+            name: placeholder.label,
+            sourceRefs: [{
+                label: placeholder.label,
+                locked: true,
+                productId: documentRef.current.productContext.productId,
+                sourceRef: placeholder.sourceRef || placeholder.id,
+                value: placeholder.value,
+            }],
+            width: Math.min(720, Math.max(320, documentRef.current.canvas.width - 180)),
+            x: Math.round(documentRef.current.canvas.width * 0.1),
+            y: Math.round(documentRef.current.canvas.height * 0.2),
+        };
+        addElement(element);
+    };
+
+    const addAiSuggestionToCanvas = (suggestionValue: CreativeEditorAiToolSuggestion) => {
+        const text = suggestionValue.text.trim();
+        if (!text) {
+            setNotice("Suggestion is empty.");
+            return;
+        }
+        const current = documentRef.current;
+        const width = Math.min(680, Math.max(260, current.canvas.width - 180));
+        const fontSize = text.length > 220 ? 24 : text.length > 120 ? 30 : 40;
+        const element = {
+            ...buildCreativeEditorTextElement(text),
+            fontSize,
+            height: text.length > 220 ? 260 : text.length > 120 ? 210 : 140,
+            name: suggestionValue.label,
+            sourceRefs: [
+                {
+                    label: `${productLabel} AI Tools`,
+                    locked: true,
+                    productId: current.productContext.productId,
+                    sourceRef: suggestionValue.id,
+                },
+            ],
+            width,
+            x: Math.round((current.canvas.width - width) / 2),
+            y: Math.round(Math.max(80, (current.canvas.height - 190) / 2)),
+        };
+        addElement(element);
+    };
+
+    const copyAiSuggestion = async (suggestionValue: CreativeEditorAiToolSuggestion) => {
+        try {
+            if (!navigator.clipboard?.writeText) throw new Error("Clipboard is unavailable.");
+            await navigator.clipboard.writeText(suggestionValue.text);
+            setNotice("Text copied.");
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : "Copy failed.");
+        }
+    };
+
+    const runAiToolAction = async (action: CreativeEditorAiToolAction) => {
+        const disabledReason = getAiToolDisabledReason(action);
+        if (disabledReason) {
+            setNotice(disabledReason);
+            return;
+        }
+        setAiToolBusyId(action.id);
+        setNotice("");
+        try {
+            const latestDocument = getLatestDocumentFromCanvas();
+            const result = await onAiToolAction?.({
+                action,
+                actionId: action.id,
+                document: latestDocument,
+                productLabel,
+                selectedElement,
+                selectedText,
+                sourceLabel,
+            });
+            const safeResult = result || {
+                findings: [
+                    {
+                        id: "empty-result",
+                        text: "No result was returned.",
+                        tone: "warning" as const,
+                    },
+                ],
+                notice: "No result was returned.",
+            };
+            setAiToolResult({ action, result: safeResult });
+            setNotice(safeResult.notice || `${action.label} complete.`);
+        } catch (error) {
+            setAiToolResult({
+                action,
+                result: {
+                    findings: [
+                        {
+                            id: "ai-tool-error",
+                            text: error instanceof Error ? error.message : "Tool failed.",
+                            tone: "warning",
+                        },
+                    ],
+                    notice: "Tool failed.",
+                },
+            });
+            setNotice(error instanceof Error ? error.message : "Tool failed.");
+        } finally {
+            setAiToolBusyId("");
+        }
+    };
+
+    const getDesignCueSelectedContext = (latestDocument: CreativeEditorDocument) => {
+        const element = latestDocument.elements.find((item) => item.id === selectedIdRef.current) || null;
+        return {
+            selectedElement: element,
+            selectedText: getTextFromElement(element),
+            target: element
+                ? { type: "layer" as const, elementId: element.id }
+                : { type: "document" as const },
+        };
+    };
+
+    const runDesignCueRequest = async (
+        request: Omit<CreativeEditorDesignCueRequest, "document" | "selectedElement" | "selectedText">,
+    ) => {
+        if (!onDesignCueRequest) {
+            setNotice("Design Cue is not connected for this product surface.");
+            return;
+        }
+        setDesignCueBusy(true);
+        setNotice("");
+        try {
+            const latestDocument = getLatestDocumentFromCanvas();
+            const selectedContext = getDesignCueSelectedContext(latestDocument);
+            const patchSet = await onDesignCueRequest({
+                ...request,
+                document: latestDocument,
+                selectedElement: selectedContext.selectedElement,
+                selectedText: selectedContext.selectedText,
+                target: request.target || selectedContext.target,
+            });
+            lastDesignCueRequestRef.current = request;
+            setDesignCuePatchSet(patchSet);
+            setNotice(patchSet.summary || "Design Cue review is ready.");
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : "Design Cue failed.");
+        } finally {
+            setDesignCueBusy(false);
+        }
+    };
+
+    const runDesignCueCommand = (commandId: string) => {
+        const latestDocument = getLatestDocumentFromCanvas();
+        const selectedContext = getDesignCueSelectedContext(latestDocument);
+        void runDesignCueRequest({
+            commandId,
+            productLabel,
+            source: "command_chip",
+            sourceLabel,
+            target: selectedContext.target,
+        });
+    };
+
+    const runDesignCueComment = (comment: string) => {
+        const latestDocument = getLatestDocumentFromCanvas();
+        const selectedContext = getDesignCueSelectedContext(latestDocument);
+        void runDesignCueRequest({
+            comment,
+            productLabel,
+            source: selectedContext.selectedElement ? "selected_layer_comment" : "free_text",
+            sourceLabel,
+            target: selectedContext.target,
+        });
+    };
+
+    const tryDesignCueAgain = () => {
+        const lastRequest = lastDesignCueRequestRef.current;
+        if (!lastRequest) {
+            setNotice("Ask Design Cue for a change first.");
+            return;
+        }
+        void runDesignCueRequest(lastRequest);
+    };
+
+    const applyDesignCuePatchSet = async () => {
+        if (!designCuePatchSet) {
+            setNotice("No Design Cue change is ready.");
+            return;
+        }
+        if (!onDesignCueApply) {
+            setNotice("Design Cue apply is not connected for this product surface.");
+            return;
+        }
+        setDesignCueBusy(true);
+        setNotice("");
+        try {
+            const latestDocument = getLatestDocumentFromCanvas();
+            const result = await onDesignCueApply({
+                document: latestDocument,
+                patchSet: designCuePatchSet,
+            });
+            if (result.appliedOperationCount > 0) {
+                commitDocument(result.document, true, result.selectedElementId || selectedIdRef.current, true, "Applied Design Cue");
+            }
+            setDesignCuePatchSet(null);
+            setNotice(result.notice || "Design Cue change applied.");
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : "Design Cue apply failed.");
+        } finally {
+            setDesignCueBusy(false);
+        }
+    };
+
+    const cancelDesignCuePatchSet = () => {
+        setDesignCuePatchSet(null);
+        setNotice("Design Cue change cancelled.");
+    };
+
     const updateSelected = (patch: Partial<CreativeEditorElement>) => {
+        if (blockIfActivePageLocked()) return;
         const current = documentRef.current;
         const element = current.elements.find((item) => item.id === selectedIdRef.current);
         if (!element || element.locked) return;
+        if (!selectedElementPatchHasChanges(element, patch)) return;
+        const nextElement = { ...element, ...patch } as CreativeEditorElement;
+        const reloadCanvas = shouldReloadCanvasForSelectedPatch(element, patch);
+        const didPatchCanvas = reloadCanvas ? false : applySelectedElementPatchToFabricObject(nextElement);
         commitDocument({
             ...current,
             elements: current.elements.map((item) => (
-                item.id === element.id ? { ...item, ...patch } as CreativeEditorElement : item
+                item.id === element.id ? nextElement : item
             )),
-        }, true, element.id);
+        }, true, element.id, reloadCanvas || !didPatchCanvas, describeSelectedPatch(element, patch));
     };
 
     const updateCanvas = (patch: Partial<CreativeEditorDocument["canvas"]>) => {
+        if (blockIfActivePageLocked()) return;
         const current = documentRef.current;
         const nextWidth = patch.width ?? current.canvas.width;
         const nextHeight = patch.height ?? current.canvas.height;
@@ -934,10 +3301,163 @@ export default function CreativeEditor({
             elements: nextElements,
         };
         const canvas = fabricCanvasRef.current;
-        if (canvas && patch.backgroundColor && !resized) {
-            applyCanvasBackground(canvas, patch.backgroundColor);
+        const backgroundChanged = Object.prototype.hasOwnProperty.call(patch, "backgroundColor")
+            || Object.prototype.hasOwnProperty.call(patch, "backgroundGradient");
+        if (canvas && backgroundChanged && !resized) {
+            applyCanvasBackground(canvas, next.canvas.backgroundColor, next.canvas.backgroundGradient);
         }
-        commitDocument(next, true, selectedIdRef.current, Boolean(resized));
+        commitDocument(next, true, selectedIdRef.current, Boolean(resized), describeCanvasPatch(patch));
+    };
+
+    const updateBackgroundGradient = (patch: Partial<CreativeEditorLinearGradient> = {}) => {
+        const current = documentRef.current.canvas.backgroundGradient || {
+            ...DEFAULT_GRADIENT,
+            from: documentRef.current.canvas.backgroundColor,
+        };
+        const nextGradient: CreativeEditorLinearGradient = {
+            ...current,
+            enabled: true,
+            ...patch,
+        };
+        if (!patch.stops && (patch.from || patch.to)) {
+            nextGradient.stops = [
+                { color: nextGradient.from, offset: 0 },
+                { color: nextGradient.to, offset: 1 },
+            ];
+        }
+        const normalized = {
+            ...nextGradient,
+            stops: normalizeGradientStops(nextGradient),
+        };
+        setBackgroundMode("gradient");
+        updateCanvas({
+            backgroundColor: normalized.from,
+            backgroundGradient: normalized,
+        });
+    };
+
+    const useSolidBackground = () => {
+        setBackgroundMode("solid");
+        updateCanvas({ backgroundGradient: undefined });
+    };
+
+    const applyProjectStyle = (preset: ProjectStylePreset) => {
+        if (blockIfActivePageLocked()) return;
+        const current = documentRef.current;
+        const palette = [preset.accentColor, preset.secondaryColor, preset.mutedColor];
+        const nextElements = current.elements.map((element, index) => {
+            if (element.locked) return element;
+            const accent = palette[index % palette.length];
+            if (canEditTextElement(element)) {
+                return {
+                    ...element,
+                    color: preset.textColor,
+                    fontFamily: preset.fontFamily,
+                    shadow: element.shadow,
+                } as CreativeEditorElement;
+            }
+            if (canFillElement(element)) {
+                return {
+                    ...element,
+                    fill: element.fill === "transparent" ? element.fill : accent,
+                    stroke: element.stroke || preset.secondaryColor,
+                } as CreativeEditorElement;
+            }
+            if (element.type === "line") {
+                return {
+                    ...element,
+                    stroke: accent,
+                } as CreativeEditorElement;
+            }
+            if (element.type === "qr") {
+                return {
+                    ...element,
+                    darkColor: preset.textColor,
+                    lightColor: preset.backgroundColor,
+                } as CreativeEditorElement;
+            }
+            if (element.type === "image" && element.outlineEnabled) {
+                return {
+                    ...element,
+                    outlineColor: accent,
+                } as CreativeEditorElement;
+            }
+            return element;
+        });
+        setBackgroundMode("solid");
+        commitDocument({
+            ...current,
+            canvas: {
+                ...current.canvas,
+                backgroundColor: preset.backgroundColor,
+                backgroundGradient: undefined,
+            },
+            elements: nextElements,
+        }, true, selectedIdRef.current, true, `Applied ${preset.label} style`);
+        setNotice(`${preset.label} style applied.`);
+    };
+
+    const applyBrandProjectStyle = () => {
+        const brandStyle: ProjectStylePreset = {
+            accentColor: brand?.accentColor || "#ffd45d",
+            backgroundColor: documentRef.current.canvas.backgroundColor || "#ffffff",
+            description: "Uses connected brand colors and font.",
+            fontFamily: brand?.fontFamily || FONT_FAMILY_OPTIONS[0],
+            id: "brand-current",
+            label: "Brand style",
+            mutedColor: brand?.secondaryColor || "#4fac96",
+            secondaryColor: brand?.secondaryColor || "#24564d",
+            textColor: brand?.primaryColor || "#16231f",
+        };
+        applyProjectStyle(brandStyle);
+    };
+
+    const shuffleProjectStyle = () => {
+        const nextIndex = (styleShuffleIndex + 1) % PROJECT_STYLE_PRESETS.length;
+        setStyleShuffleIndex(nextIndex);
+        applyProjectStyle(PROJECT_STYLE_PRESETS[nextIndex]);
+    };
+
+    const addQrCode = () => {
+        const value = qrValue.trim() || "https://example.com/";
+        const size = Math.round(clampNumber(numberInput(qrSize, 164), 96, 520));
+        addElement({
+            ...buildCreativeEditorQrElement(value),
+            darkColor: qrDarkColor,
+            height: size,
+            lightColor: qrLightColor,
+            width: size,
+            x: Math.round((documentRef.current.canvas.width - size) / 2),
+            y: Math.round((documentRef.current.canvas.height - size) / 2),
+        });
+    };
+
+    const addBarcode = () => {
+        const value = normalizeBarcodeValue(barcodeValue);
+        addElement(buildCreativeEditorImageElement({
+            alt: `Barcode for ${value}`,
+            fit: "contain",
+            height: 170,
+            name: "Barcode",
+            sourceRefs: [
+                {
+                    label: "Barcode value",
+                    locked: true,
+                    productId: documentRef.current.productContext.productId,
+                    value,
+                },
+            ],
+            src: buildBarcodeDataUri({
+                backgroundColor: barcodeBackgroundColor,
+                displayText: barcodeDisplayText,
+                lineColor: barcodeLineColor,
+                text: barcodeText,
+                value,
+            }),
+            width: 430,
+            x: Math.round((documentRef.current.canvas.width - 430) / 2),
+            y: Math.round((documentRef.current.canvas.height - 170) / 2),
+        }));
     };
 
     const updateVisibleWatermark = (patch: Partial<CreativeEditorVisibleWatermark>) => {
@@ -956,10 +3476,11 @@ export default function CreativeEditor({
                     ...patch,
                 },
             },
-        }, true, selectedIdRef.current);
+        }, true, selectedIdRef.current, true, "Changed watermark");
     };
 
     const removeSelected = () => {
+        if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject();
         if (canvas && activeObject) {
@@ -968,16 +3489,19 @@ export default function CreativeEditor({
             });
             canvas.discardActiveObject();
             canvas.requestRenderAll();
-            syncDocumentFromCanvas(true);
+            clearFloatingSelectionToolbar();
+            syncDocumentFromCanvas(true, "Deleted layer");
             return;
         }
         const element = selectedElement;
         if (!element || element.locked) return;
         const nextElements = documentRef.current.elements.filter((item) => item.id !== element.id);
-        commitDocument({ ...documentRef.current, elements: nextElements }, true, nextElements[nextElements.length - 1]?.id || "");
+        clearFloatingSelectionToolbar();
+        commitDocument({ ...documentRef.current, elements: nextElements }, true, nextElements[nextElements.length - 1]?.id || "", true, "Deleted layer");
     };
 
     const duplicateSelected = () => {
+        if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject();
         if (!canvas || !activeObject || !isEditableFabricObject(activeObject)) return;
@@ -990,22 +3514,27 @@ export default function CreativeEditor({
             canvas.add(cloned);
             canvas.setActiveObject(cloned);
             canvas.requestRenderAll();
-            syncDocumentFromCanvas(true);
+            syncDocumentFromCanvas(true, "Duplicated layer");
+            scheduleFloatingSelectionToolbarRefresh();
         }, CREATIVE_EDITOR_FABRIC_ATTRIBUTES);
     };
 
     const toggleSelectedLock = () => {
+        if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject() as CreativeFabricObject | undefined;
         if (!canvas || !activeObject || !isEditableFabricObject(activeObject)) return;
-        setObjectLocked(activeObject, !activeObject.locked);
+        const nextLocked = !activeObject.locked;
+        setObjectLocked(activeObject, nextLocked);
         canvas.discardActiveObject();
-        if (!activeObject.locked) canvas.setActiveObject(activeObject);
+        canvas.setActiveObject(activeObject);
         canvas.requestRenderAll();
-        syncDocumentFromCanvas(true);
+        syncDocumentFromCanvas(true, nextLocked ? "Locked layer" : "Unlocked layer");
+        scheduleFloatingSelectionToolbarRefresh();
     };
 
     const moveLayerById = (id: string, action: LayerAction) => {
+        if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
         if (!canvas) return;
         const object = canvas.getObjects().find((item) => (item as CreativeFabricObject).id === id);
@@ -1017,10 +3546,44 @@ export default function CreativeEditor({
         keepWorkspaceAtBack(canvas);
         canvas.setActiveObject(object);
         canvas.requestRenderAll();
-        syncDocumentFromCanvas(true);
+        syncDocumentFromCanvas(true, "Moved layer");
+        scheduleFloatingSelectionToolbarRefresh();
+    };
+
+    const reorderLayerByDrop = (draggedId: string, targetId: string) => {
+        if (blockIfActivePageLocked()) return;
+        if (!draggedId || !targetId || draggedId === targetId) {
+            setDraggedLayerId("");
+            return;
+        }
+        const currentDocument = documentRef.current;
+        const fromIndex = currentDocument.elements.findIndex((element) => element.id === draggedId);
+        const targetIndex = currentDocument.elements.findIndex((element) => element.id === targetId);
+        if (fromIndex < 0 || targetIndex < 0) {
+            setDraggedLayerId("");
+            return;
+        }
+        const draggedElement = currentDocument.elements[fromIndex];
+        if (draggedElement.locked) {
+            setNotice("Unlock this layer before reordering it.");
+            setDraggedLayerId("");
+            return;
+        }
+        const nextElements = [...currentDocument.elements];
+        const [movedElement] = nextElements.splice(fromIndex, 1);
+        nextElements.splice(targetIndex, 0, movedElement);
+        commitDocument(
+            { ...currentDocument, elements: nextElements },
+            true,
+            draggedId,
+            true,
+            "Reordered layers",
+        );
+        setDraggedLayerId("");
     };
 
     const toggleLayer = (id: string, key: "locked" | "visible") => {
+        if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
         if (!canvas) return;
         const object = canvas.getObjects().find((item) => (item as CreativeFabricObject).id === id) as CreativeFabricObject | undefined;
@@ -1031,7 +3594,8 @@ export default function CreativeEditor({
             object.visible = object.visible === false;
         }
         canvas.requestRenderAll();
-        syncDocumentFromCanvas(true);
+        syncDocumentFromCanvas(true, key === "locked" ? "Changed layer lock" : "Changed layer visibility");
+        scheduleFloatingSelectionToolbarRefresh();
     };
 
     const selectLayer = (id: string) => {
@@ -1050,6 +3614,13 @@ export default function CreativeEditor({
         canvas.setActiveObject(object);
         canvas.requestRenderAll();
         setSelectedId(id);
+        scheduleFloatingSelectionToolbarRefresh();
+    };
+
+    const selectLayerFromPanel = (id: string) => {
+        selectLayer(id);
+        setRightPanelMode("layers");
+        setInspectorOpen(true);
     };
 
     const clearSelection = () => {
@@ -1057,9 +3628,14 @@ export default function CreativeEditor({
         canvas?.discardActiveObject();
         canvas?.requestRenderAll();
         setSelectedId("");
+        clearFloatingSelectionToolbar();
+        if (rightPanelModeRef.current === "properties") {
+            setInspectorOpen(false);
+        }
     };
 
     const alignSelected = (alignment: AlignmentAction) => {
+        if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject() as CreativeFabricObject | undefined;
         if (!canvas || !activeObject || !isEditableFabricObject(activeObject) || activeObject.locked) return;
@@ -1078,10 +3654,12 @@ export default function CreativeEditor({
         });
         activeObject.setCoords();
         canvas.requestRenderAll();
-        syncDocumentFromCanvas(true);
+        syncDocumentFromCanvas(true, "Aligned layer");
+        scheduleFloatingSelectionToolbarRefresh();
     };
 
     const distributeSelection = (axis: "x" | "y") => {
+        if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject();
         if (!canvas || !activeObject || activeObject.type !== "activeSelection") {
@@ -1095,14 +3673,14 @@ export default function CreativeEditor({
             return;
         }
         const sorted = [...objects].sort((a, b) => {
-            const aRect = a.getBoundingRect(false, true);
-            const bRect = b.getBoundingRect(false, true);
+            const aRect = a.getBoundingRect(true, true);
+            const bRect = b.getBoundingRect(true, true);
             return axis === "x" ? aRect.left - bRect.left : aRect.top - bRect.top;
         });
-        const firstRect = sorted[0].getBoundingRect(false, true);
-        const lastRect = sorted[sorted.length - 1].getBoundingRect(false, true);
+        const firstRect = sorted[0].getBoundingRect(true, true);
+        const lastRect = sorted[sorted.length - 1].getBoundingRect(true, true);
         const totalSize = sorted.reduce((sum, object) => {
-            const rect = object.getBoundingRect(false, true);
+            const rect = object.getBoundingRect(true, true);
             return sum + (axis === "x" ? rect.width : rect.height);
         }, 0);
         const span = axis === "x"
@@ -1111,7 +3689,7 @@ export default function CreativeEditor({
         const gap = (span - totalSize) / (sorted.length - 1);
         let cursor = axis === "x" ? firstRect.left + firstRect.width + gap : firstRect.top + firstRect.height + gap;
         sorted.slice(1, -1).forEach((object) => {
-            const rect = object.getBoundingRect(false, true);
+            const rect = object.getBoundingRect(true, true);
             if (axis === "x") {
                 object.set({ left: (object.left || 0) + cursor - rect.left });
                 cursor += rect.width + gap;
@@ -1122,25 +3700,59 @@ export default function CreativeEditor({
             object.setCoords();
         });
         canvas.requestRenderAll();
-        syncDocumentFromCanvas(true);
+        syncDocumentFromCanvas(true, "Distributed layers");
+        scheduleFloatingSelectionToolbarRefresh();
         setNotice(axis === "x" ? "Layers spaced evenly across." : "Layers spaced evenly down.");
     };
 
     const applyTemplate = (templateId: CreativeEditorStarterTemplateId) => {
-        const next = createCreativeEditorStarterDocument({
+        if (blockIfActivePageLocked()) return;
+        const current = syncActivePageSnapshot(documentRef.current);
+        const templateDocument = createCreativeEditorStarterDocument({
             brandName: documentRef.current.metadata?.brand?.name,
             primaryColor: getPrimaryColor(documentRef.current),
             productContext: documentRef.current.productContext,
             templateId,
             title: documentRef.current.title,
         });
-        commitDocument(next, true, next.elements[0]?.id || "");
+        const template = CREATIVE_EDITOR_STARTER_TEMPLATES.find((item) => item.id === templateId);
+        const pages = (current.pages || []).map((page) => (
+            page.id === current.activePageId
+                ? {
+                    ...page,
+                    canvas: templateDocument.canvas,
+                    elements: templateDocument.elements,
+                    title: template?.label || page.title,
+                    updatedAt: new Date().toISOString(),
+                }
+                : page
+        ));
+        commitDocument({
+            ...current,
+            canvas: templateDocument.canvas,
+            elements: templateDocument.elements,
+            metadata: {
+                ...current.metadata,
+                templateId,
+            },
+            pages,
+        }, true, templateDocument.elements[0]?.id || "", true, `Applied ${template?.label || "template"}`);
     };
 
     const startBlankDesign = () => {
+        if (blockIfActivePageLocked()) return;
         const createdAt = new Date().toISOString();
+        const blankPage: CreativeEditorPage = {
+            canvas: documentRef.current.canvas,
+            elements: [],
+            id: "page_1",
+            locked: false,
+            title: "Page 1",
+            updatedAt: createdAt,
+        };
         const next: CreativeEditorDocument = {
             ...documentRef.current,
+            activePageId: blankPage.id,
             id: buildCreativeEditorId("cedoc"),
             elements: [],
             metadata: {
@@ -1149,10 +3761,89 @@ export default function CreativeEditor({
                 templateId: "blank",
                 updatedAt: createdAt,
             },
+            pages: [blankPage],
             title: "Untitled design",
         };
-        commitDocument(next, true, "");
+        commitDocument(next, true, "", true, "Started blank design");
         setNotice("New blank design ready.");
+    };
+
+    const switchPage = (pageId: string) => {
+        if (pageId === documentRef.current.activePageId) return;
+        const current = syncActivePageSnapshot(getLatestDocumentFromCanvas());
+        const targetPage = current.pages?.find((page) => page.id === pageId);
+        if (!targetPage) return;
+        const next: CreativeEditorDocument = {
+            ...current,
+            activePageId: targetPage.id,
+            canvas: targetPage.canvas,
+            elements: targetPage.elements,
+        };
+        commitDocument(next, true, targetPage.elements[0]?.id || "", true, `Opened ${targetPage.title}`);
+        setBackgroundMode(targetPage.canvas.backgroundGradient?.enabled ? "gradient" : "solid");
+        setNotice(`${targetPage.title} selected.`);
+    };
+
+    const addPage = () => {
+        const current = syncActivePageSnapshot(getLatestDocumentFromCanvas());
+        const nextIndex = (current.pages?.length || 0) + 1;
+        const createdAt = new Date().toISOString();
+        const page: CreativeEditorPage = {
+            canvas: {
+                ...current.canvas,
+            },
+            elements: [],
+            id: buildCreativeEditorId("page"),
+            locked: false,
+            title: `Page ${nextIndex}`,
+            updatedAt: createdAt,
+        };
+        commitDocument({
+            ...current,
+            activePageId: page.id,
+            canvas: page.canvas,
+            elements: page.elements,
+            pages: [...(current.pages || []), page],
+        }, true, "", true, `Added ${page.title}`);
+        setBackgroundMode(page.canvas.backgroundGradient?.enabled ? "gradient" : "solid");
+        setNotice(`${page.title} added.`);
+    };
+
+    const duplicateActivePage = () => {
+        const current = syncActivePageSnapshot(getLatestDocumentFromCanvas());
+        const page = current.pages?.find((item) => item.id === current.activePageId);
+        if (!page) return;
+        const duplicated: CreativeEditorPage = {
+            ...page,
+            elements: page.elements.map(cloneElementForPage),
+            id: buildCreativeEditorId("page"),
+            locked: false,
+            title: `${page.title} copy`,
+            updatedAt: new Date().toISOString(),
+        };
+        const pages = [...(current.pages || [])];
+        pages.splice(activePageIndex + 1, 0, duplicated);
+        commitDocument({
+            ...current,
+            activePageId: duplicated.id,
+            canvas: duplicated.canvas,
+            elements: duplicated.elements,
+            pages,
+        }, true, duplicated.elements[0]?.id || "", true, `Duplicated ${page.title}`);
+        setNotice(`${duplicated.title} ready.`);
+    };
+
+    const toggleActivePageLock = () => {
+        const current = syncActivePageSnapshot(getLatestDocumentFromCanvas());
+        const pages = (current.pages || []).map((page) => (
+            page.id === current.activePageId ? { ...page, locked: !page.locked } : page
+        ));
+        const active = pages.find((page) => page.id === current.activePageId);
+        commitDocument({
+            ...current,
+            pages,
+        }, true, active?.locked ? "" : selectedIdRef.current, true, active?.locked ? "Locked page" : "Unlocked page");
+        setNotice(active?.locked ? "Page locked." : "Page unlocked.");
     };
 
     const adoptImportedFabricObjects = () => {
@@ -1193,7 +3884,7 @@ export default function CreativeEditor({
             id: buildCreativeEditorId("cedoc"),
             title: "Imported design",
         });
-        commitDocument(next, true, next.elements[0]?.id || "");
+        commitDocument(next, true, next.elements[0]?.id || "", true, "Imported design");
         setNotice("Design imported.");
     };
 
@@ -1203,15 +3894,15 @@ export default function CreativeEditor({
             const text = await readFileAsText(file);
             const payload = JSON.parse(text) as unknown;
             if (isCreativeEditorDocument(payload)) {
-                const next: CreativeEditorDocument = {
+                const next: CreativeEditorDocument = normalizeCreativeEditorDocumentPages({
                     ...payload,
                     productContext: documentRef.current.productContext,
                     metadata: {
                         ...payload.metadata,
                         updatedAt: new Date().toISOString(),
                     },
-                };
-                commitDocument(next, true, next.elements[0]?.id || "");
+                });
+                commitDocument(next, true, next.elements[0]?.id || "", true, "Imported design");
                 setNotice("Design imported.");
                 return;
             }
@@ -1228,6 +3919,9 @@ export default function CreativeEditor({
     const importImageFile = async (file: File) => {
         setNotice("");
         try {
+            if (!RASTER_IMAGE_MIME_TYPES.has(file.type)) {
+                throw new Error("Use a PNG, JPG, WebP, or GIF image file.");
+            }
             const dataUrl = await readFileAsDataUrl(file);
             addElement(buildCreativeEditorImageElement({
                 name: file.name.replace(/\.[^.]+$/, "") || "Imported image",
@@ -1244,6 +3938,9 @@ export default function CreativeEditor({
         if (!allowRasterImports || selectedElement?.type !== "image" || selectedElement.locked) return;
         setNotice("");
         try {
+            if (!RASTER_IMAGE_MIME_TYPES.has(file.type)) {
+                throw new Error("Use a PNG, JPG, WebP, or GIF image file.");
+            }
             const dataUrl = await readFileAsDataUrl(file);
             updateSelected({
                 alt: file.name.replace(/\.[^.]+$/, "") || selectedElement.alt,
@@ -1256,29 +3953,58 @@ export default function CreativeEditor({
         }
     };
 
-    const addSvgMarkup = () => {
-        if (!allowRasterImports) return;
-        const svg = svgMarkup.trim();
-        if (!svg) return;
-        if (!svg.includes("<svg")) {
-            setNotice("Paste valid SVG markup first.");
-            return;
-        }
-        addElement(buildCreativeEditorImageElement({
-            name: "SVG artwork",
-            src: encodeSvgDataUri(svg),
-            x: Math.round(documentRef.current.canvas.width * 0.28),
-            y: Math.round(documentRef.current.canvas.height * 0.22),
-        }));
-        setSvgMarkup("");
+    const fillSelectedImageToFrame = () => {
+        if (selectedElement?.type !== "image" || selectedLayerReadOnly) return;
+        updateSelected({
+            fit: "cover",
+            height: documentRef.current.canvas.height,
+            width: documentRef.current.canvas.width,
+            x: 0,
+            y: 0,
+        } as Partial<CreativeEditorElement>);
     };
 
-    const handleFileInput = (event: ChangeEvent<HTMLInputElement>, kind: "image" | "json" | "svg") => {
+    const fitSelectedImageInsideFrame = () => {
+        if (selectedElement?.type !== "image" || selectedLayerReadOnly) return;
+        const margin = Math.round(Math.min(documentRef.current.canvas.width, documentRef.current.canvas.height) * 0.08);
+        const maxWidth = documentRef.current.canvas.width - margin * 2;
+        const maxHeight = documentRef.current.canvas.height - margin * 2;
+        const scale = Math.min(maxWidth / selectedElement.width, maxHeight / selectedElement.height, 1);
+        const width = Math.max(24, Math.round(selectedElement.width * scale));
+        const height = Math.max(24, Math.round(selectedElement.height * scale));
+        updateSelected({
+            fit: "contain",
+            height,
+            width,
+            x: Math.round((documentRef.current.canvas.width - width) / 2),
+            y: Math.round((documentRef.current.canvas.height - height) / 2),
+        } as Partial<CreativeEditorElement>);
+    };
+
+    const makeSelectedImageLarger = () => {
+        if (selectedElement?.type !== "image" || selectedLayerReadOnly) return;
+        const width = Math.round(selectedElement.width * 1.18);
+        const height = Math.round(selectedElement.height * 1.18);
+        updateSelected({
+            height,
+            width,
+            x: Math.round(selectedElement.x - (width - selectedElement.width) / 2),
+            y: Math.round(selectedElement.y - (height - selectedElement.height) / 2),
+        } as Partial<CreativeEditorElement>);
+    };
+
+    const sendSelectedImageBehindText = () => {
+        if (selectedElement?.type !== "image" || selectedLayerReadOnly) return;
+        moveLayerById(selectedElement.id, "back");
+        setNotice("Image placed behind text.");
+    };
+
+    const handleFileInput = (event: ChangeEvent<HTMLInputElement>, kind: "image" | "json") => {
         const files = Array.from(event.target.files || []);
         event.target.value = "";
         if (!files.length) return;
         if (kind === "json" && !allowDesignImport) return;
-        if ((kind === "image" || kind === "svg") && !allowRasterImports) return;
+        if (kind === "image" && !allowRasterImports) return;
         if (kind === "json") {
             void importJsonFile(files[0]);
             return;
@@ -1292,6 +4018,29 @@ export default function CreativeEditor({
         const file = event.target.files?.[0];
         event.target.value = "";
         if (file) void replaceSelectedImageFile(file);
+    };
+
+    const restoreAutosaveDraft = () => {
+        if (!autosaveDraft) return;
+        autosaveReadyRef.current = true;
+        commitDocument(
+            autosaveDraft,
+            true,
+            autosaveDraft.elements[0]?.id || "",
+            true,
+            "Recovered draft",
+        );
+        setAutosaveDraft(null);
+    };
+
+    const dismissAutosaveDraft = () => {
+        try {
+            window.localStorage.removeItem(autosaveKey);
+        } catch {
+            // Ignore local storage failures; the editor can continue without recovery.
+        }
+        autosaveReadyRef.current = true;
+        setAutosaveDraft(null);
     };
 
     const applyColor = (color: string) => {
@@ -1319,24 +4068,31 @@ export default function CreativeEditor({
 
     const undo = () => {
         if (historyIndexRef.current <= 0) return;
+        const undoneLabel = historyLabelsRef.current[historyIndexRef.current] || "last change";
         historyIndexRef.current -= 1;
         const next = historyRef.current[historyIndexRef.current];
+        const nextLabel = historyLabelsRef.current[historyIndexRef.current] || "Opened design";
         documentRef.current = next;
         setDocumentValue(next);
         setSelectedId(next.elements.find((element) => element.id === selectedIdRef.current)?.id || next.elements[0]?.id || "");
+        setHistoryLabelState({ current: nextLabel });
         setHistoryState((current) => ({ version: current.version + 1 }));
         void loadDocument(next, selectedIdRef.current);
+        setNotice(`Undid ${undoneLabel.toLowerCase()}.`);
     };
 
     const redo = () => {
         if (historyIndexRef.current >= historyRef.current.length - 1) return;
         historyIndexRef.current += 1;
         const next = historyRef.current[historyIndexRef.current];
+        const nextLabel = historyLabelsRef.current[historyIndexRef.current] || "Changed design";
         documentRef.current = next;
         setDocumentValue(next);
         setSelectedId(next.elements.find((element) => element.id === selectedIdRef.current)?.id || next.elements[0]?.id || "");
+        setHistoryLabelState({ current: nextLabel });
         setHistoryState((current) => ({ version: current.version + 1 }));
         void loadDocument(next, selectedIdRef.current);
+        setNotice(`Redid ${nextLabel.toLowerCase()}.`);
     };
 
     const withHiddenWatermark = <T,>(callback: () => T) => {
@@ -1357,11 +4113,38 @@ export default function CreativeEditor({
         }
     };
 
+    const getWorkspaceExportBox = (canvas: fabric.Canvas, fallback: CreativeEditorDocument["canvas"]) => {
+        const workspace = findWorkspaceObject(canvas);
+        return {
+            height: Math.max(1, Math.round(workspace?.height || fallback.height)),
+            left: Math.round(workspace?.left || 0),
+            top: Math.round(workspace?.top || 0),
+            width: Math.max(1, Math.round(workspace?.width || fallback.width)),
+        };
+    };
+
+    const withWorkspaceExportViewport = <T,>(canvas: fabric.Canvas, callback: () => T) => {
+        const previousTransform = canvas.viewportTransform ? [...canvas.viewportTransform] : null;
+        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+        canvas.renderAll();
+        try {
+            return callback();
+        } finally {
+            if (previousTransform) {
+                canvas.setViewportTransform(previousTransform);
+            }
+            canvas.renderAll();
+            syncZoomStateFromCanvas();
+            refreshWorkspaceViewportMetrics();
+            scheduleFloatingSelectionToolbarRefresh();
+        }
+    };
+
     const getLatestDocumentFromCanvas = () => {
         const canvas = fabricCanvasRef.current;
         if (!canvas) return documentRef.current;
         releaseActiveGroupForPersistence(canvas);
-        const latestDocument = serializeFabricCanvasToDocument(canvas, documentRef.current);
+        const latestDocument = syncActivePageSnapshot(serializeFabricCanvasToDocument(canvas, documentRef.current));
         documentRef.current = latestDocument;
         setDocumentValue(latestDocument);
         return latestDocument;
@@ -1371,17 +4154,18 @@ export default function CreativeEditor({
         const canvas = fabricCanvasRef.current;
         if (!canvas) throw new Error("Canvas is still loading.");
         const latestDocument = getLatestDocumentFromCanvas();
+        const exportBox = getWorkspaceExportBox(canvas, latestDocument.canvas);
         if (type === "svg") {
-            const svg = withHiddenWatermark(() => canvas.toSVG({
-                height: latestDocument.canvas.height,
+            const svg = withHiddenWatermark(() => withWorkspaceExportViewport(canvas, () => canvas.toSVG({
+                height: exportBox.height,
                 viewBox: {
-                    height: latestDocument.canvas.height,
-                    width: latestDocument.canvas.width,
-                    x: 0,
-                    y: 0,
+                    height: exportBox.height,
+                    width: exportBox.width,
+                    x: exportBox.left,
+                    y: exportBox.top,
                 },
-                width: latestDocument.canvas.width,
-            }));
+                width: exportBox.width,
+            })));
             const filename = buildCreativeEditorFilename(latestDocument, "svg");
             const href = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
             triggerDownload(href, filename);
@@ -1394,16 +4178,16 @@ export default function CreativeEditor({
                 svg,
             };
         }
-        const dataUrl = withHiddenWatermark(() => canvas.toDataURL({
+        const dataUrl = withHiddenWatermark(() => withWorkspaceExportViewport(canvas, () => canvas.toDataURL({
             enableRetinaScaling: true,
             format: "png",
-            height: latestDocument.canvas.height,
-            left: 0,
+            height: exportBox.height,
+            left: exportBox.left,
             multiplier: 1,
             quality: 1,
-            top: 0,
-            width: latestDocument.canvas.width,
-        }));
+            top: exportBox.top,
+            width: exportBox.width,
+        })));
         const filename = buildCreativeEditorFilename(latestDocument, "png");
         triggerDownload(dataUrl, filename);
         return {
@@ -1420,16 +4204,17 @@ export default function CreativeEditor({
         const canvas = fabricCanvasRef.current;
         if (!canvas) throw new Error("Canvas is still loading.");
         const latestDocument = getLatestDocumentFromCanvas();
-        return withHiddenWatermark(() => canvas.toDataURL({
+        const exportBox = getWorkspaceExportBox(canvas, latestDocument.canvas);
+        return withHiddenWatermark(() => withWorkspaceExportViewport(canvas, () => canvas.toDataURL({
             enableRetinaScaling: true,
             format: "png",
-            height: latestDocument.canvas.height,
-            left: 0,
+            height: exportBox.height,
+            left: exportBox.left,
             multiplier: 1,
             quality: 1,
-            top: 0,
-            width: latestDocument.canvas.width,
-        }));
+            top: exportBox.top,
+            width: exportBox.width,
+        })));
     };
 
     const dataUrlToBlob = async (dataUrl: string) => {
@@ -1464,14 +4249,223 @@ export default function CreativeEditor({
         }
     };
 
-    const runExport = async (type: "svg" | "png" | "json") => {
+    const buildReadinessIssues = (documentSnapshot: CreativeEditorDocument): ReadinessIssue[] => {
+        const visibleElements = documentSnapshot.elements.filter((element) => element.visible !== false);
+        const textElements = visibleElements.filter(canEditTextElement);
+        const imageElements = visibleElements.filter((element): element is Extract<CreativeEditorElement, { type: "image" }> => element.type === "image");
+        const qrElements = visibleElements.filter((element): element is Extract<CreativeEditorElement, { type: "qr" }> => element.type === "qr");
+        const issues: ReadinessIssue[] = [];
+        if (!visibleElements.length) {
+            issues.push({
+                detail: "The final export has no visible layer.",
+                id: "empty-design",
+                label: "Nothing to download",
+                tone: "danger",
+            });
+        }
+        if (documentSnapshot.canvas.width < 300 || documentSnapshot.canvas.height < 300) {
+            issues.push({
+                detail: "Small exports may look soft on social apps and print.",
+                id: "small-canvas",
+                label: "Canvas is small",
+                tone: "warning",
+            });
+        }
+        const safeLeft = Math.round(documentSnapshot.canvas.width * SAFE_AREA_INSET_RATIO);
+        const safeTop = Math.round(documentSnapshot.canvas.height * SAFE_AREA_INSET_RATIO);
+        const safeRight = Math.round(documentSnapshot.canvas.width * (1 - SAFE_AREA_INSET_RATIO));
+        const safeBottom = Math.round(documentSnapshot.canvas.height * (1 - SAFE_AREA_INSET_RATIO));
+        textElements.forEach((element) => {
+            const text = element.text.trim();
+            if (!text) {
+                issues.push({
+                    actionLabel: "Select",
+                    detail: `${element.name} is empty.`,
+                    elementId: element.id,
+                    id: `empty-text-${element.id}`,
+                    label: "Empty text",
+                    tone: "warning",
+                });
+                return;
+            }
+            const backgroundForContrast = normalizeHexColor(element.textBackgroundColor || "")
+                ? element.textBackgroundColor || documentSnapshot.canvas.backgroundColor
+                : documentSnapshot.canvas.backgroundColor;
+            const contrastRatio = getContrastRatio(element.color, backgroundForContrast);
+            if (contrastRatio !== null && contrastRatio < 4.5) {
+                issues.push({
+                    actionLabel: "Select",
+                    detail: `${element.name} may be hard to read.`,
+                    elementId: element.id,
+                    id: `contrast-${element.id}`,
+                    label: "Low text contrast",
+                    tone: "warning",
+                });
+            }
+            if (element.fontSize < 22) {
+                issues.push({
+                    actionLabel: "Select",
+                    detail: `${element.name} is small for phones.`,
+                    elementId: element.id,
+                    id: `small-text-${element.id}`,
+                    label: "Small text",
+                    tone: "note",
+                });
+            }
+            if (element.x < safeLeft
+                || element.y < safeTop
+                || element.x + element.width > safeRight
+                || element.y + element.height > safeBottom) {
+                issues.push({
+                    actionLabel: "Select",
+                    detail: `${element.name} is close to an edge.`,
+                    elementId: element.id,
+                    id: `edge-text-${element.id}`,
+                    label: "Text near edge",
+                    tone: "warning",
+                });
+            }
+        });
+        if (textElements.length && !textElements.some((element) => TEXT_ACTION_PATTERN.test(element.text))) {
+            const hasPlaceholderCta = textPlaceholders.some((placeholder) => CTA_PLACEHOLDER_PATTERN.test(`${placeholder.id} ${placeholder.label}`));
+            issues.push({
+                detail: hasPlaceholderCta
+                    ? "Add a business call to action before posting."
+                    : "Add a clear next step like Order now, Book now, or Call us.",
+                id: "missing-action",
+                label: "No clear action",
+                tone: "note",
+            });
+        }
+        imageElements.forEach((element) => {
+            if (!element.src || UNSAFE_OWNER_IMAGE_URL_PATTERN.test(element.src)) {
+                issues.push({
+                    actionLabel: "Select",
+                    detail: `${element.name} needs a safe image source.`,
+                    elementId: element.id,
+                    id: `image-source-${element.id}`,
+                    label: "Image source issue",
+                    tone: "warning",
+                });
+            }
+        });
+        qrElements.forEach((element) => {
+            if (!element.value.trim()) {
+                issues.push({
+                    actionLabel: "Select",
+                    detail: `${element.name} has no link or text.`,
+                    elementId: element.id,
+                    id: `qr-empty-${element.id}`,
+                    label: "Empty QR code",
+                    tone: "danger",
+                });
+            }
+        });
+        if (!issues.length) {
+            issues.push({
+                detail: "Readable text, visible layers, and export size look ready.",
+                id: "ready",
+                label: "Ready to download",
+                tone: "good",
+            });
+        }
+        return issues;
+    };
+
+    const getReadinessSignature = (issues: ReadinessIssue[]) => (
+        issues
+            .filter((issue) => issue.tone !== "good")
+            .map((issue) => `${issue.id}:${issue.elementId || ""}:${issue.tone}`)
+            .join("|")
+    );
+
+    const runReadinessCheck = () => {
+        const latestDocument = getLatestDocumentFromCanvas();
+        const issues = buildReadinessIssues(latestDocument);
+        setReadinessIssues(issues);
+        setReadinessPanelOpen(true);
+        setRightPanelMode("properties");
+        setInspectorOpen(true);
+        const actionableCount = issues.filter((issue) => issue.tone !== "good").length;
+        setNotice(actionableCount ? `${actionableCount} item${actionableCount === 1 ? "" : "s"} need review.` : "Design is ready to download.");
+        return issues;
+    };
+
+    const shouldPauseForReadiness = (issues: ReadinessIssue[]) => {
+        const signature = getReadinessSignature(issues);
+        if (!signature) return false;
+        setReadinessIssues(issues);
+        setReadinessPanelOpen(true);
+        setRightPanelMode("properties");
+        setInspectorOpen(true);
+        if (lastReadinessSignatureRef.current === signature) return false;
+        lastReadinessSignatureRef.current = signature;
+        setNotice("Review these items before download. Click Download again to continue.");
+        return true;
+    };
+
+    const selectReadinessIssue = (issue: ReadinessIssue) => {
+        if (!issue.elementId) return;
+        selectLayer(issue.elementId);
+        setRightPanelMode("properties");
+        setInspectorOpen(true);
+    };
+
+    const resizePngDataUrl = (dataUrl: string, preset: ExportBundlePreset, backgroundColor: string) => new Promise<string>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+            const outputCanvas = document.createElement("canvas");
+            outputCanvas.width = preset.width;
+            outputCanvas.height = preset.height;
+            const context = outputCanvas.getContext("2d");
+            if (!context) {
+                reject(new Error("Could not prepare export."));
+                return;
+            }
+            context.fillStyle = normalizeHexColor(backgroundColor) || "#ffffff";
+            context.fillRect(0, 0, preset.width, preset.height);
+            const scale = Math.min(preset.width / image.width, preset.height / image.height);
+            const width = image.width * scale;
+            const height = image.height * scale;
+            context.drawImage(image, (preset.width - width) / 2, (preset.height - height) / 2, width, height);
+            resolve(outputCanvas.toDataURL("image/png"));
+        };
+        image.onerror = () => reject(new Error("Could not resize export."));
+        image.src = dataUrl;
+    });
+
+    const downloadExportBundle = async () => {
         setNotice("");
+        try {
+            const latestDocument = getLatestDocumentFromCanvas();
+            const issues = buildReadinessIssues(latestDocument);
+            if (shouldPauseForReadiness(issues)) return;
+            const sourceDataUrl = buildCurrentPngDataUrl();
+            const baseFilename = buildCreativeEditorFilename(latestDocument, "png").replace(/\.png$/i, "");
+            await Promise.all(EXPORT_BUNDLE_PRESETS.map(async (preset) => {
+                const resized = await resizePngDataUrl(sourceDataUrl, preset, latestDocument.canvas.backgroundColor);
+                triggerDownload(resized, `${baseFilename}-${preset.id}-${preset.width}x${preset.height}.png`);
+            }));
+            setNotice("Export bundle downloaded.");
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : "Export bundle failed.");
+        }
+    };
+
+    const runExport = async (type: CreativeEditorExportFormat) => {
+        setNotice("");
+        if (disabledExportFormats.includes(type)) {
+            setNotice(`${type.toUpperCase()} export is not available for this document.`);
+            return null;
+        }
         try {
             if (type === "json") {
                 const result = await downloadCreativeEditorJson(getLatestDocumentFromCanvas());
                 setNotice("Document downloaded.");
                 return result;
             }
+            const issues = buildReadinessIssues(getLatestDocumentFromCanvas());
+            if (shouldPauseForReadiness(issues)) return null;
             const result = await buildFabricExport(type);
             await onExport?.(result);
             setNotice("Asset downloaded.");
@@ -1482,7 +4476,35 @@ export default function CreativeEditor({
         }
     };
 
+    const saveTemplate = async () => {
+        if (!onTemplateSave) return;
+        setNotice("");
+        try {
+            const latestDocument = getLatestDocumentFromCanvas();
+            let previewDataUrl: string | undefined;
+            if (templateSavePreview) {
+                try {
+                    const fullPreviewDataUrl = buildCurrentPngDataUrl();
+                    previewDataUrl = fullPreviewDataUrl.length <= TEMPLATE_THUMBNAIL_MAX_DATA_URL_CHARS
+                        ? fullPreviewDataUrl
+                        : await resizePngDataUrl(fullPreviewDataUrl, TEMPLATE_THUMBNAIL_PRESET, latestDocument.canvas.backgroundColor);
+                    if (previewDataUrl.length > TEMPLATE_THUMBNAIL_MAX_DATA_URL_CHARS) previewDataUrl = undefined;
+                } catch {
+                    previewDataUrl = undefined;
+                }
+            }
+            const result = await onTemplateSave({ document: latestDocument, previewDataUrl });
+            setNotice(result && "notice" in result ? result.notice || "Template saved." : "Template saved.");
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : "Template save failed.");
+        }
+    };
+
     const registerAsset = async () => {
+        if (onTemplateSave) {
+            await saveTemplate();
+            return;
+        }
         const result = await runExport("png");
         if (result) setNotice("Asset saved.");
     };
@@ -1494,16 +4516,17 @@ export default function CreativeEditor({
             return;
         }
         const latestDocument = getLatestDocumentFromCanvas();
-        const dataUrl = withHiddenWatermark(() => canvas.toDataURL({
+        const exportBox = getWorkspaceExportBox(canvas, latestDocument.canvas);
+        const dataUrl = withHiddenWatermark(() => withWorkspaceExportViewport(canvas, () => canvas.toDataURL({
             enableRetinaScaling: true,
             format: "png",
-            height: latestDocument.canvas.height,
-            left: 0,
+            height: exportBox.height,
+            left: exportBox.left,
             multiplier: 1,
             quality: 1,
-            top: 0,
-            width: latestDocument.canvas.width,
-        }));
+            top: exportBox.top,
+            width: exportBox.width,
+        })));
         setPreviewDataUrl(dataUrl);
     };
 
@@ -1515,22 +4538,35 @@ export default function CreativeEditor({
         if (axis === "y") activeObject.flipY = !activeObject.flipY;
         activeObject.setCoords();
         canvas.requestRenderAll();
-        syncDocumentFromCanvas(true);
+        syncDocumentFromCanvas(true, "Flipped layer");
+        scheduleFloatingSelectionToolbarRefresh();
     };
 
     const groupSelection = () => {
+        if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject();
         if (!canvas || !activeObject || activeObject.type !== "activeSelection") {
             setNotice("Select more than one layer first.");
             return;
         }
+        const objects = (activeObject as fabric.ActiveSelection).getObjects().filter(isEditableFabricObject);
+        if (objects.length < 2) {
+            setNotice("Select more than one layer first.");
+            return;
+        }
+        if (objects.some((object) => Boolean((object as CreativeFabricObject).locked))) {
+            setNotice("Unlock selected layers before grouping.");
+            return;
+        }
         (activeObject as fabric.ActiveSelection).toGroup();
         canvas.requestRenderAll();
+        scheduleFloatingSelectionToolbarRefresh();
         setNotice("Selected layers grouped for this edit.");
     };
 
     const ungroupSelection = () => {
+        if (blockIfActivePageLocked()) return;
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject();
         if (!canvas || !activeObject || activeObject.type !== "group") {
@@ -1539,7 +4575,8 @@ export default function CreativeEditor({
         }
         (activeObject as fabric.Group).toActiveSelection();
         canvas.requestRenderAll();
-        syncDocumentFromCanvas(true);
+        syncDocumentFromCanvas(true, "Ungrouped layers");
+        scheduleFloatingSelectionToolbarRefresh();
         setNotice("Group released into editable layers.");
     };
 
@@ -1552,36 +4589,324 @@ export default function CreativeEditor({
         }));
     };
 
-    const renderCuratedGrid = (assets: Array<{ id: string; label: string; src: string }>) => (
-        <div className={styles.assetGrid}>
-            {assets.map((asset) => (
-                <button
-                    aria-label={`Add ${asset.label}`}
-                    key={asset.id}
-                    onClick={() => addCuratedImage(asset)}
-                    type="button"
-                >
-                    <img alt="" src={asset.src} />
-                </button>
-            ))}
+    const renderCuratedGrid = (assets: Array<{ id: string; label: string; src: string }>) => {
+        const searchableAssets = activeTool === "graphics" ? [...STICKER_ASSETS, ...assets] : assets;
+        const filteredAssets = searchableAssets.filter((asset) => matchesDrawerSearch({
+            id: asset.id,
+            label: asset.label,
+            search: `${asset.label} ${activeTool}`,
+        }, drawerSearch));
+        const visibleAssets = filteredAssets.slice(0, DRAWER_ITEM_LIMIT);
+        const hiddenAssetCount = Math.max(0, filteredAssets.length - visibleAssets.length);
+        return (
+            <>
+                {recentInsertions.length && !drawerSearch ? (
+                    <section className={styles.drawerSection}>
+                        <h3>Recently used</h3>
+                        <div className={styles.recentChipRow}>
+                            {recentInsertions.map((item) => (
+                                <span key={item.id}>{item.label}</span>
+                            ))}
+                        </div>
+                    </section>
+                ) : null}
+                {activeTool === "graphics" && !drawerSearch ? (
+                    <>
+                        <section className={styles.drawerSection}>
+                            <div className={styles.drawerSectionHeader}>
+                                <h3>Stickers</h3>
+                                <span>Local</span>
+                            </div>
+                            <div className={styles.stickerGrid}>
+                                {STICKER_ASSETS.map((asset) => (
+                                    <button aria-label={`Add ${asset.label}`} key={asset.id} onClick={() => addCuratedImage(asset)} title={asset.label} type="button">
+                                        <img alt="" src={asset.src} />
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+                        <section className={styles.drawerSection}>
+                            <h3>Popular searches</h3>
+                            <div className={styles.popularChipRow}>
+                                {["Frame", "Shape", "Line", "Rectangle", "Arrow", "Sticker"].map((label) => (
+                                    <button key={label} onClick={() => setDrawerSearch(label.toLowerCase())} type="button">{label}</button>
+                                ))}
+                            </div>
+                        </section>
+                    </>
+                ) : null}
+                <section className={styles.drawerSection}>
+                    <h3>{drawerSearch ? "Search results" : "Recommended for you"}</h3>
+                    {filteredAssets.length ? (
+                        <div className={styles.assetGrid}>
+                            {visibleAssets.map((asset) => (
+                                <button
+                                    aria-label={`Add ${asset.label}`}
+                                    key={asset.id}
+                                    onClick={() => addCuratedImage(asset)}
+                                    type="button"
+                                >
+                                    <img alt="" src={asset.src} />
+                                    <span>{asset.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className={styles.legacyHelperText}>No matching assets.</p>
+                    )}
+                    {hiddenAssetCount ? <p className={styles.legacyHelperText}>Showing first {visibleAssets.length}. Search to narrow {hiddenAssetCount} more.</p> : null}
+                </section>
+            </>
+        );
+    };
+
+    const renderAiToolResult = () => {
+        if (!aiToolResult) return null;
+        const suggestions = aiToolResult.result.suggestions || [];
+        const findings = aiToolResult.result.findings || [];
+        return (
+            <div className={styles.aiResultPanel}>
+                <div className={styles.aiResultHeader}>
+                    <strong>{aiToolResult.action.label}</strong>
+                    <span>{aiToolResult.result.notice || "Result ready"}</span>
+                </div>
+                {suggestions.length ? (
+                    <div className={styles.aiSuggestionList}>
+                        {suggestions.map((suggestionValue) => (
+                            <article className={styles.aiSuggestionCard} key={suggestionValue.id}>
+                                <strong>{suggestionValue.label}</strong>
+                                <p>{suggestionValue.text}</p>
+                                <div>
+                                    <button onClick={() => copyAiSuggestion(suggestionValue)} type="button">
+                                        <LuCopy size={14} />
+                                        Copy
+                                    </button>
+                                    <button onClick={() => addAiSuggestionToCanvas(suggestionValue)} type="button">
+                                        <LuPlus size={14} />
+                                        {suggestionValue.actionLabel || "Add text"}
+                                    </button>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                ) : null}
+                {findings.length ? (
+                    <div className={styles.aiFindingList}>
+                        {findings.map((findingValue) => (
+                            <div className={styles.aiFinding} data-tone={findingValue.tone} key={findingValue.id}>
+                                <span>{getAiFindingToneLabel(findingValue)}</span>
+                                <p>{findingValue.text}</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : null}
+                {!suggestions.length && !findings.length ? (
+                    <p className={styles.legacyHelperText}>No change was suggested.</p>
+                ) : null}
+            </div>
+        );
+    };
+
+    const renderAiToolsPanel = () => (
+        <div className={styles.aiToolsPanel}>
+            <div className={styles.aiToolsIntro}>
+                <LuSparkles size={18} />
+                <div>
+                    <strong>{productLabel} assists, you approve.</strong>
+                    <span>Text stays editable. Export/download remains manual.</span>
+                </div>
+            </div>
+            {designCueCommands.length && onDesignCueRequest && onDesignCueApply ? (
+                <DesignCuePanel
+                    busy={designCueBusy}
+                    commands={designCueCommands}
+                    hasTextSelection={Boolean(selectedText)}
+                    onApply={() => { void applyDesignCuePatchSet(); }}
+                    onCancel={cancelDesignCuePatchSet}
+                    onRunCommand={runDesignCueCommand}
+                    onRunComment={runDesignCueComment}
+                    onTryAgain={tryDesignCueAgain}
+                    patchSet={designCuePatchSet}
+                    selectedLayerName={selectedElement?.name}
+                />
+            ) : null}
+            {renderAiToolResult()}
+            {aiToolActions.length ? (
+                AI_TOOL_CATEGORY_ORDER.map((category) => {
+                    const actions = aiToolActions.filter((action) => action.category === category);
+                    if (!actions.length) return null;
+                    return (
+                        <section className={styles.aiToolGroup} key={category}>
+                            <h3>{AI_TOOL_CATEGORY_LABELS[category]}</h3>
+                            <div className={styles.aiToolGrid}>
+                                {actions.map((action) => {
+                                    const Icon = getAiToolIcon(action);
+                                    const disabledReason = getAiToolDisabledReason(action);
+                                    const busy = aiToolBusyId === action.id;
+                                    return (
+                                        <button
+                                            data-active={aiToolResult?.action.id === action.id ? "true" : "false"}
+                                            disabled={Boolean(disabledReason) || Boolean(aiToolBusyId)}
+                                            key={action.id}
+                                            onClick={() => runAiToolAction(action)}
+                                            type="button"
+                                        >
+                                            <span className={styles.aiToolIcon}>
+                                                <Icon size={17} />
+                                            </span>
+                                            <span>
+                                                <strong>{busy ? "Working..." : action.label}</strong>
+                                                <small>{action.description}</small>
+                                                <em>{disabledReason || action.ownerHint || action.costLabel || "Ready"}</em>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    );
+                })
+            ) : (
+                <div className={styles.aiEmptyState}>
+                    <LuShieldCheck size={18} />
+                    <span>AI Tools are not configured for this product surface.</span>
+                </div>
+            )}
         </div>
     );
 
     const renderDrawerContent = () => {
+        if (activeTool === "ai") {
+            return renderAiToolsPanel();
+        }
         if (activeTool === "background") {
             return (
                 <>
-                    <div className={styles.backgroundPreview} style={{ background: documentValue.canvas.backgroundColor }} />
-                    <div className={styles.swatchGrid}>
-                        {COLOR_SWATCHES.map((color) => (
-                            <button
-                                aria-label={`Set background ${color}`}
-                                className={styles.swatch}
-                                key={color}
-                                onClick={() => updateCanvas({ backgroundColor: color })}
-                                style={{ background: color }}
-                                type="button"
+                    <label className={styles.legacyCheckboxField}>
+                        <input checked readOnly type="checkbox" />
+                        Show background
+                    </label>
+                    <div className={styles.legacySegmented} role="group" aria-label="Background source">
+                        <button className={styles.legacySegmentButton} data-active="true" type="button">
+                            <LuPalette size={17} />
+                            Color
+                        </button>
+                        <button
+                            className={styles.legacySegmentButton}
+                            onClick={() => setActiveTool("images")}
+                            type="button"
+                        >
+                            <LuImage size={17} />
+                            Image
+                        </button>
+                    </div>
+                    <p className={styles.legacyHelperText}>Choose color type of background</p>
+                    <div className={styles.legacyColorModeRow}>
+                        <button data-active={backgroundMode === "solid" ? "true" : "false"} onClick={useSolidBackground} type="button">
+                            <LuDownload size={14} />
+                            Solid
+                        </button>
+                        <button
+                            data-active={backgroundMode === "gradient" ? "true" : "false"}
+                            onClick={() => updateBackgroundGradient()}
+                            type="button"
+                        >
+                            <LuMoon size={14} />
+                            Gradient
+                        </button>
+                    </div>
+                    <div className={styles.legacyCurrentColor}>
+                        <span>Current Color:</span>
+                        <label>
+                            <input
+                                aria-label="Current background color"
+                                onChange={(event) => (
+                                    backgroundMode === "gradient"
+                                        ? updateBackgroundGradient({ from: event.target.value })
+                                        : updateCanvas({ backgroundColor: event.target.value })
+                                )}
+                                type="color"
+                                value={documentValue.canvas.backgroundColor}
                             />
+                            <span>{documentValue.canvas.backgroundColor.toUpperCase()}</span>
+                        </label>
+                    </div>
+                    <div className={styles.drawerSection}>
+                        <div className={styles.drawerSectionHeader}>
+                            <h3>Common sizes</h3>
+                            <span>{documentValue.canvas.width} x {documentValue.canvas.height}</span>
+                        </div>
+                        <div className={styles.sizePresetGrid}>
+                            {CANVAS_SIZE_PRESETS.map((preset) => {
+                                const active = documentValue.canvas.width === preset.width && documentValue.canvas.height === preset.height;
+                                return (
+                                    <button
+                                        data-active={active ? "true" : "false"}
+                                        key={preset.id}
+                                        onClick={() => updateCanvas({ height: preset.height, width: preset.width })}
+                                        type="button"
+                                    >
+                                        <span>{preset.label}</span>
+                                        <small>{preset.width} x {preset.height} / {preset.description}</small>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                    {backgroundMode === "gradient" ? (
+                        <div className={styles.gradientGrid}>
+                            <label>
+                                From
+                                <input
+                                    aria-label="Gradient from color"
+                                    onChange={(event) => updateBackgroundGradient({ from: event.target.value })}
+                                    type="color"
+                                    value={documentValue.canvas.backgroundGradient?.from || documentValue.canvas.backgroundColor}
+                                />
+                            </label>
+                            <label>
+                                To
+                                <input
+                                    aria-label="Gradient to color"
+                                    onChange={(event) => updateBackgroundGradient({ to: event.target.value })}
+                                    type="color"
+                                    value={documentValue.canvas.backgroundGradient?.to || DEFAULT_GRADIENT.to}
+                                />
+                            </label>
+                            <label>
+                                Angle
+                                <input
+                                    max={360}
+                                    min={0}
+                                    onChange={(event) => updateBackgroundGradient({ angle: numberInput(Number(event.target.value), 90) })}
+                                    type="number"
+                                    value={documentValue.canvas.backgroundGradient?.angle ?? 90}
+                                />
+                            </label>
+                        </div>
+                    ) : null}
+                    <div className={styles.legacyPaletteList}>
+                        {SOLID_COLORS_LIST.map((group, groupIndex) => (
+                            <div className={styles.legacyPaletteGroup} key={`${group.label}-${groupIndex}`}>
+                                <strong>{group.label}</strong>
+                                <div>
+                                    {group.colors.map((color) => (
+                                        <button
+                                            aria-label={`Set background ${color}`}
+                                            className={styles.legacyColorSwatch}
+                                            data-active={documentValue.canvas.backgroundColor.toLowerCase() === color.toLowerCase() ? "true" : "false"}
+                                            key={color}
+                                            onClick={() => (
+                                                backgroundMode === "gradient"
+                                                    ? updateBackgroundGradient({ from: color })
+                                                    : updateCanvas({ backgroundColor: color })
+                                            )}
+                                            style={{ background: color }}
+                                            type="button"
+                                        />
+                                    ))}
+                                </div>
+                            </div>
                         ))}
                     </div>
                     <div className={styles.fieldGrid}>
@@ -1608,9 +4933,18 @@ export default function CreativeEditor({
             );
         }
         if (activeTool === "images") {
+            const filteredAssetSources = assetSources.filter((asset) => matchesDrawerSearch({
+                id: asset.id,
+                label: asset.label,
+                search: `${asset.label} ${asset.type} ${asset.sourceRef || ""}`,
+            }, drawerSearch));
             return (
                 <>
                     <div className={styles.imageAdder}>
+                        <button disabled={!allowRasterImports} onClick={() => imageInputRef.current?.click()} type="button">
+                            <LuFileImage size={16} />
+                            Upload image file
+                        </button>
                         <input
                             aria-label="Image URL"
                             disabled={!allowRasterImports}
@@ -1621,7 +4955,12 @@ export default function CreativeEditor({
                         <button
                             disabled={!allowRasterImports || !imageUrl.trim()}
                             onClick={() => {
-                                addElement(buildCreativeEditorImageElement({ src: imageUrl.trim() }));
+                                const safeImageUrl = normalizeOwnerImageUrl(imageUrl);
+                                if (!safeImageUrl) {
+                                    setNotice("Use a direct PNG, JPG, WebP, GIF, or approved Asset Library image URL.");
+                                    return;
+                                }
+                                addElement(buildCreativeEditorImageElement({ src: safeImageUrl }));
                                 setImageUrl("");
                             }}
                             type="button"
@@ -1629,138 +4968,563 @@ export default function CreativeEditor({
                             <LuImage size={16} />
                             Add image
                         </button>
-                        <textarea
-                            aria-label="SVG markup"
-                            disabled={!allowRasterImports}
-                            onChange={(event) => setSvgMarkup(event.target.value)}
-                            placeholder="<svg ..."
-                            value={svgMarkup}
-                        />
-                        <button
-                            disabled={!allowRasterImports || !svgMarkup.trim()}
-                            onClick={addSvgMarkup}
-                            type="button"
-                        >
-                            <LuImport size={16} />
-                            Add SVG code
-                        </button>
+                        <p className={styles.legacyHelperText}>Use PNG, JPG, WebP, GIF, or approved Asset Library images. Pasted SVG code is not imported for safety.</p>
                     </div>
-                    {allowRasterImports && assetSources.length ? (
-                        <div className={styles.assetSourceList}>
-                            {assetSources.slice(0, 10).map((asset) => (
-                                <button
-                                    key={asset.id}
-                                    onClick={() => addElement(buildCreativeEditorImageElement({ name: asset.label, src: asset.url }))}
-                                    type="button"
-                                >
-                                    <LuImage size={15} />
-                                    <span>{asset.label}</span>
-                                </button>
-                            ))}
-                        </div>
+                    {recentInsertions.length && !drawerSearch ? (
+                        <section className={styles.drawerSection}>
+                            <h3>Recently used</h3>
+                            <div className={styles.recentChipRow}>
+                                {recentInsertions.map((item) => <span key={item.id}>{item.label}</span>)}
+                            </div>
+                        </section>
+                    ) : null}
+                    {allowRasterImports && filteredAssetSources.length ? (
+                        <section className={styles.drawerSection}>
+                            <h3>{drawerSearch ? "Search results" : "Approved assets"}</h3>
+                            <div className={styles.assetSourceList}>
+                                {filteredAssetSources.slice(0, 12).map((asset) => (
+                                    <button
+                                        key={asset.id}
+                                        onClick={() => addElement(buildCreativeEditorImageElement({ name: asset.label, src: asset.url }))}
+                                        type="button"
+                                    >
+                                        <LuImage size={15} />
+                                        <span>{asset.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+                    ) : allowRasterImports && drawerSearch ? (
+                        <p className={styles.legacyHelperText}>No approved image matched the search.</p>
                     ) : null}
                 </>
             );
         }
         if (activeTool === "text") {
+            const filteredPresets = TEXT_PRESETS.filter((preset) => matchesDrawerSearch({
+                id: preset.id,
+                label: preset.label,
+                search: `${preset.label} ${preset.text}`,
+            }, drawerSearch));
+            const filteredTextTemplates = TEXT_TEMPLATE_COMBINATIONS.filter((template) => matchesDrawerSearch({
+                description: template.description,
+                id: template.id,
+                label: template.label,
+                search: `${getTextTemplateSearch(template)} font combination text effect ready made template`,
+            }, drawerSearch));
+            const visibleTextTemplates = filteredTextTemplates.slice(0, DRAWER_ITEM_LIMIT);
+            const hiddenTextTemplateCount = Math.max(0, filteredTextTemplates.length - visibleTextTemplates.length);
+            const filteredPlaceholders = textPlaceholders.filter((placeholder) => matchesDrawerSearch({
+                id: placeholder.id,
+                label: placeholder.label,
+                search: `${placeholder.label} ${placeholder.value}`,
+            }, drawerSearch));
             return (
-                <div className={styles.drawerActionGrid}>
-                    <button onClick={() => addElement(buildCreativeEditorTextElement("Headline"))} type="button">
-                        <LuType size={18} />
-                        Add headline
+                <>
+                    <button className={styles.textPrimaryAction} onClick={() => addTextPreset(TEXT_PRESETS[0])} type="button">
+                        <LuType size={22} />
+                        Add a text box
                     </button>
-                    <button onClick={() => addElement(buildCreativeEditorTextElement("Subheading"))} type="button">
-                        <LuType size={18} />
-                        Add subheading
+                    <button className={styles.textSecondaryAction} disabled title="Magic Write requires a product-owned AI contract." type="button">
+                        <LuSparkles size={18} />
+                        Magic Write
                     </button>
-                    <button onClick={() => addElement(buildCreativeEditorTextElement("Body text"))} type="button">
-                        <LuType size={18} />
-                        Add body
-                    </button>
-                    <button onClick={() => addElement(buildCreativeEditorPathTextElement("Curved text"))} type="button">
-                        <LuPencil size={18} />
-                        Path text
-                    </button>
-                </div>
+                    <section className={styles.drawerSection}>
+                        <div className={styles.drawerSectionHeader}>
+                            <h3>Brand Kit</h3>
+                            <button onClick={() => setActiveTool("brandKit")} type="button">Edit</button>
+                        </div>
+                        <button
+                            className={styles.brandFontAction}
+                            onClick={() => setActiveTool("brandKit")}
+                            type="button"
+                        >
+                            Add your brand fonts
+                        </button>
+                    </section>
+                    <section className={styles.drawerSection}>
+                        <h3>Default text styles</h3>
+                        <div className={styles.textPresetList}>
+                            {filteredPresets.map((preset) => (
+                                <button key={preset.id} onClick={() => addTextPreset(preset)} type="button">
+                                    <span style={{ fontSize: Math.min(28, Math.max(16, preset.fontSize * 0.45)) }}>{preset.text}</span>
+                                    <small>{preset.label}</small>
+                                </button>
+                            ))}
+                            {!filteredPresets.length ? <p className={styles.legacyHelperText}>No matching text style.</p> : null}
+                        </div>
+                    </section>
+                    <section className={styles.drawerSection}>
+                        <h3>Business text</h3>
+                        {filteredPlaceholders.length ? (
+                            <div className={styles.placeholderList}>
+                                {filteredPlaceholders.map((placeholder) => (
+                                    <button key={placeholder.id} onClick={() => addPlaceholderText(placeholder)} type="button">
+                                        <strong>{placeholder.label}</strong>
+                                        <span>{placeholder.value}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className={styles.legacyHelperText}>No business text matched the search.</p>
+                        )}
+                    </section>
+                    {!drawerSearch || filteredTextTemplates.length ? (
+                        <section className={styles.drawerSection}>
+                            <div className={styles.drawerSectionHeader}>
+                                <h3>{drawerSearch ? "Text template results" : "Ready-made text templates"}</h3>
+                                <span>{filteredTextTemplates.length}</span>
+                            </div>
+                            <div className={styles.textTemplateGrid}>
+                                {visibleTextTemplates.map((template) => (
+                                    <button
+                                        aria-label={`Add ${template.label} text template`}
+                                        key={template.id}
+                                        onClick={() => addTextTemplate(template)}
+                                        title={template.label}
+                                        type="button"
+                                    >
+                                        {renderTextTemplatePreview(template)}
+                                    </button>
+                                ))}
+                            </div>
+                            {hiddenTextTemplateCount ? <p className={styles.legacyHelperText}>Showing first {visibleTextTemplates.length}. Search to narrow {hiddenTextTemplateCount} more.</p> : null}
+                        </section>
+                    ) : null}
+                    <div className={styles.drawerActionGrid}>
+                        <button onClick={() => addElement(buildCreativeEditorPathTextElement("Curved text"))} type="button">
+                            <LuPencil size={18} />
+                            Path text
+                        </button>
+                    </div>
+                </>
+            );
+        }
+        if (activeTool === "styles") {
+            const filteredProjectStyles = PROJECT_STYLE_PRESETS.filter((preset) => matchesDrawerSearch({
+                description: preset.description,
+                id: preset.id,
+                label: preset.label,
+                search: `${preset.label} ${preset.description} ${preset.backgroundColor} ${preset.accentColor}`,
+            }, drawerSearch));
+            const filteredTextTemplates = TEXT_TEMPLATE_COMBINATIONS.filter((template) => matchesDrawerSearch({
+                description: template.description,
+                id: template.id,
+                label: template.label,
+                search: `${getTextTemplateSearch(template)} font combination style text effect`,
+            }, drawerSearch));
+            return (
+                <>
+                    <section className={styles.drawerSection}>
+                        <div className={styles.drawerSectionHeader}>
+                            <h3>Project style</h3>
+                            <button onClick={shuffleProjectStyle} type="button">
+                                <LuShuffle size={15} />
+                                Shuffle
+                            </button>
+                        </div>
+                        <div className={styles.projectStyleCard}>
+                            <div className={styles.styleSwatchRow}>
+                                <span style={{ background: documentValue.canvas.backgroundColor }} />
+                                <span style={{ background: primaryColor }} />
+                                <span style={{ background: brand?.secondaryColor || "#4fac96" }} />
+                                <span style={{ background: brand?.accentColor || "#ffd45d" }} />
+                            </div>
+                            <strong>{brand?.name || productLabel}</strong>
+                            <p>Apply a ready campaign look without rebuilding the design.</p>
+                        </div>
+                        <div className={styles.styleQuickActions}>
+                            <button onClick={applyBrandProjectStyle} type="button">
+                                <LuPalette size={16} />
+                                Apply brand style
+                            </button>
+                            <button onClick={shuffleProjectStyle} type="button">
+                                <LuShuffle size={16} />
+                                Shuffle style
+                            </button>
+                        </div>
+                    </section>
+                    <section className={styles.drawerSection}>
+                        <h3>{drawerSearch ? "Style results" : "Ready-made styles"}</h3>
+                        {filteredProjectStyles.length ? (
+                            <div className={styles.stylePresetGrid}>
+                                {filteredProjectStyles.map((preset) => (
+                                    <button
+                                        className={styles.stylePresetButton}
+                                        key={preset.id}
+                                        onClick={() => applyProjectStyle(preset)}
+                                        type="button"
+                                    >
+                                        <span className={styles.styleSwatchRow}>
+                                            <span style={{ background: preset.backgroundColor }} />
+                                            <span style={{ background: preset.textColor }} />
+                                            <span style={{ background: preset.accentColor }} />
+                                            <span style={{ background: preset.secondaryColor }} />
+                                        </span>
+                                        <strong>{preset.label}</strong>
+                                        <small>{preset.description}</small>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className={styles.legacyHelperText}>No matching style.</p>
+                        )}
+                    </section>
+                    {!drawerSearch || filteredTextTemplates.length ? (
+                        <section className={styles.drawerSection}>
+                            <div className={styles.drawerSectionHeader}>
+                                <h3>{drawerSearch ? "Font combination results" : "Text combinations"}</h3>
+                                <span>{filteredTextTemplates.length}</span>
+                            </div>
+                            <div className={styles.textTemplateGrid}>
+                                {filteredTextTemplates.slice(0, 12).map((template) => (
+                                    <button
+                                        aria-label={`Add ${template.label} text template`}
+                                        key={template.id}
+                                        onClick={() => addTextTemplate(template)}
+                                        title={template.label}
+                                        type="button"
+                                    >
+                                        {renderTextTemplatePreview(template)}
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+                    ) : null}
+                </>
             );
         }
         if (activeTool === "shapes") {
+            const shapeActions = [
+                { id: "rect", label: "Rectangle", search: "rectangle square box", icon: <LuSquare size={18} />, run: () => addElement(buildCreativeEditorRectElement(primaryColor)) },
+                { id: "circle", label: "Circle", search: "circle ellipse round", icon: <LuCircle size={18} />, run: () => addElement(buildCreativeEditorEllipseElement(primaryColor)) },
+                { id: "triangle", label: "Triangle", search: "triangle", icon: <LuTriangle size={18} />, run: () => addElement(buildCreativeEditorTriangleElement(primaryColor)) },
+                { id: "line", label: "Line", search: "line stroke", icon: <LuPencil size={18} />, run: () => addElement(buildCreativeEditorLineElement(primaryColor)) },
+                { id: "arrow", label: "Arrow", search: "arrow", icon: <LuArrowRight size={18} />, run: () => addElement(buildCreativeEditorArrowElement(primaryColor, "arrow")) },
+                { id: "thin-arrow", label: "Thin arrow", search: "thin arrow", icon: <LuArrowRight size={18} />, run: () => addElement(buildCreativeEditorArrowElement(primaryColor, "thin-tail-arrow")) },
+                { id: "draw-polygon", label: "Draw polygon", search: "draw polygon custom shape", icon: <LuPencil size={18} />, run: () => setInteractionMode("polygon") },
+                { id: "hexagon", label: "Hexagon", search: "hexagon polygon", icon: <LuHexagon size={18} />, run: () => addElement(buildCreativeEditorHexagonElement(primaryColor)) },
+                { id: "pentagon", label: "Pentagon", search: "pentagon polygon", icon: <LuShapes size={18} />, run: () => addElement(buildCreativeEditorPentagonElement(primaryColor)) },
+                { id: "star", label: "Star", search: "star", icon: <LuStar size={18} />, run: () => addElement(buildCreativeEditorStarElement(primaryColor)) },
+                { id: "egg", label: "Egg", search: "egg oval organic", icon: <LuCircle size={18} />, run: () => addElement(buildCreativeEditorEggElement(primaryColor)) },
+            ].filter((item) => matchesDrawerSearch(item, drawerSearch));
             return (
                 <div className={styles.drawerActionGrid}>
-                    <button onClick={() => addElement(buildCreativeEditorRectElement(primaryColor))} type="button">
-                        <LuSquare size={18} />
-                        Rectangle
-                    </button>
-                    <button onClick={() => addElement(buildCreativeEditorEllipseElement(primaryColor))} type="button">
-                        <LuCircle size={18} />
-                        Circle
-                    </button>
-                    <button onClick={() => addElement(buildCreativeEditorTriangleElement(primaryColor))} type="button">
-                        <LuTriangle size={18} />
-                        Triangle
-                    </button>
-                    <button onClick={() => addElement(buildCreativeEditorLineElement(primaryColor))} type="button">
-                        <LuPencil size={18} />
-                        Line
-                    </button>
-                    <button onClick={() => addElement(buildCreativeEditorArrowElement(primaryColor, "arrow"))} type="button">
-                        <LuArrowRight size={18} />
-                        Arrow
-                    </button>
-                    <button onClick={() => addElement(buildCreativeEditorArrowElement(primaryColor, "thin-tail-arrow"))} type="button">
-                        <LuArrowRight size={18} />
-                        Thin arrow
-                    </button>
-                    <button onClick={() => setInteractionMode("polygon")} type="button">
-                        <LuPencil size={18} />
-                        Draw polygon
-                    </button>
-                    <button onClick={() => addElement(buildCreativeEditorHexagonElement(primaryColor))} type="button">
-                        <LuHexagon size={18} />
-                        Hexagon
-                    </button>
-                    <button onClick={() => addElement(buildCreativeEditorPentagonElement(primaryColor))} type="button">
-                        <LuShapes size={18} />
-                        Pentagon
-                    </button>
-                    <button onClick={() => addElement(buildCreativeEditorStarElement(primaryColor))} type="button">
-                        <LuStar size={18} />
-                        Star
-                    </button>
-                    <button onClick={() => addElement(buildCreativeEditorEggElement(primaryColor))} type="button">
-                        <LuCircle size={18} />
-                        Egg
-                    </button>
+                    {shapeActions.map((action) => (
+                        <button key={action.id} onClick={action.run} type="button">
+                            {action.icon}
+                            {action.label}
+                        </button>
+                    ))}
+                    {!shapeActions.length ? <p className={styles.legacyHelperText}>No matching tools.</p> : null}
                 </div>
             );
         }
         if (activeTool === "qr") {
             return (
-                <div className={styles.drawerActionGrid}>
-                    <button
-                        onClick={() => addElement(buildCreativeEditorQrElement(documentValue.metadata?.brand?.name || "https://example.com"))}
-                        type="button"
-                    >
-                        <LuQrCode size={18} />
-                        QR code
-                    </button>
+                <div className={styles.barcodePanel}>
+                    <div className={styles.qrPreviewCard} style={{ background: qrLightColor }}>
+                        <LuQrCode color={qrDarkColor} size={76} />
+                        <span>QR preview</span>
+                    </div>
+                    <label>
+                        Link or text
+                        <textarea
+                            onChange={(event) => setQrValue(event.target.value)}
+                            placeholder="https://example.com/"
+                            value={qrValue}
+                        />
+                    </label>
+                    <div className={styles.gradientGrid}>
+                        <label>
+                            QR color
+                            <input
+                                aria-label="QR foreground color"
+                                onChange={(event) => setQrDarkColor(event.target.value)}
+                                type="color"
+                                value={qrDarkColor}
+                            />
+                        </label>
+                        <label>
+                            Background
+                            <input
+                                aria-label="QR background color"
+                                onChange={(event) => setQrLightColor(event.target.value)}
+                                type="color"
+                                value={qrLightColor}
+                            />
+                        </label>
+                    </div>
+                    <label>
+                        Size
+                        <input
+                            max={520}
+                            min={96}
+                            onChange={(event) => setQrSize(numberInput(Number(event.target.value), qrSize))}
+                            type="number"
+                            value={qrSize}
+                        />
+                    </label>
+                    <div className={styles.drawerActionGrid}>
+                        <button disabled={!qrValue.trim()} onClick={addQrCode} type="button">
+                            <LuQrCode size={18} />
+                            Add QR code
+                        </button>
+                    </div>
                 </div>
             );
         }
-        if (activeTool === "templates") {
+        if (activeTool === "barcode") {
+            const barcodePreview = buildBarcodeDataUri({
+                backgroundColor: barcodeBackgroundColor,
+                displayText: barcodeDisplayText,
+                lineColor: barcodeLineColor,
+                text: barcodeText,
+                value: barcodeValue,
+            });
             return (
-                <div className={styles.templateGrid}>
-                    {CREATIVE_EDITOR_STARTER_TEMPLATES.map((template) => (
-                        <button
-                            key={template.id}
-                            onClick={() => applyTemplate(template.id)}
-                            type="button"
-                        >
-                            <strong>{template.label}</strong>
-                            <span>{template.width} X {template.height}</span>
+                <div className={styles.barcodePanel}>
+                    <div className={styles.barcodePreview}>
+                        <img alt="Barcode preview" src={barcodePreview} />
+                    </div>
+                    <label>
+                        Value
+                        <input
+                            onChange={(event) => setBarcodeValue(event.target.value)}
+                            placeholder="https://example.com/"
+                            value={barcodeValue}
+                        />
+                    </label>
+                    <label>
+                        Text
+                        <input
+                            onChange={(event) => setBarcodeText(event.target.value)}
+                            placeholder={productLabel}
+                            value={barcodeText}
+                        />
+                    </label>
+                    <div className={styles.gradientGrid}>
+                        <label>
+                            Background
+                            <input
+                                aria-label="Barcode background color"
+                                onChange={(event) => setBarcodeBackgroundColor(event.target.value)}
+                                type="color"
+                                value={barcodeBackgroundColor}
+                            />
+                        </label>
+                        <label>
+                            Bars
+                            <input
+                                aria-label="Barcode bar color"
+                                onChange={(event) => setBarcodeLineColor(event.target.value)}
+                                type="color"
+                                value={barcodeLineColor}
+                            />
+                        </label>
+                    </div>
+                    <label className={styles.legacyCheckboxField}>
+                        <input
+                            checked={barcodeDisplayText}
+                            onChange={(event) => setBarcodeDisplayText(event.target.checked)}
+                            type="checkbox"
+                        />
+                        Display text
+                    </label>
+                    <div className={styles.drawerActionGrid}>
+                        <button disabled={!barcodeValue.trim()} onClick={addBarcode} type="button">
+                            <LuFileJson size={18} />
+                            Add barcode
                         </button>
-                    ))}
+                    </div>
                 </div>
+            );
+        }
+        if (activeTool === "myStuff") {
+            const filteredAssetSources = assetSources.filter((asset) => matchesDrawerSearch({
+                id: asset.id,
+                label: asset.label,
+                search: `${asset.label} ${asset.type} ${asset.sourceRef || ""} asset upload`,
+            }, drawerSearch));
+            return (
+                <>
+                    <section className={styles.drawerSection}>
+                        <div className={styles.uploadDropCard}>
+                            <LuUploadCloud size={26} />
+                            <strong>Upload image file</strong>
+                            <span>PNG, JPG, WebP, or GIF. SVG markup stays blocked.</span>
+                            <button disabled={!allowRasterImports} onClick={() => imageInputRef.current?.click()} type="button">
+                                <LuFileImage size={16} />
+                                Choose file
+                            </button>
+                        </div>
+                    </section>
+                    <section className={styles.drawerSection}>
+                        <h3>Recent</h3>
+                        {recentInsertions.length ? (
+                            <div className={styles.recentChipRow}>
+                                {recentInsertions.map((item) => <span key={item.id}>{item.label}</span>)}
+                            </div>
+                        ) : (
+                            <p className={styles.legacyHelperText}>Recent uploads and inserted assets appear here during this editing session.</p>
+                        )}
+                    </section>
+                    <section className={styles.drawerSection}>
+                        <h3>{drawerSearch ? "Asset results" : "Approved assets"}</h3>
+                        {filteredAssetSources.length ? (
+                            <div className={styles.assetSourceList}>
+                                {filteredAssetSources.slice(0, 12).map((asset) => (
+                                    <button
+                                        key={asset.id}
+                                        onClick={() => addElement(buildCreativeEditorImageElement({ name: asset.label, src: asset.url }))}
+                                        type="button"
+                                    >
+                                        <LuImage size={15} />
+                                        <span>{asset.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className={styles.legacyHelperText}>No approved assets matched the search.</p>
+                        )}
+                    </section>
+                </>
+            );
+        }
+        if (activeTool === "brandKit") {
+            const filteredBrandColors = brandColorItems.filter((item) => matchesDrawerSearch({
+                id: item.id,
+                label: item.label,
+                search: `${item.label} ${item.value}`,
+            }, drawerSearch));
+            const filteredBrandLogos = brandLogoAssets.filter((asset) => matchesDrawerSearch({
+                id: asset.id,
+                label: asset.label,
+                search: `${asset.label} logo brand`,
+            }, drawerSearch));
+            return (
+                <>
+                    <section className={styles.drawerSection}>
+                        <h3>Brand colors</h3>
+                        {filteredBrandColors.length ? (
+                            <div className={styles.brandColorGrid}>
+                                {filteredBrandColors.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => applyColor(item.value)}
+                                        style={{ background: item.value }}
+                                        title={`Apply ${item.label}`}
+                                        type="button"
+                                    >
+                                        <span>{item.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className={styles.legacyHelperText}>No brand colors matched the search.</p>
+                        )}
+                    </section>
+                    <section className={styles.drawerSection}>
+                        <h3>Brand assets</h3>
+                        {filteredBrandLogos.length ? (
+                            <div className={styles.assetSourceList}>
+                                {filteredBrandLogos.map((asset) => (
+                                    <button
+                                        key={asset.id}
+                                        onClick={() => addElement(buildCreativeEditorImageElement({
+                                            name: asset.label,
+                                            src: asset.url,
+                                            x: Math.round(documentRef.current.canvas.width * 0.72),
+                                            y: Math.round(documentRef.current.canvas.height * 0.08),
+                                        }))}
+                                        type="button"
+                                    >
+                                        <LuImage size={15} />
+                                        <span>{asset.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className={styles.legacyHelperText}>No brand logos connected.</p>
+                        )}
+                    </section>
+                    <section className={styles.drawerSection}>
+                        <h3>Brand text</h3>
+                        <div className={styles.drawerActionGrid}>
+                            <button
+                                disabled={!brand?.name}
+                                onClick={() => brand?.name && addPlaceholderText({
+                                    id: "brand-name",
+                                    label: "Business name",
+                                    sourceRef: "document_brand",
+                                    value: brand.name,
+                                })}
+                                type="button"
+                            >
+                                <LuType size={18} />
+                                Add business name
+                            </button>
+                            <button
+                                disabled={!selectedElement || !canEditTextElement(selectedElement)}
+                                onClick={() => selectedElement && canEditTextElement(selectedElement) && updateSelected({ fontFamily: brand?.fontFamily || FONT_FAMILY_OPTIONS[0] } as Partial<CreativeEditorElement>)}
+                                type="button"
+                            >
+                                <LuPalette size={18} />
+                                Apply brand font
+                            </button>
+                        </div>
+                    </section>
+                </>
+            );
+        }
+        if (activeTool === "templates") {
+            const filteredTemplates = CREATIVE_EDITOR_STARTER_TEMPLATES.filter((template) => matchesDrawerSearch({
+                description: template.description,
+                id: template.id,
+                label: template.label,
+                search: `${template.label} ${template.description} ${template.width} ${template.height}`,
+            }, drawerSearch));
+            return (
+                <>
+                    {!drawerSearch ? (
+                        <section className={styles.drawerSection}>
+                            <div className={styles.drawerSectionHeader}>
+                                <h3>Start from goal</h3>
+                                <span>SMB</span>
+                            </div>
+                            <div className={styles.campaignStarterGrid}>
+                                {CAMPAIGN_STARTER_ACTIONS.map((action) => (
+                                    <button key={action.id} onClick={() => applyCampaignStarter(action)} type="button">
+                                        <strong>{action.label}</strong>
+                                        <span>{action.description}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+                    ) : null}
+                    <section className={styles.drawerSection}>
+                        <h3>{drawerSearch ? "Search results" : "Starter templates"}</h3>
+                        {filteredTemplates.length ? (
+                            <div className={styles.templateGrid}>
+                                {filteredTemplates.map((template) => (
+                                    <button
+                                        key={template.id}
+                                        onClick={() => applyTemplate(template.id)}
+                                        type="button"
+                                    >
+                                        <span className={styles.templateCardHeader}>
+                                            <strong>{template.label}</strong>
+                                            <span>{template.width} x {template.height}</span>
+                                        </span>
+                                        <small>{template.description}</small>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className={styles.legacyHelperText}>No matching templates.</p>
+                        )}
+                    </section>
+                </>
             );
         }
         if (activeTool === "graphics") return renderCuratedGrid(GRAPHIC_ASSETS);
@@ -1781,6 +5545,7 @@ export default function CreativeEditor({
                 : selectedElement?.type === "qr"
                     ? selectedElement.darkColor || "#16231f"
                     : documentValue.canvas.backgroundColor;
+    const selectedColorValue = selectedColor || "#000000";
     const selectedShadow = selectedElement?.shadow || {
         blur: selectedElement?.blur || 0,
         color: "rgba(0,0,0,0.22)",
@@ -1878,8 +5643,1180 @@ export default function CreativeEditor({
         } as Partial<CreativeEditorElement>);
     };
 
+    const openSelectionInspector = () => {
+        setRightPanelMode("properties");
+        setInspectorOpen(true);
+    };
+
+    const openLayerPanel = () => {
+        if (rightPanelModeState === "layers" && inspectorOpen) {
+            setInspectorOpen(false);
+            return;
+        }
+        setRightPanelMode("layers");
+        setInspectorOpen(true);
+    };
+
+    const openSelectionAiTools = () => {
+        setActiveTool("ai");
+        setDrawerCollapsed(false);
+    };
+
+    const enterReviewMode = () => {
+        const nextReviewMode = !reviewMode;
+        setReviewMode(nextReviewMode);
+        if (nextReviewMode) {
+            setDrawerCollapsed(true);
+            setRightPanelMode("properties");
+            setInspectorOpen(true);
+            runReadinessCheck();
+            window.requestAnimationFrame(() => fitZoomToStage());
+        } else {
+            setReadinessPanelOpen(false);
+            window.requestAnimationFrame(() => fitZoomToStage());
+        }
+    };
+
+    const renderContextualSelectionToolbar = () => {
+        const selectedIsLocked = selectedLayerReadOnly;
+        const isMultiSelection = isActiveMultiSelection;
+        if (!selectedElement && !isMultiSelection && !isGroupedSelection) return null;
+
+        if (isGroupedSelection) {
+            return (
+                <div aria-label="Selected group properties" className={styles.contextualToolbar} role="toolbar">
+                    <button disabled={!canUngroupActiveSelection} onClick={ungroupSelection} type="button">
+                        <LuUngroup size={16} />
+                        Ungroup
+                    </button>
+                    <button onClick={openSelectionInspector} type="button">
+                        <LuLayers size={16} />
+                        Position
+                    </button>
+                </div>
+            );
+        }
+
+        if (isMultiSelection) {
+            return (
+                <div aria-label="Selected layers properties" className={styles.contextualToolbar} role="toolbar">
+                    <button disabled={!canGroupActiveSelection} onClick={groupSelection} type="button">
+                        <LuGroup size={16} />
+                        Group
+                    </button>
+                    <button disabled={!canDistributeActiveSelection} onClick={() => distributeSelection("x")} type="button">
+                        <LuAlignHorizontalJustifyCenter size={16} />
+                        Distribute X
+                    </button>
+                    <button disabled={!canDistributeActiveSelection} onClick={() => distributeSelection("y")} type="button">
+                        <LuAlignCenterVertical size={16} />
+                        Distribute Y
+                    </button>
+                    <span className={styles.toolbarDivider} />
+                    <button disabled={activePageLocked || Boolean(floatingSelectionToolbar?.locked)} onClick={duplicateSelected} type="button">
+                        <LuCopy size={16} />
+                        Duplicate
+                    </button>
+                    <button disabled={activePageLocked} onClick={openSelectionInspector} type="button">
+                        <LuLayers size={16} />
+                        Position
+                    </button>
+                    <button disabled={activePageLocked || Boolean(floatingSelectionToolbar?.locked)} onClick={removeSelected} type="button">
+                        <LuTrash2 size={16} />
+                    </button>
+                </div>
+            );
+        }
+
+        if (!selectedElement) return null;
+
+        if (canEditTextElement(selectedElement)) {
+            return (
+                <div aria-label="Selected text properties" className={styles.contextualToolbar} role="toolbar">
+                    <select
+                        aria-label="Font family"
+                        disabled={selectedIsLocked}
+                        onChange={(event) => updateSelected({ fontFamily: event.target.value } as Partial<CreativeEditorElement>)}
+                        value={selectedElement.fontFamily || FONT_FAMILY_OPTIONS[0]}
+                    >
+                        {FONT_FAMILY_OPTIONS.map((fontFamily) => (
+                            <option key={fontFamily} value={fontFamily}>{fontFamily.split(",")[0]}</option>
+                        ))}
+                    </select>
+                    <div className={styles.sizeStepper}>
+                        <button disabled={selectedIsLocked} onClick={() => updateSelected({ fontSize: Math.max(8, selectedElement.fontSize - 2) } as Partial<CreativeEditorElement>)} type="button">
+                            -
+                        </button>
+                        <input
+                            aria-label="Font size"
+                            disabled={selectedIsLocked}
+                            min={8}
+                            onChange={(event) => updateSelected({ fontSize: numberInput(Number(event.target.value), selectedElement.fontSize) } as Partial<CreativeEditorElement>)}
+                            type="number"
+                            value={selectedElement.fontSize}
+                        />
+                        <button disabled={selectedIsLocked} onClick={() => updateSelected({ fontSize: selectedElement.fontSize + 2 } as Partial<CreativeEditorElement>)} type="button">
+                            +
+                        </button>
+                    </div>
+                    <label className={styles.toolbarSwatch} title="Text color">
+                        <span style={{ background: selectedColorValue }} />
+                        <input
+                            aria-label="Text color"
+                            disabled={selectedIsLocked}
+                            onChange={(event) => applyColor(event.target.value)}
+                            type="color"
+                            value={selectedColorValue}
+                        />
+                    </label>
+                    <span className={styles.toolbarDivider} />
+                    <button data-active={selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" ? "normal" : "800" } as Partial<CreativeEditorElement>)} type="button">
+                        <LuBold size={16} />
+                    </button>
+                    <button data-active={selectedElement.fontStyle === "italic" ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ fontStyle: selectedElement.fontStyle === "italic" ? "normal" : "italic" } as Partial<CreativeEditorElement>)} type="button">
+                        <LuItalic size={16} />
+                    </button>
+                    <button data-active={selectedElement.underline ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ underline: !selectedElement.underline } as Partial<CreativeEditorElement>)} type="button">
+                        <LuUnderline size={16} />
+                    </button>
+                    <button data-active={selectedElement.linethrough ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ linethrough: !selectedElement.linethrough } as Partial<CreativeEditorElement>)} type="button">
+                        <LuStrikethrough size={16} />
+                    </button>
+                    <span className={styles.toolbarDivider} />
+                    <button data-active={(selectedElement.align || "left") === "left" ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ align: "left" } as Partial<CreativeEditorElement>)} type="button">
+                        Left
+                    </button>
+                    <button data-active={selectedElement.align === "center" ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ align: "center" } as Partial<CreativeEditorElement>)} type="button">
+                        Center
+                    </button>
+                    <button data-active={selectedElement.align === "right" ? "true" : "false"} disabled={selectedIsLocked} onClick={() => updateSelected({ align: "right" } as Partial<CreativeEditorElement>)} type="button">
+                        Right
+                    </button>
+                    <span className={styles.toolbarDivider} />
+                    <label className={styles.toolbarRange}>
+                        <span>Opacity</span>
+                        <input
+                            disabled={selectedIsLocked}
+                            max={1}
+                            min={0.1}
+                            onChange={(event) => updateSelected({ opacity: Number(event.target.value) } as Partial<CreativeEditorElement>)}
+                            step={0.05}
+                            type="range"
+                            value={selectedElement.opacity ?? 1}
+                        />
+                    </label>
+                    <button onClick={openSelectionInspector} type="button">Effects</button>
+                    <button onClick={openSelectionInspector} type="button">Position</button>
+                </div>
+            );
+        }
+
+        if (selectedElement.type === "image") {
+            return (
+                <div aria-label="Selected image properties" className={styles.contextualToolbar} role="toolbar">
+                    <button disabled={selectedIsLocked} onClick={() => replaceImageInputRef.current?.click()} type="button">
+                        <LuFileImage size={16} />
+                        Replace
+                    </button>
+                    <select
+                        aria-label="Image filter"
+                        disabled={selectedIsLocked}
+                        onChange={(event) => updateSelected({ filter: event.target.value as CreativeEditorImageFilter } as Partial<CreativeEditorElement>)}
+                        value={selectedImageFilter}
+                    >
+                        {IMAGE_FILTER_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                    </select>
+                    <button disabled={selectedIsLocked} onClick={() => updateSelected({ fit: selectedElement.fit === "contain" ? "cover" : "contain" } as Partial<CreativeEditorElement>)} type="button">
+                        {selectedElement.fit === "contain" ? "Crop" : "Fit"}
+                    </button>
+                    <button disabled={selectedIsLocked} onClick={() => flipSelected("x")} type="button">
+                        <LuFlipHorizontal2 size={16} />
+                        Flip
+                    </button>
+                    <label className={styles.toolbarRange}>
+                        <span>Opacity</span>
+                        <input
+                            disabled={selectedIsLocked}
+                            max={1}
+                            min={0.1}
+                            onChange={(event) => updateSelected({ opacity: Number(event.target.value) } as Partial<CreativeEditorElement>)}
+                            step={0.05}
+                            type="range"
+                            value={selectedElement.opacity ?? 1}
+                        />
+                    </label>
+                    <button onClick={openSelectionInspector} type="button">Style</button>
+                    <button onClick={openSelectionInspector} type="button">Position</button>
+                </div>
+            );
+        }
+
+        return (
+            <div aria-label="Selected layer properties" className={styles.contextualToolbar} role="toolbar">
+                <button onClick={openSelectionInspector} type="button">Edit</button>
+                <label className={styles.toolbarSwatch} title="Layer color">
+                    <span style={{ background: selectedColorValue }} />
+                    <input
+                        aria-label="Layer color"
+                        disabled={selectedIsLocked}
+                        onChange={(event) => applyColor(event.target.value)}
+                        type="color"
+                        value={selectedColorValue}
+                    />
+                </label>
+                {canStrokeElement(selectedElement) ? (
+                    <>
+                        <select
+                            aria-label="Stroke style"
+                            disabled={selectedIsLocked}
+                            onChange={(event) => updateSelected({ strokeStyle: event.target.value as CreativeEditorStrokeStyle } as Partial<CreativeEditorElement>)}
+                            value={selectedStrokeStyle}
+                        >
+                            {STROKE_STYLE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </select>
+                        <label className={styles.toolbarRange}>
+                            <span>Stroke</span>
+                            <input
+                                disabled={selectedIsLocked}
+                                max={36}
+                                min={0}
+                                onChange={(event) => updateSelected({ strokeWidth: Number(event.target.value) } as Partial<CreativeEditorElement>)}
+                                type="range"
+                                value={selectedStrokeWidth}
+                            />
+                        </label>
+                    </>
+                ) : null}
+                <button disabled={selectedIsLocked} onClick={() => flipSelected("x")} type="button">
+                    <LuFlipHorizontal2 size={16} />
+                    Flip
+                </button>
+                <label className={styles.toolbarRange}>
+                    <span>Opacity</span>
+                    <input
+                        disabled={selectedIsLocked}
+                        max={1}
+                        min={0.1}
+                        onChange={(event) => updateSelected({ opacity: Number(event.target.value) } as Partial<CreativeEditorElement>)}
+                        step={0.05}
+                        type="range"
+                        value={selectedElement.opacity ?? 1}
+                    />
+                </label>
+                <button onClick={openSelectionInspector} type="button">Style</button>
+                <button onClick={openSelectionInspector} type="button">Position</button>
+            </div>
+        );
+    };
+
+    const renderPriorityInspectorSection = () => {
+        if (!selectedElement) return null;
+        const selectedIsLocked = selectedLayerReadOnly;
+        const designCueAvailable = Boolean(designCueCommands.length && onDesignCueRequest && onDesignCueApply);
+        const canUseQuickColor = canEditTextElement(selectedElement)
+            || canFillElement(selectedElement)
+            || selectedElement.type === "line"
+            || selectedElement.type === "qr";
+
+        const renderPriorityHeader = (label: string) => (
+            <div className={styles.priorityHeader}>
+                <h3>{label}</h3>
+                {designCueAvailable ? (
+                    <button onClick={openSelectionAiTools} type="button">
+                        <LuSparkles size={15} />
+                        Ask Design Cue
+                    </button>
+                ) : null}
+            </div>
+        );
+
+        const renderPositionControls = () => (
+            <div className={styles.fieldGrid}>
+                <label>
+                    X
+                    <input disabled={selectedIsLocked} onChange={(event) => updateSelected({ x: Number(event.target.value) })} type="number" value={Math.round(selectedElement.x)} />
+                </label>
+                <label>
+                    Y
+                    <input disabled={selectedIsLocked} onChange={(event) => updateSelected({ y: Number(event.target.value) })} type="number" value={Math.round(selectedElement.y)} />
+                </label>
+                <label>
+                    W
+                    <input disabled={selectedIsLocked} min={4} onChange={(event) => updateSelected({ width: Number(event.target.value) })} type="number" value={Math.round(selectedElement.width)} />
+                </label>
+                <label>
+                    H
+                    <input disabled={selectedIsLocked} min={4} onChange={(event) => updateSelected({ height: Number(event.target.value) })} type="number" value={Math.round(selectedElement.height)} />
+                </label>
+            </div>
+        );
+
+        const renderOpacityControl = () => (
+            <label className={styles.rangeField}>
+                <span>Opacity</span>
+                <input
+                    disabled={selectedIsLocked}
+                    max={1}
+                    min={0.1}
+                    onChange={(event) => updateSelected({ opacity: Number(event.target.value) })}
+                    step={0.05}
+                    type="range"
+                    value={selectedElement.opacity ?? 1}
+                />
+            </label>
+        );
+
+        const renderQuickColorControls = () => {
+            if (!canUseQuickColor) return null;
+            return (
+                <>
+                    <label className={styles.priorityColorField}>
+                        Color
+                        <input
+                            disabled={selectedIsLocked}
+                            onChange={(event) => applyColor(event.target.value)}
+                            type="color"
+                            value={selectedColorValue}
+                        />
+                    </label>
+                    <div className={styles.prioritySwatchRow}>
+                        {COLOR_SWATCHES.slice(0, 8).map((color) => (
+                            <button
+                                aria-label={`Apply ${color}`}
+                                data-active={selectedColor === color ? "true" : "false"}
+                                disabled={selectedIsLocked}
+                                key={color}
+                                onClick={() => applyColor(color)}
+                                style={{ background: color }}
+                                type="button"
+                            />
+                        ))}
+                    </div>
+                </>
+            );
+        };
+
+        if (canEditTextElement(selectedElement)) {
+            const textValue = selectedElement.text.trim();
+            const wordCount = textValue ? textValue.split(/\s+/).length : 0;
+            const textBackgroundColor = normalizeHexColor(selectedElement.textBackgroundColor || "")
+                ? selectedElement.textBackgroundColor || documentValue.canvas.backgroundColor
+                : documentValue.canvas.backgroundColor;
+            const contrastRatio = getContrastRatio(selectedElement.color, textBackgroundColor);
+            const safeLeft = Math.round(documentValue.canvas.width * SAFE_AREA_INSET_RATIO);
+            const safeTop = Math.round(documentValue.canvas.height * SAFE_AREA_INSET_RATIO);
+            const safeRight = Math.round(documentValue.canvas.width * (1 - SAFE_AREA_INSET_RATIO));
+            const safeBottom = Math.round(documentValue.canvas.height * (1 - SAFE_AREA_INSET_RATIO));
+            const outsideSafeArea = selectedElement.x < safeLeft
+                || selectedElement.y < safeTop
+                || selectedElement.x + selectedElement.width > safeRight
+                || selectedElement.y + selectedElement.height > safeBottom;
+            const ctaPlaceholder = textPlaceholders.find((placeholder) => (
+                CTA_PLACEHOLDER_PATTERN.test(`${placeholder.id} ${placeholder.label}`)
+            ));
+            const contactPlaceholder = textPlaceholders.find((placeholder) => (
+                CONTACT_PLACEHOLDER_PATTERN.test(`${placeholder.id} ${placeholder.label}`)
+                && !CTA_PLACEHOLDER_PATTERN.test(`${placeholder.id} ${placeholder.label}`)
+            ));
+            const ctaLine = ctaPlaceholder?.value.trim() || "Order now";
+            const contactLine = contactPlaceholder?.value.trim() || "";
+            const hasActionText = TEXT_ACTION_PATTERN.test(textValue);
+            const appendTextLine = (line: string, layerName: string) => {
+                const cleanLine = line.trim();
+                if (!cleanLine) return;
+                const currentText = selectedElement.text.trim();
+                const nextText = currentText.toLowerCase().includes(cleanLine.toLowerCase())
+                    ? currentText
+                    : [currentText, cleanLine].filter(Boolean).join("\n");
+                updateSelected({
+                    height: Math.max(selectedElement.height, selectedElement.height + 42),
+                    name: layerName,
+                    text: nextText,
+                } as Partial<CreativeEditorElement>);
+            };
+            const makeTextReadable = () => {
+                const backgroundForContrast = normalizeHexColor(selectedElement.textBackgroundColor || "")
+                    ? selectedElement.textBackgroundColor || documentValue.canvas.backgroundColor
+                    : documentValue.canvas.backgroundColor;
+                updateSelected({
+                    color: getReadableTextColor(backgroundForContrast),
+                    fontSize: Math.max(selectedElement.fontSize, textValue.length > 80 ? 28 : 34),
+                    fontWeight: "800",
+                    lineHeight: clampNumber(selectedElement.lineHeight || 1.12, 1.05, 1.28),
+                } as Partial<CreativeEditorElement>);
+            };
+            const shortenSelectedText = () => {
+                const shortened = shortenBusinessText(selectedElement.text, textValue.length > 110 ? 10 : 8);
+                if (shortened) {
+                    updateSelected({
+                        height: Math.max(72, Math.round(selectedElement.height * 0.82)),
+                        text: shortened,
+                    } as Partial<CreativeEditorElement>);
+                }
+            };
+            const fitTextToSafeArea = () => {
+                const maxWidth = Math.max(120, safeRight - safeLeft);
+                const maxHeight = Math.max(72, safeBottom - safeTop);
+                const nextWidth = Math.min(selectedElement.width, maxWidth);
+                const nextHeight = Math.min(selectedElement.height, maxHeight);
+                updateSelected({
+                    height: Math.round(nextHeight),
+                    width: Math.round(nextWidth),
+                    x: Math.round(clampNumber(selectedElement.x, safeLeft, safeRight - nextWidth)),
+                    y: Math.round(clampNumber(selectedElement.y, safeTop, safeBottom - nextHeight)),
+                } as Partial<CreativeEditorElement>);
+            };
+            const textFindings: Array<{
+                actionLabel?: string;
+                detail: string;
+                id: string;
+                label: string;
+                onAction?: () => void;
+                tone: "good" | "note" | "warning";
+            }> = [];
+            if (contrastRatio !== null && contrastRatio < 4.5) {
+                textFindings.push({
+                    actionLabel: "Fix",
+                    detail: "Text may be hard to read on this background.",
+                    id: "contrast",
+                    label: "Low contrast",
+                    onAction: makeTextReadable,
+                    tone: "warning",
+                });
+            }
+            if (selectedElement.fontSize < 22) {
+                textFindings.push({
+                    actionLabel: "Enlarge",
+                    detail: "Small text is easy to miss on phones.",
+                    id: "size",
+                    label: "Text is small",
+                    onAction: () => updateSelected({ fontSize: 28 } as Partial<CreativeEditorElement>),
+                    tone: "warning",
+                });
+            }
+            if (textValue.length > 90 || wordCount > 14) {
+                textFindings.push({
+                    actionLabel: "Shorten",
+                    detail: "Shorter copy is easier to scan in a social post.",
+                    id: "length",
+                    label: "Too much copy",
+                    onAction: shortenSelectedText,
+                    tone: "note",
+                });
+            }
+            if (outsideSafeArea) {
+                textFindings.push({
+                    actionLabel: "Fit",
+                    detail: "Important text is close to the edge of the final image.",
+                    id: "safe-area",
+                    label: "Near edge",
+                    onAction: fitTextToSafeArea,
+                    tone: "warning",
+                });
+            }
+            if (!hasActionText && ctaLine) {
+                textFindings.push({
+                    actionLabel: "Add CTA",
+                    detail: "A clear next step helps customers act.",
+                    id: "cta",
+                    label: "No clear action",
+                    onAction: () => appendTextLine(ctaLine, "Text with CTA"),
+                    tone: "note",
+                });
+            }
+            if (!textFindings.length) {
+                textFindings.push({
+                    detail: "Text is readable, inside the guide, and concise.",
+                    id: "ready",
+                    label: "Looks ready",
+                    tone: "good",
+                });
+            }
+            const businessTextChips = textPlaceholders
+                .filter((placeholder) => placeholder.value.trim())
+                .slice(0, 8);
+            return (
+                <div className={`${styles.inspectorSection} ${styles.priorityInspectorSection}`}>
+                    {renderPriorityHeader("Text")}
+                    <label>
+                        Text
+                        <textarea
+                            data-creative-editor-field="selected-text"
+                            disabled={selectedIsLocked}
+                            onChange={(event) => updateSelected({ text: event.target.value } as Partial<CreativeEditorElement>)}
+                            value={selectedElement.text}
+                        />
+                    </label>
+                    {businessTextChips.length ? (
+                        <div className={styles.businessChipPanel}>
+                            <span>Business text</span>
+                            <div>
+                                {businessTextChips.map((placeholder) => (
+                                    <button
+                                        disabled={selectedIsLocked}
+                                        key={placeholder.id}
+                                        onClick={() => appendTextLine(placeholder.value, placeholder.label)}
+                                        type="button"
+                                    >
+                                        {placeholder.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
+                    <div className={styles.textStyleRow} role="group" aria-label="Text style">
+                        <button
+                            data-active={selectedElement.fontWeight === "bold" || selectedElement.fontWeight === "800" || selectedElement.fontWeight === "700"}
+                            disabled={selectedIsLocked}
+                            onClick={() => updateSelected({ fontWeight: selectedElement.fontWeight === "bold" ? "normal" : "bold" } as Partial<CreativeEditorElement>)}
+                            type="button"
+                        >
+                            <LuBold size={16} />
+                        </button>
+                        <button
+                            data-active={selectedElement.fontStyle === "italic"}
+                            disabled={selectedIsLocked}
+                            onClick={() => updateSelected({ fontStyle: selectedElement.fontStyle === "italic" ? "normal" : "italic" } as Partial<CreativeEditorElement>)}
+                            type="button"
+                        >
+                            <LuItalic size={16} />
+                        </button>
+                        <button
+                            data-active={selectedElement.underline ? "true" : "false"}
+                            disabled={selectedIsLocked}
+                            onClick={() => updateSelected({ underline: !selectedElement.underline } as Partial<CreativeEditorElement>)}
+                            type="button"
+                        >
+                            <LuUnderline size={16} />
+                        </button>
+                        <button
+                            data-active={selectedElement.linethrough ? "true" : "false"}
+                            disabled={selectedIsLocked}
+                            onClick={() => updateSelected({ linethrough: !selectedElement.linethrough } as Partial<CreativeEditorElement>)}
+                            type="button"
+                        >
+                            <LuStrikethrough size={16} />
+                        </button>
+                    </div>
+                    <div className={styles.fieldGrid}>
+                        <label>
+                            Font
+                            <select
+                                disabled={selectedIsLocked}
+                                onChange={(event) => updateSelected({ fontFamily: event.target.value } as Partial<CreativeEditorElement>)}
+                                value={selectedElement.fontFamily || FONT_FAMILY_OPTIONS[0]}
+                            >
+                                {FONT_FAMILY_OPTIONS.map((fontFamily) => (
+                                    <option key={fontFamily} value={fontFamily}>{fontFamily.split(",")[0]}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label>
+                            Size
+                            <input
+                                data-creative-editor-field="selected-font-size"
+                                disabled={selectedIsLocked}
+                                min={8}
+                                onChange={(event) => updateSelected({ fontSize: Number(event.target.value) } as Partial<CreativeEditorElement>)}
+                                type="number"
+                                value={selectedElement.fontSize}
+                            />
+                        </label>
+                        <label>
+                            Align
+                            <select disabled={selectedIsLocked} onChange={(event) => updateSelected({ align: event.target.value as "center" | "left" | "right" } as Partial<CreativeEditorElement>)} value={selectedElement.align || "left"}>
+                                <option value="left">Left</option>
+                                <option value="center">Center</option>
+                                <option value="right">Right</option>
+                            </select>
+                        </label>
+                        <label>
+                            Line
+                            <input
+                                disabled={selectedIsLocked}
+                                max={2.4}
+                                min={0.8}
+                                onChange={(event) => updateSelected({ lineHeight: Number(event.target.value) } as Partial<CreativeEditorElement>)}
+                                step={0.05}
+                                type="number"
+                                value={selectedElement.lineHeight || 1.12}
+                            />
+                        </label>
+                    </div>
+                    <div className={styles.textSmartActionGrid}>
+                        <button disabled={selectedIsLocked} onClick={makeTextReadable} type="button">
+                            Readable
+                        </button>
+                        <button disabled={selectedIsLocked || textValue.length < 30} onClick={shortenSelectedText} type="button">
+                            Shorten
+                        </button>
+                        <button disabled={selectedIsLocked || !ctaLine} onClick={() => appendTextLine(ctaLine, "Text with CTA")} type="button">
+                            Add CTA
+                        </button>
+                        <button disabled={selectedIsLocked || !contactLine} onClick={() => appendTextLine(contactLine, "Text with contact")} type="button">
+                            Add contact
+                        </button>
+                        <button disabled={selectedIsLocked} onClick={() => alignSelected("center")} type="button">
+                            Center
+                        </button>
+                        <button disabled={selectedIsLocked} onClick={() => moveLayerById(selectedElement.id, "front")} type="button">
+                            Bring front
+                        </button>
+                    </div>
+                    <div className={styles.textHealthList} aria-label="Text checks">
+                        {textFindings.slice(0, 4).map((finding) => (
+                            <article data-tone={finding.tone} key={finding.id}>
+                                <div>
+                                    <strong>{finding.label}</strong>
+                                    <span>{finding.detail}</span>
+                                </div>
+                                {finding.onAction ? (
+                                    <button disabled={selectedIsLocked} onClick={finding.onAction} type="button">
+                                        {finding.actionLabel}
+                                    </button>
+                                ) : null}
+                            </article>
+                        ))}
+                    </div>
+                    {renderQuickColorControls()}
+                    {renderOpacityControl()}
+                    {renderPositionControls()}
+                </div>
+            );
+        }
+
+        if (selectedElement.type === "image") {
+            return (
+                <div className={`${styles.inspectorSection} ${styles.priorityInspectorSection}`}>
+                    {renderPriorityHeader("Image")}
+                    <div className={styles.priorityActionRow}>
+                        <button disabled={selectedIsLocked} onClick={() => replaceImageInputRef.current?.click()} type="button">
+                            <LuFileImage size={15} />
+                            Replace
+                        </button>
+                        <button disabled={selectedIsLocked} onClick={() => updateSelected({ fit: selectedElement.fit === "contain" ? "cover" : "contain" } as Partial<CreativeEditorElement>)} type="button">
+                            {selectedElement.fit === "contain" ? "Crop" : "Fit"}
+                        </button>
+                        <button disabled={selectedIsLocked} onClick={() => flipSelected("x")} type="button">
+                            <LuFlipHorizontal2 size={15} />
+                            Flip
+                        </button>
+                    </div>
+                    <div className={styles.imageSmartActionGrid}>
+                        <button disabled={selectedIsLocked} onClick={fillSelectedImageToFrame} type="button">
+                            Fill frame
+                        </button>
+                        <button disabled={selectedIsLocked} onClick={fitSelectedImageInsideFrame} type="button">
+                            Fit inside
+                        </button>
+                        <button disabled={selectedIsLocked} onClick={makeSelectedImageLarger} type="button">
+                            Larger
+                        </button>
+                        <button disabled={selectedIsLocked} onClick={sendSelectedImageBehindText} type="button">
+                            Behind text
+                        </button>
+                    </div>
+                    <label className={styles.selectField}>
+                        <LuFilter size={16} />
+                        <select
+                            disabled={selectedIsLocked}
+                            onChange={(event) => updateSelected({ filter: event.target.value as CreativeEditorImageFilter } as Partial<CreativeEditorElement>)}
+                            value={selectedImageFilter}
+                        >
+                            {IMAGE_FILTER_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </select>
+                    </label>
+                    {renderOpacityControl()}
+                    {renderPositionControls()}
+                </div>
+            );
+        }
+
+        return (
+            <div className={`${styles.inspectorSection} ${styles.priorityInspectorSection}`}>
+                {renderPriorityHeader(selectedElement.type === "qr" ? "QR" : "Layer")}
+                {selectedElement.type === "qr" ? (
+                    <>
+                        <label>
+                            QR value
+                            <textarea disabled={selectedIsLocked} onChange={(event) => updateSelected({ value: event.target.value } as Partial<CreativeEditorElement>)} value={selectedElement.value} />
+                        </label>
+                        <div className={styles.fieldGrid}>
+                            <label>
+                                QR color
+                                <input
+                                    disabled={selectedIsLocked}
+                                    onChange={(event) => updateSelected({ darkColor: event.target.value } as Partial<CreativeEditorElement>)}
+                                    type="color"
+                                    value={selectedElement.darkColor || "#16231f"}
+                                />
+                            </label>
+                            <label>
+                                Background
+                                <input
+                                    disabled={selectedIsLocked}
+                                    onChange={(event) => updateSelected({ lightColor: event.target.value } as Partial<CreativeEditorElement>)}
+                                    type="color"
+                                    value={selectedElement.lightColor || "#ffffff"}
+                                />
+                            </label>
+                        </div>
+                    </>
+                ) : null}
+                {renderQuickColorControls()}
+                {canStrokeElement(selectedElement) ? (
+                    <div className={styles.fieldGrid}>
+                        <label>
+                            Border
+                            <select
+                                disabled={selectedIsLocked}
+                                onChange={(event) => updateSelected({ strokeStyle: event.target.value as CreativeEditorStrokeStyle } as Partial<CreativeEditorElement>)}
+                                value={selectedStrokeStyle}
+                            >
+                                {STROKE_STYLE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <label>
+                            Width
+                            <input disabled={selectedIsLocked} min={0} onChange={(event) => updateSelected({ strokeWidth: Number(event.target.value) } as Partial<CreativeEditorElement>)} type="number" value={selectedStrokeWidth} />
+                        </label>
+                    </div>
+                ) : null}
+                {renderOpacityControl()}
+                {renderPositionControls()}
+            </div>
+        );
+    };
+
+    const renderLayerThumb = (element: CreativeEditorElement) => {
+        if (element.type === "image") {
+            return <img alt="" src={element.src} />;
+        }
+        if (element.type === "qr") {
+            return <LuQrCode size={20} />;
+        }
+        if (canEditTextElement(element)) {
+            return <span>T</span>;
+        }
+        if (element.type === "line") {
+            return <LuArrowRight size={18} />;
+        }
+        return <LuShapes size={18} />;
+    };
+
+    const renderReadinessPanel = () => {
+        if (!readinessPanelOpen) return null;
+        const actionableIssues = readinessIssues.filter((issue) => issue.tone !== "good");
+        return (
+            <div className={`${styles.inspectorSection} ${styles.readinessPanel}`}>
+                <div className={styles.readinessHeader}>
+                    <div>
+                        <h3>Download check</h3>
+                        <span>{actionableIssues.length ? `${actionableIssues.length} item${actionableIssues.length === 1 ? "" : "s"} to review` : "Ready"}</span>
+                    </div>
+                    <button aria-label="Close download check" onClick={() => setReadinessPanelOpen(false)} type="button">
+                        <LuPanelLeftOpen size={16} />
+                    </button>
+                </div>
+                <div className={styles.readinessList}>
+                    {readinessIssues.map((issue) => (
+                        <article data-tone={issue.tone} key={issue.id}>
+                            <div>
+                                <strong>{issue.label}</strong>
+                                <span>{issue.detail}</span>
+                            </div>
+                            {issue.elementId ? (
+                                <button onClick={() => selectReadinessIssue(issue)} type="button">
+                                    {issue.actionLabel || "Select"}
+                                </button>
+                            ) : null}
+                        </article>
+                    ))}
+                </div>
+                {showInternalExportTools ? (
+                    <div className={styles.readinessActions}>
+                        <button onClick={() => void runExport("png")} type="button">
+                            <LuDownload size={16} />
+                            Download PNG
+                        </button>
+                        <button onClick={() => { void downloadExportBundle(); }} type="button">
+                            <LuFileImage size={16} />
+                            Bundle
+                        </button>
+                    </div>
+                ) : null}
+            </div>
+        );
+    };
+
+    const renderLayerPanel = () => (
+        <>
+            <div className={styles.layerPanelHeader}>
+                <div>
+                    <span>Active Layers</span>
+                    <strong>{layerList.length} {layerList.length === 1 ? "layer" : "layers"}</strong>
+                </div>
+                <button aria-label="Close layers panel" onClick={() => setInspectorOpen(false)} type="button">
+                    <LuPanelLeftOpen size={22} />
+                </button>
+            </div>
+            <div className={styles.layerPanelStats} aria-label="Layer summary">
+                <span>{visibleLayerCount} visible</span>
+                <span>{lockedLayerCount} locked</span>
+                <span>{currentHistoryLabel}</span>
+            </div>
+
+            {selectedElement ? (
+                <div className={styles.layerPanelSelected}>
+                    <div className={styles.layerPanelSelectedPreview}>
+                        {renderLayerThumb(selectedElement)}
+                    </div>
+                    <div>
+                        <label className={styles.layerPanelNameField}>
+                            <span>Layer name</span>
+                            <input
+                                disabled={selectedLayerReadOnly}
+                                onChange={(event) => updateSelected({ name: event.target.value })}
+                                value={selectedElement.name}
+                            />
+                        </label>
+                        <span>{selectedElement.visible === false ? "Hidden layer" : selectedElement.locked ? "Locked layer" : "Selected layer"}</span>
+                    </div>
+                    <button data-creative-editor-action="edit-selected-layer" onClick={openSelectionInspector} type="button">
+                        <LuPencil size={16} />
+                        Edit
+                    </button>
+                </div>
+            ) : (
+                <p className={styles.layerPanelHint}>Select a layer to edit, reorder, hide, or lock it.</p>
+            )}
+
+            <div className={styles.quickActions}>
+                <button disabled={!selectedElement || activePageLocked} onClick={toggleSelectedLock} type="button">
+                    {selectedLayerLocked ? <LuUnlock size={20} /> : <LuLock size={20} />}
+                </button>
+                <button disabled={!selectedElement || selectedLayerReadOnly || selectedElement.visible === false} onClick={duplicateSelected} type="button">
+                    <LuCopy size={20} />
+                </button>
+                <button disabled={!selectedElement || selectedLayerReadOnly} onClick={removeSelected} type="button">
+                    <LuTrash2 size={20} />
+                </button>
+            </div>
+
+            <div className={`${styles.inspectorSection} ${styles.layersInspectorSection}`}>
+                <h3>Layer stack</h3>
+                <p className={styles.legacyHelperText}>Drag rows to reorder. Top item appears in front.</p>
+                <div className={styles.layerList}>
+                    {layerList.map((element) => (
+                        <div
+                            className={styles.layerRow}
+                            data-active={selectedId === element.id}
+                            data-creative-layer-id={element.id}
+                            data-creative-layer-name={element.name}
+                            data-creative-layer-type={element.type}
+                            data-dragging={draggedLayerId === element.id ? "true" : "false"}
+                            draggable={!activePageLocked && !element.locked}
+                            key={element.id}
+                            onDragEnd={() => setDraggedLayerId("")}
+                            onDragOver={(event) => {
+                                if (activePageLocked) return;
+                                const draggedId = event.dataTransfer.getData("text/plain") || draggedLayerId;
+                                if (!draggedId || draggedId === element.id) return;
+                                event.preventDefault();
+                                event.dataTransfer.dropEffect = "move";
+                            }}
+                            onDragStart={(event) => {
+                                if (activePageLocked || element.locked) {
+                                    event.preventDefault();
+                                    return;
+                                }
+                                setDraggedLayerId(element.id);
+                                event.dataTransfer.effectAllowed = "move";
+                                event.dataTransfer.setData("text/plain", element.id);
+                            }}
+                            onDrop={(event) => {
+                                event.preventDefault();
+                                const draggedId = event.dataTransfer.getData("text/plain") || draggedLayerId;
+                                reorderLayerByDrop(draggedId, element.id);
+                            }}
+                        >
+                            <span
+                                aria-label={element.locked ? "Locked layer cannot be dragged" : "Drag to reorder layer"}
+                                className={styles.layerDragHandle}
+                                title={element.locked ? "Unlock to reorder" : "Drag to reorder"}
+                            >
+                                <LuGripVertical size={16} />
+                            </span>
+                            <button
+                                className={styles.layerName}
+                                data-creative-editor-action="select-layer"
+                                onClick={() => selectLayerFromPanel(element.id)}
+                                type="button"
+                            >
+                                <span className={styles.layerThumb}>{renderLayerThumb(element)}</span>
+                                <span className={styles.layerTitle}>
+                                    <span>{element.name}</span>
+                                    <small>{element.visible === false ? "hidden" : element.locked ? "locked" : element.type}</small>
+                                </span>
+                            </button>
+                            <button aria-label="Toggle visible" disabled={activePageLocked} onClick={() => toggleLayer(element.id, "visible")} type="button">
+                                {element.visible === false ? <LuEyeOff size={14} /> : <LuEye size={14} />}
+                            </button>
+                            <button aria-label="Toggle lock" disabled={activePageLocked} onClick={() => toggleLayer(element.id, "locked")} type="button">
+                                {element.locked ? <LuLock size={14} /> : <LuUnlock size={14} />}
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className={`${styles.inspectorSection} ${styles.layerOrderInspectorSection}`}>
+                <h3>Move selected layer</h3>
+                <div className={styles.layerAlignmentGrid}>
+                    <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => selectedElement && moveLayerById(selectedElement.id, "forward")} type="button">
+                        <LuArrowUp size={17} />
+                        Move Forward
+                    </button>
+                    <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => selectedElement && moveLayerById(selectedElement.id, "front")} type="button">
+                        <LuArrowUpToLine size={17} />
+                        Move To Front
+                    </button>
+                    <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => selectedElement && moveLayerById(selectedElement.id, "backward")} type="button">
+                        <LuArrowDown size={17} />
+                        Move Backward
+                    </button>
+                    <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => selectedElement && moveLayerById(selectedElement.id, "back")} type="button">
+                        <LuArrowDownToLine size={17} />
+                        Move To Back
+                    </button>
+                </div>
+            </div>
+
+            {showInternalExportTools ? (
+                <div className={styles.exportRow}>
+                    <button onClick={runReadinessCheck} type="button">
+                        <LuShieldCheck size={16} />
+                        Check
+                    </button>
+                    <button disabled={disabledExportFormats.includes("svg")} onClick={() => runExport("svg")} type="button">
+                        <LuDownload size={16} />
+                        SVG
+                    </button>
+                    <button disabled={disabledExportFormats.includes("png")} onClick={() => runExport("png")} type="button">
+                        <LuDownload size={16} />
+                        PNG
+                    </button>
+                    <button disabled={disabledExportFormats.includes("json")} onClick={() => runExport("json")} type="button">
+                        <LuFileJson size={16} />
+                        JSON
+                    </button>
+                    <button onClick={copyPngToClipboard} type="button">
+                        <LuCopy size={16} />
+                        Copy
+                    </button>
+                    <button onClick={copyBase64ToClipboard} type="button">
+                        <LuHash size={16} />
+                        Base64
+                    </button>
+                    <button disabled={disabledExportFormats.includes("png")} onClick={() => { void downloadExportBundle(); }} type="button">
+                        <LuFileImage size={16} />
+                        Bundle
+                    </button>
+                </div>
+            ) : null}
+            {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
+        </>
+    );
+
+    const renderFloatingSelectionToolbar = () => {
+        if (!floatingSelectionToolbar || !fabricReady) return null;
+        const selectedIsLocked = Boolean(selectedLayerReadOnly || floatingSelectionToolbar.locked);
+        if (isGroupedSelection) {
+            return (
+                <div
+                    aria-label="Selected group actions"
+                    className={styles.floatingSelectionToolbar}
+                    data-anchor-left={Math.round(floatingSelectionToolbar.anchorLeft)}
+                    data-creative-editor-floating-toolbar="true"
+                    data-multi="false"
+                    data-selection-bottom={Math.round(floatingSelectionToolbar.selectionBottom)}
+                    data-toolbar-left={Math.round(floatingSelectionToolbar.left)}
+                    data-toolbar-top={Math.round(floatingSelectionToolbar.top)}
+                    data-toolbar-variant={floatingSelectionToolbar.variant}
+                    ref={floatingSelectionToolbarRef}
+                    role="toolbar"
+                    style={{
+                        left: `${floatingSelectionToolbar.left}px`,
+                        top: `${floatingSelectionToolbar.top}px`,
+                    }}
+                >
+                    <button disabled={!canUngroupActiveSelection} onClick={ungroupSelection} title="Ungroup selected layers" type="button">
+                        <LuUngroup size={17} />
+                        <span>Ungroup</span>
+                    </button>
+                    <button onClick={openSelectionInspector} title="Position and layers" type="button">
+                        <LuLayers size={17} />
+                    </button>
+                </div>
+            );
+        }
+        return (
+            <div
+                aria-label="Selected layer actions"
+                className={styles.floatingSelectionToolbar}
+                data-anchor-left={Math.round(floatingSelectionToolbar.anchorLeft)}
+                data-creative-editor-floating-toolbar="true"
+                data-multi={floatingSelectionToolbar.isMultiSelection ? "true" : "false"}
+                data-selection-bottom={Math.round(floatingSelectionToolbar.selectionBottom)}
+                data-toolbar-left={Math.round(floatingSelectionToolbar.left)}
+                data-toolbar-top={Math.round(floatingSelectionToolbar.top)}
+                data-toolbar-variant={floatingSelectionToolbar.variant}
+                onMouseDown={(event) => event.stopPropagation()}
+                ref={floatingSelectionToolbarRef}
+                role="toolbar"
+                style={{
+                    left: `${floatingSelectionToolbar.left}px`,
+                    top: `${floatingSelectionToolbar.top}px`,
+                }}
+            >
+                {floatingSelectionToolbar.isMultiSelection ? (
+                    <>
+                        <button disabled={!canGroupActiveSelection} onClick={groupSelection} title="Group selected layers" type="button">
+                            <LuGroup size={17} />
+                            <span>Group</span>
+                        </button>
+                        <button disabled={!canDistributeActiveSelection} onClick={() => distributeSelection("x")} title="Distribute across" type="button">
+                            <LuAlignHorizontalJustifyCenter size={17} />
+                        </button>
+                        <button disabled={!canDistributeActiveSelection} onClick={() => distributeSelection("y")} title="Distribute down" type="button">
+                            <LuAlignCenterVertical size={17} />
+                        </button>
+                        <button disabled={activePageLocked || floatingSelectionToolbar.locked} onClick={duplicateSelected} title="Duplicate selected layers" type="button">
+                            <LuCopy size={17} />
+                        </button>
+                        <button disabled={floatingSelectionToolbar.locked || activePageLocked} onClick={removeSelected} title="Delete selected layers" type="button">
+                            <LuTrash2 size={17} />
+                        </button>
+                        <button onClick={openSelectionInspector} title="More layer controls" type="button">
+                            <LuPanelLeftOpen size={17} />
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        {designCueCommands.length && onDesignCueRequest && onDesignCueApply ? (
+                            <button onClick={openSelectionAiTools} title="Open Design Cue" type="button">
+                                <LuSparkles size={17} />
+                                <span>Ask</span>
+                            </button>
+                        ) : null}
+                        <button onClick={openSelectionInspector} title="Edit selected layer" type="button">
+                            <LuPencil size={17} />
+                            <span>Edit</span>
+                        </button>
+                        <label
+                            className={styles.floatingColorPicker}
+                            data-disabled={!selectedElement || selectedIsLocked ? "true" : "false"}
+                            title="Layer color"
+                        >
+                            <span style={{ background: selectedColorValue }} />
+                            <input
+                                aria-label="Layer color"
+                                disabled={!selectedElement || selectedIsLocked}
+                                onChange={(event) => applyColor(event.target.value)}
+                                type="color"
+                                value={selectedColorValue}
+                            />
+                        </label>
+                        <button onClick={openSelectionInspector} title="Style and effects" type="button">
+                            <LuPalette size={17} />
+                        </button>
+                        <button disabled={!selectedElement || selectedIsLocked} onClick={() => flipSelected("x")} title="Flip selected layer" type="button">
+                            <LuFlipHorizontal2 size={17} />
+                        </button>
+                        <button onClick={openSelectionInspector} title="Position and layers" type="button">
+                            <LuLayers size={17} />
+                        </button>
+                        <button disabled={!selectedElement || activePageLocked} onClick={toggleSelectedLock} title={selectedLayerLocked ? "Unlock layer" : "Lock layer"} type="button">
+                            {selectedLayerLocked ? <LuUnlock size={17} /> : <LuLock size={17} />}
+                        </button>
+                        <button disabled={!selectedElement || selectedIsLocked} onClick={duplicateSelected} title="Duplicate selected layer" type="button">
+                            <LuCopy size={17} />
+                        </button>
+                        <button disabled={!selectedElement || selectedIsLocked} onClick={removeSelected} title="Delete selected layer" type="button">
+                            <LuTrash2 size={17} />
+                        </button>
+                        <button onClick={openSelectionInspector} title="More controls" type="button">
+                            <LuPanelLeftOpen size={17} />
+                        </button>
+                    </>
+                )}
+            </div>
+        );
+    };
+
+    const renderShortcutPanel = () => {
+        if (!shortcutPanelOpen) return null;
+        return (
+            <div
+                className={styles.shortcutOverlay}
+                data-creative-editor-dialog="shortcuts"
+                onKeyDown={trapDialogFocus}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Keyboard shortcuts"
+            >
+                <div className={styles.shortcutPanel}>
+                    <div className={styles.shortcutHeader}>
+                        <div>
+                            <h2>Keyboard shortcuts</h2>
+                            <p>Fast canvas actions for creating, selecting, arranging, text editing, zooming, and review.</p>
+                        </div>
+                        <button onClick={closeShortcutPanel} ref={shortcutCloseButtonRef} type="button">Close</button>
+                    </div>
+                    <div className={styles.shortcutGrid}>
+                        {KEYBOARD_SHORTCUT_GROUPS.map((group) => (
+                            <section className={styles.shortcutGroup} key={group.id}>
+                                <h3>{group.title}</h3>
+                                <div className={styles.shortcutRows}>
+                                    {group.items.map((item) => (
+                                        <div className={styles.shortcutRow} key={`${group.id}-${item.action}`}>
+                                            <span>{item.action}</span>
+                                            <div className={styles.shortcutKeys} aria-label={`${item.action} shortcuts`}>
+                                                {item.keys.map((shortcut) => (
+                                                    <kbd className={styles.shortcutKey} key={shortcut}>{shortcut}</kbd>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
-        <section className={styles.editorShell} data-theme={theme} aria-label="Creative editor">
+        <section
+            className={styles.editorShell}
+            data-creative-editor-active-tool={activeTool}
+            data-creative-editor-root="true"
+            data-creative-editor-layer-count={documentValue.elements.length}
+            data-chrome-mode={chromeMode}
+            data-theme={theme}
+            data-review-mode={reviewMode ? "true" : "false"}
+            aria-label="Creative editor"
+            onBlurCapture={flushPendingFloatingToolbarRefresh}
+        >
             <input
                 accept="application/json,.json"
                 className={styles.hiddenFileInput}
@@ -1905,28 +6842,22 @@ export default function CreativeEditor({
                 ref={replaceImageInputRef}
                 type="file"
             />
-            <input
-                accept=".svg,image/svg+xml"
-                className={styles.hiddenFileInput}
-                multiple
-                disabled={!allowRasterImports}
-                onChange={(event) => handleFileInput(event, "svg")}
-                ref={svgInputRef}
-                type="file"
-            />
             <header className={styles.topBar}>
                 <div className={styles.topLeft}>
                     <div className={styles.productMark} title={productLabel}>
-                        <LuLayers size={24} />
+                        <LuLayers size={18} />
+                        <span>{productLabel}</span>
                     </div>
-                    <button
-                        aria-label="Back to product workspace"
-                        className={styles.iconButton}
-                        onClick={() => setNotice("Use the product workspace navigation to leave the editor. Unsaved exports stay in this browser until downloaded or saved.")}
-                        type="button"
-                    >
-                        <LuHome size={20} />
-                    </button>
+                    {showWorkspaceNavigationActions ? (
+                        <button
+                            aria-label="Back to product workspace"
+                            className={styles.iconButton}
+                            onClick={() => setNotice("Use the product workspace navigation to leave the editor. Unsaved exports stay in this browser until downloaded or saved.")}
+                            type="button"
+                        >
+                            <LuHome size={20} />
+                        </button>
+                    ) : null}
                     <label className={styles.titleInput} title={sourceLabel}>
                         <LuPencil size={15} />
                         <input
@@ -1936,7 +6867,7 @@ export default function CreativeEditor({
                             value={documentValue.title}
                         />
                     </label>
-                    {allowNewDesign ? (
+                    {showDesignManagementActions && allowNewDesign ? (
                         <button className={styles.newDesignButton} onClick={startBlankDesign} type="button">
                             <LuPlus size={18} />
                             New Design
@@ -1948,31 +6879,47 @@ export default function CreativeEditor({
                         <LuHash size={18} />
                         {documentValue.canvas.width} X {documentValue.canvas.height}
                     </div>
-                    {allowDesignImport ? (
+                    {showDesignManagementActions && allowDesignImport ? (
                         <button aria-label="Import design JSON" className={styles.roundButton} onClick={() => jsonInputRef.current?.click()} type="button">
                             <LuFileInput size={18} />
                         </button>
                     ) : null}
-                    {allowRasterImports ? (
-                        <>
-                            <button aria-label="Import image file" className={styles.roundButton} onClick={() => imageInputRef.current?.click()} type="button">
-                                <LuFileImage size={18} />
-                            </button>
-                            <button aria-label="Import SVG file" className={styles.roundButton} onClick={() => svgInputRef.current?.click()} type="button">
-                                <LuImport size={18} />
-                            </button>
-                        </>
+                    {showDesignManagementActions && allowRasterImports ? (
+                        <button aria-label="Import image file" className={styles.roundButton} onClick={() => imageInputRef.current?.click()} type="button">
+                            <LuFileImage size={18} />
+                        </button>
                     ) : null}
                     <button
                         aria-label="Toggle grid and rulers"
                         className={styles.roundButton}
+                        data-creative-editor-action="toggle-grid"
                         data-active={showGrid ? "true" : "false"}
                         onClick={() => setShowGrid((value) => !value)}
                         type="button"
                     >
                         <LuGrid size={18} />
                     </button>
-                    {allowNewDesign ? (
+                    <button
+                        aria-label="Toggle safe area guides"
+                        className={styles.roundButton}
+                        data-creative-editor-action="toggle-safe-area"
+                        data-active={showSafeArea ? "true" : "false"}
+                        onClick={() => setShowSafeArea((value) => !value)}
+                        type="button"
+                    >
+                        <LuShieldCheck size={18} />
+                    </button>
+                    <button
+                        aria-label="Review before download"
+                        className={styles.roundButton}
+                        data-creative-editor-action="review"
+                        data-active={readinessPanelOpen ? "true" : "false"}
+                        onClick={enterReviewMode}
+                        type="button"
+                    >
+                        <LuShieldCheck size={18} />
+                    </button>
+                    {showDesignManagementActions && allowNewDesign ? (
                         <button aria-label="Reset design" className={styles.roundButton} onClick={startBlankDesign} type="button">
                             <LuRotateCcw size={18} />
                         </button>
@@ -1984,112 +6931,269 @@ export default function CreativeEditor({
                     <button aria-label="Redo" className={styles.roundButton} disabled={!canRedo} onClick={redo} type="button">
                         <LuRedo2 size={18} />
                     </button>
-                    <button
-                        aria-label="Toggle theme"
-                        className={styles.roundButton}
-                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                        type="button"
-                    >
-                        {theme === "dark" ? <LuMoon size={18} /> : <LuPalette size={18} />}
-                    </button>
-                    <button
-                        aria-label="Export handoff"
-                        className={styles.roundButton}
-                        onClick={() => setNotice("Download or copy the asset, then post it manually. Direct provider posting is not connected.")}
-                        type="button"
-                    >
-                        <LuShare2 size={18} />
-                    </button>
+                    {showDesignManagementActions ? (
+                        <button
+                            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+                            className={styles.roundButton}
+                            data-creative-editor-action="toggle-theme"
+                            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                            type="button"
+                        >
+                            {theme === "dark" ? <LuPalette size={18} /> : <LuMoon size={18} />}
+                        </button>
+                    ) : null}
+                    {showInternalExportTools ? (
+                        <button
+                            aria-label="Export handoff"
+                            className={styles.roundButton}
+                            onClick={() => setNotice("Download or copy the asset, then post it manually. Direct provider posting is not connected.")}
+                            type="button"
+                        >
+                            <LuShare2 size={18} />
+                        </button>
+                    ) : null}
                     <button
                         aria-label="Preview"
                         className={styles.roundButton}
+                        data-creative-editor-action="preview"
                         onClick={openPreview}
+                        ref={previewButtonRef}
                         type="button"
                     >
                         <LuEye size={18} />
                     </button>
-                    <button className={styles.saveButton} onClick={registerAsset} type="button">
-                        <LuUploadCloud size={18} />
-                        Save PNG
-                    </button>
+                    {showInternalExportTools ? (
+                        <>
+                            <button
+                                className={styles.downloadButton}
+                                disabled={disabledExportFormats.includes("png")}
+                                onClick={() => void runExport("png")}
+                                type="button"
+                            >
+                                <LuDownload size={18} />
+                                Download
+                            </button>
+                            <button
+                                className={styles.downloadButton}
+                                disabled={disabledExportFormats.includes("png")}
+                                onClick={() => { void downloadExportBundle(); }}
+                                type="button"
+                            >
+                                <LuFileImage size={18} />
+                                Bundle
+                            </button>
+                            <button className={styles.saveButton} onClick={registerAsset} type="button">
+                                <LuUploadCloud size={18} />
+                                {onTemplateSave ? templateSaveLabel : "Save"}
+                            </button>
+                        </>
+                    ) : onTemplateSave ? (
+                        <button className={styles.saveButton} onClick={registerAsset} type="button">
+                            <LuUploadCloud size={18} />
+                            {templateSaveLabel}
+                        </button>
+                    ) : null}
+                    {headerActions.length ? (
+                        <div className={styles.headerActionGroup}>
+                            {headerActions.map((action) => (
+                                <button
+                                    aria-label={action.ariaLabel || action.label}
+                                    className={styles.headerActionButton}
+                                    data-tone={action.tone || "default"}
+                                    disabled={action.disabled || action.loading}
+                                    key={action.id}
+                                    onClick={() => { void action.onClick(); }}
+                                    type="button"
+                                >
+                                    {action.icon}
+                                    <span>{action.loading ? "Working..." : action.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
             </header>
+            {browserDraftsEnabled && autosaveDraft ? (
+                <div className={styles.autosaveBanner} role="status">
+                    <span>Browser draft found for this design.</span>
+                    <button onClick={restoreAutosaveDraft} type="button">Restore</button>
+                    <button onClick={dismissAutosaveDraft} type="button">Dismiss</button>
+                </div>
+            ) : null}
 
-            <div className={styles.editorBody} data-drawer-collapsed={drawerCollapsed ? "true" : "false"}>
-                <nav className={styles.toolRail} aria-label="Editor tools">
+            <div
+                className={styles.editorBody}
+                data-creative-editor-body="true"
+                data-drawer-collapsed={drawerCollapsed ? "true" : "false"}
+                data-inspector-open={inspectorOpen ? "true" : "false"}
+                data-review-mode={reviewMode ? "true" : "false"}
+            >
+                <nav className={styles.toolRail} data-creative-editor-rail="true" aria-label="Editor tools">
                     {EDITOR_TOOLS.map((tool) => {
                         const Icon = tool.icon;
-                        const active = activeTool === tool.id;
+                        const active = !drawerCollapsed && activeTool === tool.id;
                         return (
                             <button
                                 className={styles.railButton}
                                 data-active={active ? "true" : "false"}
+                                data-creative-editor-tool={tool.id}
                                 disabled={tool.disabled}
                                 key={tool.id}
                                 onClick={() => {
                                     setActiveTool(tool.id);
                                     setDrawerCollapsed(false);
+                                    setDrawerSearch("");
                                 }}
                                 title={tool.disabled ? `${tool.label} is not available in this editor` : tool.label}
                                 type="button"
                             >
-                                <Icon size={29} />
+                                <span className={styles.railIcon} aria-hidden="true">
+                                    <Icon active={active} />
+                                </span>
                                 <span>{tool.label}</span>
                             </button>
                         );
                     })}
                 </nav>
 
-                <aside className={styles.assetDrawer}>
+                <aside className={styles.assetDrawer} data-creative-editor-asset-drawer="true">
                     <div className={styles.drawerHeader}>
                         <button aria-label="Collapse drawer" onClick={() => setDrawerCollapsed(true)} type="button">
                             <LuArrowLeft size={19} />
                         </button>
                         <h2>{TOOL_LABELS[activeTool]}</h2>
                     </div>
+                    <label className={styles.drawerSearch}>
+                        <LuFilter size={16} />
+                        <input
+                            aria-label={`Search ${TOOL_LABELS[activeTool]}`}
+                            onChange={(event) => setDrawerSearch(event.target.value)}
+                            placeholder={`Search ${TOOL_LABELS[activeTool].toLowerCase()}`}
+                            value={drawerSearch}
+                        />
+                    </label>
                     <div className={styles.drawerContent}>{renderDrawerContent()}</div>
                 </aside>
 
-                <main className={styles.workspaceArea}>
-                    <div className={styles.stageScroller} data-grid={showGrid ? "true" : "false"} data-mode={interactionMode}>
-                        {showGrid ? (
-                            <>
-                                <div className={styles.rulerTop} aria-hidden="true" />
-                                <div className={styles.rulerLeft} aria-hidden="true" />
-                            </>
+                <main className={styles.workspaceArea} data-creative-editor-workspace="true">
+                    {!inspectorOpen ? renderContextualSelectionToolbar() : null}
+                    <div
+                        className={styles.stageScroller}
+                        data-creative-editor-stage="true"
+                        data-grid={showGrid ? "true" : "false"}
+                        data-mode={interactionMode}
+                        data-safe-area={showSafeArea ? "true" : "false"}
+                        ref={stageScrollerRef}
+                    >
+                        {showPageNavigation ? (
+                            <div className={styles.pageQuickControls} aria-label="Page controls">
+                                <button aria-label={activePageLocked ? "Unlock page" : "Lock page"} onClick={toggleActivePageLock} type="button">
+                                    {activePageLocked ? <LuUnlock size={16} /> : <LuLock size={16} />}
+                                </button>
+                                <button aria-label="Duplicate page" onClick={duplicateActivePage} type="button">
+                                    <LuCopy size={16} />
+                                </button>
+                                <button aria-label="Add page" onClick={addPage} type="button">
+                                    <LuPlus size={16} />
+                                </button>
+                            </div>
                         ) : null}
                         <div
                             className={styles.fabricZoomBox}
-                            style={{ height: `${scaledHeight}px`, width: `${scaledWidth}px` }}
                         >
+                            {showGrid ? (
+                                <>
+                                    <div
+                                        className={styles.canvasRulerTop}
+                                        aria-hidden="true"
+                                        style={{
+                                            left: `${workspaceViewport.left}px`,
+                                            top: `${Math.max(8, workspaceViewport.top - 31)}px`,
+                                            width: `${workspaceViewport.width}px`,
+                                        }}
+                                    >
+                                        {horizontalRulerTicks.map((tick) => (
+                                            <span
+                                                data-major={tick.major ? "true" : "false"}
+                                                key={tick.id}
+                                                style={{ left: `${tick.position}%` }}
+                                            >
+                                                {tick.label ? <em>{tick.label}</em> : null}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <div
+                                        className={styles.canvasRulerLeft}
+                                        aria-hidden="true"
+                                        style={{
+                                            height: `${workspaceViewport.height}px`,
+                                            left: `${Math.max(8, workspaceViewport.left - 35)}px`,
+                                            top: `${workspaceViewport.top}px`,
+                                        }}
+                                    >
+                                        {verticalRulerTicks.map((tick) => (
+                                            <span
+                                                data-major={tick.major ? "true" : "false"}
+                                                key={tick.id}
+                                                style={{ top: `${tick.position}%` }}
+                                            >
+                                                {tick.label ? <em>{tick.label}</em> : null}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </>
+                            ) : null}
                             <div
-                                className={styles.fabricScaleNode}
-                                style={{
-                                    height: `${documentValue.canvas.height}px`,
-                                    transform: `scale(${zoom})`,
-                                    width: `${documentValue.canvas.width}px`,
-                                }}
-                            >
-                                <canvas
-                                    aria-label={documentValue.title}
-                                    className={styles.canvasSurface}
-                                    height={documentValue.canvas.height}
-                                    ref={canvasElementRef}
-                                    role="img"
-                                    width={documentValue.canvas.width}
+                                className={styles.canvasSurfaceHost}
+                                data-creative-editor-canvas-host="true"
+                                ref={canvasHostRef}
+                            />
+                            {showSafeArea && workspaceViewport.width > 1 && workspaceViewport.height > 1 ? (
+                                <div
+                                    aria-hidden="true"
+                                    className={styles.safeAreaOverlay}
+                                    style={{
+                                        height: `${workspaceViewport.height * (1 - SAFE_AREA_INSET_RATIO * 2)}px`,
+                                        left: `${workspaceViewport.left + workspaceViewport.width * SAFE_AREA_INSET_RATIO}px`,
+                                        top: `${workspaceViewport.top + workspaceViewport.height * SAFE_AREA_INSET_RATIO}px`,
+                                        width: `${workspaceViewport.width * (1 - SAFE_AREA_INSET_RATIO * 2)}px`,
+                                    }}
                                 />
-                            </div>
+                            ) : null}
+                            {renderFloatingSelectionToolbar()}
                         </div>
                         {!fabricReady ? <p className={styles.canvasLoading}>Loading editor...</p> : null}
                     </div>
+                    {showPageNavigation ? (
+                        <div className={styles.pageStrip} aria-label="Design pages">
+                            <div className={styles.pageTabs}>
+                                {pageList.map((page, index) => (
+                                    <button
+                                        data-active={page.id === documentValue.activePageId ? "true" : "false"}
+                                        key={page.id}
+                                        onClick={() => switchPage(page.id)}
+                                        type="button"
+                                    >
+                                        {page.locked ? <LuLock size={14} /> : null}
+                                        <span>{page.title || `Page ${index + 1}`}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            <button onClick={addPage} type="button">
+                                <LuPlus size={16} />
+                                Add page
+                            </button>
+                            <span>{activePageIndex + 1}/{Math.max(1, pageList.length)}</span>
+                        </div>
+                    ) : null}
                     <div className={styles.bottomControls}>
-                        <button aria-label="Zoom in" onClick={() => setZoom((value) => clampNumber(value + 0.1, 0.2, 1.8))} type="button">
+                        <button aria-label="Zoom in" onClick={() => zoomFabricViewport(0.1)} type="button">
                             <LuZoomIn size={20} />
                         </button>
-                        <button aria-label="Zoom out" onClick={() => setZoom((value) => clampNumber(value - 0.1, 0.2, 1.8))} type="button">
+                        <button aria-label="Zoom out" onClick={() => zoomFabricViewport(-0.1)} type="button">
                             <LuZoomOut size={20} />
                         </button>
-                        <button aria-label="Fit to screen" onClick={() => setZoom(0.72)} type="button">
+                        <button aria-label="Fit to screen" onClick={fitZoomToStage} type="button">
                             <LuMaximize size={20} />
                         </button>
                         <div className={styles.modeToggle} role="group" aria-label="Canvas mode">
@@ -2109,33 +7213,43 @@ export default function CreativeEditor({
                                 <LuHand size={18} />
                                 Grab
                             </button>
-                            <button
-                                data-active={interactionMode === "draw" ? "true" : "false"}
-                                onClick={() => setInteractionMode("draw")}
-                                type="button"
-                            >
-                                <LuPencil size={18} />
-                                Draw
-                            </button>
-                            <button
-                                data-active={interactionMode === "polygon" ? "true" : "false"}
-                                onClick={() => setInteractionMode("polygon")}
-                                type="button"
-                            >
-                                <LuShapes size={18} />
-                                Polygon
-                            </button>
                         </div>
-                        <button aria-label="Duplicate selected layer" disabled={!selectedElement} onClick={duplicateSelected} type="button">
+                        <button aria-label="Duplicate selected layer" disabled={!selectedElement || selectedLayerReadOnly} onClick={duplicateSelected} type="button">
                             <LuCopy size={20} />
+                        </button>
+                        <button
+                            aria-label="Keyboard shortcuts"
+                            data-creative-editor-action="shortcuts"
+                            onClick={openShortcutPanel}
+                            ref={shortcutButtonRef}
+                            type="button"
+                        >
+                            <LuKeyboard size={20} />
                         </button>
                         <button aria-label="Help" onClick={() => setNotice("Use the left rail to add content, the canvas to position layers, and the right panel to refine details. Polygon mode finishes with double-click or Enter.")} type="button">
                             <LuHelpCircle size={20} />
                         </button>
                     </div>
+                    <button
+                        className={styles.layersButton}
+                        data-active={inspectorOpen && rightPanelModeState === "layers" ? "true" : "false"}
+                        data-creative-editor-action="layers"
+                        onClick={openLayerPanel}
+                        type="button"
+                    >
+                        <LuLayers size={18} />
+                        Layers
+                    </button>
                 </main>
 
-                <aside className={styles.inspector}>
+                <aside
+                    aria-hidden={!inspectorOpen}
+                    className={styles.inspector}
+                    data-creative-editor-inspector="true"
+                    data-panel-mode={rightPanelModeState}
+                >
+                    {rightPanelModeState === "layers" ? renderLayerPanel() : (
+                        <>
                     <div className={styles.selectedSummary}>
                         <button aria-label="Clear selected layer" onClick={clearSelection} type="button">
                             <LuPanelLeftOpen size={25} />
@@ -2152,83 +7266,98 @@ export default function CreativeEditor({
                     </div>
 
                     <div className={styles.quickActions}>
-                        <button disabled={!selectedElement} onClick={toggleSelectedLock} type="button">
-                            {selectedElement?.locked ? <LuUnlock size={20} /> : <LuLock size={20} />}
+                        <button disabled={!selectedElement || activePageLocked} onClick={toggleSelectedLock} type="button">
+                            {selectedLayerLocked ? <LuUnlock size={20} /> : <LuLock size={20} />}
                         </button>
-                        <button disabled={!selectedElement} onClick={duplicateSelected} type="button">
+                        <button disabled={!selectedElement || selectedLayerReadOnly} onClick={duplicateSelected} type="button">
                             <LuCopy size={20} />
                         </button>
-                        <button disabled={!selectedElement || selectedElement.locked} onClick={removeSelected} type="button">
+                        <button disabled={!selectedElement || selectedLayerReadOnly} onClick={removeSelected} type="button">
                             <LuTrash2 size={20} />
                         </button>
                     </div>
 
-                    <div className={styles.inspectorSection}>
+                    {renderReadinessPanel()}
+
+                    {renderPriorityInspectorSection()}
+
+                    <div className={`${styles.inspectorSection} ${styles.utilityInspectorSection}`}>
                         <h3>Quick Tools</h3>
                         <div className={styles.transformActionGrid}>
-                            <button onClick={groupSelection} type="button">
-                                <LuGroup size={17} />
-                                Group
-                            </button>
-                            <button onClick={ungroupSelection} type="button">
-                                <LuUngroup size={17} />
-                                Ungroup
-                            </button>
-                            <button disabled={!selectedElement || selectedElement.locked} onClick={() => flipSelected("x")} type="button">
+                            {canGroupActiveSelection ? (
+                                <button onClick={groupSelection} type="button">
+                                    <LuGroup size={17} />
+                                    Group
+                                </button>
+                            ) : null}
+                            {canUngroupActiveSelection ? (
+                                <button onClick={ungroupSelection} type="button">
+                                    <LuUngroup size={17} />
+                                    Ungroup
+                                </button>
+                            ) : null}
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => flipSelected("x")} type="button">
                                 <LuFlipHorizontal2 size={17} />
                                 Flip X
                             </button>
-                            <button disabled={!selectedElement || selectedElement.locked} onClick={() => flipSelected("y")} type="button">
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => flipSelected("y")} type="button">
                                 <LuFlipVertical2 size={17} />
                                 Flip Y
                             </button>
-                            <button onClick={() => distributeSelection("x")} type="button">
-                                <LuAlignHorizontalJustifyCenter size={17} />
-                                Distribute X
-                            </button>
-                            <button onClick={() => distributeSelection("y")} type="button">
-                                <LuAlignCenterVertical size={17} />
-                                Distribute Y
-                            </button>
+                            {canDistributeActiveSelection ? (
+                                <>
+                                    <button onClick={() => distributeSelection("x")} type="button">
+                                        <LuAlignHorizontalJustifyCenter size={17} />
+                                        Distribute X
+                                    </button>
+                                    <button onClick={() => distributeSelection("y")} type="button">
+                                        <LuAlignCenterVertical size={17} />
+                                        Distribute Y
+                                    </button>
+                                </>
+                            ) : null}
                         </div>
                     </div>
 
-                    <div className={styles.inspectorSection}>
+                    <div className={`${styles.inspectorSection} ${styles.layerOrderInspectorSection}`}>
                         <h3>Layer Alignment</h3>
                         <div className={styles.layerAlignmentGrid}>
-                            <button disabled={!selectedElement} onClick={() => selectedElement && moveLayerById(selectedElement.id, "forward")} type="button">
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => selectedElement && moveLayerById(selectedElement.id, "forward")} type="button">
                                 <LuArrowUp size={17} />
                                 Move Forward
                             </button>
-                            <button disabled={!selectedElement} onClick={() => selectedElement && moveLayerById(selectedElement.id, "front")} type="button">
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => selectedElement && moveLayerById(selectedElement.id, "front")} type="button">
                                 <LuArrowUpToLine size={17} />
                                 Move To Front
                             </button>
-                            <button disabled={!selectedElement} onClick={() => selectedElement && moveLayerById(selectedElement.id, "backward")} type="button">
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => selectedElement && moveLayerById(selectedElement.id, "backward")} type="button">
                                 <LuArrowDown size={17} />
                                 Move Backward
                             </button>
-                            <button disabled={!selectedElement} onClick={() => selectedElement && moveLayerById(selectedElement.id, "back")} type="button">
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => selectedElement && moveLayerById(selectedElement.id, "back")} type="button">
                                 <LuArrowDownToLine size={17} />
                                 Move To Back
                             </button>
                         </div>
                     </div>
 
-                    <div className={styles.inspectorSection}>
+                    <div className={`${styles.inspectorSection} ${styles.alignmentInspectorSection}`}>
                         <h3>Alignment With Background</h3>
                         <div className={styles.alignIconRow}>
-                            <button disabled={!selectedElement} onClick={() => alignSelected("left")} type="button"><LuAlignStartVertical size={21} /></button>
-                            <button disabled={!selectedElement} onClick={() => alignSelected("centerX")} type="button"><LuAlignCenterVertical size={21} /></button>
-                            <button disabled={!selectedElement} onClick={() => alignSelected("right")} type="button"><LuAlignEndVertical size={21} /></button>
-                            <button disabled={!selectedElement} onClick={() => alignSelected("center")} type="button"><LuAlignCenter size={21} /></button>
-                            <button disabled={!selectedElement} onClick={() => alignSelected("top")} type="button"><LuAlignStartHorizontal size={21} /></button>
-                            <button disabled={!selectedElement} onClick={() => alignSelected("centerY")} type="button"><LuAlignHorizontalJustifyCenter size={21} /></button>
-                            <button disabled={!selectedElement} onClick={() => alignSelected("bottom")} type="button"><LuAlignEndHorizontal size={21} /></button>
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("left")} type="button"><LuAlignStartVertical size={21} /></button>
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("centerX")} type="button"><LuAlignCenterVertical size={21} /></button>
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("right")} type="button"><LuAlignEndVertical size={21} /></button>
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("center")} type="button"><LuAlignCenter size={21} /></button>
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("top")} type="button"><LuAlignStartHorizontal size={21} /></button>
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("centerY")} type="button"><LuAlignHorizontalJustifyCenter size={21} /></button>
+                            <button disabled={!selectedElement || selectedLayerReadOnly} onClick={() => alignSelected("bottom")} type="button"><LuAlignEndHorizontal size={21} /></button>
                         </div>
                     </div>
 
-                    <div className={styles.inspectorSection}>
+                    <div
+                        className={`${styles.inspectorSection} ${styles.colorInspectorSection}`}
+                        hidden={!(canEditTextElement(selectedElement) || canFillElement(selectedElement) || selectedElement?.type === "line" || selectedElement?.type === "qr")}
+                    >
                         <h3>Colors</h3>
                         <div className={styles.swatchGrid}>
                             {COLOR_SWATCHES.map((color) => (
@@ -2245,7 +7374,7 @@ export default function CreativeEditor({
                         </div>
                     </div>
 
-                    <div className={styles.inspectorSection}>
+                    <div className={`${styles.inspectorSection} ${styles.exportInspectorSection}`}>
                         <h3>Watermark</h3>
                         <label className={styles.checkboxField}>
                             <input
@@ -2325,7 +7454,7 @@ export default function CreativeEditor({
                         </label>
                     </div>
 
-                    <div className={styles.inspectorSection}>
+                    <div className={`${styles.inspectorSection} ${styles.advancedInspectorSection}`} hidden={!canGradientElement(selectedElement)}>
                         <h3>Gradient</h3>
                         <label className={styles.checkboxField}>
                             <input
@@ -2408,7 +7537,7 @@ export default function CreativeEditor({
                         </div>
                     </div>
 
-                    <div className={styles.inspectorSection}>
+                    <div className={`${styles.inspectorSection} ${styles.advancedInspectorSection}`} hidden={!selectedElement}>
                         <h3>Shadow</h3>
                         <label className={styles.rangeField}>
                             <span>Blur</span>
@@ -2452,7 +7581,7 @@ export default function CreativeEditor({
                         </div>
                     </div>
 
-                    <div className={styles.inspectorSection}>
+                    <div className={`${styles.inspectorSection} ${styles.advancedInspectorSection}`} hidden={!selectedElement}>
                         <label className={styles.rangeField}>
                             <span>Angle</span>
                             <input
@@ -2466,7 +7595,7 @@ export default function CreativeEditor({
                         </label>
                     </div>
 
-                    <div className={styles.inspectorSection}>
+                    <div className={`${styles.inspectorSection} ${styles.advancedInspectorSection}`} hidden={selectedElement?.type !== "image"}>
                         <h3>Image Filter</h3>
                         <label className={styles.selectField}>
                             <LuFilter size={16} />
@@ -2609,7 +7738,7 @@ export default function CreativeEditor({
                         </label>
                     </div>
 
-                    <div className={styles.inspectorSection}>
+                    <div className={`${styles.inspectorSection} ${styles.advancedInspectorSection}`} hidden={!canStrokeElement(selectedElement)}>
                         <h3>Border</h3>
                         <div className={styles.borderGrid}>
                             <label>
@@ -2673,8 +7802,8 @@ export default function CreativeEditor({
                     </div>
 
                     {selectedElement ? (
-                        <div className={styles.inspectorSection}>
-                            <h3>Layer</h3>
+                        <div className={`${styles.inspectorSection} ${styles.detailInspectorSection}`}>
+                            <h3>Layer details</h3>
                             <label>
                                 Name
                                 <input
@@ -2876,8 +8005,9 @@ export default function CreativeEditor({
                                 <>
                                     <label>
                                         Image URL
-                                        <textarea disabled={selectedElement.locked} onChange={(event) => updateSelected({ src: event.target.value } as Partial<CreativeEditorElement>)} value={selectedElement.src} />
+                                        <textarea disabled readOnly value={selectedElement.src} />
                                     </label>
+                                    <p className={styles.legacyHelperText}>Use Replace image file or the Images panel to change this source safely.</p>
                                     <button
                                         className={styles.inlineActionButton}
                                         disabled={selectedElement.locked}
@@ -2890,70 +8020,92 @@ export default function CreativeEditor({
                                 </>
                             ) : null}
                             {selectedElement.type === "qr" ? (
-                                <label>
-                                    QR value
-                                    <textarea disabled={selectedElement.locked} onChange={(event) => updateSelected({ value: event.target.value } as Partial<CreativeEditorElement>)} value={selectedElement.value} />
-                                </label>
+                                <>
+                                    <label>
+                                        QR value
+                                        <textarea disabled={selectedElement.locked} onChange={(event) => updateSelected({ value: event.target.value } as Partial<CreativeEditorElement>)} value={selectedElement.value} />
+                                    </label>
+                                    <div className={styles.fieldGrid}>
+                                        <label>
+                                            QR color
+                                            <input
+                                                disabled={selectedElement.locked}
+                                                onChange={(event) => updateSelected({ darkColor: event.target.value } as Partial<CreativeEditorElement>)}
+                                                type="color"
+                                                value={selectedElement.darkColor || "#16231f"}
+                                            />
+                                        </label>
+                                        <label>
+                                            Background
+                                            <input
+                                                disabled={selectedElement.locked}
+                                                onChange={(event) => updateSelected({ lightColor: event.target.value } as Partial<CreativeEditorElement>)}
+                                                type="color"
+                                                value={selectedElement.lightColor || "#ffffff"}
+                                            />
+                                        </label>
+                                    </div>
+                                </>
                             ) : null}
                         </div>
                     ) : null}
 
-                    <div className={styles.inspectorSection}>
-                        <h3>Layers</h3>
-                        <div className={styles.layerList}>
-                            {layerList.map((element) => (
-                                <div className={styles.layerRow} data-active={selectedId === element.id} key={element.id}>
-                                    <button className={styles.layerName} onClick={() => selectLayer(element.id)} type="button">
-                                        <span>{element.name}</span>
-                                        <small>{element.type}</small>
-                                    </button>
-                                    <button aria-label="Toggle visible" onClick={() => toggleLayer(element.id, "visible")} type="button">
-                                        {element.visible === false ? <LuEyeOff size={14} /> : <LuEye size={14} />}
-                                    </button>
-                                    <button aria-label="Toggle lock" onClick={() => toggleLayer(element.id, "locked")} type="button">
-                                        {element.locked ? <LuLock size={14} /> : <LuUnlock size={14} />}
-                                    </button>
-                                </div>
-                            ))}
+                    {showInternalExportTools ? (
+                        <div className={styles.exportRow}>
+                            <button onClick={runReadinessCheck} type="button">
+                                <LuShieldCheck size={16} />
+                                Check
+                            </button>
+                            <button disabled={disabledExportFormats.includes("svg")} onClick={() => runExport("svg")} type="button">
+                                <LuDownload size={16} />
+                                SVG
+                            </button>
+                            <button disabled={disabledExportFormats.includes("png")} onClick={() => runExport("png")} type="button">
+                                <LuDownload size={16} />
+                                PNG
+                            </button>
+                            <button disabled={disabledExportFormats.includes("json")} onClick={() => runExport("json")} type="button">
+                                <LuFileJson size={16} />
+                                JSON
+                            </button>
+                            <button onClick={copyPngToClipboard} type="button">
+                                <LuCopy size={16} />
+                                Copy
+                            </button>
+                            <button onClick={copyBase64ToClipboard} type="button">
+                                <LuHash size={16} />
+                                Base64
+                            </button>
+                            <button disabled={disabledExportFormats.includes("png")} onClick={() => { void downloadExportBundle(); }} type="button">
+                                <LuFileImage size={16} />
+                                Bundle
+                            </button>
                         </div>
-                    </div>
-
-                    <div className={styles.exportRow}>
-                        <button onClick={() => runExport("svg")} type="button">
-                            <LuDownload size={16} />
-                            SVG
-                        </button>
-                        <button onClick={() => runExport("png")} type="button">
-                            <LuDownload size={16} />
-                            PNG
-                        </button>
-                        <button onClick={() => runExport("json")} type="button">
-                            <LuFileJson size={16} />
-                            JSON
-                        </button>
-                        <button onClick={copyPngToClipboard} type="button">
-                            <LuCopy size={16} />
-                            Copy
-                        </button>
-                        <button onClick={copyBase64ToClipboard} type="button">
-                            <LuHash size={16} />
-                            Base64
-                        </button>
-                    </div>
+                    ) : null}
                     {notice ? <p className={styles.notice} role="status">{notice}</p> : null}
+                        </>
+                    )}
                 </aside>
             </div>
             {previewDataUrl ? (
-                <div className={styles.previewOverlay} role="dialog" aria-modal="true" aria-label="Design preview">
+                <div
+                    className={styles.previewOverlay}
+                    data-creative-editor-dialog="preview"
+                    onKeyDown={trapDialogFocus}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Design preview"
+                >
                     <div className={styles.previewDialog}>
                         <div className={styles.previewHeader}>
                             <h2>Preview</h2>
-                            <button onClick={() => setPreviewDataUrl("")} type="button">Close</button>
+                            <button onClick={closePreviewPanel} ref={previewCloseButtonRef} type="button">Close</button>
                         </div>
                         <img alt={`${documentValue.title} preview`} src={previewDataUrl} />
                     </div>
                 </div>
             ) : null}
+            {renderShortcutPanel()}
         </section>
     );
 }

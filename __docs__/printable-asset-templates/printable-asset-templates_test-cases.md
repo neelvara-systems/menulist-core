@@ -4,7 +4,7 @@
 
 | Check | Expected |
 | --- | --- |
-| `node scripts/verification/verify-printable-asset-templates.js` | Verifies 9 catalog families, asset-specific family filtering, required asset support, no hardcoded sample output text, QR safety constants, and nav route contract. |
+| `node scripts/verification/verify-printable-asset-templates.js` | Verifies 9 catalog families, asset-specific family filtering, required asset support, no hardcoded sample output text, QR safety constants, nav route contract, and Creative Editor Template Registry integration. |
 | `npm run verify:menu-card-export` | Existing print/menu export safeguards still pass. |
 | Focused ESLint | New asset template library, desktop route, mobile shell screen, and touched generators pass. |
 | TypeScript | `npx tsc --noEmit --incremental false` passes. |
@@ -21,6 +21,12 @@
 | Template count | QR/display assets show 9 template families; full Print Menu shows only the unique supported PDF layouts. |
 | Preview | Template modal/sheet automatically shows a generated output preview using real store/logo/color/URL and no embedded PDF viewer. |
 | Format actions | Single printable assets offer separate PDF and image downloads. Complete Menu Kit stays ZIP-only. |
+| Customize action | Table Tent, Single Card, Counter Sticker, Entrance Poster, and Feedback QR show **Customize in editor** on desktop. Print Menu and Complete Menu Kit do not. |
+| Customize editor | The fullscreen editor opens from the selected template, QR/link/attribution layers are locked, editable copy can change, and Image/Print PDF download uses the latest edited document. |
+| Save as template | The fullscreen editor exposes **Save as template** for supported non-menu assets and saves the current neutral document to Saved designs. |
+| Saved designs | Saved templates appear above Ready templates for the same asset type and can reopen in the editor. |
+| Rehydration | Opening a saved template after changing selected project refreshes QR/source values from the current project. |
+| Delete saved template | Deleting a Saved designs card removes it from the list without affecting generated Ready templates. |
 | Download | File downloads with selected asset and template. |
 | Compatibility | Old `/use-menulist/print-assets` does not break. |
 | No reload | Use MenuList -> Assets -> Print Menu uses app navigation, not document reload. |
@@ -35,6 +41,7 @@
 | Back action | Returns to previous mobile screen without reload. |
 | Template list | Compact touch-friendly grid/list, large touch targets, no text overlap. |
 | Download | Same output as desktop for same inputs. |
+| Customization | Mobile does not expose drag/resize customization, but preview/download output still comes from the same editor-backed renderer. |
 
 ## Output QA
 
@@ -74,7 +81,8 @@ Every template family must be checked for:
 
 - Do not hardcode `Habibis`, restaurant-only names, or fixed URLs in renderers.
 - Do not tint QR modules with brand color by default.
-- Do not add generated Storage uploads.
-- Do not add Firestore writes for template actions.
+- Do not add generated Storage uploads for preview/download.
+- Do not add Firestore writes for generated template preview/download/open actions.
+- Only explicit Saved designs save/delete can use the registry write path.
 - Do not add `window.location` navigation for owner shell print/download flows.
-- Do not add a free-form template editor.
+- Do not add a blank free-form template editor; governed desktop customization must start from a generated print template.

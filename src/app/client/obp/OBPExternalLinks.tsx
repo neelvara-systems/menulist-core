@@ -56,7 +56,7 @@ export default function OBPExternalLinks({
     tenantId,
     storeId,
     trackingEnabled = true,
-    includeLocation = true,
+    includeLocation = false,
     storeTimeZone,
     businessDayEndTime,
     countryCode,

@@ -8,7 +8,7 @@ import { processMenuDriftMetricsForAllStores } from './analytics/menuDriftMetric
 import { reconcileSubscriptions } from './billing/reconcileSubscriptions';
 import { FUNCTION_MAX_INSTANCES, SECRET_GROUPS, SECRETS } from './config/secrets';
 import { DB_COLLECTIONS, getMenuIntelligenceDocId } from './constants/database';
-import { FUNCTION_FLAGS } from './constants/features';
+import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG } from './constants/features';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
 import { logger as appLogger } from './lib/logger';
@@ -88,6 +88,7 @@ const NIGHTLY_STATE_PREFIX = 'nightlyState';
 const NIGHTLY_LOCK_PREFIX = 'nightlyLock';
 const NIGHTLY_LOCK_LEASE_MS = 8 * 60 * 1000;
 const MAX_CATCH_UP_DAYS_PER_RUN = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface DecisionBlocksDocument {
     tId: string;
@@ -1152,6 +1153,9 @@ export const computeDecisionBlocksScores = onSchedule({
                     triggeredBy: 'system',
                     startedAt: Timestamp.fromMillis(runStartTime),
                     completedAt: Timestamp.now(),
+                    expiresAt: Timestamp.fromMillis(
+                        runStartTime + FUNCTION_RETENTION_CONFIG.SCHEDULER_RUN_LOG_RETENTION_DAYS * DAY_MS,
+                    ),
                     durationMs: Date.now() - runStartTime,
                     status: 'skipped',
                     schedulerHour: currentUTCHour,
@@ -2014,6 +2018,9 @@ export const computeDecisionBlocksScores = onSchedule({
                 triggeredBy: 'system',
                 startedAt: Timestamp.fromMillis(runStartTime),
                 completedAt: Timestamp.now(),
+                expiresAt: Timestamp.fromMillis(
+                    runStartTime + FUNCTION_RETENTION_CONFIG.SCHEDULER_RUN_LOG_RETENTION_DAYS * DAY_MS,
+                ),
                 durationMs: totalDurationMs,
                 status: runStatus,
                 schedulerHour: currentUTCHour,
@@ -2129,6 +2136,9 @@ export const triggerStoreNightlyScheduler = onCall({
             triggerKind: 'store_nightly_recovery',
             triggeredBy,
             manualScope,
+            expiresAt: Timestamp.fromMillis(
+                runStartTime + FUNCTION_RETENTION_CONFIG.SCHEDULER_RUN_LOG_RETENTION_DAYS * DAY_MS,
+            ),
             updatedAt: FieldValue.serverTimestamp(),
             ...payload,
         }, { merge: true });

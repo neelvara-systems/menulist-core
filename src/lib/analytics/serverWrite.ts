@@ -1,76 +1,9 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { filterAnalyticsUpdateData, TWO_LEVEL_ANALYTICS_MAP_FIELDS } from './writePolicy';
 
 const DAILY_ANALYTICS_COLLECTION = 'daily';
-
-const TWO_LEVEL_ANALYTICS_MAP_FIELDS = new Set([
-  'actionSessionsBySource',
-  'appOpensByPlatform',
-  'appOpensBySurface',
-  'attributeFilterActionClicks',
-  'attributeFilterInteractions',
-  'attributeFilterItemTaps',
-  'attributeFilterItemViews',
-  'attributeFilterNames',
-  'attributeFilterSearches',
-  'attributeFilterUnavailableTaps',
-  'categoryNames',
-  'clicksByCategory',
-  'clicksByDevice',
-  'clicksByItem',
-  'clicksByLocation',
-  'decisionBlocksRendered',
-  'hourlyAppOpens',
-  'hourlyClicks',
-  'hourlyDecisionBlocksRendered',
-  'hourlyItemViews',
-  'hourlyMenuActionClicks',
-  'hourlyOBPActionClicks',
-  'hourlyOBPLinkClicks',
-  'hourlyOBPMenuClicks',
-  'hourlyPromptShown',
-  'hourlyRecommendationClicks',
-  'hourlySearches',
-  'hourlyUnavailableItemTaps',
-  'hourlyViews',
-  'installsByDevice',
-  'installsByLocation',
-  'installsByPlatform',
-  'installsBySource',
-  'installsBySurface',
-  'itemNames',
-  'languageAdoptions',
-  'languageNames',
-  'menuActionClicks',
-  'menuActionClicksBySource',
-  'menuResolutionLayer',
-  'menuSessionsByLanguage',
-  'menuSessionsBySource',
-  'obpActionClicks',
-  'obpLinkClicks',
-  'obpLanguageAdoptions',
-  'obpLanguageNames',
-  'obpSessionsByLanguage',
-  'obpMenuClicksBySurface',
-  'obpShares',
-  'recommendationClicks',
-  'recommendationClicksByItem',
-  'searchTerms',
-  'shortcutClicks',
-  'unavailableItemTapsByItem',
-  'viewsByCampaign',
-  'viewsByContent',
-  'viewsByCategory',
-  'viewsByDevice',
-  'viewsByEntrySource',
-  'menuViewsByLanguage',
-  'viewsByLocation',
-  'viewsByMedium',
-  'viewsBySource',
-  'viewsByItem',
-  'zeroResultSearchTerms',
-]);
 
 const setAnalyticsObjectValue = (target: Record<string, any>, key: string, value: any) => {
   Object.defineProperty(target, key, {
@@ -146,10 +79,12 @@ export async function writePublicAnalyticsEventAdmin({
 }) {
   const docId = `${tenantId}_${storeId}_${projectId}_${DAILY_ANALYTICS_COLLECTION}_${dateString}`;
   const processedData: Record<string, any> = {};
+  const policyData = filterAnalyticsUpdateData(updateData);
+  if (Object.keys(policyData).length === 0) return;
 
-  Object.keys(updateData).forEach((key) => {
+  Object.keys(policyData).forEach((key) => {
     if (key === 'date') return;
-    const rawValue = updateData[key];
+    const rawValue = policyData[key];
     if (typeof rawValue === 'number') {
       assignProcessedAnalyticsField(processedData, key, FieldValue.increment(rawValue));
       return;

@@ -33,6 +33,12 @@ Assets gives you downloadable files for tables, counters, entrances, feedback, a
 3. Review the image preview shown in the modal or sheet.
 4. Tap **Download PDF** or **Download image**.
 
+## Adjust a File on Desktop
+
+For Table Tent, Single Table / Counter Card, Counter Sticker, Entrance Poster, and Feedback QR, click **Customize in editor** after opening a style.
+
+Use this when you need to move text slightly, shorten a phrase, or adjust the layout. The QR link stays protected so the printed file still opens the right page.
+
 ## Use One Style Across Files
 
 1. Choose a style you like.

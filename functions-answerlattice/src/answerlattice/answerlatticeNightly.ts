@@ -40,6 +40,10 @@ import { emitIntegrationEvent, resetNightlyEventCounts } from '../integrations/e
 import { COVERAGE_DROP_THRESHOLD, EVENT_SEVERITY, INTEGRATION_EVENT_TYPES } from '../integrations/types';
 import { bumpAnswerlatticeCacheVersion, ANSWERLATTICE_CACHE_SOURCES } from './cacheVersionManifest';
 import { repairCompiledContextBundle } from './contextBundleBuilder';
+import {
+    cleanupAnswerlatticeOperationalRetention,
+    getAnswerlatticeRetentionFields,
+} from './dataRetention';
 import { generateDraftsForNewProposals } from './draftGenerator';
 import { aggregateFrictionStats, cleanupExpiredFrictionStats } from './frictionAggregation';
 import { generateFrictionInsight } from './frictionInsight';
@@ -1605,6 +1609,16 @@ export interface AnswerlatticeNightlyResult {
     compiledContextBundlesRebuilt: number;
     compiledContextBundlesSkipped: number;
     compiledContextBytesGenerated: number;
+    // Operational Retention Cleanup
+    retentionSchedulerRunLogsDeleted: number;
+    retentionNotificationLogsDeleted: number;
+    retentionOwnerNotificationEventsDeleted: number;
+    retentionOwnerNotificationDeliveriesDeleted: number;
+    retentionOwnerNotificationRateLimitsDeleted: number;
+    retentionContactEnquiriesDeleted: number;
+    retentionQueryEmbeddingsDeleted: number;
+    retentionAiSearchHistoryDeleted: number;
+    retentionContextBundleObjectsDeleted: number;
     errors: string[];
     errorDetails: AnswerlatticeSchedulerDiagnostic[];
     tenantRuns: AnswerlatticeTenantRun[];
@@ -1684,6 +1698,15 @@ export async function runAnswerlatticeNightly(options: {
         compiledContextBundlesRebuilt: 0,
         compiledContextBundlesSkipped: 0,
         compiledContextBytesGenerated: 0,
+        retentionSchedulerRunLogsDeleted: 0,
+        retentionNotificationLogsDeleted: 0,
+        retentionOwnerNotificationEventsDeleted: 0,
+        retentionOwnerNotificationDeliveriesDeleted: 0,
+        retentionOwnerNotificationRateLimitsDeleted: 0,
+        retentionContactEnquiriesDeleted: 0,
+        retentionQueryEmbeddingsDeleted: 0,
+        retentionAiSearchHistoryDeleted: 0,
+        retentionContextBundleObjectsDeleted: 0,
         errors: [],
         errorDetails: [],
         tenantRuns: [],
@@ -1723,6 +1746,15 @@ export async function runAnswerlatticeNightly(options: {
                     predictiveSuggestionsGenerated: result.predictiveSuggestionsGenerated,
                     compiledContextBundlesRebuilt: result.compiledContextBundlesRebuilt,
                     compiledContextBytesGenerated: result.compiledContextBytesGenerated,
+                    retentionSchedulerRunLogsDeleted: result.retentionSchedulerRunLogsDeleted,
+                    retentionNotificationLogsDeleted: result.retentionNotificationLogsDeleted,
+                    retentionOwnerNotificationEventsDeleted: result.retentionOwnerNotificationEventsDeleted,
+                    retentionOwnerNotificationDeliveriesDeleted: result.retentionOwnerNotificationDeliveriesDeleted,
+                    retentionOwnerNotificationRateLimitsDeleted: result.retentionOwnerNotificationRateLimitsDeleted,
+                    retentionContactEnquiriesDeleted: result.retentionContactEnquiriesDeleted,
+                    retentionQueryEmbeddingsDeleted: result.retentionQueryEmbeddingsDeleted,
+                    retentionAiSearchHistoryDeleted: result.retentionAiSearchHistoryDeleted,
+                    retentionContextBundleObjectsDeleted: result.retentionContextBundleObjectsDeleted,
                 },
                 errors: result.errorDetails.slice(0, 100),
                 errorMessages: result.errors.slice(0, 100),
@@ -1741,6 +1773,7 @@ export async function runAnswerlatticeNightly(options: {
                     predictiveSupportEnabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT,
                     compiledContextBundlesEnabled: FUNCTION_FLAGS.ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES,
                 },
+                ...getAnswerlatticeRetentionFields('schedulerRunLogs', startedAt),
                 ...payload,
             }, { merge: true });
         } catch (error) {
@@ -2267,6 +2300,58 @@ export async function runAnswerlatticeNightly(options: {
         result.coverageRate = coverageRuns.length > 0
             ? coverageRuns.reduce((sum, run) => sum + run.coverageRate, 0) / coverageRuns.length
             : 0;
+
+        // ═══════════════════════════════════════════════════════════════
+        // Operational Retention Cleanup
+        // Bounded cleanup for raw operational rows and old compiled bundle
+        // versions. This stays inside the existing scheduler by design.
+        // ═══════════════════════════════════════════════════════════════
+        try {
+            const retentionResult = await cleanupAnswerlatticeOperationalRetention({
+                tenants: result.tenantRuns.map((tenantRun) => ({
+                    tId: tenantRun.tId,
+                    sId: tenantRun.sId,
+                })),
+            });
+
+            result.retentionSchedulerRunLogsDeleted += retentionResult.schedulerRunLogsDeleted;
+            result.retentionNotificationLogsDeleted += retentionResult.notificationLogsDeleted;
+            result.retentionOwnerNotificationEventsDeleted += retentionResult.ownerNotificationEventsDeleted;
+            result.retentionOwnerNotificationDeliveriesDeleted += retentionResult.ownerNotificationDeliveriesDeleted;
+            result.retentionOwnerNotificationRateLimitsDeleted += retentionResult.ownerNotificationRateLimitsDeleted;
+            result.retentionContactEnquiriesDeleted += retentionResult.contactEnquiriesDeleted;
+            result.retentionQueryEmbeddingsDeleted += retentionResult.queryEmbeddingsDeleted;
+            result.retentionAiSearchHistoryDeleted += retentionResult.aiSearchHistoryDeleted;
+            result.retentionContextBundleObjectsDeleted += retentionResult.contextBundleObjectsDeleted;
+
+            for (const errorMessage of retentionResult.errors) {
+                recordDiagnostic(buildDiagnostic(new Error(errorMessage), {
+                    phase: 'retention_cleanup',
+                    operation: 'cleanupAnswerlatticeOperationalRetention',
+                }));
+            }
+
+            logger.info('[Answerlattice Nightly] Retention cleanup complete', {
+                runLogId,
+                schedulerRunLogsDeleted: retentionResult.schedulerRunLogsDeleted,
+                notificationLogsDeleted: retentionResult.notificationLogsDeleted,
+                ownerNotificationEventsDeleted: retentionResult.ownerNotificationEventsDeleted,
+                ownerNotificationDeliveriesDeleted: retentionResult.ownerNotificationDeliveriesDeleted,
+                ownerNotificationRateLimitsDeleted: retentionResult.ownerNotificationRateLimitsDeleted,
+                contactEnquiriesDeleted: retentionResult.contactEnquiriesDeleted,
+                queryEmbeddingsDeleted: retentionResult.queryEmbeddingsDeleted,
+                aiSearchHistoryDeleted: retentionResult.aiSearchHistoryDeleted,
+                contextBundleObjectsDeleted: retentionResult.contextBundleObjectsDeleted,
+                errorCount: retentionResult.errors.length,
+            });
+        } catch (error) {
+            const diagnostic = buildDiagnostic(error, {
+                phase: 'retention_cleanup',
+                operation: 'cleanupAnswerlatticeOperationalRetention',
+            });
+            recordDiagnostic(diagnostic);
+            logger.error('[Answerlattice Nightly] Retention cleanup fatal error', diagnostic);
+        }
 
         // ═══════════════════════════════════════════════════════════════
         // STEP 12 — Onboarding Bootstrap (Expansion Item #6)

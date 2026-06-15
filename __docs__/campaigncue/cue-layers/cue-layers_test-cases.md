@@ -122,6 +122,7 @@ This isolates schema, storage, editor, validation, and export bugs from nondeter
 | Replace image | Creates repair/user replacement path, not direct external URL persistence. |
 | Save | Writes debounced `CreativeEditorDocumentSnapshot` to Storage and updates Firestore pointer. |
 | Preview/export | Serializes current canvas state before export. |
+| Browser SVG/JSON export | Disabled for active CueLayers documents so hydrated private asset URLs and unowned runtime JSON do not leave the product-owned export path. |
 | User-edited text semantics | A later owner edit marks the text as user-owned and does not claim original AI text-safety approval for that object. |
 
 ## Visual Validation Tests

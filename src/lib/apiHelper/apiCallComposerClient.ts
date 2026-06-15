@@ -43,8 +43,9 @@ export const apiCallComposerClient = async (fn, ...args) => {
         return response;
     } catch (error) {
         const fallbackMessage = 'Could not load data. Please try again.';
-        console.error(`%c🔥 Firebase%c ${functionName} failed`, DAL_LOG_BADGE, DAL_ERROR_TEXT, {
-            error: error instanceof Error ? error.message : String(error),
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`%c🔥 Firebase%c ${functionName} failed: ${errorMessage}`, DAL_LOG_BADGE, DAL_ERROR_TEXT, {
+            error: errorMessage,
             params: summarizeDalArgs(args),
         });
         reduxStore.dispatch(stopLoader(requestId));

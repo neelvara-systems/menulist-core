@@ -63,7 +63,7 @@ Layout: Single page, numeric blocks only
 
 The manual recovery button uses the selected store from `platformSummary/storesSummary`. It does not expose project IDs in the UI; the callable reruns the store-level nightly path for every active project under that store, including analytics settlement, Decision Blocks, and Menu Intelligence.
 
-Manual recovery creates a deterministic `schedulerRunLogs/manual_store_{tId}_{sId}_{timestamp}` document before work starts. Failed runs keep `phase`, `manualScope`, `runLogId`, task counts, and structured `errors[]` entries with `code`, `operation`, optional `settlementDate`, and safe details so the broken step can be fixed before retrying.
+Manual recovery creates a deterministic `schedulerRunLogs/manual_store_{tId}_{sId}_{timestamp}` document before work starts. Failed runs keep `phase`, `manualScope`, `runLogId`, task counts, and structured `errors[]` entries with `code`, `operation`, optional `settlementDate`, and safe details so the broken step can be fixed before retrying. MenuList scheduler run logs carry `expiresAt` and are retained for the configured operational window rather than permanent history.
 
 ## Key Decision: What ChatGPT Got Wrong
 

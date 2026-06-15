@@ -12,6 +12,7 @@ import {
     LuMapPin,
     LuMegaphone,
     LuPenLine,
+    LuSearch,
     LuSend,
     LuSettings,
     LuShieldCheck,
@@ -29,9 +30,9 @@ type CampaignCueWorkspaceTabDefinition = {
 };
 
 export const CAMPAIGNCUE_WORKSPACE_TABS = [
-    { group: "Start", key: "home", label: "Home", icon: LuLayoutDashboard },
+    { group: "Start", key: "home", label: "Daily desk", icon: LuLayoutDashboard },
     { group: "Start", key: "details", label: "Business", icon: LuStore },
-    { group: "Start", key: "sources", label: "Inputs", icon: LuFileText },
+    { group: "Start", key: "sources", label: "Offers, events, and notes", icon: LuFileText },
     { group: "Start", key: "delivery", label: "Exports", icon: LuDownload },
     { group: "Start", key: "settings", label: "Settings", icon: LuSettings },
     { group: "Campaigns", key: "cues", label: "Ideas", icon: LuSparkles },
@@ -44,6 +45,7 @@ export const CAMPAIGNCUE_WORKSPACE_TABS = [
     { group: "Channels", key: "google", label: "Google", icon: LuMapPin },
     { group: "Channels", key: "ads", label: "Ads", icon: LuMegaphone },
     { group: "Operations", key: "trust", label: "Checks", icon: LuShieldCheck },
+    { group: "Operations", key: "visibility", label: "Visibility", icon: LuSearch },
     { group: "Operations", key: "calendar", label: "Calendar", icon: LuCalendarDays },
     { group: "Operations", key: "assets", label: "Assets", icon: LuImage },
     { group: "Operations", key: "analytics", label: "Results", icon: LuBarChart3 },

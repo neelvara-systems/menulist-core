@@ -38,11 +38,11 @@
 | --------- | ---------- | ------- | --------- | ------------ | ----- |
 | Write Decision Blocks projection | `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks` | After scoring | Per active project with scored items | 1 project merge | Customer-safe projection embedded in the already-loaded project doc; no active `decisionBlocks` collection dependency. |
 | Write intelligence results | `menuIntelligence/{tId}_{sId}_{projectId}` | After CMI computation | Per active project with items | 1 | Stores confidence, priority, observation state, calibration, and recent audit context. |
-| Write scheduler run log | `schedulerRunLogs/{autoId}` | Scheduler complete | 1 per run | 1 | Platform-only read model for scheduler monitoring. |
+| Write scheduler run log | `schedulerRunLogs/{autoId}` | Scheduler complete | 1 per run | 1 | Platform-only read model for scheduler monitoring with configured retention. |
 
 ### Deletes
 
-None in the current runtime. Intelligence and projections are overwritten.
+Scheduler run logs are deleted after their configured retention window. Intelligence and projections are overwritten.
 
 ---
 

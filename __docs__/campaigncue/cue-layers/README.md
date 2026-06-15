@@ -59,7 +59,7 @@ The current implementation ships the conservative CueLayers spine:
 - Immutable CampaignCue Storage paths under `campaigncue/cue-layers/{workspaceId}/{designId}/...`.
 - `CreativeEditorDocumentSnapshot` persistence with `cue-asset://assetId` durable references and boot-time signed URL hydration.
 - Autosave validates image references against the current CueLayers layer index so saved documents cannot point to unknown `cue-asset://` ids.
-- Flat-safe editor projection that preserves the original image as a locked shared-editor image object. Owners can add text, shape, QR, and drawing layers, then export/download. New image/SVG/JSON imports are disabled while a CueLayers design is active until product-owned hydration is implemented for added images.
+- Flat-safe editor projection that preserves the original image as a locked shared-editor image object. Owners can add text, shape, QR, and drawing layers, then export/download PNG. New image imports plus SVG/JSON browser exports are disabled while a CueLayers design is active so signed runtime URLs and unowned assets do not leave the product-owned pipeline.
 - No direct posting, social account connection, provider upload, ad mutation, or external model spend.
 
 The current implementation does not claim OCR/text recovery, segmentation, vector reconstruction, generated-source intake, semantic background repair, or high-confidence editable decomposition. Those adapters remain behind `ENABLE_CAMPAIGNCUE_CUE_LAYERS_*` gates and the capability-based model registry.

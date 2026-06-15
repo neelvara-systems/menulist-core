@@ -6,6 +6,201 @@
 
 ---
 
+## June 15, 2026 - Shared Creative Editor Toolbar Anchor
+
+### Fixed
+
+- **Selection toolbar placement stabilized** - The shared Creative Editor floating quick actions now anchor below the selected layer border using Fabric viewport coordinates and measured toolbar size, so text, shape, group, and multi-layer selections follow the same placement rule.
+
+### Validation
+
+- **Smoke QA tightened** - `/creative-editor-smoke?qa=1` now checks the toolbar safe gap and centered placement unless the viewport edge requires clamping.
+
+### Cost
+
+- **No Firebase cost added** - This is browser-local editor overlay positioning and development smoke QA only.
+
+## June 15, 2026 - Print-ready Kit Website Editor Proof
+
+### Improved
+
+- **Print-ready Kit page now highlights the editor-backed flow** - `/features/print-ready-kit` now explains finished templates, supported editor customization, protected QR/required link areas, and image/PDF/printer-file downloads from the current approved menu source.
+- **Print-ready Kit visual proof expanded** - The dedicated page now shows a template-list/dashboard proof panel and an editor customization proof panel so SMB owners can understand the workflow before reading the details.
+- **Product screenshots mounted** - The proof panels now render maintained screenshot assets from `public/images/website/print-ready-kit/`, with the dashboard capture cropped away from account-header details.
+- **Asset types kept visible** - The page uses an always-visible asset rail instead of a carousel so owners can see print menu, table, counter, entrance, feedback, and kit outputs without advancing slides.
+- **Feature overview copy aligned** - Header dropdown, `/features` cards, route metadata, and `llms.txt` now describe templates, editor customization, QR files, and printer files together.
+
+### Documentation
+
+- **Website and print docs updated** - Main website docs, SEO/AEO metadata docs, Print Assets website guidance, Printable Asset Templates website guidance, and Menu Card Export website metadata now match the editor-backed print-assets flow.
+
+### Cost
+
+- **No Firebase cost change** - This is static public website component, CSS, locale, discovery, and documentation work only. It does not change owner Assets runtime, creative editor runtime, printable rendering, Firebase rules, Cloud Functions, auth, pricing, payment, or customer menu runtime.
+
+## June 15, 2026 - Creative Editor Template Registry for Print Assets
+
+### Added
+
+- **My templates added to Assets** - Desktop printable assets now show owner-saved Creative Editor templates above MenuList templates for supported scan-first assets.
+- **Save as template added** - The fullscreen editor can save the current neutral editor document as a reusable template without saving generated downloads as project artifacts.
+- **Saved template rehydration added** - Reopened printable asset templates refresh QR/source values from the current selected project before editing or download.
+
+### Cost
+
+- **Generated templates remain zero-write** - Preview, download, and opening generated MenuList templates still do not create registry writes.
+- **Explicit template saves are bounded** - A Save as template action writes one Firestore metadata document and uploads document JSON, with optional thumbnail upload, through authenticated server API routes.
+
+## June 14, 2026 - Shared Creative Editor Right-Panel Editing Smoothness
+
+### Fixed
+
+- **Right-panel focus retained** - Selected-layer text, typography, layer name, opacity, position, size, simple color, border, shadow, rotation, and gradient edits now patch the active Fabric object in place instead of rebuilding the full canvas after each field change.
+- **Floating toolbar focus retained** - Floating and contextual toolbar controls now defer toolbar repositioning while an editor input is focused, so quick color/style edits do not steal focus from the active control.
+- **Interaction renders reduced** - Floating toolbar positioning and Grab-mode workspace metrics now coalesce to animation frames, unchanged toolbar state is skipped, and no-op selected-layer changes no longer create document/history updates.
+
+### Boundaries
+
+- **Generated-object rebuilds preserved** - QR regeneration, image filters/outlines/source changes, polygon point edits, line arrow geometry, and path/path-text guide changes still reload the Fabric document because those controls rebuild generated objects.
+
+### Cost
+
+- **No Firebase cost added** - The fix is browser-local editor state and Fabric object patching only.
+
+## June 14, 2026 - Shared Creative Editor Ready-Made Text Templates
+
+### Added
+
+- **Text template catalogue added** - The shared Creative Editor now reads `src/modules/creative-editor/textTemplates.json` for 35 local text templates: default text styles plus SMB-ready multi-layer combinations for promotions, retail, food, services, local openings, events, reviews, social posts, beauty/wellness, and hiring.
+- **Editable multi-layer insertion added** - Ready-made text templates insert normal editable text layers scaled to the current output frame, so owners can change, move, delete, restyle, or reorder each word after insertion.
+- **Text and Styles panels updated** - The Text drawer now shows visual ready-made template cards, and the Styles drawer reuses the same data-backed text combinations as quick campaign polish shortcuts.
+
+### Cost
+
+- **No Firebase cost added** - Text templates are static local JSON and browser-local layer edits until an existing product-owned save/export path runs.
+
+### Validation
+
+- **Verification updated** - CampaignCue runtime verification now checks the text template JSON file, multi-layer insertion path, and template grid styles.
+
+## June 14, 2026 - Shared Creative Editor VistaCreate Owner Shortcuts
+
+### Added
+
+- **Styles panel added** - The shared Creative Editor now has browser-local project style presets, brand style apply, shuffle style, and font-combination shortcuts for quick campaign polish.
+- **My Stuff panel expanded** - My Stuff now exposes local image upload, recent session insertions, and approved product assets in one owner-facing place.
+- **Top-bar Download added** - Owners can download the active workspace frame as PNG from the main toolbar without selecting a layer or opening an inspector.
+- **VistaCreate comparison documented** - Shared editor docs now record the adopted VistaCreate patterns and the rejected boundaries: no remote stock search, provider upload, paid generation, fixed-page viewport shift, or direct posting.
+
+### Cost
+
+- **No Firebase cost added** - Styles, My Stuff, recent insertion display, and top-bar download are browser-local until an existing product-owned explicit save/export path runs.
+
+### Validation
+
+- **Verification passed** - `npm run verify:campaigncue`, `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, `git diff --check`, Sass parse, and Chrome browser smoke covered this editor pass.
+
+## June 14, 2026 - Shared Creative Editor Canva-Style Editing Controls
+
+### Added
+
+- **Canvas selected-layer toolbar added** - The shared Creative Editor now shows a floating toolbar near the active Fabric selection for edit, Design Cue entry when connected, color, style/effects, flip, position/layers, lock, duplicate, delete, group, distribute, and more controls.
+- **Top contextual toolbar added** - Text, image, shape, line, QR, and multi-select states now expose type-specific controls above the canvas for font, size, color, stroke, opacity, effects, fit/crop, flip, position, grouping, and distribution.
+- **Searchable creation drawer added** - The left drawer now supports local search, recent insertion chips, text presets, CampaignCue business text placeholders, Brand Kit colors/assets/text, and searchable local templates/elements.
+- **Page controls added** - The editor document can carry optional pages, switch the active artboard, duplicate pages, add pages, lock a page, and export/download the active page while preserving page metadata in JSON.
+- **Editor behavior documented** - Shared editor and CampaignCue Creative Studio docs now define the selected-layer toolbar, top contextual toolbar, searchable drawer, Brand Kit, business placeholders, and page controls as product-neutral, browser-local editor UI.
+- **Canvas-bound rulers added** - Numeric rulers now attach to the visible artboard scale instead of drifting across the full stage.
+- **Text and sticker drawer patterns added** - The Text drawer now includes Canva-style add-text, Brand Kit, default styles, business placeholders, font-combination effects, and path text; the Graphics drawer now includes local stickers and popular search chips.
+
+### Fixed
+
+- **Theme toggle repaired** - Light and dark modes now update editor shell variables, segmented controls, product mark text, and rail icon contrast.
+- **Old craft-builder rail icons restored** - Active sidebar icons reuse the copied multi-path SVG palettes instead of being forced into a single solid color.
+- **Invalid selected-layer actions removed** - Unlock, ungroup, group, distribute, duplicate, delete, flip, align, and layer-order controls now respect selected layer, group, multi-selection, locked layer, and locked page state.
+- **Single-page editor flow cleaned up** - Blank/new editor documents no longer create surprise foreground demo layers, the output frame is fit inside the remaining workspace, and page controls stay hidden unless the document actually has multiple pages.
+- **Right inspector selection flow restored** - Selecting a layer now opens the right properties panel for detailed layer editing, matching the old editor interaction model.
+- **Old full-canvas editor flow restored** - The visible Fabric canvas again fills the remaining editor workspace, the output/download surface is the internal workspace frame, wheel zoom and Grab mode use Fabric viewport transforms, and export/preview/clipboard output crop back to that frame.
+
+### Boundaries
+
+- **No product-specific editor imports added** - The shared editor still does not import CampaignCue runtime code; CampaignCue only passes adapter-owned brand metadata, approved asset refs, and text placeholders into the product-neutral metadata contract.
+- **No provider or Firebase write added** - Search, recents, Brand Kit selection, selected-layer controls, page switching, page duplication, and page locking run in browser memory until an existing product-owned save/export path runs.
+- **No overlay export output change** - SVG, PNG, JSON, clipboard PNG, and base64 exports include canvas content only, not the floating toolbar, contextual toolbar, drawer, or page controls.
+- **No network search added** - Text preset filtering, sticker search chips, recent insertions, and drawer search remain local browser behavior.
+
+### Cost
+
+- **No Firebase cost added** - Selection, style, position, duplicate, delete, group, distribute, search, Brand Kit, placeholder insertion, and page actions remain browser-local until a product-owned explicit save/export path runs.
+
+### Validation
+
+- **Verification passed** - `node scripts/verification/verify-campaigncue-runtime.js`, `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, and `git diff --check` passed.
+- **Browser smoke passed** - `http://localhost:3000/creative-editor-smoke` rendered the Fabric editor, showed selected-layer controls, kept overlays outside `.canvas-container`, verified drawer search and page controls, and reported no browser console errors.
+
+## June 14, 2026 - CampaignCue Daily Campaign Desk
+
+### Added
+
+- **Daily Campaign Desk added to CampaignCue owner workspace** - The first CampaignCue screen now shows one recommended owner action, missing detail cards, ready-pack controls, manual delivery tasks, asset reuse, multi-format uses, print/photo tasks, saved facts, and quick result memory.
+- **Campaign Decision Engine added** - CampaignCue now ranks campaign recipes deterministically from business facts, timing/readiness, assets, missing inputs, trust risk, owner effort, repetition, and compact result memory instead of asking a model what to promote.
+- **Auditable decision object added** - Created campaign packs now store the selected `recipeId` and `campaign.pack.decision` with confidence, score, facts used, missing inputs, why-this/why-now explanations, recommended outputs, and trust preflight.
+- **Recommendation evidence added to owner UI and exports** - The Daily desk now shows why the recommendation is useful, what is missing, risk/preflight state, and pack outputs; full-pack downloads include the same decision evidence.
+- **SMB recipes added** - Restaurant, salon, retail, local-service, fitness, clinic, generic local-business, slow-lunch, weekend-slot, new-arrival, old-poster-reuse, and local-visibility recipes now live under product-scoped CampaignCue constants and guide output formats, print formats, photo tasks, manual delivery tasks, result options, and guardrails.
+- **Campaign pack review added** - The latest pack now exposes source facts, missing inputs, trust summary, manual delivery cards, local visibility cues, result question, and result options from the existing overview data.
+- **Manual delivery cards added** - WhatsApp, Google/local, creative, ad, video, script, and calendar outputs now carry structured copyable handoff fields for manual owner use.
+- **Local visibility surface added** - CampaignCue now has a Visibility operations tab and `cue_local_visibility_refresh` opportunity for Google/local readiness without connected publishing.
+- **Campaign pack export expanded** - Full-pack downloads now include owner desk context, details to confirm, output formats, manual delivery checklist, result-memory options, print/in-store uses, photo tasks, local visibility, review checklist, and manual steps.
+- **Structured result memory added** - Record-result actions now accept a structured result signal and store compact campaign result memory for repeat/adjust recommendations.
+- **Outcome-first editor AI Tools added** - CampaignCue editor AI Tools now lead with ready-to-share and missing-business-detail checks before copy or image-reuse utilities.
+
+### Boundaries
+
+- **No direct posting added** - Daily Campaign Desk routes to existing export/download, approval, schedule, asset, editor, and result actions only. Social posting, WhatsApp direct send, Google publish, and ad spend mutation remain disabled.
+- **No generic design-tool flow added** - The editor remains a separate tool surface. The daily desk starts from owner tasks, source facts, packs, print/photo needs, and result memory.
+
+### Cost
+
+- **No additional overview read path** - Daily Campaign Desk and Campaign Decision Engine are computed from the existing CampaignCue overview payload and recomputed locally after owner mutations. Campaign creation uses bounded campaign history in the existing server-authoritative creation path to store the selected decision without raw event scans.
+- **No campaign-pack collection added** - Pack review stays derived from existing overview data plus compact campaign metadata.
+- **No provider/model decision cost introduced** - The feature adds no Storage path, Cloud Function, realtime listener, paid generation, provider connection, direct provider call, model-owned decision, or paid model call.
+- **Firebase summary patterns tightened** - Business/profile saves and source input saves merge into `sourceSnapshots/current` instead of rescanning source inputs, CueLayers stores `current.jobId` for direct replay job reads, asset registration batches metadata and event writes, and synchronous CueLayers upload completion writes design/job/version/event/idempotency state in one batch.
+- **Firebase write commits reduced** - Campaign creation/action success paths now batch summary increments and idempotency completion with the primary mutation, trust-blocked public-use actions batch blocked-event and idempotency completion, and CueLayers autosave/repair/export metadata writes are grouped into Firestore batches after Storage artifacts succeed.
+
+### Validation
+
+- **TypeScript passed** - `npx tsc --noEmit --incremental false --pretty false` passed after implementation.
+- **Verifier updated** - `node scripts/verification/verify-campaigncue-runtime.js` now checks Daily Campaign Desk constants, broader recipes, decision engine contracts, no provider/Firebase/model decision path, selected decision storage, owner UI, pack export matching, pack export context, and cost boundary.
+
+## June 14, 2026 - CampaignCue Design Cue Deterministic Assistant
+
+### Added
+
+- **Design Cue added to CampaignCue editor** - CampaignCue now renders a plain-language Design Cue panel inside the shared Creative Editor AI Tools drawer, with command chips, comment input, patch review cards, and Apply/Try another/Cancel actions.
+- **Deterministic patch spine added** - Known requests such as bigger offer, shorter selected text, add location, add contact line, resize square/story/poster/wide, fact check, brand check, export checklist, premium styling, readability check, and friendly rewrite resolve into validated `CreativeEditorDocument` patch sets.
+- **Local editor test route wired** - `/campaigncue/app/editor-test` can exercise Design Cue with an in-memory document and no Firebase writes.
+- **Guarded model boundary added** - `POST /api/campaigncue/design-cue/turns` is protected by auth, CampaignCue runtime/scope checks, rate limiting, and Zod validation, then fails closed while model assist is disabled.
+
+### Boundaries
+
+- **No provider-owned editor truth added** - Design Cue updates only through validated document patches and shared editor history; Fabric JSON, raw model output, signed URLs, and base64 payloads are not persisted as product truth.
+- **No posting or account connection added** - Design Cue prepares editable changes and export-ready assets only. Direct social posting, WhatsApp send, Google publish, and ad spend mutation remain disabled.
+- **Model assistance remains disabled** - Provider-backed intent/copy/critique requires separate SAFE_MODE, capacity/accounting, response-schema, and fixture-test work before enablement.
+
+### Fixed
+
+- **Missing facts no longer create placeholder layers** - If locality or contact details are not confirmed, Design Cue now shows a review card instead of adding placeholder text such as a generic area or contact-review message.
+- **Patch validation tightened** - Design Cue now bounds generated geometry/style values and handles invalid JSON on the guarded model route with a safe `400` response.
+
+### Cost
+
+- **Known commands cost zero Firebase/provider operations** - Command chips, deterministic comments, patch preview, and local patch apply do not read Firestore, write Firestore, call Cloud Functions, use Storage, or call an AI provider.
+- **Model route is fail-closed** - The active route does not call a provider or create usage records while `ENABLE_CAMPAIGNCUE_DESIGN_CUE_MODEL_ASSIST` is false.
+
+### Validation
+
+- **Design Cue validation report added** - `__docs__/campaigncue/design-cue/design-cue_validation.md` records files reviewed, fixes made, security result, Firebase cost result, UX result, browser smoke, and remaining gated work.
+- **Verification passed** - `node scripts/verification/verify-campaigncue-runtime.js`, `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, `git diff --check`, and browser smoke on `http://localhost:3106/campaigncue/app/editor-test` passed. `npm run build` was not run because production builds are opt-in.
+
 ## June 12, 2026 - CampaignCue CueLayers Safe Upload Spine
 
 ### Added
@@ -5617,3 +5812,9 @@ TEMPLATE FOR NEW ENTRIES:
 - **[Issue]** — [What was wrong and that it's resolved]
 
 -->
+
+## June 14, 2026
+
+### Improved
+
+- **CampaignCue Campaign Pack Output** — Added a typed `CampaignCueOutputPack`, owner-visible output summary, and structured ZIP download containing the decision card, channel copy, handoff fields, trust summary, reuse notes, mini-page/QR brief, and result prompt. Direct posting, WhatsApp sending, provider account connection, hosted mini-page publishing, and ad-spend mutation remain off.

@@ -40,6 +40,7 @@ export interface CreativeEditorSourceRef {
 
 export interface CreativeEditorCanvas {
     backgroundColor: string;
+    backgroundGradient?: CreativeEditorLinearGradient;
     height: number;
     width: number;
 }
@@ -254,7 +255,9 @@ export interface CreativeEditorImageElement extends CreativeEditorElementBase {
 
 export interface CreativeEditorQrElement extends CreativeEditorElementBase {
     darkColor?: string;
+    errorCorrectionLevel?: "L" | "M" | "Q" | "H";
     lightColor?: string;
+    margin?: number;
     type: "qr";
     value: string;
 }
@@ -272,10 +275,20 @@ export type CreativeEditorElement =
     | CreativeEditorQrElement;
 
 export interface CreativeEditorBrand {
+    accentColor?: string;
+    fontFamily?: string;
     logoUrl?: string;
     name?: string;
     primaryColor?: string;
+    secondaryColor?: string;
     voice?: string;
+}
+
+export interface CreativeEditorTextPlaceholder {
+    id: string;
+    label: string;
+    sourceRef?: string;
+    value: string;
 }
 
 export interface CreativeEditorVisibleWatermark {
@@ -297,20 +310,71 @@ export interface CreativeEditorMetadata {
     outputId?: string;
     sourceRefs?: CreativeEditorSourceRef[];
     templateId?: string;
+    textPlaceholders?: CreativeEditorTextPlaceholder[];
     trustGate?: string;
     updatedAt?: string;
     visibleWatermark?: CreativeEditorVisibleWatermark;
 }
 
+export interface CreativeEditorPage {
+    canvas: CreativeEditorCanvas;
+    elements: CreativeEditorElement[];
+    id: string;
+    locked?: boolean;
+    title: string;
+    updatedAt?: string;
+}
+
 export interface CreativeEditorDocument {
+    activePageId?: string;
     canvas: CreativeEditorCanvas;
     elements: CreativeEditorElement[];
     id: string;
     metadata?: CreativeEditorMetadata;
+    pages?: CreativeEditorPage[];
     productContext: CreativeEditorProductContext;
     schemaVersion: typeof CREATIVE_EDITOR_SCHEMA_VERSION;
     title: string;
 }
+
+export type CreativeEditorTemplateOrigin = "platform" | "user";
+
+export interface CreativeEditorTemplateSummary {
+    assetTypeId?: string;
+    businessCategory?: string;
+    createdAt?: string;
+    description?: string;
+    documentPath?: string | null;
+    height: number;
+    id: string;
+    origin: CreativeEditorTemplateOrigin;
+    previewPath?: string | null;
+    productId: CreativeEditorProductId;
+    schemaVersion?: number;
+    sourceSurface: string;
+    status?: "draft" | "published" | "archived";
+    templateFamilyId?: string;
+    templateType: CreativeEditorTemplateOrigin;
+    thumbnailUrl?: string | null;
+    title: string;
+    updatedAt?: string;
+    version?: number;
+    width: number;
+}
+
+export interface CreativeEditorTemplateSaveRequest {
+    document: CreativeEditorDocument;
+    previewDataUrl?: string;
+}
+
+export interface CreativeEditorTemplateSaveResult {
+    notice?: string;
+    template?: CreativeEditorTemplateSummary;
+}
+
+export type CreativeEditorTemplateSaveHandler = (
+    request: CreativeEditorTemplateSaveRequest,
+) => CreativeEditorTemplateSaveResult | Promise<CreativeEditorTemplateSaveResult | void> | void;
 
 export interface CreativeEditorAssetSource {
     id: string;
@@ -320,7 +384,190 @@ export interface CreativeEditorAssetSource {
     url: string;
 }
 
+export type CreativeEditorAiToolCategory = "recommended" | "copy" | "image" | "check" | "export";
+
+export type CreativeEditorAiToolTone = "success" | "warning" | "danger" | "neutral";
+
+export interface CreativeEditorAiToolAction {
+    category: CreativeEditorAiToolCategory;
+    costLabel?: string;
+    description: string;
+    disabled?: boolean;
+    disabledReason?: string;
+    id: string;
+    label: string;
+    ownerHint?: string;
+    requiresImageSelection?: boolean;
+    requiresSelection?: boolean;
+}
+
+export interface CreativeEditorAiToolSuggestion {
+    actionLabel?: string;
+    id: string;
+    label: string;
+    text: string;
+}
+
+export interface CreativeEditorAiToolFinding {
+    id: string;
+    text: string;
+    tone: CreativeEditorAiToolTone;
+}
+
+export interface CreativeEditorAiToolRequest {
+    action: CreativeEditorAiToolAction;
+    actionId: string;
+    document: CreativeEditorDocument;
+    productLabel?: string;
+    selectedElement?: CreativeEditorElement | null;
+    selectedText?: string;
+    sourceLabel?: string;
+}
+
+export interface CreativeEditorAiToolResult {
+    findings?: CreativeEditorAiToolFinding[];
+    notice?: string;
+    suggestions?: CreativeEditorAiToolSuggestion[];
+}
+
+export type CreativeEditorAiToolHandler = (
+    request: CreativeEditorAiToolRequest,
+) => CreativeEditorAiToolResult | Promise<CreativeEditorAiToolResult>;
+
+export type CreativeEditorDesignCueIntentSource =
+    | "canvas_comment"
+    | "command_chip"
+    | "free_text"
+    | "selected_layer_comment";
+
+export type CreativeEditorDesignCueExecutionMode =
+    | "model_assisted_copy"
+    | "model_assisted_critique"
+    | "model_assisted_intent"
+    | "programmatic";
+
+export type CreativeEditorDesignCueFindingTone = "blocked" | "note" | "ready" | "review";
+
+export type CreativeEditorDesignCueCanvasPreset = "poster" | "square" | "story" | "wide";
+
+export type CreativeEditorDesignCueTextPlacement = "center" | "cta_zone" | "near_target";
+
+export type CreativeEditorDesignCueTarget =
+    | { type: "canvas_region"; height: number; width: number; x: number; y: number }
+    | { type: "document" }
+    | { type: "layer"; elementId: string };
+
+export interface CreativeEditorDesignCueSafeLayerPatch {
+    align?: "center" | "left" | "right";
+    color?: string;
+    fill?: string;
+    fontSize?: number;
+    fontStyle?: "italic" | "normal";
+    fontWeight?: "400" | "600" | "700" | "800" | "bold" | "normal";
+    height?: number;
+    lineHeight?: number;
+    name?: string;
+    opacity?: number;
+    rotation?: number;
+    stroke?: string;
+    strokeWidth?: number;
+    visible?: boolean;
+    width?: number;
+    x?: number;
+    y?: number;
+}
+
+export type CreativeEditorDesignCuePatchOperation =
+    | {
+        name?: string;
+        op: "add_text";
+        placement: CreativeEditorDesignCueTextPlacement;
+        text: string;
+    }
+    | {
+        id?: string;
+        op: "add_finding";
+        text: string;
+        tone: CreativeEditorDesignCueFindingTone;
+    }
+    | {
+        op: "resize_canvas";
+        preset: CreativeEditorDesignCueCanvasPreset;
+    }
+    | {
+        elementId: string;
+        op: "update_layer";
+        patch: CreativeEditorDesignCueSafeLayerPatch;
+    }
+    | {
+        elementId: string;
+        op: "update_text";
+        text: string;
+    };
+
+export interface CreativeEditorDesignCueFinding {
+    id: string;
+    text: string;
+    tone: CreativeEditorDesignCueFindingTone;
+}
+
+export interface CreativeEditorDesignCuePatchSet {
+    executionMode: CreativeEditorDesignCueExecutionMode;
+    findings?: CreativeEditorDesignCueFinding[];
+    id: string;
+    needsReview: boolean;
+    operations: CreativeEditorDesignCuePatchOperation[];
+    protectedFactsUsed: string[];
+    summary: string;
+    target: CreativeEditorDesignCueTarget;
+    title: string;
+}
+
+export interface CreativeEditorDesignCueCommand {
+    description: string;
+    disabled?: boolean;
+    disabledReason?: string;
+    id: string;
+    label: string;
+    ownerHint?: string;
+    requiresSelection?: boolean;
+}
+
+export interface CreativeEditorDesignCueRequest {
+    commandId?: string;
+    comment?: string;
+    document: CreativeEditorDocument;
+    productLabel?: string;
+    selectedElement?: CreativeEditorElement | null;
+    selectedText?: string;
+    source: CreativeEditorDesignCueIntentSource;
+    sourceLabel?: string;
+    target: CreativeEditorDesignCueTarget;
+}
+
+export interface CreativeEditorDesignCueApplyRequest {
+    document: CreativeEditorDocument;
+    patchSet: CreativeEditorDesignCuePatchSet;
+}
+
+export interface CreativeEditorDesignCueApplyResult {
+    appliedOperationCount: number;
+    document: CreativeEditorDocument;
+    findings?: CreativeEditorDesignCueFinding[];
+    notice?: string;
+    selectedElementId?: string;
+}
+
+export type CreativeEditorDesignCueHandler = (
+    request: CreativeEditorDesignCueRequest,
+) => CreativeEditorDesignCuePatchSet | Promise<CreativeEditorDesignCuePatchSet>;
+
+export type CreativeEditorDesignCueApplyHandler = (
+    request: CreativeEditorDesignCueApplyRequest,
+) => CreativeEditorDesignCueApplyResult | Promise<CreativeEditorDesignCueApplyResult>;
+
 export interface CreativeEditorExportResult {
+    blob?: Blob;
     dataUrl?: string;
     document: CreativeEditorDocument;
     filename: string;

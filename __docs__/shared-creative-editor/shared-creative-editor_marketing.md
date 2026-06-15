@@ -8,7 +8,7 @@ Shared Creative Editor is the reusable asset creation layer for products that ne
 
 | Product | Packaging |
 | --- | --- |
-| CampaignCue | Create campaign assets from packs or from scratch, then download and save to Asset Library. |
+| CampaignCue | Create campaign assets from packs or from scratch, adjust selected items quickly, reuse approved brand assets, then download and save to Asset Library. |
 | MenuList | Future use may support owned posters, cards, or business assets through a MenuList adapter. |
 | Answerlattice | Future use may support support or onboarding visuals only through an Answerlattice adapter. |
 
@@ -23,5 +23,8 @@ Shared Creative Editor is the reusable asset creation layer for products that ne
 
 - Product facts and source refs can seed assets.
 - Products keep their own trust and rights rules.
+- Common edit actions stay close to the selected canvas item.
+- Search, presets, project styles, upload/recent shortcuts, Brand Kit metadata, and product placeholders make common insertions faster without adding provider calls.
+- Optional pages let products support related artboards while still exporting one owner-approved asset at a time.
 - Users can export files manually without provider setup.
 - The same editor can serve other products through adapters.

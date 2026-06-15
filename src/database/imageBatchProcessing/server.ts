@@ -4,6 +4,7 @@ import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { BatchImageGenerationJobType } from "@template/main-app/projects/types";
 
 const COLLECTION = DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS;
+const MAX_STATUS_HISTORY_ENTRIES = 20;
 
 function getScopedJobRef(id: string, tenantId: string | number, storeId: string | number) {
     return firestoreAdmin.doc(`${COLLECTION}/${tenantId}/${storeId}/${id}`);
@@ -41,11 +42,11 @@ export async function updateImageBatchProcessingJobAdmin(
 
     const processedData: Record<string, unknown> = { ...data };
     const specialFields: Record<string, unknown> = {};
+    let latestStatusEntry: unknown;
 
     if (Array.isArray(data.statusHistory) && data.statusHistory.length > 0) {
-        const latestStatusEntry = data.statusHistory[data.statusHistory.length - 1];
+        latestStatusEntry = removeUndefined(data.statusHistory[data.statusHistory.length - 1]);
         delete processedData.statusHistory;
-        specialFields.statusHistory = admin.firestore.FieldValue.arrayUnion(removeUndefined(latestStatusEntry));
     }
 
     if ("generatedCount" in processedData || data.incrementGeneratedCount) {
@@ -54,13 +55,26 @@ export async function updateImageBatchProcessingJobAdmin(
         specialFields.generatedCount = admin.firestore.FieldValue.increment(1);
     }
 
-    const finalData = {
+    const finalData: Record<string, unknown> = {
         ...(removeUndefined(processedData) as Record<string, unknown>),
         ...specialFields,
         modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    await getScopedJobRef(data.id, tId, sId).set(finalData, { merge: true });
+    const jobRef = getScopedJobRef(data.id, tId, sId);
+    if (latestStatusEntry) {
+        await firestoreAdmin.runTransaction(async (transaction) => {
+            const snap = await transaction.get(jobRef);
+            const currentHistory = Array.isArray(snap.data()?.statusHistory) ? snap.data()?.statusHistory : [];
+            finalData.statusHistory = [...currentHistory, latestStatusEntry].slice(-MAX_STATUS_HISTORY_ENTRIES);
+            transaction.set(jobRef, {
+                ...finalData,
+            }, { merge: true });
+        });
+        return finalData;
+    }
+
+    await jobRef.set(finalData, { merge: true });
     return finalData;
 }
 
@@ -114,16 +128,19 @@ export async function appendImageBatchItemResultAdmin({
                 : `Generated ${nextGeneratedCount} out of ${totalImages}`
             : `Generated ${nextGeneratedCount} images`;
 
+        const statusHistoryEntry = removeUndefined({
+            status: nextStatus,
+            reason: statusReason,
+            createdOn: new Date().toISOString(),
+        });
+        const currentStatusHistory = Array.isArray(currentJob.statusHistory) ? currentJob.statusHistory : [];
+
         const updateData = {
             generatedCount: nextGeneratedCount,
             itemsList: currentItems,
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
             status: nextStatus,
-            statusHistory: admin.firestore.FieldValue.arrayUnion(removeUndefined({
-                status: nextStatus,
-                reason: statusReason,
-                createdOn: new Date().toISOString(),
-            })),
+            statusHistory: [...currentStatusHistory, statusHistoryEntry].slice(-MAX_STATUS_HISTORY_ENTRIES),
         };
 
         transaction.set(jobRef, updateData, { merge: true });

@@ -26,9 +26,15 @@ function requireToken(source, token, label) {
   'src/components/shared/printableAssets/PrintableTemplatePreview.tsx',
   'src/lib/printable-asset-templates/types.ts',
   'src/lib/printable-asset-templates/assetTypes.ts',
+  'src/lib/printable-asset-templates/editorDocumentAdapter.ts',
   'src/lib/printable-asset-templates/templateFamilies.ts',
   'src/lib/printable-asset-templates/templateStyles.ts',
   'src/lib/printable-asset-templates/renderPrintableAsset.ts',
+  'src/lib/creative-editor/templateRegistryDal.ts',
+  'src/lib/validation/creativeEditorTemplateSchemas.ts',
+  'src/modules/creative-editor/export.ts',
+  'firestore.rules',
+  'storage.rules',
   'src/lib/printable-asset-templates/navigation.ts',
   'src/components/mobile/MobileShell.tsx',
   'src/components/mobile/screens/MobileMoreScreen.tsx',
@@ -39,11 +45,22 @@ function requireToken(source, token, label) {
   '__docs__/printable-asset-templates/printable-asset-templates_mobile-support.md',
   '__docs__/printable-asset-templates/printable-asset-templates_firebase.md',
   '__docs__/printable-asset-templates/printable-asset-templates_test-cases.md',
+  '__docs__/creative-editor-template-registry/README.md',
+  '__docs__/creative-editor-template-registry/creative-editor-template-registry_spec.md',
+  '__docs__/creative-editor-template-registry/creative-editor-template-registry_impl.md',
+  '__docs__/creative-editor-template-registry/creative-editor-template-registry_firebase.md',
+  '__docs__/creative-editor-template-registry/creative-editor-template-registry_test-cases.md',
+  '__docs__/creative-editor-template-registry/creative-editor-template-registry_validation.md',
 ].forEach(read);
 
 const features = read('src/config/features.ts');
 [
   'ENABLE_PRINTABLE_ASSET_TEMPLATES',
+  'ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER',
+  'ENABLE_PRINTABLE_ASSET_EDITOR_CUSTOMIZE',
+  'ENABLE_CREATIVE_EDITOR_TEMPLATE_REGISTRY',
+  'ENABLE_CREATIVE_EDITOR_USER_TEMPLATES',
+  'ENABLE_PRINTABLE_ASSET_USER_TEMPLATES',
   'PRINTABLE_ASSET_TEMPLATE_PLAN_IDS',
   'PRINTABLE_ASSET_TEMPLATE_FULL_CATALOG_PLAN_IDS',
 ].forEach((token) => requireToken(features, token, 'feature flags'));
@@ -118,6 +135,9 @@ if (familyIdMatches.length !== 9) {
 
 const renderer = read('src/lib/printable-asset-templates/renderPrintableAsset.ts');
 [
+  'FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER',
+  'isPrintableAssetEditorRenderable',
+  'renderPrintableAssetEditorTemplate',
   "input.assetTypeId === 'print_menu'",
   "input.assetTypeId === 'feedback_qr'",
   "input.assetTypeId === 'complete_menu_kit'",
@@ -130,6 +150,35 @@ const renderer = read('src/lib/printable-asset-templates/renderPrintableAsset.ts
   "outputFormat: requestedFormat === 'png' ? 'png' : 'pdf'",
   'mapPrintableTemplateToMenuCardStyle',
 ].forEach((token) => requireToken(renderer, token, 'printable asset renderer'));
+
+const editorAdapter = read('src/lib/printable-asset-templates/editorDocumentAdapter.ts');
+[
+  'EDITOR_RENDERABLE_ASSETS',
+  'table_tent',
+  'single_table_card',
+  'counter_sticker',
+  'entrance_poster',
+  'feedback_qr',
+  'buildPrintableAssetEditorDocument',
+  'renderPrintableAssetEditorDocument',
+  'rehydratePrintableAssetEditorDocument',
+  'renderPrintableAssetEditorTemplate',
+  'CreativeEditorDocument',
+  'locked: true',
+  'resolveMenuListAttributionPolicy',
+  'errorCorrectionLevel: "H"',
+  'jsPDF',
+].forEach((token) => requireToken(editorAdapter, token, 'editor-backed printable asset adapter'));
+
+const creativeExport = read('src/modules/creative-editor/export.ts');
+[
+  'renderCreativeEditorPngBlob',
+  'renderCreativeEditorSvgBlob',
+  'downloadCreativeEditorPng',
+  'downloadCreativeEditorSvg',
+  'element.errorCorrectionLevel',
+  'element.margin',
+].forEach((token) => requireToken(creativeExport, token, 'creative editor export helpers'));
 
 const mobileShell = read('src/components/mobile/MobileShell.tsx');
 requireToken(mobileShell, "'/assets': { tab: 'more'", 'mobile shell route map');
@@ -184,15 +233,183 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'projectDataCacheRef',
   'getCachedProjectData',
   "return 'png';",
-  'Open download options',
+  'Ready-to-print assets',
+  'Use this style',
+  'Customize in editor',
+  'CreativeEditor',
+  'chromeMode="embedded"',
+  'productLabel="MenuList Assets"',
+  'sourceLabel="Print assets"',
+  'editorDocumentRef',
+  'buildPrintableAssetEditorDocument',
+  'renderPrintableAssetEditorDocument',
   'PrintableTemplatePreview',
   'setPreviewAsset',
+  'Saved designs',
+  'shouldShowSavedDesigns',
+  'Save as template',
+  'templateSaveLabel="Save as template"',
+  'templateSavePreview',
+  'listCreativeEditorTemplates',
+  'saveCreativeEditorTemplate',
+  'getCreativeEditorTemplate',
+  'deleteCreativeEditorTemplate',
+  'resolveCreativeEditorTemplateScope',
+  'templateRegistryScope',
+  'selectedPlatformTemplates',
+  'selectedUserTemplates',
+  'template.productId === templateRegistryContext.productId',
+  'template.sourceSurface === templateRegistryContext.sourceSurface',
+  'canLoadUserTemplates',
+  'rehydratePrintableAssetEditorDocument',
+  'resolveBusinessCategoryOrFallback',
+  'platformTemplateRegistryContext',
+  'businessCategory: platformBusinessCategory',
   'secondaryLabel: project.url.replace',
 ].forEach((token) => requireToken(desktopAssetsRoute, token, 'desktop assets route'));
+
+const templateRegistryDal = read('src/lib/creative-editor/templateRegistryDal.ts');
+[
+  'CREATIVE_EDITOR_PLATFORM_ASSET_TEMPLATES',
+  'STORE_ASSET_TEMPLATES',
+  'PLATFORM_TEMPLATE_GENERIC_CATEGORY',
+  'STORE_TEMPLATE_DOC_ID',
+  'MAX_DOCUMENT_BYTES',
+  'MAX_INDEX_TEMPLATES',
+  'firebaseClient',
+  'firebaseStorage',
+  'documentStorage',
+  'STORE_TEMPLATE_DOC_ID = "default"',
+  'buildPlatformCategoryKey',
+  'businessCategory',
+  'buildUserDocumentPath',
+  'buildUserPreviewPath',
+  'getBlob',
+  'uploadString',
+  'deleteObject',
+  'resolveCreativeEditorTemplateScope',
+  'listCreativeEditorPlatformTemplates',
+  'listCreativeEditorUserTemplates',
+  'listCreativeEditorTemplates',
+  'saveCreativeEditorTemplate',
+  'getCreativeEditorPlatformTemplate',
+  'getCreativeEditorTemplate',
+  'getCreativeEditorUserTemplate',
+  'deleteCreativeEditorTemplate',
+  'requestBodyComposer',
+  'readIndexRecords',
+  'recordMatchesRequest',
+  'getTemplateRegistryErrorMessage',
+  'storage/quota-exceeded',
+].forEach((token) => requireToken(templateRegistryDal, token, 'creative editor template registry DAL'));
+
+const listTemplateFunction = templateRegistryDal.match(/export async function listCreativeEditorTemplates[\s\S]*?\n}\n/);
+if (listTemplateFunction && listTemplateFunction[0].includes('showErrorToast')) {
+  failures.push('creative editor template registry list reads must stay route-managed and must not trigger global app errors');
+}
+
+if (templateRegistryDal.includes('apiCallComposer')) {
+  failures.push('creative editor template registry DAL should preserve inline feature errors instead of using apiCallComposer fallback arrays');
+}
+
+[
+  'contextKey',
+  'productId}__{sourceSurface}',
+  'assetTypeId}',
+  'platformRecordMatchesRequest',
+].forEach((token) => {
+  if (templateRegistryDal.includes(token)) {
+    failures.push(`creative editor template registry DAL must not use per-context registry logic: ${token}`);
+  }
+});
+
+const templateSchemas = read('src/lib/validation/creativeEditorTemplateSchemas.ts');
+[
+  'creativeEditorPlatformBusinessCategorySchema',
+  '"generic"',
+  '"food"',
+  '"service"',
+  '"retail"',
+  '"professional"',
+  '"creative"',
+  '"health"',
+  '"specialty"',
+  'businessCategory',
+  'Element must have width or height',
+].forEach((token) => requireToken(templateSchemas, token, 'creative editor template registry schemas'));
+
+[
+  'thumbnailDataUrl',
+  'CreativeEditorTemplateScope',
+  'requireStoreScope',
+].forEach((token) => {
+  if (!templateRegistryDal.includes(token)) {
+    failures.push(`creative editor template registry DAL missing Storage-first guardrail: ${token}`);
+  }
+});
+
+const firestoreRules = read('firestore.rules');
+[
+  'match /platformAssetTemplates/{businessCategory}',
+  'match /storeAssetTemplates/{tId}/{sId}/{docId}',
+  "docId == 'default'",
+  "data.data is list",
+  "allow delete: if false",
+  'canAccessCreativeEditorTemplateStore',
+  'isValidCreativeEditorPlatformTemplateCatalog',
+  'isValidCreativeEditorTemplateIndex',
+].forEach((token) => requireToken(firestoreRules, token, 'creative editor template registry Firestore rules'));
+
+[
+  'productId',
+  'sourceSurface',
+  'assetTypeId',
+].forEach((token) => {
+  const indexRuleStart = firestoreRules.indexOf('function isValidCreativeEditorTemplateIndex');
+  const indexRuleEnd = firestoreRules.indexOf('function isAnswerlatticePlatformSummaryDoc');
+  const indexRule = indexRuleStart >= 0 && indexRuleEnd > indexRuleStart
+    ? firestoreRules.slice(indexRuleStart, indexRuleEnd)
+    : '';
+  if (indexRule.includes(token)) {
+    failures.push(`creative editor template index rule must stay store-level, not per-${token}`);
+  }
+});
+
+const storageRules = read('storage.rules');
+[
+  'match /creative-editor/templates/platform/{businessCategory}/{templateId}/{fileName}',
+  'match /creative-editor/templates/user/{tId}/{sId}/{templateId}/{fileName}',
+  'canAccessCreativeEditorTemplateStore',
+  'isValidCreativeEditorTemplateUpload',
+  'document.json',
+  '^preview\\\\.(png|jpg|jpeg|webp)$',
+].forEach((token) => requireToken(storageRules, token, 'creative editor template registry Storage rules'));
+
+const creativeEditor = read('src/modules/creative-editor/CreativeEditor.tsx');
+[
+  'onTemplateSave',
+  'templateSaveLabel',
+  'templateSavePreview',
+  'previewDataUrl',
+  'Save as template',
+  'showInternalExportTools',
+  'const showInternalExportTools = chromeMode === "full"',
+].forEach((token) => requireToken(creativeEditor, token, 'shared creative editor template save callback'));
 
 if (desktopAssetsRoute.includes('getProjectData(data.projectId)')) {
   failures.push('desktop assets route must not refetch Print Menu data with the loader-backed getProjectData on every preview');
 }
+[
+  'CAMPAIGNCUE_CREATIVE_EDITOR_AI_ACTIONS',
+  'CAMPAIGNCUE_DESIGN_CUE_COMMANDS',
+  'runCampaignCue',
+  'productLabel="CampaignCue"',
+  'sourceSurface: "campaigncue',
+].forEach((token) => {
+  if (desktopAssetsRoute.includes(token)) {
+    failures.push(`desktop assets route must stay separated from CampaignCue editor wiring: ${token}`);
+  }
+});
 
 const printMenuCardFace = read('src/lib/print-menu-surfaces/templates/printMenuCardFace.ts');
 [
@@ -241,6 +458,10 @@ if (desktopAssetsRoute.includes('destroyOnClose')) {
 }
 requireToken(desktopAssetsRoute, 'destroyOnHidden', 'desktop assets preview modal');
 
+if (desktopAssetsRoute.includes('card.tier') || desktopAssetsRoute.includes('<Tag')) {
+  failures.push('desktop assets route must not show plan tier chips unless it also enforces plan gating');
+}
+
 if (mobileShare.includes('<iframe')) {
   failures.push('mobile assets sheet should show image previews, not embedded PDF iframes');
 }
@@ -276,6 +497,7 @@ const sourceFilesToCheck = [
   'src/components/templates/main-app/printableAssetTemplates/PrintableAssetTemplatesRoute.tsx',
   'src/components/templates/main-app/useMenuList/index.tsx',
   'src/lib/printable-asset-templates/assetTypes.ts',
+  'src/lib/printable-asset-templates/editorDocumentAdapter.ts',
   'src/lib/printable-asset-templates/templateFamilies.ts',
   'src/lib/printable-asset-templates/renderPrintableAsset.ts',
   'src/components/mobile/screens/MobileShareScreen.tsx',
@@ -295,6 +517,9 @@ const firebaseDoc = read('__docs__/printable-asset-templates/printable-asset-tem
   '0-1',
   'selected-project reads',
   'caches it for subsequent preview/download actions',
+  'storeAssetTemplates/{tenantId}/{storeId}/default',
+  'one platform metadata read',
+  'one store metadata read',
   'No new Cloud Functions',
   'No new Firestore indexes',
 ].forEach((token) => requireToken(firebaseDoc, token, 'firebase cost doc'));

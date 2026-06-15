@@ -8,26 +8,46 @@
 | Feature flags exist | Shared and CampaignCue flags can disable editor surfaces. |
 | Fabric dependency exists | `fabric@5.3.0` and matching types are installed for the shared editor runtime. |
 | CampaignCue verifier includes editor checks | `npm run verify:campaigncue` catches missing integration. |
+| Design Cue panel is neutral | `DesignCuePanel.tsx` imports shared editor types only and no CampaignCue product types. |
 | Type check | `npx tsc --noEmit --incremental false` passes. |
 | Full shell verifier | `npm run verify:campaigncue` checks rail, drawer, inspector, bottom controls, dark theme styles, and product-neutral shared defaults. |
+| Smoke QA verifier | `npm run verify:creative-editor-smoke` checks the internal smoke route, stress variant, QA selectors, focus restoration, and documentation guardrails. |
 | Internal smoke route | `/creative-editor-smoke` renders only outside production and returns 404 in production. |
+| Browser smoke QA route | `/creative-editor-smoke?qa=1` completes with `data-creative-editor-qa-status="passed"` after validating real canvas paint, top-bar toggles, rail switching, drawer insertions, keyboard creation shortcuts, floating toolbar anchoring, modal focus, preview export, layer panel rows, text-field focus retention, and staged Escape. |
+| Browser stress QA route | `/creative-editor-smoke?qa=1&variant=stress` completes with `data-creative-editor-qa-status="passed"` while rendering a large mixed-layer design. |
+| MyCodex deployed preview route | `https://www.menulist.digital/creative-editor-test` renders only after MyCodex auth and `FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE` is enabled; otherwise it fails closed. |
 
 ## Editor Behavior
 
 | Case | Expected |
 | --- | --- |
-| Open blank document | Canvas renders default starter content. |
+| Open blank document | Canvas renders a clean output frame with no surprise foreground layers. |
 | Full shell renders | Top toolbar, left rail, asset drawer, canvas, right inspector, and bottom controls render together. |
 | Drawer collapse | Drawer collapse hides the asset drawer; choosing a rail tool reopens it. |
+| Campaign goal starter | Choosing a campaign goal starter creates a usable first design by composing local background, editable text template layers, and optional QR layers through normal history. |
 | Legacy frame smoke | Development smoke route renders a 620 X 427 Fabric canvas matching the legacy editor frame. |
-| Toggle theme | Light and dark themes keep the same editor layout and usable controls. |
-| Rail boundary | AI Tools is visible but disabled; Templates is active. |
+| Workspace frame focus | The surrounding editor workspace is not the exported design; only the visible output frame/background and layers export. |
+| Full-workspace canvas | The visible Fabric canvas fills the remaining editor area after the rail and drawer; the floating inspector overlays the right edge without changing that full viewport. The output frame is an internal Fabric workspace object inside the Fabric viewport. |
+| Fabric-native zoom and grab | Mouse-wheel zoom, bottom zoom buttons, Fit, and Grab mode update Fabric viewport transforms so the frame moves/scales inside the canvas instead of CSS-scaling a DOM artboard. |
+| Workspace-only export | SVG, PNG, preview, clipboard PNG, and base64 export crop to the internal workspace frame even after wheel zoom or Grab panning. |
+| Toggle theme | Light and dark themes keep the same editor layout, usable controls, theme-aware segmented controls, and readable sidebar icons. |
+| Sidebar icon active state | Active rail icons use the old craft-builder multi-path SVG palette instead of flattening all paths into one solid color. |
+| Rail boundary | AI Tools renders only product-provided actions; Templates is active. |
+| Design Cue command panel | Product-supplied commands render in AI Tools without provider calls. |
+| Design Cue selected-layer comment | Selected text layer name appears in the comment label and request target uses the layer id. |
+| Design Cue apply flow | Patch preview does not change the document until Apply is clicked, then commits through editor history. |
+| Design Cue cancel flow | Cancel clears the patch card without mutating the document. |
 | Apply starter template | Canvas size, title, and starter layers update. |
+| Apply canvas size preset | Background drawer size presets update the workspace dimensions and scale existing layers through the same path as manual width/height edits. |
 | Import native JSON | A downloaded editor JSON file reopens with the same neutral schema and product context preserved. |
 | Import compatible Fabric JSON | A legacy Fabric JSON file is normalized into editor layers. |
 | Import image file | PNG, JPEG, WebP, or GIF file becomes an image layer. |
-| Import SVG file | SVG file becomes an image layer. |
-| Import SVG markup | Pasted SVG markup becomes an image layer. |
+| Upload from Images drawer | The Images drawer exposes local raster upload in addition to image URL and approved assets. |
+| Upload from My Stuff | My Stuff exposes a clear upload card, recent session insertions, and approved assets without remote search. |
+| Import SVG file | No SVG-file import button exists; owner uses raster image upload or product-approved assets instead. |
+| Import SVG markup | No pasted SVG import field exists; arbitrary SVG markup is not accepted as a runtime image layer. |
+| Add unsafe image URL | `data:`, `javascript:`, SVG-looking owner-entered URLs, and extensionless owner-entered URLs are rejected with a plain message. |
+| Edit selected image source | Selected image source is read-only; owner uses Replace image file or the Images panel. |
 | Add text | New text layer appears and is selected. |
 | Add path text | New path-text layer appears, follows its stored path, and can edit text/path settings. |
 | Add rectangle | New rectangle layer appears and is selected. |
@@ -38,17 +58,73 @@
 | Add arrow variants | Basic arrow and thin-tail arrow layers appear and preserve arrow style through JSON export. |
 | Add curated asset | Illustration, graphic, or character asset appears as an image layer. |
 | Add QR | QR layer appears and renders from current value. |
+| Add QR with props | QR drawer value, QR color, background color, and size fields create the inserted QR layer. |
 | Add image URL | Image layer uses supplied URL. |
 | Freehand draw | Draw mode creates a path layer that appears in the layer list and exports. |
 | Draw polygon | Polygon mode lets the user click points, finish with double-click or Enter, and stores a neutral polygon layer. |
 | Polygon point edit | Inspector point textarea updates polygon vertices when at least three valid points are supplied. |
-| Select layer | Properties panel reflects selected layer. |
+| Select layer | Right properties panel opens and reflects the selected layer. |
+| Right-panel focus retention | Typing in selected text, changing font size, editing layer name, adjusting opacity, and changing X/Y/W/H update the canvas while the active inspector field keeps focus. |
+| No-op property edit guard | Re-emitting the same selected-layer value does not commit a new document snapshot, reload Fabric, or add a history entry. |
+| Floating right drawer | Opening or closing the right properties panel or Active Layers panel does not change the Fabric viewport width, workspace frame position, or fit zoom. |
+| Open layers panel | The canvas Layers button opens the dedicated Active Layers panel instead of selected-item properties. |
+| Select from layers panel | Selecting a layer from the Active Layers panel keeps the stack panel open and highlights the selected row. |
+| Layer panel stats and rename | Active Layers shows visible/locked counts, current owner-readable history label, and an inline selected-layer rename field that keeps focus while updating the canvas state. |
+| Layer drag reorder | Dragging an unlocked layer row in Active Layers reorders the top-down stack, keeps the same layer selected, and blocks locked source layers until they are unlocked. |
+| Selected-item-first inspector | Text, image, QR, color, opacity, and position controls appear before alignment, stacking, advanced effects, watermark, and export controls. |
+| Compact right drawer density | The selected-layer header, right-panel section headings, controls, quick actions, Active Layers drawer, notices, and export buttons use old-editor compact desktop sizing while narrow/mobile layouts keep larger touch controls. |
+| Text owner actions | Selected text exposes Readable, Shorten, Add CTA, Add contact, Center, and Bring front actions before generic layer controls. |
+| Business text chips | Selecting a text layer exposes product-provided business facts as chips; clicking a chip appends that text to the selected layer without replacing unrelated copy. |
+| Text checks | Selected text reports low contrast, small size, long copy, near-edge placement, and missing action cue with direct local fixes where possible. |
+| Smart image quick actions | Selected image layers expose Fill frame, Fit inside, Larger, and Behind text actions before advanced image controls. |
+| Irrelevant inspector panels | Image filters, borders, gradients, and shadows are hidden when the current selection cannot use them. |
+| AI result placement | AI suggestions and findings appear above the remaining tool groups after a tool result is ready. |
+| Floating toolbar appears | Selecting a layer on the canvas shows the floating selected-layer toolbar near the selected object while detailed options live in the right inspector. |
+| Floating toolbar follows selection | Drag, resize, rotate, zoom, and selection changes update the floating toolbar position so it stays attached to the active Fabric selection. |
+| Floating toolbar bottom placement | Moving a layer near the top, center, or lower portion of the visible Fabric viewport keeps the floating toolbar attached below the selected bounding box bottom border, with clamping only at the viewport edge. |
+| Floating toolbar focus retention | Changing selected-layer color or other quick properties from the floating toolbar updates the canvas without stealing focus from the active toolbar/control input. |
+| Floating toolbar render throttling | Fast drag, scale, rotate, and zoom events coalesce toolbar repositioning to animation frames and skip unchanged toolbar state. |
+| Grab viewport render throttling | Holding Grab and moving the output frame keeps ruler/safe-area overlays aligned without scheduling workspace metric state on every pointer event. |
+| Floating toolbar single-layer actions | Edit opens the inspector, color updates the supported selected layer color, style/position open detailed controls, flip updates the selected layer, lock/duplicate/delete reuse existing layer actions, and locked layers block destructive or geometry-changing controls. |
+| Floating toolbar multi-selection actions | Active multi-selection shows group, distribute X/Y, duplicate, delete, and more controls while hiding single-layer-only color and lock actions. |
+| Floating toolbar group actions | True Fabric groups show Ungroup and Position; normal single layers and ungrouped multi-selection do not show invalid Ungroup controls. |
+| Floating toolbar locked state | Unlocked selected layers show Lock; locked selected layers stay selectable, hide resize controls, show Unlock, and disable destructive or geometry-changing actions; locked pages disable layer mutations until the page is unlocked. |
+| Floating toolbar export boundary | SVG, PNG, JSON, clipboard PNG, and base64 export include the canvas content only; the toolbar overlay is not serialized or rendered into output. |
+| Contextual toolbar text controls | Selecting text shows font family, size, color, style, alignment, opacity, effects, and position controls; each updates through existing document history. |
+| Contextual toolbar image controls | Selecting an image shows replace, filter, fit/crop, flip, opacity, style, and position controls. |
+| Contextual toolbar shape controls | Selecting shape, line, QR, or path layers shows color/stroke/opacity/style/position controls that reuse inspector mutations. |
+| Contextual toolbar multi-selection | Active multi-selection shows group, distribute, duplicate, delete, and position actions. |
+| Drawer search | Drawer search filters local templates, tools, curated assets, approved image assets, text presets, ready-made text templates, Brand Kit picks, and placeholders without a network call. |
+| Drawer item cap | Long local asset/template lists render a capped set of cards with a prompt to search/refine instead of forcing every card into the DOM at once. |
+| Text preset drawer | Text drawer exposes Add a text box, disabled Magic Write placeholder, Brand Kit entry, default text styles, business placeholders, data-backed ready-made text templates, and path text. |
+| Text template insert/edit/remove | Add a ready-made text template, confirm each inserted layer remains editable text, change one layer from the right properties panel, then remove the selected layer from canvas/Layers without affecting unrelated layers. |
+| Text template thumbnail cards | Text and Styles drawer template cards show visual previews without separate visible label/category text while keeping accessible add labels. |
+| Styles drawer | Styles exposes Project style, Apply brand style, Shuffle style, ready-made project styles, and text combinations. |
+| Apply project style | Applying a project style updates unlocked text, fill/stroke, QR, outlined-image color, and background while locked layers remain unchanged. |
+| Shuffle project style | Shuffle cycles local presets and records a normal editor history entry without provider calls. |
+| Graphics sticker drawer | Graphics drawer exposes local stickers, popular search chips, recent insertions, and recommended assets without a network call. |
+| Sticker drawer thumbnail cards | Sticker cards show thumbnail-only buttons with accessible add labels, so long sticker names do not squeeze or break the left drawer grid. |
+| Sticker SVG render | Adding each local sticker renders the complete sticker image on the Fabric canvas and in the right inspector preview; no cropped half-shape placeholder appears. |
+| Recent insertions | Adding assets or text creates browser-local recent chips in the drawer. |
+| Brand Kit quick picks | Product-provided brand colors, logo assets, brand name, and brand font can be applied without shared-editor Firebase reads. |
+| Text placeholders | Product-provided business facts such as business name, offer, CTA, destination, and contact facts insert as editable text layers with source refs. |
+| Page controls | Single-page documents hide page controls; multi-page documents can add pages, duplicate pages with new layer ids, and switch artboards. |
+| Page lock | A locked active page blocks layer/canvas edits, keyboard mutation shortcuts, and selected-layer actions until unlocked. |
+| Active-page export | SVG, PNG, clipboard PNG, and base64 export use the active page; JSON export preserves the full page list. |
 | Clear selection | Selected-layer close control clears active selection without deleting the layer. |
 | Drag unlocked layer | Layer position changes. |
 | Resize unlocked layer | Fabric handles update layer width and height. |
 | Rotate unlocked layer | Fabric rotation handle updates layer angle. |
 | Snap guideline | Moving a layer near another layer shows alignment guide and snaps within margin. |
-| Keyboard shortcuts | Delete removes selection; arrow keys nudge; command/control A selects all; command/control C/V duplicates; command/control G groups or ungroups. |
+| Keyboard shortcuts panel | Click the bottom keyboard button or press `?`; the panel opens with grouped shortcuts for general, create, select/edit, move/resize, arrange, text, and view actions, then closes with Escape or Close. |
+| Shortcut typing guard | While editing a right-panel input, textarea, select, or active Fabric text object, creation and mutation shortcuts do not fire or steal focus. |
+| Keyboard traversal | Shortcut and preview dialogs move focus inside the open dialog, keep Tab traversal trapped while open, close with Escape, and restore focus to the button that opened the dialog. |
+| Escape staged preview unwind | With a popup open, a selected layer, and the left drawer expanded, press Escape repeatedly; the first press closes the popup, the next clears the selected layer/floating toolbar/right inspector, and the final press collapses the left drawer and clears drawer search so the editor shows the full workspace. Escape still performs this unwind from focused inspector fields, while non-Escape shortcuts remain blocked during typing. |
+| Keyboard creation shortcuts | Press T, R, C, L, and Q from canvas focus; each adds the expected text, rectangle, circle, line, or QR layer through the normal document history path. |
+| Keyboard edit shortcuts | Delete removes selection; arrow keys nudge; command/control A selects all; command/control C/V copies and pastes; command/control D duplicates; command/control G groups; command/control shift G ungroups. |
+| Keyboard arrange shortcuts | Command/control bracket moves selected layers forward/back; command/control alt bracket moves to front/back; alt shift L/C/R/T/M/B aligns; command/control shift H/V distributes eligible selections. |
+| Keyboard text shortcuts | With a text layer selected, command/control B/I/U and command/control shift X toggle text styles, and command/control shift comma/period changes text size without opening a separate panel. |
+| Keyboard view shortcuts | Command/control plus/minus zooms; command/control 0 fits; command/control alt 0 resets to 100%; command/control quote toggles grid/rulers; command/control shift quote toggles safe area; hold Space temporarily switches to Grab and restores the prior mode on release. |
 | Bottom controls | Zoom in, zoom out, fit, Selection, Grab, Draw, Polygon, duplicate, and help controls respond without layout shift. |
 | Lock layer | Drag and property actions that should move it are blocked. |
 | Hide layer | Layer remains in list but disappears from canvas/export. |
@@ -65,10 +141,16 @@
 | Visible watermark | Watermark text, position, color, size, opacity, rotation, and tiled mode render in preview/export without becoming a selectable layer. |
 | Flip controls | Flip X and Flip Y update the selected layer and persist through JSON export. |
 | Group controls | Group and ungroup work for multi-selection editing while persistence returns to neutral layers. |
+| Invalid group actions | Group is unavailable with fewer than two unlocked selected layers; Distribute is unavailable with fewer than three unlocked selected layers; Ungroup is unavailable unless a true group is selected. |
 | Duplicate layer | New layer appears with copied properties and new id. |
 | Delete layer | Layer is removed and selection clears. |
+| Owner-readable undo redo | Undo and Redo show the action label being reversed or restored instead of a generic history message. |
+| Local autosave restore | After editing a document, a newer browser-local draft is detected on reload and can be restored or dismissed without calling product persistence. |
+| Mobile review mode | On a narrow viewport, Review mode opens the download check, fits the output frame, and hides low-frequency rail/drawer space while keeping preview/download controls reachable. |
 | Preview | Preview opens a watermark-free image snapshot and closes without changing the document. |
-| Grid/ruler toggle | Grid overlay and ruler gutters toggle without changing the exported asset. |
+| Top-bar download | Download in the top toolbar exports the active workspace frame as PNG without requiring a selected layer or open inspector. |
+| Grid/ruler toggle | Grid overlay and canvas-bound ruler gutters toggle without changing the exported asset. |
+| Safe-area guide toggle | Safe-area and center guides follow the workspace frame during zoom/grab movement and do not appear in SVG, PNG, JSON, clipboard, or base64 output. |
 
 ## Export
 
@@ -77,6 +159,9 @@
 | Download SVG | Browser downloads a `.svg` file. |
 | Download PNG with safe assets | Browser downloads a `.png` file. |
 | Download PNG with blocked external image | Editor shows a clear export error and leaves SVG/JSON available. |
+| Download readiness check | First download with actionable issues opens the download check panel, selects/focuses fixable layers when chosen, and allows a repeated intentional export for the same issue signature. |
+| Download clean design | A design with readable text, action copy, safe placement, safe image sources, and QR values shows the clean readiness state before export. |
+| Export bundle | Bundle downloads client-side PNG variants for square, portrait, story/status, and flyer handoff sizes from the active workspace frame. |
 | Download JSON | Browser downloads neutral `CreativeEditorDocument` JSON. |
 | Fresh JSON export | JSON export serializes the latest canvas state before download. |
 | Copy PNG | Browser-local clipboard writes a PNG when supported and shows a clear unsupported-browser message otherwise. |

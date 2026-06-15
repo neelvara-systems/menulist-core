@@ -19,7 +19,7 @@ CampaignCue creates campaign packs from your business data. You can use it for W
 1. Choose whether you are setting up one business, an agency workspace, or multiple locations.
 2. Select the business type: restaurant, cafe, salon, spa, barbershop, retail, service, or other.
 3. Use the Home checklist to confirm business details, add today's input, create a pack, and use it manually.
-4. Add data from the signed-in business profile and Inputs such as menu links, booking links, offers, events, or uploaded file notes.
+4. Add data from the signed-in business profile and Offers, events, and notes such as menu links, booking links, offers, events, or uploaded file notes.
 5. Add brand details such as logo, colors, writing style, and preferred language.
 6. Review the first campaign ideas.
 

@@ -11,19 +11,25 @@
 
 ## Day-One Mobile Decision
 
-The full Fabric editor is desktop-first. Mobile support is limited to responsive access with large controls, template choice, preview, simple property fields, and download/register actions. Freehand drawing, precision dragging, resizing, and multi-layer grouping remain desktop-first behaviors.
+The full Fabric editor is desktop-first. Mobile support is limited to responsive access with large controls, Review mode, template choice, campaign goal starters, drawer search, My Stuff upload entry, Styles presets, Brand Kit quick picks, business text chips, text placeholders, page switching, preview, selected-layer quick actions, simple property fields, keyboard shortcut reference viewing when a hardware keyboard is present, readiness checks, bundle/download/register actions, and autosave recovery prompts. Freehand drawing, precision dragging, resizing, keyboard-driven precision editing, and multi-layer grouping remain desktop-first behaviors.
 
 ## Mobile Requirements For Current Implementation
 
 - No sub-44px action targets.
 - Controls wrap instead of overflowing.
-- The layer list and property panel stack under the canvas on narrow screens.
+- The floating selected-layer toolbar must stay scrollable/wrapped on narrow screens and keep 44px minimum action targets.
+- The contextual property toolbar, drawer search, Brand Kit actions, text placeholders, and page strip must wrap or scroll horizontally on narrow screens and keep 44px minimum action targets.
+- My Stuff upload/recent controls and Styles presets must stack as large drawer cards on narrow screens.
+- The keyboard shortcuts panel must collapse to a single readable column and never require precision canvas manipulation.
+- Review mode must open the readiness panel, fit the output frame, and hide low-frequency rail/drawer space on narrow screens.
+- Autosave recovery, readiness actions, and bundle/download actions must remain reachable without precision canvas manipulation.
+- The right properties panel and Active Layers panel remain floating drawers on narrow screens so they do not resize the canvas; drawer content must scroll with large targets.
 - Product adapters must not route owner PWA tab actions through a desktop bypass unless the feature is explicitly outside the mobile PWA shell.
 - Import controls must remain optional on mobile and cannot require direct provider connections.
 
 ## CampaignCue Mobile Position
 
-CampaignCue workspace is a protected product app, not the MenuList owner PWA shell. Full creative editing remains desktop-first. CampaignCue mobile users can still open the editor, choose templates, inspect layers, preview, and download when viewport constraints allow, but precision canvas editing is not positioned as a mobile-first workflow.
+CampaignCue workspace is a protected product app, not the MenuList owner PWA shell. Full creative editing remains desktop-first. CampaignCue mobile users can still open the editor, enter Review mode, run download checks, search drawer items, choose templates, use campaign goal starters, add business text, switch pages, use selected-layer quick actions when viewport constraints allow, inspect layers, restore local drafts, preview, and download, but precision canvas editing is not positioned as a mobile-first workflow.
 
 ## Future Mobile Path
 

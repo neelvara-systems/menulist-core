@@ -35,7 +35,7 @@ export default function OBPAnalytics({
     storeTimeZone,
     businessDayEndTime,
     trackViews = true,
-    includeLocation = true,
+    includeLocation = false,
     activeLanguage,
     activeLanguageName,
     trackLanguageUsage = false,

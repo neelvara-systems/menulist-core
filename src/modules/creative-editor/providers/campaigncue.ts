@@ -16,6 +16,7 @@ import type {
     CreativeEditorDocument,
     CreativeEditorElement,
     CreativeEditorSourceRef,
+    CreativeEditorTextPlaceholder,
 } from "../types";
 
 const getCampaignCueBrandColor = (businessBrain: CampaignCueBusinessBrain) => (
@@ -48,6 +49,96 @@ const campaignCueSourceRefs = (params: {
     }));
 };
 
+const compactPlaceholders = (placeholders: CreativeEditorTextPlaceholder[]) => {
+    const seen = new Set<string>();
+    return placeholders
+        .map((placeholder) => ({
+            ...placeholder,
+            value: placeholder.value.trim(),
+        }))
+        .filter((placeholder) => {
+            if (!placeholder.value) return false;
+            const key = `${placeholder.label}:${placeholder.value}`.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
+        .slice(0, 14);
+};
+
+const buildCampaignCueTextPlaceholders = (params: {
+    businessBrain: CampaignCueBusinessBrain;
+    campaign?: CampaignCueCampaign;
+    output?: CampaignCueOutput;
+}): CreativeEditorTextPlaceholder[] => compactPlaceholders([
+    {
+        id: "business-name",
+        label: "Business name",
+        sourceRef: "business_profile",
+        value: params.businessBrain.name,
+    },
+    {
+        id: "locality",
+        label: "Location",
+        sourceRef: "business_profile",
+        value: params.businessBrain.locality || "",
+    },
+    {
+        id: "phone",
+        label: "Phone",
+        sourceRef: "contact",
+        value: params.businessBrain.contacts.phone || "",
+    },
+    {
+        id: "website",
+        label: "Website",
+        sourceRef: "contact",
+        value: params.businessBrain.contacts.website || "",
+    },
+    {
+        id: "booking-link",
+        label: "Booking link",
+        sourceRef: "contact",
+        value: params.businessBrain.contacts.bookingUrl || "",
+    },
+    {
+        id: "menu-link",
+        label: "Menu link",
+        sourceRef: "contact",
+        value: params.businessBrain.contacts.publicMenuUrl || "",
+    },
+    {
+        id: "campaign-title",
+        label: "Campaign title",
+        sourceRef: params.campaign?.id,
+        value: params.campaign?.title || "",
+    },
+    {
+        id: "headline",
+        label: "Headline",
+        sourceRef: params.output?.id,
+        value: params.output?.fields.headline || "",
+    },
+    {
+        id: "body",
+        label: "Body",
+        sourceRef: params.output?.id,
+        value: params.output?.fields.body || params.output?.text || "",
+    },
+    {
+        id: "cta",
+        label: "Call to action",
+        sourceRef: params.output?.id,
+        value: params.output?.fields.cta || "",
+    },
+    {
+        id: "destination",
+        label: "Destination",
+        sourceRef: params.output?.id,
+        value: getCampaignCueDestination(params.businessBrain, params.output),
+    },
+]);
+
 export function buildCampaignCueBlankCreativeDocument(params: {
     businessBrain: CampaignCueBusinessBrain;
     workspace: CampaignCueWorkspace;
@@ -72,11 +163,17 @@ export function buildCampaignCueBlankCreativeDocument(params: {
         metadata: {
             ...documentValue.metadata,
             brand: {
+                accentColor: "#f6d365",
+                fontFamily: "Inter, Arial, sans-serif",
                 logoUrl: params.businessBrain.brandKit.logoUrl,
                 name: params.businessBrain.name,
                 primaryColor: brandColor,
+                secondaryColor: "#16231f",
                 voice: params.businessBrain.brandKit.voice,
             },
+            textPlaceholders: buildCampaignCueTextPlaceholders({
+                businessBrain: params.businessBrain,
+            }),
         },
     };
 }
@@ -176,9 +273,12 @@ export function buildCampaignCueOutputCreativeDocument(params: {
         id: `cc_editor_${params.campaign.id}_${params.output.id}`,
         metadata: {
             brand: {
+                accentColor: "#f6d365",
+                fontFamily: "Inter, Arial, sans-serif",
                 logoUrl: params.businessBrain.brandKit.logoUrl,
                 name: params.businessBrain.name,
                 primaryColor: brandColor,
+                secondaryColor: "#16231f",
                 voice: params.businessBrain.brandKit.voice,
             },
             campaignId: params.campaign.id,
@@ -186,6 +286,11 @@ export function buildCampaignCueOutputCreativeDocument(params: {
             outputId: params.output.id,
             sourceRefs,
             templateId: "campaigncue-output-square",
+            textPlaceholders: buildCampaignCueTextPlaceholders({
+                businessBrain: params.businessBrain,
+                campaign: params.campaign,
+                output: params.output,
+            }),
             trustGate: params.output.trustGate,
         },
         productContext: {

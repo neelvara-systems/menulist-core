@@ -16,7 +16,7 @@ Make sure the business has permission to message the audience. Do not import or 
 4. Confirm consent posture.
 5. Create message variants.
 6. Review trust checks.
-7. Download/export, submit as a template, or send only where direct sending is configured.
+7. Download or export the image and text, then paste/send manually in WhatsApp outside CampaignCue.
 
 ## Good Campaigns
 

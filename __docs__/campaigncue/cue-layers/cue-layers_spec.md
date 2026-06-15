@@ -79,7 +79,7 @@ Flow 2 and Flow 3 are product goals but are not enabled in the current runtime. 
 5. CueLayers creates a source package and job.
 6. Owner sees progress and can leave the screen.
 7. When ready, owner opens the result in the shared Creative Editor.
-8. Owner edits safe layers, keeps fallback layers where needed, and exports PNG or JSON/manual handoff files.
+8. Owner edits safe layers, keeps fallback layers where needed, and exports PNG/manual handoff files. Durable editor snapshots remain product-owned instead of browser JSON handoff while CueLayers runtime assets are hydrated with private URLs.
 
 ### Flow 2 - Reuse CampaignCue Generated Asset
 
@@ -266,7 +266,7 @@ Protected text includes business name, branch/location, phone, address, booking/
 | Quality report | Save compact quality summaries in Firestore and detailed reports in Storage/GCS. |
 | Layer panel | Show type, confidence, warning, fallback, source, lock, visibility, reorder, duplicate, delete, and repair actions. |
 | Autosave | Save runtime edits with debounce, local draft recovery, and version snapshots. |
-| Export | Export from saved editor state, not stale unsaved browser state. PNG is primary. JSON/manual handoff stays supported. |
+| Export | Export from saved editor state, not stale unsaved browser state. PNG is the owner handoff. Durable JSON snapshots stay product-owned while CueLayers assets depend on private runtime hydration. |
 | Repair | Restore fallback, replace layer asset, keep text as raster, remask/regenerate selected region, downgrade vector to raster. |
 | Feedback | Store structured correction signals for threshold and pipeline improvement. |
 | Unsupported handling | Dense documents, tiny UI screenshots, complex collages, watermarked images, low-resolution posters, unsafe content, and overcompressed images must get flat-safe or unsupported states instead of bad editable layers. |
@@ -327,7 +327,7 @@ Protected text includes business name, branch/location, phone, address, booking/
 | Let Fabric JSON be the central output. | Keep canonical reconstruction separate; durable editor truth is `CreativeEditorDocumentSnapshot`; Fabric JSON is adapter/runtime serialization only. |
 | Store current projection document in Firestore. | Store only pointers and compact state in Firestore; large JSON lives in Storage. |
 | Use signed URLs inside projection documents. | Durable editor/projection documents store `cue-asset://assetId` references; signed URLs are runtime only. |
-| Treat PSD/SVG as key outputs early. | PNG/export download and shared-editor JSON are primary; SVG is best-effort; PSD is not a driver. |
+| Treat PSD/SVG as key outputs early. | PNG/export download is the owner handoff. Shared-editor snapshots are product-owned durable state; browser SVG/JSON exports are disabled for active CueLayers documents until a safe product-owned hydration/export contract exists. PSD is not a driver. |
 | Fully editable everything. | Raster-first fidelity, editable text/vector only when validated. |
 | Direct image generation from browser. | Server-orchestrated generation with rate limits, provenance, and cost ledger. |
 | Two pipelines for upload and generated images. | One source-package pipeline with different source adapters. |

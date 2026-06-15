@@ -2,6 +2,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { getBusinessAnalyticsDateKey } from "@lib/analytics/businessDay";
 import { addDaysToAnalyticsDateKey } from "@lib/analytics/dateKey";
+import { filterAnalyticsUpdateData } from "@lib/analytics/writePolicy";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { logger } from "@lib/monitoring/logger";
 import { collection, doc, DocumentData, getDoc, getDocs, increment, orderBy, query, serverTimestamp, setDoc, Timestamp, where } from "firebase/firestore";
@@ -256,13 +257,16 @@ const writeAnalyticsEventNow = async (
   storeTimeZone?: string,
   businessDayEndTime?: string,
 ) => {
+  const policyData = filterAnalyticsUpdateData(updateData);
+  if (Object.keys(policyData).length === 0) return;
+
   const dailyDocRef = getDailyAnalyticsDocRef(tenantId, storeId, projectId, dateString);
   const processedData: any = {};
 
-  Object.keys(updateData).forEach(key => {
-    const value = typeof updateData[key] === 'number'
-      ? increment(updateData[key])
-      : updateData[key];
+  Object.keys(policyData).forEach(key => {
+    const value = typeof policyData[key] === 'number'
+      ? increment(policyData[key])
+      : policyData[key];
 
     assignProcessedAnalyticsField(processedData, key, value);
   });
@@ -295,6 +299,9 @@ const writeAnalyticsEventViaPublicApi = async (
   storeTimeZone?: string,
   businessDayEndTime?: string,
 ) => {
+  const policyData = filterAnalyticsUpdateData(updateData);
+  if (Object.keys(policyData).length === 0) return;
+
   const response = await fetch('/api/public/analytics/track', {
     method: 'POST',
     headers: {
@@ -302,7 +309,7 @@ const writeAnalyticsEventViaPublicApi = async (
     },
     keepalive: true,
     body: JSON.stringify({
-      updateData,
+      updateData: policyData,
       tenantId: String(tenantId),
       storeId: String(storeId),
       projectId,
@@ -381,11 +388,14 @@ const enqueueAnalyticsWrite = (
   storeTimeZone?: string,
   businessDayEndTime?: string,
 ) => {
+  const policyData = filterAnalyticsUpdateData(updateData);
+  if (Object.keys(policyData).length === 0) return;
+
   const queueKey = getAnalyticsQueueKey(tenantId, storeId, projectId, dateString);
   const existing = analyticsWriteQueue.get(queueKey);
 
   if (existing) {
-    mergeQueuedAnalyticsData(existing.updateData, updateData);
+    mergeQueuedAnalyticsData(existing.updateData, policyData);
     existing.eventCount += 1;
 
     if (existing.eventCount >= ANALYTICS_FLUSH_MAX_EVENTS) {
@@ -404,7 +414,7 @@ const enqueueAnalyticsWrite = (
     dateString,
     storeTimeZone,
     businessDayEndTime,
-    updateData: { ...updateData },
+    updateData: { ...policyData },
     eventCount: 1,
   };
 
@@ -435,7 +445,7 @@ if (typeof window !== 'undefined') {
           dateString: String(queued.dateString),
           storeTimeZone: queued.storeTimeZone,
           businessDayEndTime: queued.businessDayEndTime,
-          updateData: queued.updateData,
+          updateData: filterAnalyticsUpdateData(queued.updateData),
           eventCount: queued.eventCount || 1,
         });
         void flushAnalyticsQueueKey(queueKey).catch((error) => {

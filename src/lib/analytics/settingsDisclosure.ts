@@ -70,10 +70,10 @@ export const ANALYTICS_TRACKING_CATEGORY_DISCLOSURES: AnalyticsTrackingCategoryD
   {
     key: 'approximate-location',
     title: 'Approximate location',
-    description: 'Adds coarse location context to reports when region signals are available.',
+    description: 'Adds coarse location context to reports only when this option is enabled.',
     details: [
-      'Rounded geolocation when available',
-      'Timezone region fallback when geolocation is unavailable',
+      'Rounded geolocation when the customer allows it',
+      'No location maps are written when this option is off',
     ],
     note: 'This does not collect exact GPS coordinates in this analytics flow.',
   },

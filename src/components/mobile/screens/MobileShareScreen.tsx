@@ -209,6 +209,8 @@ export default function MobileShareScreen({
         menuBoardLink: null,
     });
     const [supportsNativeShare, setSupportsNativeShare] = useState(false);
+    const previewRequestRef = useRef(0);
+    const previewUrlRef = useRef<string | null>(null);
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
     const resolveProjectName = useCallback(
         (name: string | Record<string, string> | undefined, fallback?: string) =>
@@ -325,11 +327,16 @@ export default function MobileShareScreen({
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
     }, []);
 
-    useEffect(() => {
-        return () => {
-            if (previewAsset?.url) URL.revokeObjectURL(previewAsset.url);
-        };
-    }, [previewAsset?.url]);
+    const releasePreviewUrl = useCallback(() => {
+        if (previewUrlRef.current) {
+            URL.revokeObjectURL(previewUrlRef.current);
+            previewUrlRef.current = null;
+        }
+    }, []);
+
+    useEffect(() => () => {
+        releasePreviewUrl();
+    }, [releasePreviewUrl]);
 
     useEffect(() => {
         const existingSignals = Object.keys(storeDetails?.starterActivationSignals?.actions || {})
@@ -583,24 +590,30 @@ export default function MobileShareScreen({
     };
 
     const closePrintableTemplateActions = () => {
+        previewRequestRef.current += 1;
+        releasePreviewUrl();
         setPrintableActionTemplateId(null);
+        setPrintableBusyKey((current) => current?.startsWith('preview:') ? null : current);
         setPreviewAsset(null);
         setPrintablePreviewState('idle');
     };
 
     const renderPrintableTemplatePreview = async (templateFamilyId: PrintableTemplateFamilyId) => {
         if (!data) return;
+        previewRequestRef.current += 1;
+        const requestId = previewRequestRef.current;
 
         const assetType = selectedPrintableAsset;
         if (assetType.requiresFeedback && !data.hasFeedbackEnabled) {
-            setPrintablePreviewState('idle');
+            if (previewRequestRef.current === requestId) setPrintablePreviewState('idle');
             return;
         }
 
         const previewFormat = getMobilePrintablePreviewFormat(assetType);
+        releasePreviewUrl();
         setPreviewAsset(null);
         if (!previewFormat) {
-            setPrintablePreviewState('ready');
+            if (previewRequestRef.current === requestId) setPrintablePreviewState('ready');
             return;
         }
 
@@ -610,12 +623,18 @@ export default function MobileShareScreen({
         try {
             const input = await buildPrintableRenderInput(selectedPrintableAssetId, templateFamilyId);
             if (!input) {
-                setPrintablePreviewState('idle');
+                if (previewRequestRef.current === requestId) setPrintablePreviewState('idle');
                 return;
             }
             const result = await renderPrintableAsset({ ...input, outputFormat: previewFormat });
             const previewBlob = new Blob([result.blob], { type: result.mimeType });
             const previewUrl = URL.createObjectURL(previewBlob);
+            if (previewRequestRef.current !== requestId) {
+                URL.revokeObjectURL(previewUrl);
+                return;
+            }
+            releasePreviewUrl();
+            previewUrlRef.current = previewUrl;
             setPreviewAsset({
                 blob: result.blob,
                 filename: result.filename,
@@ -625,9 +644,9 @@ export default function MobileShareScreen({
             });
             setPrintablePreviewState('ready');
         } catch {
-            setPrintablePreviewState('error');
+            if (previewRequestRef.current === requestId) setPrintablePreviewState('error');
         } finally {
-            setPrintableBusyKey(null);
+            if (previewRequestRef.current === requestId) setPrintableBusyKey(null);
         }
     };
 

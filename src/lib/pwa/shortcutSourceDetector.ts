@@ -72,7 +72,7 @@ export async function detectAndTrackShortcutLaunch(
   if (typeof window === 'undefined') return null;
   if (!detectInstalled()) return null;
 
-  const { tenantId, storeTimeZone, businessDayEndTime, includeLocation = true } = options;
+  const { tenantId, storeTimeZone, businessDayEndTime, includeLocation = false } = options;
 
   const source = parseShortcutSource(window.location.search);
   if (!source) return null;

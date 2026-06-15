@@ -77,10 +77,10 @@ export const CREATIVE_EDITOR_STARTER_TEMPLATES: Array<{
     label: string;
     width: number;
 }> = [
-    { id: "square-post", label: "Square post", description: "Social feed asset", width: 1080, height: 1080 },
-    { id: "story", label: "Story", description: "Tall story format", width: 1080, height: 1920 },
-    { id: "wide-banner", label: "Wide banner", description: "Website or cover image", width: 1600, height: 900 },
-    { id: "poster", label: "Poster", description: "Simple print/download poster", width: 1240, height: 1754 },
+    { id: "square-post", label: "Square", description: "Social feed", width: 1080, height: 1080 },
+    { id: "story", label: "Story", description: "Vertical story", width: 1080, height: 1920 },
+    { id: "wide-banner", label: "Banner", description: "Website cover", width: 1600, height: 900 },
+    { id: "poster", label: "Poster", description: "Print poster", width: 1240, height: 1754 },
 ];
 
 export function createCreativeEditorDocument(params: {
@@ -101,45 +101,35 @@ export function createCreativeEditorDocument(params: {
             height: params.height || 1080,
             width: params.width || 1080,
         },
-        elements: params.elements || [
-            rectElement({
-                fill: primaryColor,
-                height: 520,
-                name: "Brand panel",
-                radius: 34,
-                width: 410,
-                x: 610,
-                y: 90,
-            }),
-            textElement({
-                color: "#172420",
-                name: "Headline",
-                text: params.title || "Create a new asset",
-                width: 520,
-                x: 88,
-                y: 128,
-            }),
-            textElement({
-                color: "#40524d",
-                fontSize: 28,
-                fontWeight: "600",
-                height: 150,
-                name: "Body",
-                text: params.brandName ? `${params.brandName}\nAdd offer details here.` : "Add offer details here.",
-                width: 520,
-                x: 90,
-                y: 330,
-            }),
-            qrElement({ x: 90, y: 820 }),
-        ],
+        elements: params.elements ?? [],
         id: buildCreativeEditorId(),
         metadata: {
             brand: {
+                accentColor: "#f6d365",
+                fontFamily: "Inter, Arial, sans-serif",
                 name: params.brandName,
                 primaryColor,
+                secondaryColor: "#16231f",
             },
             createdAt,
             templateId: "blank",
+            textPlaceholders: [
+                ...(params.brandName ? [{
+                    id: "brand-name",
+                    label: "Business name",
+                    value: params.brandName,
+                }] : []),
+                {
+                    id: "offer",
+                    label: "Offer",
+                    value: "Weekend offer",
+                },
+                {
+                    id: "cta",
+                    label: "Call to action",
+                    value: "Order now",
+                },
+            ],
             updatedAt: createdAt,
         },
         productContext: params.productContext,
@@ -185,12 +175,9 @@ export function createCreativeEditorStarterDocument(params: {
     };
 }
 
-export function buildCreativeEditorImageElement(params: {
-    name?: string;
-    src: string;
-    x?: number;
-    y?: number;
-}): Extract<CreativeEditorElement, { type: "image" }> {
+export function buildCreativeEditorImageElement(
+    params: Partial<Extract<CreativeEditorElement, { type: "image" }>> & { src: string },
+): Extract<CreativeEditorElement, { type: "image" }> {
     return {
         alt: params.name || "Image",
         fit: "cover",
@@ -204,6 +191,7 @@ export function buildCreativeEditorImageElement(params: {
         width: 360,
         x: params.x ?? 620,
         y: params.y ?? 620,
+        ...params,
     };
 }
 

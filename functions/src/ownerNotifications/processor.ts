@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
-import { FUNCTION_FLAGS } from '../constants/features';
+import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
 import {
@@ -31,6 +31,7 @@ const MAX_PER_RECIPIENT_PER_DAY = 20;
 const MAX_PER_STORE_PER_DAY = 10;
 const FLAG_CACHE_TTL = 60_000;
 const GRAPH_API_VERSION = 'v21.0';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 type EventStatus = 'pending' | 'processing' | 'delivered' | 'partial' | 'failed' | 'skipped';
 
@@ -56,6 +57,7 @@ type OwnerNotificationEventDoc = {
     path: string;
   };
   createdAt: Timestamp;
+  expiresAt: Timestamp;
   updatedAt: Timestamp;
 };
 
@@ -70,6 +72,10 @@ type StoreInfo = {
 
 let cachedLifecycleFlag: boolean | null = null;
 let cachedLifecycleFlagAt = 0;
+
+function getRetentionExpiry(days: number): Timestamp {
+  return Timestamp.fromMillis(Date.now() + days * DAY_MS);
+}
 
 async function isLifecycleMessagingEnabled(): Promise<boolean> {
   if (cachedLifecycleFlag !== null && Date.now() - cachedLifecycleFlagAt < FLAG_CACHE_TTL) {
@@ -331,6 +337,7 @@ async function incrementRateLimit(
       recipientHash,
       dateKey: todayKey(),
       count: FieldValue.increment(1),
+      expiresAt: getRetentionExpiry(FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RATE_LIMIT_RETENTION_DAYS),
       updatedAt: Timestamp.now(),
     }, { merge: true });
     tx.set(storeRef, {
@@ -339,6 +346,7 @@ async function incrementRateLimit(
       storeId: event.storeId,
       dateKey: todayKey(),
       count: FieldValue.increment(1),
+      expiresAt: getRetentionExpiry(FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RATE_LIMIT_RETENTION_DAYS),
       updatedAt: Timestamp.now(),
     }, { merge: true });
 
@@ -376,6 +384,7 @@ async function writeDelivery(params: {
       templateVersion: params.templateVersion,
       providerMessageId: params.providerMessageId || null,
       error: params.error || null,
+      expiresAt: getRetentionExpiry(FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS),
       attempt: 1,
       createdAt: Timestamp.now(),
       sentAt: params.status === 'sent' ? Timestamp.now() : null,
@@ -500,6 +509,7 @@ export async function sendOwnerLifecycleNotification(payload: SendMessagePayload
         path: 'functions/src/messaging/messagingEngine.ts:sendLifecycleMessage',
       },
       createdAt: now,
+      expiresAt: getRetentionExpiry(FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS),
       updatedAt: now,
     };
 

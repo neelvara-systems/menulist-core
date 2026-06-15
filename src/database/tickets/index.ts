@@ -32,6 +32,26 @@ const getDocRef = (docId: string) => {
 
 const getDisplayId = (id: string) => id.slice(0, 6).toUpperCase()
 
+const collectTicketAttachmentUrls = (ticket: Partial<SupportTicketType> = {}): string[] => {
+    const urls = new Set<string>();
+
+    (ticket.documents || []).forEach((document: any) => {
+        if (typeof document?.url === 'string' && document.url) {
+            urls.add(document.url);
+        }
+    });
+
+    (ticket.messages || []).forEach((message) => {
+        (message.attachments || []).forEach((attachment) => {
+            if (typeof attachment?.url === 'string' && attachment.url) {
+                urls.add(attachment.url);
+            }
+        });
+    });
+
+    return Array.from(urls);
+};
+
 const isPlatformTicketSession = (session: any): boolean => {
     const platformRole = String(
         session?.platformRole
@@ -337,12 +357,18 @@ export const updateTicketStatus = async (ticketId: string, currentStatuses: any[
 export const deleteTicket = async (data: any) => {
     return await apiCallComposer(
         async () => {
-            if (data.documents?.length) {
-                for (let i = 0; i < data.documents.length; i++) {
-                    await deleteFileByUrl(data.documents[i].url, answerlatticeStorage)
-                }
-            }
             const docRef = getDocRef(data.id);
+            const ticketSnap = await getDoc(docRef);
+            const persistedTicket = ticketSnap.exists() ? ticketSnap.data() as Partial<SupportTicketType> : {};
+            const attachmentUrls = collectTicketAttachmentUrls({
+                ...persistedTicket,
+                ...data,
+                documents: data.documents || persistedTicket.documents,
+                messages: data.messages || persistedTicket.messages,
+            });
+            await Promise.allSettled(
+                attachmentUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage))
+            );
             await deleteDoc(docRef);
             return null;
         },

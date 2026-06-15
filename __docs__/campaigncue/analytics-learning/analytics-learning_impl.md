@@ -38,11 +38,10 @@ Every important campaign action should emit a scoped event with `workspaceId`, `
 | --- | --- |
 | `campaign_pack_generated` | Campaign pack was created. |
 | `campaign_download` | Pack output was downloaded. |
-| `campaign_download` | Pack output was downloaded. |
 | `campaign_export` | Pack output was exported. |
 | `campaign_schedule` | Manual task schedule was created. |
 | `campaign_request_approval` | Approval request was created. |
-| `export_action_blocked` | Trust gate blocked an export/download/manual-use action. |
+| `export_action_blocked` | A blocked or needs-fix trust gate stopped a public-use action such as download, ZIP export, schedule, or mark-used. |
 | `manual_export_used` | Owner marked an exported or manually posted/shared pack as used. |
 | `owner_outcome_recorded` | Owner recorded replies, bookings, walk-ins, orders, or useful comments manually. |
 | `asset_registered` | Asset metadata was registered. |

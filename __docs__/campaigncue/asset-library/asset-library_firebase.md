@@ -30,7 +30,7 @@ Assets should use:
 - Deduplicate files using checksum where practical.
 - Paginate asset grids.
 - `GET /api/campaigncue/assets` uses a workspace-only guard read plus a bounded asset query instead of loading the full CampaignCue overview.
-- Asset registration uses a workspace-only guard read and writes only the asset metadata record plus one event; it does not invoke provider generation, Storage upload, or overview reload cost.
+- Asset registration uses a workspace-only guard read and writes only the asset metadata record plus one event in one Firestore batch; it does not invoke provider generation, Storage upload, or overview reload cost.
 - Apply retention rules for failed drafts and temporary renders.
 
 ## Security

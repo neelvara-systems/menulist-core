@@ -54,6 +54,7 @@ const pendingWrites: Map<ChangeLogDebounceKey, NodeJS.Timeout> = new Map();
 const pendingData: Map<ChangeLogDebounceKey, PendingMenuChange> = new Map();
 
 const COLLECTION = DB_COLLECTIONS.MENU_CHANGE_LOG;
+type MenuChangeScope = { tId: string | number; sId: string | number };
 
 /**
  * Sanitize object for Firestore (replace undefined with null)
@@ -130,10 +131,40 @@ export async function logMenuChange(entry: MenuChangeLogInput): Promise<void> {
             return; // Silent return - no session
         }
 
+        await queueScopedMenuChange(entry, session);
+    } catch (error) {
+        // Fire-and-forget - silent fail
+        console.warn('[MenuChangeLog] Tracking error (non-blocking):', error);
+    }
+}
+
+export async function logMenuChangeForScope(
+    entry: MenuChangeLogInput,
+    scope: MenuChangeScope,
+): Promise<void> {
+    if (!FEATURE_FLAGS.ENABLE_MENU_OBSERVATION) {
+        return;
+    }
+
+    if (!scope?.tId || !scope?.sId) {
+        return;
+    }
+
+    try {
+        await queueScopedMenuChange(entry, scope);
+    } catch (error) {
+        console.warn('[MenuChangeLog] Scoped tracking error (non-blocking):', error);
+    }
+}
+
+async function queueScopedMenuChange(
+    entry: MenuChangeLogInput,
+    scope: MenuChangeScope,
+): Promise<void> {
         // COST OPTIMIZATION: Debounce writes per item per change type
         const debounceKey = getDebounceKey(
-            session.tId,
-            session.sId,
+            scope.tId,
+            scope.sId,
             entry.projectId,
             entry.itemId,
             entry.changeType
@@ -155,17 +186,13 @@ export async function logMenuChange(entry: MenuChangeLogInput): Promise<void> {
         const timer = setTimeout(() => {
             const pending = pendingData.get(debounceKey);
             if (pending) {
-                executeLogWrite(session.tId!, session.sId!, pending.entry);
+                executeLogWrite(scope.tId, scope.sId, pending.entry);
                 pendingData.delete(debounceKey);
             }
             pendingWrites.delete(debounceKey);
         }, DEBOUNCE_MS);
 
         pendingWrites.set(debounceKey, timer);
-    } catch (error) {
-        // Fire-and-forget - silent fail
-        console.warn('[MenuChangeLog] Tracking error (non-blocking):', error);
-    }
 }
 
 /**
@@ -476,6 +503,27 @@ export function createExtractionCorrectionEntry(
         newValue: { field, corrected: correctedValue },
         changedBy: actor,
         userId,
+    };
+}
+
+export function createMenuRevisionSummaryEntry(
+    projectId: string,
+    summary: Record<string, any>,
+    actor: ChangeActor = 'OWNER',
+    userId?: string,
+    metadata?: Record<string, any>,
+): MenuChangeLogInput {
+    return {
+        projectId,
+        changeType: 'MENU_REVISION_SUMMARY',
+        oldValue: null,
+        newValue: summary,
+        changedBy: actor,
+        userId,
+        metadata: {
+            mode: 'summary',
+            ...metadata,
+        },
     };
 }
 

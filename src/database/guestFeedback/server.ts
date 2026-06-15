@@ -1,3 +1,4 @@
+import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import type { GuestFeedback } from '@type/guestFeedback';
@@ -8,6 +9,7 @@ type SubmitGuestFeedbackAdminInput = Omit<
 >;
 
 export type FeedbackEventType = 'FEEDBACK_SUBMITTED' | 'FEEDBACK_RESOLVED';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function stripUndefined<T extends Record<string, unknown>>(data: T): Partial<T> {
     return Object.fromEntries(
@@ -50,6 +52,8 @@ export async function logFeedbackMOLEventAdmin(
     rating: number,
 ): Promise<void> {
     try {
+        const now = admin.firestore.Timestamp.now();
+        const retentionDays = Number(FEATURE_FLAGS.FEEDBACK_EVENT_RETENTION_DAYS || 180);
         await firestoreAdmin.collection(DB_COLLECTIONS.FEEDBACK_EVENTS).add({
             type: 'feedback_event',
             eventType,
@@ -57,7 +61,8 @@ export async function logFeedbackMOLEventAdmin(
             sId,
             projectId,
             rating,
-            timestamp: admin.firestore.Timestamp.now(),
+            timestamp: now,
+            expiresAt: admin.firestore.Timestamp.fromMillis(now.toMillis() + retentionDays * DAY_MS),
         });
     } catch {
         // Non-blocking operational signal. Feedback submission must not fail.

@@ -67,6 +67,8 @@ export const FEATURE_FLAGS = {
     ENABLE_SHARED_CREATIVE_EDITOR: true,
     ENABLE_SHARED_CREATIVE_EDITOR_INTERACTIVE_CANVAS: true,
     ENABLE_SHARED_CREATIVE_EDITOR_FABRIC_ADAPTER: true,
+    ENABLE_CREATIVE_EDITOR_TEMPLATE_REGISTRY: true,
+    ENABLE_CREATIVE_EDITOR_USER_TEMPLATES: true,
 
     /**
      * CampaignCue Creative Editor adapter.
@@ -77,6 +79,10 @@ export const FEATURE_FLAGS = {
      * posting, social account connection, ad spend mutation, or billing.
      */
     ENABLE_CAMPAIGNCUE_CREATIVE_EDITOR: true,
+    ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE: true,
+    ENABLE_CAMPAIGNCUE_EDITOR_AI_TOOLS: true,
+    ENABLE_CAMPAIGNCUE_DESIGN_CUE: true,
+    ENABLE_CAMPAIGNCUE_DESIGN_CUE_MODEL_ASSIST: false,
     ENABLE_CAMPAIGNCUE_RENDERED_ASSET_EXPORTS: true,
     ENABLE_CAMPAIGNCUE_CUE_LAYERS: true,
     ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD: true,
@@ -623,6 +629,17 @@ export const FEATURE_FLAGS = {
     ENABLE_MENU_OBSERVATION: true, // Enabled — append-only event ledger for data gravity
 
     /**
+     * Menu Observation storage mode.
+     *
+     * summary: one compact revision event per save/publish path.
+     * detailed: per-item change events for focused debugging/learning windows.
+     *
+     * Default stays summary to avoid unbounded item-level ledgers for normal
+     * SMB owner edits.
+     */
+    MENU_OBSERVATION_MODE: "summary" as "summary" | "detailed",
+
+    /**
      * Menu Snapshots on Publish
      *
      * When enabled, every publishProject() call creates an immutable snapshot
@@ -636,6 +653,30 @@ export const FEATURE_FLAGS = {
      * @see __docs__/canonical-truth-infrastructure/
      */
     ENABLE_MENU_SNAPSHOTS: true,
+
+    /**
+     * Full menu snapshot retention window.
+     *
+     * Snapshots are short-term proof/debug artifacts, not permanent history.
+     * The publish path writes expiresAt using this window so cleanup/TTL policy
+     * has a deterministic boundary.
+     */
+    MENU_SNAPSHOT_RETENTION_DAYS: 90,
+
+    /**
+     * AI operation storage mode.
+     *
+     * accounting_only keeps scope, action, model, token, charge, and status
+     * fields but drops raw provider text. detailed may be used during bounded
+     * provider debugging and gets a detailExpiresAt marker.
+     */
+    AI_OPERATION_LOG_MODE: "accounting_only" as "accounting_only" | "detailed",
+    AI_OPERATION_DETAIL_RETENTION_DAYS: 14,
+    MENU_EXTRACTION_DETAIL_RETENTION_HOURS: 2,
+    IMAGE_BATCH_STATUS_HISTORY_LIMIT: 20,
+    OWNER_NOTIFICATION_RETENTION_DAYS: 30,
+    FEEDBACK_EVENT_RETENTION_DAYS: 180,
+    SCHEDULER_RUN_LOG_RETENTION_DAYS: 90,
 
     // ═══════════════════════════════════════════════════════════════
     // AI IMAGE GENERATION (Feature)
@@ -1830,6 +1871,9 @@ export const FEATURE_FLAGS = {
     ENABLE_PRINT_MENU_SURFACES: true,
     ENABLE_PRINT_ASSETS_ROUTE: true,
     ENABLE_PRINTABLE_ASSET_TEMPLATES: true,
+    ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER: true,
+    ENABLE_PRINTABLE_ASSET_EDITOR_CUSTOMIZE: true,
+    ENABLE_PRINTABLE_ASSET_USER_TEMPLATES: true,
     PRINTABLE_ASSET_TEMPLATE_PLAN_IDS: ['starter', 'pro', 'premium'] as string[],
     PRINTABLE_ASSET_TEMPLATE_FULL_CATALOG_PLAN_IDS: ['pro', 'premium'] as string[],
 

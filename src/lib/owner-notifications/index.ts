@@ -6,6 +6,7 @@ import {
     type OwnerNotificationChannel,
     type OwnerNotificationProductId,
 } from '@data/shared/ownerNotificationRegistry';
+import { getAnswerlatticeRetentionFields, type AnswerlatticeRetentionKey } from '@lib/answerlattice/dataRetention';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { secureError, secureLog } from '@lib/security/secureLogger';
@@ -64,6 +65,16 @@ function maskPhone(phone: string): string {
     const digits = phone.replace(/\D/g, '');
     if (digits.length <= 4) return '***';
     return `***${digits.slice(-4)}`;
+}
+
+function getRetentionFieldsForProduct(
+    productId: OwnerNotificationProductId,
+    key: AnswerlatticeRetentionKey,
+    from?: Timestamp,
+) {
+    return productId === PRODUCT_IDS.ANSWERLATTICE
+        ? getAnswerlatticeRetentionFields(key, from)
+        : {};
 }
 
 function sanitizeForFirestore(value: any): any {
@@ -132,6 +143,7 @@ async function incrementRateLimit(
         : null;
 
     return db.runTransaction(async (tx) => {
+        const now = Timestamp.now();
         const recipientSnap = await tx.get(recipientRef);
         const recipientCount = Number(recipientSnap.data()?.count || 0);
         if (recipientCount >= MAX_PER_RECIPIENT_PER_DAY) return false;
@@ -146,7 +158,8 @@ async function incrementRateLimit(
                 storeId: params.storeId,
                 dateKey: todayKey(),
                 count: FieldValue.increment(1),
-                updatedAt: Timestamp.now(),
+                updatedAt: now,
+                ...getRetentionFieldsForProduct(params.productId, 'ownerNotificationRateLimits', now),
             }, { merge: true });
         }
 
@@ -156,7 +169,8 @@ async function incrementRateLimit(
             recipientHash: params.recipientHash,
             dateKey: todayKey(),
             count: FieldValue.increment(1),
-            updatedAt: Timestamp.now(),
+            updatedAt: now,
+            ...getRetentionFieldsForProduct(params.productId, 'ownerNotificationRateLimits', now),
         }, { merge: true });
 
         return true;
@@ -181,6 +195,7 @@ async function writeDelivery(params: {
     const recipientMasked = params.channel === 'email'
         ? maskEmail(params.recipientValue)
         : maskPhone(params.recipientValue);
+    const createdAt = Timestamp.now();
 
     await params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES).doc(deliveryId).set(sanitizeForFirestore({
         eventId: params.eventId,
@@ -197,8 +212,9 @@ async function writeDelivery(params: {
         providerMessageId: params.result?.providerMessageId || null,
         error: params.result?.error || params.result?.skippedReason || null,
         attempt: 1,
-        createdAt: Timestamp.now(),
-        sentAt: params.status === 'sent' ? Timestamp.now() : null,
+        createdAt,
+        sentAt: params.status === 'sent' ? createdAt : null,
+        ...getRetentionFieldsForProduct(params.event.productId, 'ownerNotificationDeliveries', createdAt),
     }), { merge: true });
 }
 
@@ -267,6 +283,7 @@ export async function enqueueOwnerNotification(
         source: input.source,
         createdAt: now,
         updatedAt: now,
+        ...getRetentionFieldsForProduct(input.productId, 'ownerNotificationEvents', now),
     };
 
     const existing = await ref.get();

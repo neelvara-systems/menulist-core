@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import * as admin from 'firebase-admin';
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
             ipHash: hashIp(ip),
             createdAt: now,
             modifiedOn: now,
+            ...getAnswerlatticeRetentionFields('contactEnquiries', now),
         });
 
         secureLog('[Answerlattice Contact] Submission accepted', {

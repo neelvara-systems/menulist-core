@@ -55,6 +55,12 @@ public/images/website/
 
 Do not place raw capture files, private demo data, or unapproved screenshots in `public/`.
 
+Approved public screenshot exception (June 15, 2026):
+
+- `/public/images/website/print-ready-kit/print-assets-dashboard.jpg` is a cropped Assets template-list capture with account-header details removed.
+- `/public/images/website/print-ready-kit/print-assets-editor.jpg` is the print asset editor capture for the dedicated Print-ready Kit page.
+- These assets are mounted only on `/features/print-ready-kit` through `PrintReadyKitProofGallery.tsx`.
+
 Compatibility copy:
 
 ```text

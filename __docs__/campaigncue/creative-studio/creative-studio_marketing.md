@@ -8,6 +8,7 @@ Creative Studio helps a local business turn a campaign cue into finished-looking
 
 - The asset starts from real business information.
 - The owner can see why the asset was created.
+- The owner can adjust text, colors, placement, and approved brand assets without leaving the campaign flow.
 - The same idea can become a post, story, WhatsApp image, Google update, flyer, or ad variant.
 - The owner keeps approval before anything goes live.
 
@@ -15,6 +16,7 @@ Creative Studio helps a local business turn a campaign cue into finished-looking
 
 - Source-linked creative.
 - Channel-ready variants.
+- Selected-item editing controls, searchable content insertion, business text placeholders, and page controls inside the editor.
 - Trust review before use.
 - Manual export when platform publishing is not available.
 
@@ -23,4 +25,3 @@ Creative Studio helps a local business turn a campaign cue into finished-looking
 - Do not call it a complete design suite.
 - Do not promise viral performance.
 - Do not imply the product can use copyrighted images, review quotes, or celebrity likenesses without permission.
-

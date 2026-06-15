@@ -6,7 +6,7 @@ Current runtime:
 
 | Collection | Reads | Writes | Guard |
 | --- | --- | --- | --- |
-| `campaigncueWorkspaces/{workspaceId}/sourceSnapshots/current` | Workspace overview, campaign creation, trust checks | Workspace bootstrap and Business Brain updates | Content hash prevents unnecessary source churn. |
+| `campaigncueWorkspaces/{workspaceId}/sourceSnapshots/current` | Workspace overview, campaign creation, trust checks, Business Brain/profile save merge, source input save merge | Workspace bootstrap, Business Brain updates, and source input saves | Compact read model avoids rescanning source input rows when adding one owner input or changing profile facts. |
 
 Logical expansion:
 
@@ -34,7 +34,8 @@ Current runtime creates a default source snapshot from signed-in store profile c
 
 - Workspace bootstrap uses one read from the signed-in MenuList `stores/{sId}` source document.
 - No OAuth tokens, provider sync jobs, webhook events, or background source polling are active.
-- `sourceSnapshots/current` is written during workspace bootstrap and when Business Brain fields change.
+- Business Brain/profile saves read `sourceSnapshots/current`, rebuild source facts from the updated profile plus saved snapshot facts, and batch workspace/business/snapshot writes without listing source input rows.
 - `GET /api/campaigncue/sources` uses a workspace-only guard read plus a bounded source input query instead of loading the full CampaignCue overview.
+- `POST /api/campaigncue/sources` reads `sourceSnapshots/current` and merges the new owner input into that compact read model before one batched write; it does not list existing source input documents on every save.
 - Provider posture is returned as static manual-only metadata, so no provider read or quota cost is incurred.
 - No MenuList source write-back is performed.

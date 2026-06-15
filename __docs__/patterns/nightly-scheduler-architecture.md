@@ -383,12 +383,13 @@ if (FUNCTION_FLAGS.ENABLE_YOUR_TASK) {
 
 ### Run Logs
 
-Every run persists to `schedulerRunLogs` collection:
+Every run writes a time-bounded `schedulerRunLogs` document:
 
 - Trigger type (scheduled vs manual)
 - Start/end timestamps + duration
 - Per-task breakdown (name, status, duration, details)
 - Error details (capped at 50)
+- `expiresAt` for configured retention cleanup
 
 ### Telegram Alert
 

@@ -4,7 +4,7 @@
 
 Printable Asset Templates turns MenuList print/download files into a dedicated owner workspace called **Assets**. The owner chooses what they need - table tent, single table card, counter sticker, entrance poster, feedback QR, full print menu, or complete Menu Kit - then chooses a finished template family and downloads the result. QR/display assets expose the 9-family catalog; full Print Menu exposes only its real unique PDF layouts until the full-menu PDF renderer owns all 9 families.
 
-This is not a design editor. Owners do not choose fonts, move elements, tune spacing, or manage QR settings. MenuList handles those decisions and keeps every output printable, branded, and scan-safe.
+The default path is still not a blank design tool. Owners choose a finished template and download it. For non-menu printable assets, desktop also offers a governed **Customize in editor** path backed by the shared Creative Editor document model. Owners can adjust copy and layout when needed, while QR destination, scan-safe QR rendering, and MenuList attribution policy stay protected by locked layers.
 
 ## Why This Matters
 
@@ -17,17 +17,17 @@ The current Print Assets screen proves the workflow. The next system must make t
 | Goal | Meaning |
 | --- | --- |
 | Give owners real choice | Provide polished template families instead of one look, without showing duplicate output options. |
-| Keep owner effort low | One asset type, one template, one download. |
+| Keep owner effort low | One asset type, one template, one download, with optional desktop customization only when the owner asks for it. |
 | Keep outputs consistent | The selected style family can apply across all asset types. |
 | Keep QR reliable | QR modules stay dark on white with required safe area. |
 | Keep Firebase cost low | Generation stays client-side using already-loaded data. |
-| Keep template additions easy | Add a template by registering a family and renderer support, not by adding one-off UI. |
+| Keep template additions easy | Add a template by registering a family and editor-document renderer support, not by adding one-off UI. |
 
 ## Non-Goals
 
 | Not Included | Reason |
 | --- | --- |
-| Free-form editor | Too much owner responsibility and support risk. |
+| Blank free-form editor | Too much owner responsibility and support risk. Governed customization starts from a finished print template. |
 | Font/color controls | Store color and logo already define brand identity. |
 | Generated Storage uploads | Adds cost and cleanup burden. |
 | Print ordering marketplace | Separate operational business, not needed for this feature. |
@@ -41,9 +41,10 @@ The current Print Assets screen proves the workflow. The next system must make t
 3. Owner selects an asset type from the left rail.
 4. Owner sees the supported template families on the right. QR/display assets show 9 families; full Print Menu shows the real unique PDF layouts.
 5. Owner clicks one template family.
-6. Desktop opens a modal and mobile opens a bottom sheet with the generated output preview already visible. Entrance Poster, Table Tent, and Single Table Card use native image previews; Print Menu uses the generated menu PDF first-page image preview.
+6. Desktop opens a modal and mobile opens a bottom sheet with the generated output preview already visible. Non-menu printable assets preview from the Creative Editor document renderer; Print Menu uses the generated menu PDF first-page image preview.
 7. Owner downloads the selected template as PDF or image. Complete Menu Kit remains a ZIP bundle.
-8. MenuList creates the file locally and downloads it.
+8. On desktop, owner can click **Customize in editor** for Table Tent, Single Card, Counter Sticker, Entrance Poster, or Feedback QR. The template opens fullscreen with editable copy/layout and locked QR/link/attribution layers.
+9. MenuList creates the file locally and downloads it.
 
 ## Route and Navigation
 
@@ -96,6 +97,7 @@ Each family is a finished layout system that can adapt to different business typ
 | Premium branding policy | Premium hides visible MenuList branding when the existing flag permits it; all other plans show attribution. |
 | Output parity | Desktop and mobile downloads must use the same template ID and renderer. |
 | No duplicate choices | If an asset renderer maps multiple families to the same output, the UI exposes only the unique supported family choices for that asset. |
+| Governed customization | Desktop customization must start from an approved template document and keep QR/link/attribution source layers locked. |
 
 ## Plan and Access
 
@@ -124,7 +126,7 @@ Market pattern:
 | --- | --- |
 | Template libraries give many styles. | Provide 9 governed style families. |
 | Print vendors focus on paper, stock, and uploaded designs. | Keep print instructions, but avoid becoming a print marketplace. |
-| General design tools expose too many edit controls. | Give finished templates, not a canvas editor. |
+| General design tools expose too many edit controls. | Give finished templates first; expose a governed editor only for practical copy/layout fixes. |
 | QR/table tent products emphasize easy scan placement. | Keep QR size, contrast, short link, and print-safe placement non-negotiable. |
 | Most tools are restaurant-heavy. | Make labels and copy business-type aware for wider SMB use. |
 
@@ -133,6 +135,7 @@ Market pattern:
 | Metric | Target |
 | --- | --- |
 | Owner can download one asset | Under 3 clicks after opening Assets. |
+| Owner can customize one asset | Desktop owner can open, edit, and download a non-menu print asset without leaving Assets. |
 | Template coverage | 9 families available in catalog; each asset displays only families with real output support. |
 | Runtime cost | No new Firestore reads/writes for normal generation. |
 | Mobile parity | Mobile and desktop produce the same file for the same asset/template/project. |

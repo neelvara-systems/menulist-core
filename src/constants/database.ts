@@ -68,6 +68,12 @@ export const DB_COLLECTIONS = {
     CAMPAIGNS: "campaigns",
     CAMPAIGN_EXPORTS: "campaignExports",
 
+    // Creative Editor Template Registry
+    // Platform path: platformAssetTemplates/{businessCategory}
+    // Store path: storeAssetTemplates/{tId}/{sId}/default
+    CREATIVE_EDITOR_PLATFORM_ASSET_TEMPLATES: "platformAssetTemplates",
+    STORE_ASSET_TEMPLATES: "storeAssetTemplates",
+
     // GrowthOS Add-on / Growth Kits
     GROWTHOS_KITS: "growthosKits",
     GROWTHOS_EXPORTS: "growthosExports",

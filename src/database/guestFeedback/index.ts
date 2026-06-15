@@ -11,6 +11,7 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { FEATURE_FLAGS } from '@config/features';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
@@ -31,6 +32,7 @@ import {
 } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.GUEST_FEEDBACK;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Get collection reference for guest feedback
@@ -307,6 +309,7 @@ interface FeedbackMOLEvent {
     projectId: string;
     rating: number;
     timestamp: Timestamp;
+    expiresAt: Timestamp;
     // No PII stored - only aggregatable metrics
 }
 
@@ -325,13 +328,16 @@ export const logFeedbackMOLEvent = async (
     rating: number
 ): Promise<void> => {
     try {
+        const now = Timestamp.now();
+        const retentionDays = Number(FEATURE_FLAGS.FEEDBACK_EVENT_RETENTION_DAYS || 180);
         const event: FeedbackMOLEvent = {
             eventType,
             tId,
             sId,
             projectId,
             rating,
-            timestamp: Timestamp.now(),
+            timestamp: now,
+            expiresAt: Timestamp.fromMillis(now.toMillis() + retentionDays * DAY_MS),
         };
 
         // Log to the internal feedbackEvents collection with event type prefix.

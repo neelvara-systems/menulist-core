@@ -1,6 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { resolveBusinessCategoryOrFallback } from '@data/shared/businessTypes';
 import { getExistingProjectsListWithoutLoader, getProjectDataWithoutLoader } from '@database/projects';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
@@ -8,21 +9,47 @@ import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob } from '@lib/menu-kit/menuKitGenerator';
 import { PRINTABLE_ASSET_TYPES, getPrintableAssetType, isPrintableAssetTypeId } from '@lib/printable-asset-templates/assetTypes';
+import {
+    buildPrintableAssetEditorDocument,
+    isPrintableAssetEditorRenderable,
+    rehydratePrintableAssetEditorDocument,
+    renderPrintableAssetEditorDocument,
+} from '@lib/printable-asset-templates/editorDocumentAdapter';
 import { renderPrintableAsset } from '@lib/printable-asset-templates/renderPrintableAsset';
-import { getPrintableTemplateFamiliesForAsset, getPrintableTemplateFamily } from '@lib/printable-asset-templates/templateFamilies';
-import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetType, PrintableAssetTypeId, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
+import { getPrintableTemplateFamiliesForAsset, getPrintableTemplateFamily, normalizePrintableTemplateFamilyId } from '@lib/printable-asset-templates/templateFamilies';
+import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetType, PrintableAssetTypeId, PrintableTemplateFamily, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
+import {
+    deleteCreativeEditorTemplate,
+    getCreativeEditorTemplate,
+    listCreativeEditorTemplates,
+    resolveCreativeEditorTemplateScope,
+    saveCreativeEditorTemplate,
+    type CreativeEditorTemplateContext,
+} from '@lib/creative-editor/templateRegistryDal';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import type { CreativeEditorDocument, CreativeEditorTemplateSaveRequest, CreativeEditorTemplateSummary } from '@/modules/creative-editor/types';
 import PrintableTemplatePreview from '@/components/shared/printableAssets/PrintableTemplatePreview';
-import { Button, Card, Col, Empty, Flex, message, Modal, Row, Spin, Tag, theme, Typography } from 'antd';
+import { App as AntApp, Button, Card, Col, Empty, Flex, Modal, Row, Spin, theme, Typography } from 'antd';
+import dynamic from 'next/dynamic';
+import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuDownload, LuFileText, LuPackage, LuPrinter, LuQrCode } from 'react-icons/lu';
+import { LuDownload, LuFileText, LuPackage, LuPrinter, LuQrCode, LuSparkles, LuTrash2, LuX } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../../shared/ProjectSelector';
 
 const { Paragraph, Text, Title } = Typography;
+
+const CreativeEditor = dynamic(() => import('@/modules/creative-editor/CreativeEditor'), {
+    loading: () => (
+        <Flex align="center" justify="center" style={{ height: '100%' }}>
+            <Spin />
+        </Flex>
+    ),
+    ssr: false,
+});
 
 type ProjectLink = {
     active?: boolean;
@@ -63,6 +90,24 @@ type PreviewAssetState = {
     label: string;
     outputFormat: PrintableAssetOutputFormat;
     url: string;
+};
+
+type PrintAssetEditorState = {
+    assetTypeId: PrintableAssetTypeId;
+    initialDocument: CreativeEditorDocument;
+    savedTemplateId?: string;
+    templateFamilyId: PrintableTemplateFamilyId;
+    title: string;
+};
+
+type PlatformTemplateCard = {
+    description: string;
+    family: PrintableTemplateFamily;
+    id: string;
+    source: 'generated' | 'registry';
+    template?: CreativeEditorTemplateSummary;
+    thumbnailUrl?: string | null;
+    title: string;
 };
 
 function getAssetIcon(assetId: PrintableAssetTypeId) {
@@ -112,10 +157,10 @@ function getPrintableActionModalWidth(assetId: PrintableAssetTypeId): number {
 }
 
 function getPrintableActionPreviewHeight(assetId: PrintableAssetTypeId): number {
-    if (assetId === 'table_tent') return 360;
-    if (assetId === 'counter_sticker' || assetId === 'feedback_qr') return 360;
-    if (assetId === 'print_menu' || assetId === 'entrance_poster') return 520;
-    return 520;
+    if (assetId === 'table_tent') return 340;
+    if (assetId === 'counter_sticker' || assetId === 'feedback_qr') return 330;
+    if (assetId === 'print_menu' || assetId === 'entrance_poster') return 420;
+    return 420;
 }
 
 function buildExportData(projectData: any) {
@@ -137,8 +182,10 @@ function buildExportData(projectData: any) {
 
 export default function PrintableAssetTemplatesRoute() {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { data: session } = useSession();
     const searchParams = useSearchParams();
     const { token } = theme.useToken();
+    const { message: messageApi, modal } = AntApp.useApp();
     const projectIdQuery = searchParams.get('projectId') || '';
     const [pageState, setPageState] = useState<PageState>('loading');
     const [data, setData] = useState<AssetsData | null>(null);
@@ -149,14 +196,31 @@ export default function PrintableAssetTemplatesRoute() {
     const [activeTemplateId, setActiveTemplateId] = useState<PrintableTemplateFamilyId | null>(null);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [busyKey, setBusyKey] = useState<string | null>(null);
+    const [editorBusyKey, setEditorBusyKey] = useState<string | null>(null);
+    const [editorState, setEditorState] = useState<PrintAssetEditorState | null>(null);
+    const [platformTemplates, setPlatformTemplates] = useState<CreativeEditorTemplateSummary[]>([]);
+    const [platformTemplatesState, setPlatformTemplatesState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+    const [userTemplates, setUserTemplates] = useState<CreativeEditorTemplateSummary[]>([]);
+    const [userTemplatesState, setUserTemplatesState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+    const [activePlatformTemplate, setActivePlatformTemplate] = useState<CreativeEditorTemplateSummary | null>(null);
     const [previewAsset, setPreviewAsset] = useState<PreviewAssetState | null>(null);
     const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+    const editorDocumentRef = useRef<CreativeEditorDocument | null>(null);
+    const previewRequestRef = useRef(0);
     const previewUrlRef = useRef<string | null>(null);
     const projectDataCacheRef = useRef<Record<string, any>>({});
+    const storeData = storeDetails as any;
+    const sessionData = session as any;
+    const storeBusinessType = storeDetails?.businessType;
+    const storeBusinessCategory = storeData?.businessCategory;
+    const storeTenantId = storeData?.tenantId ?? storeData?.tId;
+    const storeStoreId = storeData?.storeId ?? storeData?.sId;
+    const sessionTenantId = sessionData?.tId ?? sessionData?.user?.tenantId;
+    const sessionStoreId = sessionData?.sId ?? sessionData?.user?.storeId;
 
     const labels = useMemo(
-        () => getOfferingLabels(storeDetails?.businessType, storeDetails?.businessCategory),
-        [storeDetails?.businessType, storeDetails?.businessCategory],
+        () => getOfferingLabels(storeBusinessType, storeBusinessCategory),
+        [storeBusinessCategory, storeBusinessType],
     );
     const storeDisplayName = useMemo(
         () => getStoreContextName(storeDetails as any, 'Your Business'),
@@ -168,14 +232,110 @@ export default function PrintableAssetTemplatesRoute() {
     );
     const selectedAsset = getPrintableAssetType(selectedAssetId);
     const selectedAssetActionFormats = getPrintableActionFormats(selectedAsset);
+    const canCustomizeSelectedAsset = (
+        FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_EDITOR_CUSTOMIZE
+        && isPrintableAssetEditorRenderable(selectedAssetId)
+    );
+    const canUsePlatformTemplateRegistry = (
+        FEATURE_FLAGS.ENABLE_CREATIVE_EDITOR_TEMPLATE_REGISTRY
+        && FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER
+    );
+    const templateRegistryScope = useMemo(
+        () => resolveCreativeEditorTemplateScope({
+            session: {
+                sId: sessionStoreId,
+                tId: sessionTenantId,
+            },
+            storeDetails: {
+                sId: storeStoreId,
+                tId: storeTenantId,
+            },
+        }),
+        [sessionStoreId, sessionTenantId, storeStoreId, storeTenantId],
+    );
+    const canLoadUserTemplates = (
+        FEATURE_FLAGS.ENABLE_CREATIVE_EDITOR_TEMPLATE_REGISTRY
+        && FEATURE_FLAGS.ENABLE_CREATIVE_EDITOR_USER_TEMPLATES
+        && FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_USER_TEMPLATES
+        && Boolean(templateRegistryScope)
+    );
+    const canUseUserTemplates = canLoadUserTemplates && canCustomizeSelectedAsset;
+    const platformBusinessCategory = useMemo(
+        () => resolveBusinessCategoryOrFallback(
+            storeBusinessType,
+            storeBusinessCategory,
+        ),
+        [storeBusinessCategory, storeBusinessType],
+    );
+    const templateRegistryContext = useMemo<CreativeEditorTemplateContext>(() => ({
+        productId: 'menulist',
+        scope: templateRegistryScope,
+        sourceSurface: 'printable-asset-templates',
+    }), [templateRegistryScope]);
+    const platformTemplateRegistryContext = useMemo<CreativeEditorTemplateContext>(() => ({
+        ...templateRegistryContext,
+        businessCategory: platformBusinessCategory,
+    }), [platformBusinessCategory, templateRegistryContext]);
     const availableTemplateFamilies = useMemo(
         () => getPrintableTemplateFamiliesForAsset(selectedAssetId),
         [selectedAssetId],
     );
     const activeTemplateFamily = useMemo(
-        () => activeTemplateId ? getPrintableTemplateFamily(activeTemplateId) : null,
-        [activeTemplateId],
+        () => activePlatformTemplate
+            ? getPrintableTemplateFamily(activePlatformTemplate.templateFamilyId)
+            : activeTemplateId
+                ? getPrintableTemplateFamily(activeTemplateId)
+                : null,
+        [activePlatformTemplate, activeTemplateId],
     );
+    const selectedPlatformTemplates = useMemo(
+        () => platformTemplates.filter((template) => (
+            template.assetTypeId === selectedAssetId
+            && template.productId === templateRegistryContext.productId
+            && template.sourceSurface === templateRegistryContext.sourceSurface
+        )),
+        [platformTemplates, selectedAssetId, templateRegistryContext.productId, templateRegistryContext.sourceSurface],
+    );
+    const selectedUserTemplates = useMemo(
+        () => userTemplates.filter((template) => (
+            template.assetTypeId === selectedAssetId
+            && template.productId === templateRegistryContext.productId
+            && template.sourceSurface === templateRegistryContext.sourceSurface
+        )),
+        [selectedAssetId, templateRegistryContext.productId, templateRegistryContext.sourceSurface, userTemplates],
+    );
+    const shouldShowSavedDesigns = (
+        canUseUserTemplates
+        && (
+            selectedUserTemplates.length > 0
+            || userTemplatesState === 'loading'
+            || userTemplatesState === 'error'
+        )
+    );
+    const platformTemplateCards = useMemo<PlatformTemplateCard[]>(() => {
+        if (selectedPlatformTemplates.length) {
+            return selectedPlatformTemplates.map((template) => {
+                const family = getPrintableTemplateFamily(template.templateFamilyId);
+                return {
+                    description: template.description || family.description,
+                    family,
+                    id: template.id,
+                    source: 'registry',
+                    template,
+                    thumbnailUrl: template.thumbnailUrl,
+                    title: template.title || family.label,
+                };
+            });
+        }
+
+        return availableTemplateFamilies.map((family) => ({
+            description: family.description,
+            family,
+            id: family.id,
+            source: 'generated',
+            title: family.label,
+        }));
+    }, [availableTemplateFamilies, selectedPlatformTemplates]);
     const previewActionLabel = selectedAssetId === 'feedback_qr'
         ? 'Feedback QR'
         : selectedAssetId === 'counter_sticker'
@@ -208,12 +368,16 @@ export default function PrintableAssetTemplatesRoute() {
         [labels.offeringTitle],
     );
 
-    useEffect(() => () => {
+    const releasePreviewUrl = useCallback(() => {
         if (previewUrlRef.current) {
             URL.revokeObjectURL(previewUrlRef.current);
             previewUrlRef.current = null;
         }
     }, []);
+
+    useEffect(() => () => {
+        releasePreviewUrl();
+    }, [releasePreviewUrl]);
 
     useEffect(() => {
         async function loadData() {
@@ -277,29 +441,84 @@ export default function PrintableAssetTemplatesRoute() {
         void loadData();
     }, [labels.offeringTitle, projectIdQuery, resolveProjectName, storeDetails, storeDisplayName]);
 
-    const handleSelectAsset = (assetId: PrintableAssetTypeId) => {
-        setSelectedAssetId(assetId);
-        setActiveTemplateId(null);
-        closePreviewAsset();
-    };
-
-    const closePreviewAsset = () => {
-        if (previewUrlRef.current) {
-            URL.revokeObjectURL(previewUrlRef.current);
-            previewUrlRef.current = null;
+    const reloadPlatformTemplates = useCallback(async () => {
+        if (!canUsePlatformTemplateRegistry || pageState !== 'ready') {
+            setPlatformTemplates([]);
+            setPlatformTemplatesState('idle');
+            return;
         }
+        setPlatformTemplatesState('loading');
+        try {
+            const templates = await listCreativeEditorTemplates({
+                ...platformTemplateRegistryContext,
+                limit: 100,
+                templateType: 'platform',
+            });
+            setPlatformTemplates(templates);
+            setPlatformTemplatesState('ready');
+        } catch {
+            setPlatformTemplates([]);
+            setPlatformTemplatesState('error');
+        }
+    }, [canUsePlatformTemplateRegistry, pageState, platformTemplateRegistryContext]);
+
+    useEffect(() => {
+        void reloadPlatformTemplates();
+    }, [reloadPlatformTemplates]);
+
+    const reloadUserTemplates = useCallback(async () => {
+        if (!canLoadUserTemplates || pageState !== 'ready') {
+            setUserTemplates([]);
+            setUserTemplatesState('idle');
+            return;
+        }
+        setUserTemplatesState('loading');
+        try {
+            const templates = await listCreativeEditorTemplates({ ...templateRegistryContext, limit: 100, templateType: 'user' });
+            setUserTemplates(templates);
+            setUserTemplatesState('ready');
+        } catch {
+            setUserTemplates([]);
+            setUserTemplatesState('error');
+        }
+    }, [canLoadUserTemplates, pageState, templateRegistryContext]);
+
+    useEffect(() => {
+        void reloadUserTemplates();
+    }, [reloadUserTemplates]);
+
+    const closePreviewAsset = (invalidatePendingPreview = true) => {
+        if (invalidatePendingPreview) previewRequestRef.current += 1;
+        releasePreviewUrl();
         setPreviewAsset(null);
         setPreviewState('idle');
     };
 
+    const closeEditor = () => {
+        editorDocumentRef.current = null;
+        setEditorBusyKey(null);
+        setEditorState(null);
+    };
+
+    const handleSelectAsset = (assetId: PrintableAssetTypeId) => {
+        setSelectedAssetId(assetId);
+        setActiveTemplateId(null);
+        setActivePlatformTemplate(null);
+        closeEditor();
+        closePreviewAsset();
+    };
+
     const closeTemplateActions = () => {
         setActiveTemplateId(null);
+        setActivePlatformTemplate(null);
         closePreviewAsset();
+        setBusyKey((current) => current?.startsWith('preview:') ? null : current);
     };
 
     const handleSelectProject = (projectId: string) => {
         const project = data?.allProjects.find((item) => item.projectId === projectId);
         if (!project) return;
+        closeEditor();
         closePreviewAsset();
         setData((current) => current ? {
             ...current,
@@ -345,7 +564,7 @@ export default function PrintableAssetTemplatesRoute() {
         const projectData = await getCachedProjectData(data.projectId);
         const exportData = buildExportData(projectData as any);
         if (!exportData.items.length) {
-            message.warning(`No ${labels.offeringLower} items to export`);
+            messageApi.warning(`No ${labels.offeringLower} items to export`);
             return null;
         }
 
@@ -373,11 +592,18 @@ export default function PrintableAssetTemplatesRoute() {
         };
     };
 
-    const renderTemplatePreview = async (templateFamilyId: PrintableTemplateFamilyId) => {
-        const previewFormat = getPrintablePreviewFormat(selectedAsset);
-        closePreviewAsset();
-        if (!previewFormat) {
+    const renderTemplatePreview = async (templateFamilyId: PrintableTemplateFamilyId, platformTemplate?: CreativeEditorTemplateSummary) => {
+        previewRequestRef.current += 1;
+        const requestId = previewRequestRef.current;
+        if (platformTemplate?.thumbnailUrl) {
+            closePreviewAsset(false);
             setPreviewState('ready');
+            return;
+        }
+        const previewFormat = getPrintablePreviewFormat(selectedAsset);
+        closePreviewAsset(false);
+        if (!previewFormat) {
+            if (previewRequestRef.current === requestId) setPreviewState('ready');
             return;
         }
 
@@ -387,11 +613,16 @@ export default function PrintableAssetTemplatesRoute() {
         try {
             const input = await buildRenderInput(templateFamilyId);
             if (!input) {
-                setPreviewState('idle');
+                if (previewRequestRef.current === requestId) setPreviewState('idle');
                 return;
             }
             const result = await renderPrintableAsset({ ...input, outputFormat: previewFormat });
             const previewUrl = URL.createObjectURL(new Blob([result.blob], { type: result.mimeType }));
+            if (previewRequestRef.current !== requestId) {
+                URL.revokeObjectURL(previewUrl);
+                return;
+            }
+            releasePreviewUrl();
             previewUrlRef.current = previewUrl;
             setPreviewAsset({
                 blob: result.blob,
@@ -402,15 +633,16 @@ export default function PrintableAssetTemplatesRoute() {
             });
             setPreviewState('ready');
         } catch {
-            setPreviewState('error');
+            if (previewRequestRef.current === requestId) setPreviewState('error');
         } finally {
-            setBusyKey(null);
+            if (previewRequestRef.current === requestId) setBusyKey(null);
         }
     };
 
-    const openTemplateActions = (templateFamilyId: PrintableTemplateFamilyId) => {
-        setActiveTemplateId(templateFamilyId);
-        void renderTemplatePreview(templateFamilyId);
+    const openTemplateActions = (card: PlatformTemplateCard) => {
+        setActiveTemplateId(card.family.id);
+        setActivePlatformTemplate(card.template || null);
+        void renderTemplatePreview(card.family.id, card.template);
     };
 
     const handleRender = async (templateFamilyId: PrintableTemplateFamilyId, outputFormat: PrintableAssetOutputFormat) => {
@@ -421,11 +653,192 @@ export default function PrintableAssetTemplatesRoute() {
             if (!input) return;
             const result = await renderPrintableAsset({ ...input, outputFormat });
             downloadBlob(result.blob, result.filename);
-            message.success(`${selectedAsset.title} downloaded`);
+            messageApi.success(`${selectedAsset.title} downloaded`);
         } catch {
-            message.error(`Failed to generate ${selectedAsset.title}`);
+            messageApi.error(`Failed to generate ${selectedAsset.title}`);
         } finally {
             setBusyKey(null);
+        }
+    };
+
+    const handleRenderPlatformTemplate = async (template: CreativeEditorTemplateSummary, outputFormat: PrintableAssetOutputFormat) => {
+        const templateFamilyId = normalizePrintableTemplateFamilyId(template.templateFamilyId);
+        const busy = `download-platform:${selectedAssetId}:${template.id}:${outputFormat}`;
+        setBusyKey(busy);
+        try {
+            if (outputFormat === 'zip') {
+                await handleRender(templateFamilyId, outputFormat);
+                return;
+            }
+            const input = await buildRenderInput(templateFamilyId);
+            if (!input) return;
+            const result = await getCreativeEditorTemplate({
+                ...platformTemplateRegistryContext,
+                assetTypeId: template.assetTypeId || selectedAssetId,
+                templateId: template.id,
+                templateType: 'platform',
+            });
+            const documentValue = rehydratePrintableAssetEditorDocument(result.document, input);
+            const rendered = await renderPrintableAssetEditorDocument({
+                assetTypeId: selectedAssetId,
+                document: documentValue,
+                outputFormat,
+                templateFamilyId,
+            });
+            downloadBlob(rendered.blob, rendered.filename);
+            messageApi.success(`${selectedAsset.title} downloaded`);
+        } catch {
+            messageApi.error(`Failed to generate ${selectedAsset.title}`);
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const openEditorForTemplate = async (templateFamilyId: PrintableTemplateFamilyId) => {
+        if (!canCustomizeSelectedAsset) return;
+        const busy = `customize:${selectedAssetId}:${templateFamilyId}`;
+        setBusyKey(busy);
+        try {
+            const input = await buildRenderInput(templateFamilyId);
+            if (!input) return;
+            const documentValue = buildPrintableAssetEditorDocument(input);
+            editorDocumentRef.current = documentValue;
+            setEditorState({
+                assetTypeId: selectedAssetId,
+                initialDocument: documentValue,
+                templateFamilyId,
+                title: `${selectedAsset.title} - ${getPrintableTemplateFamily(templateFamilyId).label}`,
+            });
+            setActiveTemplateId(null);
+            closePreviewAsset();
+        } catch {
+            messageApi.error(`Failed to open ${selectedAsset.title} in the editor`);
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const openEditorForPlatformTemplate = async (template: CreativeEditorTemplateSummary) => {
+        if (!canCustomizeSelectedAsset) return;
+        const templateFamilyId = normalizePrintableTemplateFamilyId(template.templateFamilyId);
+        const busy = `customize-platform:${selectedAssetId}:${template.id}`;
+        setBusyKey(busy);
+        try {
+            const input = await buildRenderInput(templateFamilyId);
+            if (!input) return;
+            const result = await getCreativeEditorTemplate({
+                ...platformTemplateRegistryContext,
+                assetTypeId: template.assetTypeId || selectedAssetId,
+                templateId: template.id,
+                templateType: 'platform',
+            });
+            const documentValue = rehydratePrintableAssetEditorDocument(result.document, input);
+            editorDocumentRef.current = documentValue;
+            setEditorState({
+                assetTypeId: selectedAssetId,
+                initialDocument: documentValue,
+                templateFamilyId,
+                title: template.title,
+            });
+            setActiveTemplateId(null);
+            setActivePlatformTemplate(null);
+            closePreviewAsset();
+        } catch {
+            messageApi.error(`Failed to open ${selectedAsset.title} in the editor`);
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const openEditorForUserTemplate = async (template: CreativeEditorTemplateSummary) => {
+        if (!canUseUserTemplates) return;
+        const templateFamilyId = normalizePrintableTemplateFamilyId(template.templateFamilyId);
+        const busy = `user-template:${template.id}`;
+        setBusyKey(busy);
+        try {
+            const input = await buildRenderInput(templateFamilyId);
+            if (!input) return;
+            const result = await getCreativeEditorTemplate({
+                ...templateRegistryContext,
+                assetTypeId: template.assetTypeId || selectedAssetId,
+                templateId: template.id,
+            });
+            const documentValue = rehydratePrintableAssetEditorDocument(result.document, input);
+            editorDocumentRef.current = documentValue;
+            setEditorState({
+                assetTypeId: selectedAssetId,
+                initialDocument: documentValue,
+                savedTemplateId: template.id,
+                templateFamilyId,
+                title: template.title,
+            });
+            setActiveTemplateId(null);
+            closePreviewAsset();
+        } catch {
+            messageApi.error('Failed to open saved design');
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const handleDeleteUserTemplate = (template: CreativeEditorTemplateSummary) => {
+        modal.confirm({
+            content: 'This removes the saved design. Ready generated templates stay available.',
+            okText: 'Delete',
+            okType: 'danger',
+            onOk: async () => {
+                await deleteCreativeEditorTemplate({
+                    ...templateRegistryContext,
+                    assetTypeId: template.assetTypeId || selectedAssetId,
+                    templateId: template.id,
+                });
+                setUserTemplates((current) => current.filter((item) => item.id !== template.id));
+                messageApi.success('Saved design deleted');
+            },
+            title: `Delete "${template.title}"?`,
+        });
+    };
+
+    const handleEditorDocumentChange = useCallback((documentValue: CreativeEditorDocument) => {
+        editorDocumentRef.current = documentValue;
+    }, []);
+
+    const handleSaveEditorTemplate = useCallback(async ({ document: documentValue }: CreativeEditorTemplateSaveRequest) => {
+        if (!editorState || !canUseUserTemplates) {
+            throw new Error('Template saving is not available for this asset');
+        }
+        const template = await saveCreativeEditorTemplate({
+            ...templateRegistryContext,
+            assetTypeId: editorState.assetTypeId,
+            document: documentValue,
+            templateFamilyId: editorState.templateFamilyId,
+            templateId: editorState.savedTemplateId,
+            title: editorState.title || documentValue.title,
+        });
+        setEditorState((current) => current ? { ...current, savedTemplateId: template.id, title: template.title } : current);
+        setUserTemplates((current) => [template, ...current.filter((item) => item.id !== template.id)]);
+        messageApi.success('Design saved');
+        return { notice: 'Design saved under Saved designs.', template };
+    }, [canUseUserTemplates, editorState, messageApi, templateRegistryContext]);
+
+    const handleEditorDownload = async (outputFormat: Exclude<PrintableAssetOutputFormat, 'zip'>) => {
+        if (!editorState) return;
+        const latestDocument = editorDocumentRef.current || editorState.initialDocument;
+        const busy = `editor-download:${outputFormat}`;
+        setEditorBusyKey(busy);
+        try {
+            const result = await renderPrintableAssetEditorDocument({
+                assetTypeId: editorState.assetTypeId,
+                document: latestDocument,
+                outputFormat,
+                templateFamilyId: editorState.templateFamilyId,
+            });
+            downloadBlob(result.blob, result.filename);
+            messageApi.success(`${outputFormat.toUpperCase()} downloaded`);
+        } catch {
+            messageApi.error('Failed to download edited asset');
+        } finally {
+            setEditorBusyKey(null);
         }
     };
 
@@ -452,9 +865,9 @@ export default function PrintableAssetTemplatesRoute() {
                     <Text style={{ color: token.colorTextTertiary, fontSize: 12, letterSpacing: 1.8, textTransform: 'uppercase' }}>
                         Assets
                     </Text>
-                    <Title level={3} style={{ margin: '4px 0 4px' }}>Print and Download Assets</Title>
+                    <Title level={3} style={{ margin: '4px 0 4px' }}>Ready-to-print assets</Title>
                     <Paragraph style={{ color: token.colorTextSecondary, margin: 0, maxWidth: 680 }}>
-                        Pick a file type, choose a finished style, and download branded output from the current approved {labels.offeringLower}.
+                        Choose a file type, pick a finished style, and download it from the current {labels.offeringLower}.
                     </Paragraph>
                 </div>
                 {activeProject ? (
@@ -526,21 +939,133 @@ export default function PrintableAssetTemplatesRoute() {
                 </Col>
 
                 <Col xs={24} lg={18}>
+                    {shouldShowSavedDesigns ? (
+                        <div style={{ marginBottom: 22 }}>
+                            <Flex align="center" justify="space-between" style={{ marginBottom: 10 }}>
+                                <div>
+                                    <Text strong>Saved designs</Text>
+                                    <Text style={{ color: token.colorTextSecondary, display: 'block', fontSize: 12 }}>
+                                        Designs you saved from the editor for {selectedAsset.title.toLowerCase()}.
+                                    </Text>
+                                </div>
+                                <Button loading={userTemplatesState === 'loading'} onClick={() => void reloadUserTemplates()} size="small">
+                                    Refresh
+                                </Button>
+                            </Flex>
+                            {userTemplatesState === 'loading' ? (
+                                <Card size="small">
+                                    <Flex align="center" gap={10}>
+                                        <Spin size="small" />
+                                        <Text type="secondary">Loading saved designs...</Text>
+                                    </Flex>
+                                </Card>
+                            ) : selectedUserTemplates.length ? (
+                                <Row gutter={[12, 12]}>
+                                    {selectedUserTemplates.map((template) => (
+                                        <Col xs={24} sm={12} xl={8} key={template.id}>
+                                            <Card
+                                                hoverable
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter' || event.key === ' ') {
+                                                        event.preventDefault();
+                                                        void openEditorForUserTemplate(template);
+                                                    }
+                                                }}
+                                                onClick={() => void openEditorForUserTemplate(template)}
+                                                role="button"
+                                                style={{ borderRadius: 8, overflow: 'hidden' }}
+                                                tabIndex={0}
+                                                styles={{ body: { padding: 12 } }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        alignItems: 'center',
+                                                        background: token.colorBgLayout,
+                                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                                        borderRadius: 8,
+                                                        display: 'flex',
+                                                        height: 118,
+                                                        justifyContent: 'center',
+                                                        marginBottom: 10,
+                                                        overflow: 'hidden',
+                                                    }}
+                                                >
+                                                    {template.thumbnailUrl ? (
+                                                        <img
+                                                            alt={`${template.title} preview`}
+                                                            src={template.thumbnailUrl}
+                                                            style={{ display: 'block', height: '100%', objectFit: 'contain', width: '100%' }}
+                                                        />
+                                                    ) : (
+                                                        <Flex align="center" gap={8} vertical>
+                                                            {getAssetIcon(selectedAssetId)}
+                                                            <Text type="secondary" style={{ fontSize: 12 }}>Saved design</Text>
+                                                        </Flex>
+                                                    )}
+                                                </div>
+                                                <Flex align="flex-start" justify="space-between" gap={8}>
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <Text strong ellipsis style={{ display: 'block' }}>{template.title}</Text>
+                                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                                            {template.width} x {template.height}
+                                                        </Text>
+                                                    </div>
+                                                    <Button
+                                                        aria-label={`Delete ${template.title}`}
+                                                        icon={<LuTrash2 size={15} />}
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
+                                                            event.stopPropagation();
+                                                            handleDeleteUserTemplate(template);
+                                                        }}
+                                                        size="small"
+                                                        type="text"
+                                                    />
+                                                </Flex>
+                                            </Card>
+                                        </Col>
+                                    ))}
+                                </Row>
+                            ) : null}
+                            {userTemplatesState === 'error' ? (
+                                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 8 }}>
+                                    Saved designs could not be loaded. Ready templates are still available.
+                                </Text>
+                            ) : null}
+                        </div>
+                    ) : null}
+                    <Flex align="center" justify="space-between" style={{ marginBottom: 10 }}>
+                        <div>
+                            <Text strong>Ready templates</Text>
+                            <Text style={{ color: token.colorTextSecondary, display: 'block', fontSize: 12 }}>
+                                {selectedPlatformTemplates.length
+                                    ? 'Prepared styles loaded for this asset.'
+                                    : `Generated from your ${labels.offeringLower} and business details.`}
+                            </Text>
+                        </div>
+                        {platformTemplatesState === 'loading' ? <Spin size="small" /> : null}
+                    </Flex>
+                    {platformTemplatesState === 'error' ? (
+                        <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 10 }}>
+                            Template catalog could not be loaded. Ready generated templates are still available.
+                        </Text>
+                    ) : null}
                     <Row gutter={[16, 16]}>
-                        {availableTemplateFamilies.map((family) => {
+                        {platformTemplateCards.map((card) => {
+                            const family = card.family;
                             return (
-                                <Col xs={24} sm={12} xl={8} key={family.id}>
+                                <Col xs={24} sm={12} xl={8} key={card.id}>
                                     <Card
                                         aria-haspopup="dialog"
-                                        aria-label={`Open ${family.label} ${selectedAsset.title} download options`}
+                                        aria-label={`Use ${card.title} style for ${selectedAsset.title}`}
                                         hoverable
                                         onKeyDown={(event) => {
                                             if (event.key === 'Enter' || event.key === ' ') {
                                                 event.preventDefault();
-                                                openTemplateActions(family.id);
+                                                openTemplateActions(card);
                                             }
                                         }}
-                                        onClick={() => openTemplateActions(family.id)}
+                                        onClick={() => openTemplateActions(card)}
                                         role="button"
                                         style={{
                                             borderColor: token.colorBorder,
@@ -551,29 +1076,36 @@ export default function PrintableAssetTemplatesRoute() {
                                         styles={{ body: { padding: 0 } }}
                                     >
                                         <div style={{ height: 238 }}>
-                                            <PrintableTemplatePreview
-                                                actionLabel={previewActionLabel}
-                                                assetTypeId={selectedAssetId}
-                                                brandColor={storeBrandColor}
-                                                compact
-                                                family={family}
-                                                instructionLabel={previewInstructionLabel}
-                                                shortLink={data.menuLink.replace(/^https?:\/\//, '')}
-                                                storeLogo={data.storeLogo}
-                                                storeName={data.storeName}
-                                            />
+                                            {card.thumbnailUrl ? (
+                                                <img
+                                                    alt={`${card.title} preview`}
+                                                    src={card.thumbnailUrl}
+                                                    style={{ display: 'block', height: '100%', objectFit: 'contain', width: '100%' }}
+                                                />
+                                            ) : (
+                                                <PrintableTemplatePreview
+                                                    actionLabel={previewActionLabel}
+                                                    assetTypeId={selectedAssetId}
+                                                    brandColor={storeBrandColor}
+                                                    compact
+                                                    family={family}
+                                                    instructionLabel={previewInstructionLabel}
+                                                    shortLink={data.menuLink.replace(/^https?:\/\//, '')}
+                                                    storeLogo={data.storeLogo}
+                                                    storeName={data.storeName}
+                                                />
+                                            )}
                                         </div>
                                         <Flex gap={10} style={{ padding: 16 }} vertical>
                                             <Flex align="center" justify="space-between" gap={8}>
-                                                <Text strong>{family.label}</Text>
-                                                <Tag>{family.tier}</Tag>
+                                                <Text strong>{card.title}</Text>
                                             </Flex>
-                                            <Text type="secondary" style={{ minHeight: 44 }}>{family.description}</Text>
+                                            <Text type="secondary" style={{ minHeight: 44 }}>{card.description}</Text>
                                             <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
                                                 {selectedAsset.title} - {selectedAsset.size}
                                             </Text>
                                             <Text strong style={{ color: token.colorPrimary, fontSize: 13 }}>
-                                                Open download options
+                                                Use this style
                                             </Text>
                                         </Flex>
                                     </Card>
@@ -602,7 +1134,8 @@ export default function PrintableAssetTemplatesRoute() {
                 footer={null}
                 onCancel={closeTemplateActions}
                 open={Boolean(activeTemplateFamily)}
-                title={activeTemplateFamily ? `${selectedAsset.title} - ${activeTemplateFamily.label}` : 'Download asset'}
+                styles={{ body: { maxHeight: 'calc(100vh - 180px)', overflowY: 'auto' } }}
+                title={activeTemplateFamily ? `${selectedAsset.title} - ${activePlatformTemplate?.title || activeTemplateFamily.label}` : 'Download asset'}
                 width={getPrintableActionModalWidth(selectedAssetId)}
             >
                 {activeTemplateFamily ? (
@@ -637,7 +1170,23 @@ export default function PrintableAssetTemplatesRoute() {
                                         objectFit: 'contain',
                                     }}
                                 />
-                            ) : selectedAsset.outputFormat === 'zip' ? (
+                            ) : activePlatformTemplate?.thumbnailUrl ? (
+                                <img
+                                    alt={`${activePlatformTemplate.title} preview`}
+                                    src={activePlatformTemplate.thumbnailUrl}
+                                    style={{
+                                        borderRadius: 8,
+                                        display: 'block',
+                                        maxHeight: '100%',
+                                        maxWidth: '100%',
+                                        objectFit: 'contain',
+                                    }}
+                                />
+                            ) : previewState === 'error' ? (
+                                <Text type="secondary" style={{ textAlign: 'center' }}>
+                                    Preview is unavailable. Download can still generate the file.
+                                </Text>
+                            ) : (
                                 <PrintableTemplatePreview
                                     actionLabel={previewActionLabel}
                                     assetTypeId={selectedAssetId}
@@ -648,16 +1197,12 @@ export default function PrintableAssetTemplatesRoute() {
                                     storeLogo={data.storeLogo}
                                     storeName={data.storeName}
                                 />
-                            ) : previewState === 'error' ? (
-                                <Text type="secondary" style={{ textAlign: 'center' }}>
-                                    Preview is unavailable. Download can still generate the file.
-                                </Text>
-                            ) : null}
+                            )}
                         </div>
                         <Flex gap={12} vertical>
                             <Flex gap={4} vertical>
-                                <Text strong>{activeTemplateFamily.label}</Text>
-                                <Text type="secondary">{activeTemplateFamily.description}</Text>
+                                <Text strong>{activePlatformTemplate?.title || activeTemplateFamily.label}</Text>
+                                <Text type="secondary">{activePlatformTemplate?.description || activeTemplateFamily.description}</Text>
                                 <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
                                     {selectedAsset.size}
                                 </Text>
@@ -666,8 +1211,14 @@ export default function PrintableAssetTemplatesRoute() {
                                 <Button
                                     block
                                     icon={<LuDownload size={16} />}
-                                    loading={busyKey === `download:${selectedAssetId}:${activeTemplateFamily.id}:zip`}
-                                    onClick={() => void handleRender(activeTemplateFamily.id, 'zip')}
+                                    loading={
+                                        activePlatformTemplate
+                                            ? busyKey === `download-platform:${selectedAssetId}:${activePlatformTemplate.id}:zip`
+                                            : busyKey === `download:${selectedAssetId}:${activeTemplateFamily.id}:zip`
+                                    }
+                                    onClick={() => activePlatformTemplate
+                                        ? void handleRenderPlatformTemplate(activePlatformTemplate, 'zip')
+                                        : void handleRender(activeTemplateFamily.id, 'zip')}
                                     size="large"
                                     type="primary"
                                 >
@@ -679,8 +1230,14 @@ export default function PrintableAssetTemplatesRoute() {
                                         block
                                         icon={<LuDownload size={16} />}
                                         key={format}
-                                        loading={busyKey === `download:${selectedAssetId}:${activeTemplateFamily.id}:${format}`}
-                                        onClick={() => void handleRender(activeTemplateFamily.id, format)}
+                                        loading={
+                                            activePlatformTemplate
+                                                ? busyKey === `download-platform:${selectedAssetId}:${activePlatformTemplate.id}:${format}`
+                                                : busyKey === `download:${selectedAssetId}:${activeTemplateFamily.id}:${format}`
+                                        }
+                                        onClick={() => activePlatformTemplate
+                                            ? void handleRenderPlatformTemplate(activePlatformTemplate, format)
+                                            : void handleRender(activeTemplateFamily.id, format)}
                                         size="large"
                                         type={index === 0 ? 'primary' : 'default'}
                                     >
@@ -688,10 +1245,80 @@ export default function PrintableAssetTemplatesRoute() {
                                     </Button>
                                 ))
                             )}
+                            {canCustomizeSelectedAsset ? (
+                                <Button
+                                    block
+                                    icon={<LuSparkles size={16} />}
+                                    loading={
+                                        activePlatformTemplate
+                                            ? busyKey === `customize-platform:${selectedAssetId}:${activePlatformTemplate.id}`
+                                            : busyKey === `customize:${selectedAssetId}:${activeTemplateFamily.id}`
+                                    }
+                                    onClick={() => activePlatformTemplate
+                                        ? void openEditorForPlatformTemplate(activePlatformTemplate)
+                                        : void openEditorForTemplate(activeTemplateFamily.id)}
+                                    size="large"
+                                >
+                                    Customize in editor
+                                </Button>
+                            ) : null}
                         </Flex>
                     </Flex>
                 ) : null}
             </Modal>
+            {editorState ? (
+                <div
+                    aria-label="Customize print asset"
+                    role="dialog"
+                    style={{
+                        background: token.colorBgLayout,
+                        inset: 0,
+                        position: 'fixed',
+                        zIndex: 2100,
+                    }}
+                >
+                    <CreativeEditor
+                        allowNewDesign={false}
+                        chromeMode="embedded"
+                        disabledExportFormats={['json']}
+                        headerActions={[
+                            {
+                                disabled: Boolean(editorBusyKey),
+                                icon: <LuDownload size={16} />,
+                                id: 'print-asset-image',
+                                label: 'Image',
+                                loading: editorBusyKey === 'editor-download:png',
+                                onClick: () => handleEditorDownload('png'),
+                            },
+                            {
+                                disabled: Boolean(editorBusyKey),
+                                icon: <LuPrinter size={16} />,
+                                id: 'print-asset-pdf',
+                                label: 'Print PDF',
+                                loading: editorBusyKey === 'editor-download:pdf',
+                                onClick: () => handleEditorDownload('pdf'),
+                                tone: 'primary',
+                            },
+                            {
+                                ariaLabel: 'Close editor',
+                                disabled: Boolean(editorBusyKey),
+                                icon: <LuX size={16} />,
+                                id: 'print-asset-close',
+                                label: 'Close',
+                                onClick: closeEditor,
+                            },
+                        ]}
+                        initialDocument={editorState.initialDocument}
+                        key={editorState.initialDocument.id}
+                        onDocumentChange={handleEditorDocumentChange}
+                        onTemplateSave={canUseUserTemplates ? handleSaveEditorTemplate : undefined}
+                        productLabel="MenuList Assets"
+                        sourceLabel="Print assets"
+                        templateSaveLabel="Save as template"
+                        templateSavePreview
+                    />
+                </div>
+            ) : null}
         </div>
     );
 }

@@ -6,8 +6,8 @@ import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-const title = 'Print-ready Kit - MenuList | Table, Counter, Social, and Printer Files';
-const description = 'Create table cards, counter cards, stickers, posters, social images, and printer handoff files from the same owner-approved menu source.';
+const title = 'Print-ready Kit - MenuList | Templates, Editor, and Print Files';
+const description = 'Choose finished print templates, adjust supported copy in the editor, and download QR cards, menu PDFs, images, and printer files from the current approved menu.';
 
 export const metadata: Metadata = {
   title,

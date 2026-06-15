@@ -69,11 +69,16 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         : "frame-ancestors 'none'";
 
     // A02: Force HTTPS in Production
-    if (isProduction && request.headers.get('x-forwarded-proto') !== 'https') {
-        return NextResponse.redirect(
-            `https://${request.headers.get('host')}${request.nextUrl.pathname}`,
-            301
-        );
+    if (
+        isProduction
+        && !isLocalDevelopmentHost(request.headers.get('host'))
+        && request.headers.get('x-forwarded-proto') !== 'https'
+    ) {
+        const url = request.nextUrl.clone();
+        url.protocol = 'https:';
+        const host = request.headers.get('host');
+        if (host) url.host = host;
+        return NextResponse.redirect(url, 301);
     }
 
     // A05: Security Headers (OWASP Recommendations)

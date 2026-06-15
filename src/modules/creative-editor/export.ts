@@ -3,6 +3,7 @@ import {
     CreativeEditorDocument,
     CreativeEditorElement,
     CreativeEditorExportResult,
+    CreativeEditorLinearGradient,
     CreativeEditorStrokeStyle,
     CreativeEditorVisibleWatermark,
 } from "./types";
@@ -66,14 +67,54 @@ const buildElementShellAttributes = (element: CreativeEditorElement) => {
     return ` opacity="${opacity}"${transform}${style} data-layer-id="${escapeXml(element.id)}"`;
 };
 
+function getLinearGradientCoords(gradient: CreativeEditorLinearGradient) {
+    const angle = -gradient.angle * (Math.PI / 180);
+    return {
+        x1: Math.round(50 + Math.sin(angle) * 50),
+        x2: Math.round(50 + Math.sin(angle + Math.PI) * 50),
+        y1: Math.round(50 + Math.cos(angle) * 50),
+        y2: Math.round(50 + Math.cos(angle + Math.PI) * 50),
+    };
+}
+
+function renderBackground(documentValue: CreativeEditorDocument) {
+    const { backgroundColor, backgroundGradient, height, width } = documentValue.canvas;
+    if (!backgroundGradient?.enabled) {
+        return {
+            defs: "",
+            rect: `<rect width="${width}" height="${height}" fill="${escapeXml(backgroundColor)}" />`,
+        };
+    }
+    const stops = (backgroundGradient.stops && backgroundGradient.stops.length >= 2
+        ? backgroundGradient.stops
+        : [
+            { color: backgroundGradient.from, offset: 0 },
+            { color: backgroundGradient.to, offset: 1 },
+        ])
+        .filter((stop) => typeof stop.color === "string" && Number.isFinite(stop.offset))
+        .sort((a, b) => a.offset - b.offset);
+    if (stops.length < 2) {
+        return {
+            defs: "",
+            rect: `<rect width="${width}" height="${height}" fill="${escapeXml(backgroundColor)}" />`,
+        };
+    }
+    const coords = getLinearGradientCoords(backgroundGradient);
+    const gradientId = "creative-editor-background-gradient";
+    return {
+        defs: `<defs><linearGradient id="${gradientId}" x1="${coords.x1}%" y1="${coords.y1}%" x2="${coords.x2}%" y2="${coords.y2}%">${stops.map((stop) => `<stop offset="${Math.max(0, Math.min(1, stop.offset)) * 100}%" stop-color="${escapeXml(stop.color)}" />`).join("")}</linearGradient></defs>`,
+        rect: `<rect width="${width}" height="${height}" fill="url(#${gradientId})" />`,
+    };
+}
+
 async function buildQrDataUrl(element: Extract<CreativeEditorElement, { type: "qr" }>) {
     return QRCode.toDataURL(element.value || "https://example.com", {
         color: {
             dark: element.darkColor || "#16231f",
             light: element.lightColor || "#ffffff",
         },
-        errorCorrectionLevel: "M",
-        margin: 1,
+        errorCorrectionLevel: element.errorCorrectionLevel || "M",
+        margin: element.margin ?? 1,
         width: Math.max(128, Math.round(Math.max(element.width, element.height))),
     });
 }
@@ -162,11 +203,13 @@ function renderVisibleWatermark(watermark: CreativeEditorVisibleWatermark | unde
 
 export async function serializeCreativeDocumentToSvg(documentValue: CreativeEditorDocument): Promise<string> {
     const body = (await Promise.all(documentValue.elements.map(renderElement))).join("\n");
-    const { width, height, backgroundColor } = documentValue.canvas;
+    const { width, height } = documentValue.canvas;
+    const background = renderBackground(documentValue);
     const visibleWatermark = renderVisibleWatermark(documentValue.metadata?.visibleWatermark, width, height);
     return [
         `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeXml(documentValue.title)}">`,
-        `<rect width="${width}" height="${height}" fill="${escapeXml(backgroundColor)}" />`,
+        background.defs,
+        background.rect,
         body,
         visibleWatermark,
         "</svg>",
@@ -174,11 +217,17 @@ export async function serializeCreativeDocumentToSvg(documentValue: CreativeEdit
 }
 
 export async function downloadCreativeEditorSvg(documentValue: CreativeEditorDocument): Promise<CreativeEditorExportResult> {
+    const result = await renderCreativeEditorSvgBlob(documentValue);
+    if (result.blob) downloadBlob(result.filename, result.blob);
+    return result;
+}
+
+export async function renderCreativeEditorSvgBlob(documentValue: CreativeEditorDocument): Promise<CreativeEditorExportResult> {
     const svg = await serializeCreativeDocumentToSvg(documentValue);
     const filename = buildCreativeEditorFilename(documentValue, "svg");
     const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-    downloadBlob(filename, blob);
     return {
+        blob,
         document: documentValue,
         filename,
         format: "svg",
@@ -194,6 +243,7 @@ export async function downloadCreativeEditorJson(documentValue: CreativeEditorDo
     const blob = new Blob([json], { type: "application/json;charset=utf-8" });
     downloadBlob(filename, blob);
     return {
+        blob,
         document: documentValue,
         filename,
         format: "json",
@@ -203,6 +253,12 @@ export async function downloadCreativeEditorJson(documentValue: CreativeEditorDo
 }
 
 export async function downloadCreativeEditorPng(documentValue: CreativeEditorDocument): Promise<CreativeEditorExportResult> {
+    const result = await renderCreativeEditorPngBlob(documentValue);
+    if (result.blob) downloadBlob(result.filename, result.blob);
+    return result;
+}
+
+export async function renderCreativeEditorPngBlob(documentValue: CreativeEditorDocument): Promise<CreativeEditorExportResult> {
     const svg = await serializeCreativeDocumentToSvg(documentValue);
     const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(svgBlob);
@@ -226,8 +282,8 @@ export async function downloadCreativeEditorPng(documentValue: CreativeEditorDoc
             }, "image/png");
         });
         const filename = buildCreativeEditorFilename(documentValue, "png");
-        downloadBlob(filename, blob);
         return {
+            blob,
             document: documentValue,
             filename,
             format: "png",

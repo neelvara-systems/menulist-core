@@ -31,6 +31,7 @@ export type MenuChangeType =
     | "DESCRIPTION_CHANGE" // Item description changed
     | "IMAGE_CHANGE"       // Item image added/removed/changed
     | "STRUCTURE"          // Other structural changes
+    | "MENU_REVISION_SUMMARY" // Compact per-save/publish summary
     | "PUBLISH"            // Menu published (canonical truth event)
     | "EXTRACTION_CORRECTION"; // Owner corrected AI-extracted data (Infrastructure Compounding 10.2)
 
@@ -56,6 +57,7 @@ export interface MenuChangeLogEntry {
     newValue: any;                 // New value (sanitized)
     changedBy: ChangeActor;        // Who made the change
     userId?: string;               // User ID if available
+    metadata?: Record<string, any>; // Compact source/mode metadata
     timestamp: Timestamp;          // When the change was made
 
     // Session context (auto-populated by requestBodyComposer pattern)

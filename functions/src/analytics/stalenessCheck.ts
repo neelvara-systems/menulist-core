@@ -24,6 +24,7 @@
 import * as admin from 'firebase-admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import { FUNCTION_RETENTION_CONFIG } from '../constants/features';
 
 // ================================================================
 // TYPES
@@ -45,6 +46,11 @@ export interface StalenessCheckResult {
 
 const STALENESS_COOLDOWN_DAYS = 90;
 const MAX_DETECTIONS_PER_NIGHT = 50;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const STALENESS_LOG_RETENTION_DAYS = Math.max(
+    STALENESS_COOLDOWN_DAYS + 1,
+    FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS,
+);
 
 // ================================================================
 // MAIN FUNCTION
@@ -113,11 +119,13 @@ export async function checkStalenessForAllStores(): Promise<StalenessCheckResult
 
                 // Log staleness detection to messageLogs
                 // The lifecycle messaging engine will pick this up and send email
+                const now = Timestamp.now();
                 await db.collection(DB_COLLECTIONS.MESSAGE_LOGS).add({
                     type: 'staleness_check',
                     recipientStoreId: sId,
                     tId: storeData.tId,
-                    sentAt: Timestamp.now(),
+                    sentAt: now,
+                    expiresAt: Timestamp.fromMillis(now.toMillis() + STALENESS_LOG_RETENTION_DAYS * DAY_MS),
                     status: 'pending', // Lifecycle engine will update to 'sent'
                     metadata: {
                         daysSincePublish: storeData.daysSincePublish,

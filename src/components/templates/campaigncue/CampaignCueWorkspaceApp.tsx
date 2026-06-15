@@ -2,6 +2,8 @@
 
 import { SIGNIN_URL } from "@constant/urls";
 import { CAMPAIGNCUE_PAGE_SIZE } from "@constant/campaigncue/database";
+import { CAMPAIGNCUE_CREATIVE_EDITOR_AI_ACTIONS } from "@constant/campaigncue/creativeEditorAiTools";
+import { CAMPAIGNCUE_DESIGN_CUE_COMMANDS } from "@constant/campaigncue/designCue";
 import { CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX } from "@constant/campaigncue/domains";
 import { CAMPAIGNCUE_ERROR_CODES } from "@constant/campaigncue/errors";
 import { CAMPAIGNCUE_CUE_LAYERS } from "@constant/campaigncue/cueLayers";
@@ -24,11 +26,17 @@ import {
     CAMPAIGNCUE_SOURCE_TYPE_LABELS,
 } from "@constant/campaigncue/workspace";
 import { FEATURE_FLAGS } from "@config/features";
+import { runCampaignCueCreativeEditorAiTool } from "@lib/campaigncue/creativeEditorAiTools";
+import { buildCampaignCueDailyDesk } from "@lib/campaigncue/dailyDesk";
+import { applyCampaignCueDesignCuePatchSet } from "@lib/campaigncue/design-cue/apply";
+import { runCampaignCueDesignCue } from "@lib/campaigncue/design-cue/intent";
 import {
-    CreativeEditor,
     type CreativeEditorDocument,
+    type CreativeEditorDesignCueApplyHandler,
+    type CreativeEditorDesignCueHandler,
+    type CreativeEditorAiToolHandler,
     type CreativeEditorExportResult,
-} from "@/modules/creative-editor";
+} from "@/modules/creative-editor/types";
 import {
     buildCampaignCueBlankCreativeDocument,
     buildCampaignCueCreativeAssetSources,
@@ -39,8 +47,11 @@ import type {
     CampaignCueAsset,
     CampaignCueCampaign,
     CampaignCueChannel,
+    CampaignCueDecision,
     CampaignCueLocation,
+    CampaignCueManualDeliveryCard,
     CampaignCueOutput,
+    CampaignCueOutputPack,
     CampaignCueOverview,
     CampaignCueProviderStatus,
     CampaignCueSourceInput,
@@ -50,31 +61,45 @@ import type {
     CampaignCueCueLayerDesign,
     CampaignCueCueLayerUploadResult,
 } from "@type/campaigncueCueLayers";
+import dynamic from "next/dynamic";
 import type { ChangeEvent, ComponentType } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
     LuArrowRight,
     LuBuilding2,
+    LuCamera,
     LuCalendarDays,
     LuCheck,
     LuCheckCircle2,
+    LuAlertCircle,
+    LuClipboardCheck,
     LuDownload,
     LuFileText,
     LuImage,
     LuLayers,
     LuMapPin,
     LuPackageCheck,
+    LuPrinter,
     LuRefreshCw,
     LuRotateCcw,
+    LuSearch,
     LuSend,
     LuShieldCheck,
     LuSparkles,
-    LuStore,
     LuUpload,
     LuUploadCloud,
     LuUsers,
 } from "react-icons/lu";
 import styles from "./CampaignCueWorkspaceApp.module.scss";
+
+const CreativeEditor = dynamic(() => import("@/modules/creative-editor/CreativeEditor"), {
+    ssr: false,
+    loading: () => (
+        <div className={styles.empty}>
+            <p>Loading editor...</p>
+        </div>
+    ),
+});
 
 interface ApiState {
     code?: string;
@@ -119,6 +144,39 @@ const cueLayerDesignTone = (status?: string) => {
     return "amber";
 };
 
+const ownerStatusTone = (status?: string) => {
+    if (status === "ready" || status === "clear") return "green";
+    if (status === "blocked" || status === "missing" || status === "needs_fix") return "red";
+    return "amber";
+};
+
+const ownerStatusLabel = (status?: string) => {
+    if (status === "clear" || status === "ready") return "Ready";
+    if (status === "missing") return "Missing";
+    if (status === "blocked" || status === "needs_fix") return "Blocked";
+    return "Needs review";
+};
+
+const campaignBlocksPublicUse = (campaign?: CampaignCueCampaign | null) => (
+    campaign?.trustGate === "blocked" || campaign?.trustGate === "needs_fix"
+);
+
+const publicUseBlockedLabel = "Fix blocked trust issues before downloading, scheduling, or marking this pack used.";
+
+const decisionTone = (value?: string) => {
+    if (value === "high" || value === "ready_to_prepare") return "green";
+    if (value === "medium" || value === "needs_owner_input" || value === "safe_evergreen_only") return "amber";
+    return "red";
+};
+
+const decisionLabel = (value?: string) => {
+    if (value === "ready_to_prepare") return "Ready to prepare";
+    if (value === "needs_owner_input") return "Needs input";
+    if (value === "safe_evergreen_only") return "Safer action";
+    if (value === "blocked") return "Blocked";
+    return displayLabel(value);
+};
+
 const providerOwnerSummary = (provider: CampaignCueProviderStatus) => {
     if (provider.status === "manual_only") {
         return "No account connection is needed. Download the pack and paste it manually.";
@@ -161,14 +219,17 @@ const getLocalSignInUrl = () => {
     return isLocal ? `/signin?callbackUrl=${callbackUrl}` : buildCampaignCueAuthLaunchUrl(SIGNIN_URL);
 };
 
-const downloadText = (filename: string, text: string) => {
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+const downloadBlob = (filename: string, blob: Blob) => {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = filename;
     anchor.click();
     URL.revokeObjectURL(url);
+};
+
+const downloadText = (filename: string, text: string) => {
+    downloadBlob(filename, new Blob([text], { type: "text/plain;charset=utf-8" }));
 };
 
 const openDownloadUrl = (url: string, filename: string) => {
@@ -208,16 +269,91 @@ const outputFilename = (campaign: CampaignCueCampaign, output: CampaignCueOutput
     `${campaign.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${output.channel}.txt`
 );
 
-const campaignPackFilename = (campaign: CampaignCueCampaign) => (
-    `${campaign.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-campaigncue-pack.md`
+const campaignPackZipFilename = (campaign: CampaignCueCampaign) => (
+    `${campaign.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-campaigncue-pack.zip`
 );
 
-const buildCampaignPackExport = (campaign: CampaignCueCampaign) => {
+const buildCampaignPackExport = (
+    campaign: CampaignCueCampaign,
+    dailyDesk?: CampaignCueOverview["dailyDesk"],
+) => {
+    const matchingReadyPack = dailyDesk?.readyPack?.campaignId === campaign.id
+        ? dailyDesk.readyPack
+        : undefined;
+    const matchingPackReview = dailyDesk?.packReview?.campaignId === campaign.id
+        ? dailyDesk.packReview
+        : undefined;
     const lines = [
         `# ${campaign.title}`,
         campaign.brief,
         `Status: ${displayLabel(campaign.status)}`,
         `Trust: ${displayLabel(campaign.trustGate)}`,
+        "",
+        "## Owner desk",
+        dailyDesk?.summary.title ? `Recommended action: ${dailyDesk.summary.title}` : "",
+        dailyDesk?.summary.detail ? `Why: ${dailyDesk.summary.detail}` : "",
+        matchingReadyPack?.plainAction ? `Owner goal: ${matchingReadyPack.plainAction}` : "",
+        matchingReadyPack?.outputFormats?.length ? `Ready formats: ${matchingReadyPack.outputFormats.join(", ")}` : "",
+        matchingReadyPack?.printFormats?.length ? `Print and in-store: ${matchingReadyPack.printFormats.join(", ")}` : "",
+        matchingReadyPack?.photoTasks?.length ? `Photo task: ${matchingReadyPack.photoTasks.join(" / ")}` : "",
+        matchingPackReview?.reason ? `Pack reason: ${matchingPackReview.reason}` : "",
+        matchingPackReview?.decision ? `Decision confidence: ${matchingPackReview.decision.confidence}` : "",
+        matchingPackReview?.decision ? `Decision status: ${decisionLabel(matchingPackReview.decision.decisionStatus)}` : "",
+        matchingPackReview?.decision ? `Decision score: ${matchingPackReview.decision.score.finalScore}/100` : "",
+        "",
+        "## Why this recommendation",
+        ...(matchingPackReview?.decision?.explanation.whyThis.length
+            ? matchingPackReview.decision.explanation.whyThis.map((item) => `- ${item}`)
+            : dailyDesk?.decision?.explanation.whyThis.length
+                ? dailyDesk.decision.explanation.whyThis.map((item) => `- ${item}`)
+                : ["- Decision evidence was not included in this export."]),
+        "",
+        "## Trust preflight",
+        ...(matchingPackReview?.decision?.trustPreflight.findings.length
+            ? matchingPackReview.decision.trustPreflight.findings.map((item) => `- ${item}`)
+            : dailyDesk?.decision?.trustPreflight.findings.length
+                ? dailyDesk.decision.trustPreflight.findings.map((item) => `- ${item}`)
+                : ["- No blocking preflight issue from current facts."]),
+        "",
+        "## Trust review",
+        ...(matchingPackReview?.trustSummary?.length
+            ? matchingPackReview.trustSummary.map((item) => `- ${item.label}: ${ownerStatusLabel(item.status)}. ${item.detail}`)
+            : [`- Trust: ${displayLabel(campaign.trustGate)}`]),
+        "",
+        "## Manual delivery checklist",
+        ...(matchingReadyPack?.manualDeliveryTasks?.length
+            ? matchingReadyPack.manualDeliveryTasks.map((task, index) => `${index + 1}. ${task}`)
+            : dailyDesk?.manualDeliveryTasks?.length
+                ? dailyDesk.manualDeliveryTasks.map((task, index) => `${index + 1}. ${task.detail}`)
+                : ["1. Download the pack and use it manually."]),
+        "",
+        "## Manual handoff fields",
+        ...(matchingPackReview?.deliveryCards?.length
+            ? matchingPackReview.deliveryCards.flatMap((card) => [
+                `### ${card.title}`,
+                `Status: ${ownerStatusLabel(card.status)}`,
+                `Use: ${card.ownerUseCase}`,
+                ...card.fields.map((field) => `- ${field.label}: ${field.value} (${ownerStatusLabel(field.status)})`),
+            ])
+            : ["- Create a pack to see channel handoff fields."]),
+        "",
+        "## Local visibility",
+        ...(matchingPackReview?.localVisibilityCues?.length
+            ? matchingPackReview.localVisibilityCues.map((cue) => `- ${cue.label}: ${ownerStatusLabel(cue.status)}. ${cue.detail}`)
+            : dailyDesk?.localVisibilityCues?.length
+                ? dailyDesk.localVisibilityCues.map((cue) => `- ${cue.label}: ${ownerStatusLabel(cue.status)}. ${cue.detail}`)
+                : ["- No local visibility cues recorded."]),
+        "",
+        "## Result memory",
+        matchingReadyPack?.resultQuestion || dailyDesk?.recipe?.resultQuestion || "What happened after using this pack?",
+        ...(matchingReadyPack?.resultOptions?.length
+            ? matchingReadyPack.resultOptions.map((option) => `- ${option.label}: ${option.note}`)
+            : []),
+        "",
+        "## Small details to confirm",
+        ...(dailyDesk?.missingInputs?.length
+            ? dailyDesk.missingInputs.map((task) => `- ${task.label}: ${task.detail}`)
+            : ["- No blocking detail recorded in the current desk."]),
         "",
         "## Outputs",
         ...campaign.outputs.flatMap((output) => [
@@ -225,21 +361,97 @@ const buildCampaignPackExport = (campaign: CampaignCueCampaign) => {
             `### ${output.label}`,
             `Mode: ${displayLabel(output.mode)}`,
             `Trust: ${displayLabel(output.trustGate)}`,
+            output.fields.ownerUseCase ? `Use: ${output.fields.ownerUseCase}` : "",
             "",
             output.text,
             "",
             `CTA: ${output.fields.cta}`,
             `Destination: ${output.fields.destination || "Not set"}`,
             `Format: ${output.fields.dimensions}`,
+            output.fields.outputFormats?.length ? `Owner formats: ${output.fields.outputFormats.join(", ")}` : "",
+            output.fields.printFormats?.length ? `Print formats: ${output.fields.printFormats.join(", ")}` : "",
+            output.fields.photoTasks?.length ? `Photo tasks: ${output.fields.photoTasks.join(" / ")}` : "",
             `Consent: ${output.fields.consentNote}`,
             `Policy: ${output.fields.policyNote}`,
             output.fields.utm ? `UTM: ${output.fields.utm}` : "",
+            "",
+            "Review before use:",
+            ...(output.fields.reviewChecklist || []).map((step, index) => `${index + 1}. ${step}`),
             "",
             "Manual steps:",
             ...output.fields.manualSteps.map((step, index) => `${index + 1}. ${step}`),
         ]),
     ];
     return `${lines.filter((line) => line !== "").join("\n")}\n`;
+};
+
+const outputPackForCampaign = (
+    campaign: CampaignCueCampaign,
+    dailyDesk?: CampaignCueOverview["dailyDesk"],
+) => {
+    if (dailyDesk?.outputPack?.campaignId === campaign.id) return dailyDesk.outputPack;
+    if (dailyDesk?.packReview?.campaignId === campaign.id) return dailyDesk.packReview.outputPack;
+    return undefined;
+};
+
+const outputPackStatusCounts = (outputPack?: CampaignCueOutputPack) => {
+    const files = outputPack?.downloadBundle.files || [];
+    return {
+        blocked: files.filter((file) => file.status === "blocked").length,
+        needsInput: files.filter((file) => file.status === "needs_input").length,
+        needsReview: files.filter((file) => file.status === "needs_review").length,
+        ready: files.filter((file) => file.status === "ready").length,
+        total: files.length,
+    };
+};
+
+const buildCampaignPackZipBlob = async (
+    campaign: CampaignCueCampaign,
+    dailyDesk?: CampaignCueOverview["dailyDesk"],
+) => {
+    const [{ default: JSZip }] = await Promise.all([import("jszip")]);
+    const zip = new JSZip();
+    const outputPack = outputPackForCampaign(campaign, dailyDesk);
+    const rootFolder = outputPack?.downloadBundle.rootFolder
+        || campaign.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+        || "campaigncue-pack";
+    const writtenPaths = new Set<string>();
+    const writeFile = (path: string, content: string) => {
+        const safePath = path.replace(/^\/+/, "");
+        if (writtenPaths.has(safePath)) return;
+        writtenPaths.add(safePath);
+        zip.file(`${rootFolder}/${safePath}`, content);
+    };
+
+    writeFile("campaign-pack-summary.md", buildCampaignPackExport(campaign, dailyDesk));
+    if (outputPack) {
+        writeFile("campaign-pack.json", JSON.stringify(outputPack, null, 2));
+        outputPack.downloadBundle.files.forEach((file) => {
+            writeFile(file.path, file.content);
+        });
+    } else {
+        campaign.outputs.forEach((output) => {
+            writeFile(`outputs/${output.channel}.txt`, output.text);
+        });
+    }
+
+    const blob = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: { level: 6 },
+    });
+    return {
+        blob,
+        filename: campaignPackZipFilename(campaign),
+    };
+};
+
+const downloadCampaignPackZip = async (
+    campaign: CampaignCueCampaign,
+    dailyDesk?: CampaignCueOverview["dailyDesk"],
+) => {
+    const zip = await buildCampaignPackZipBlob(campaign, dailyDesk);
+    downloadBlob(zip.filename, zip.blob);
 };
 
 const bumpAnalytics = (
@@ -276,6 +488,22 @@ const replaceBounded = <T extends { id: string }>(items: T[], item: T, limit: nu
         : [item, ...items];
     return next.slice(0, limit);
 };
+
+const withFreshDailyDesk = (overview: CampaignCueOverview): CampaignCueOverview => ({
+    ...overview,
+    dailyDesk: buildCampaignCueDailyDesk({
+        analytics: overview.analytics,
+        assets: overview.assets,
+        businessBrain: overview.businessBrain,
+        campaigns: overview.campaigns,
+        locations: overview.locations,
+        opportunities: overview.opportunities,
+        schedules: overview.schedules,
+        sourceFacts: overview.sourceFacts,
+        sourceInputs: overview.sourceInputs,
+        workspace: overview.workspace,
+    }),
+});
 
 function LoadingState() {
     return (
@@ -442,6 +670,182 @@ function OutputFieldSummary({ output }: { output: CampaignCueOutput }) {
     );
 }
 
+function ManualDeliveryCard({
+    card,
+    onCopy,
+}: {
+    card: CampaignCueManualDeliveryCard;
+    onCopy: (value: string) => void;
+}) {
+    return (
+        <article className={styles.provider}>
+            <div className={styles.row}>
+                <div className={styles.titleBlock}>
+                    <h3>{card.title}</h3>
+                    <p>{card.ownerUseCase}</p>
+                </div>
+                <span className={styles.chip} data-tone={ownerStatusTone(card.status)}>
+                    {ownerStatusLabel(card.status)}
+                </span>
+            </div>
+            <div className={styles.detailStack}>
+                {card.fields.map((field) => (
+                    <div className={styles.handoffField} key={field.id}>
+                        <div>
+                            <span>{field.label}</span>
+                            <strong>{field.value}</strong>
+                        </div>
+                        <span className={styles.chip} data-tone={ownerStatusTone(field.status)}>
+                            {ownerStatusLabel(field.status)}
+                        </span>
+                        {field.copyable ? (
+                            <button className={styles.ghostButton} onClick={() => onCopy(field.value)} type="button">
+                                <LuClipboardCheck size={16} />
+                                Copy
+                            </button>
+                        ) : null}
+                    </div>
+                ))}
+            </div>
+            {card.instructions.length ? (
+                <div className={styles.noteBox}>
+                    <strong>Use manually</strong>
+                    <ol>
+                        {card.instructions.map((step) => (
+                            <li key={step}>{step}</li>
+                        ))}
+                    </ol>
+                </div>
+            ) : null}
+        </article>
+    );
+}
+
+function OutputPackSummary({
+    busy,
+    disabled,
+    disabledReason,
+    onDownload,
+    outputPack,
+}: {
+    busy: boolean;
+    disabled?: boolean;
+    disabledReason?: string;
+    onDownload: () => void;
+    outputPack?: CampaignCueOutputPack;
+}) {
+    if (!outputPack) return null;
+    const counts = outputPackStatusCounts(outputPack);
+    const folders = Array.from(new Set(outputPack.downloadBundle.files.map((file) => file.path.split("/")[0]).filter(Boolean)));
+    return (
+        <article className={styles.provider}>
+            <div className={styles.row}>
+                <div className={styles.titleBlock}>
+                    <h3>Campaign Pack Output</h3>
+                    <p>One bundle with decision, copy, handoff fields, trust notes, reuse notes, and result memory.</p>
+                </div>
+                <span className={styles.chip} data-tone={ownerStatusTone(outputPack.trustReport.status)}>
+                    {ownerStatusLabel(outputPack.trustReport.status)}
+                </span>
+            </div>
+            <div className={styles.statusGrid}>
+                <StatCard label="Ready files" value={counts.ready} />
+                <StatCard label="Needs input" value={counts.needsInput} />
+                <StatCard label="Needs review" value={counts.needsReview} />
+                <StatCard label="Blocked" value={counts.blocked} />
+            </div>
+            <div className={styles.detailStack}>
+                <div className={styles.noteBox}>
+                    <strong>Folders included</strong>
+                    <p>{folders.join(", ")}</p>
+                </div>
+                <div className={styles.noteBox}>
+                    <strong>Mini-page and QR brief</strong>
+                    <p>{outputPack.miniPage.manualNote}</p>
+                    <span className={styles.chip} data-tone={ownerStatusTone(outputPack.miniPage.status)}>
+                        {ownerStatusLabel(outputPack.miniPage.status)}
+                    </span>
+                </div>
+                <div className={styles.noteBox}>
+                    <strong>Result memory</strong>
+                    <p>{outputPack.resultMemory.question}</p>
+                </div>
+            </div>
+            {disabled && disabledReason ? (
+                <p className={styles.muted}>{disabledReason}</p>
+            ) : null}
+            <button className={styles.button} disabled={busy || disabled} onClick={onDownload} type="button">
+                <LuDownload size={16} />
+                Download campaign pack ZIP
+            </button>
+        </article>
+    );
+}
+
+function DecisionEvidenceCard({ decision }: { decision: CampaignCueDecision }) {
+    return (
+        <article className={styles.campaign}>
+            <div className={styles.row}>
+                <div className={styles.titleBlock}>
+                    <h3>{decision.recommendationTitle}</h3>
+                    <p>{decision.explanation.whyThis[0]}</p>
+                </div>
+                <div className={styles.chips}>
+                    <span className={styles.chip} data-tone={decisionTone(decision.confidence)}>
+                        {decision.confidence} confidence
+                    </span>
+                    <span className={styles.chip} data-tone={decisionTone(decision.decisionStatus)}>
+                        {decisionLabel(decision.decisionStatus)}
+                    </span>
+                    <span className={styles.chip}>{decision.score.finalScore}/100</span>
+                </div>
+            </div>
+            <div className={styles.grid}>
+                <div className={styles.noteBox}>
+                    <strong>Why this</strong>
+                    <ul>
+                        {decision.explanation.whyThis.slice(0, 4).map((item) => <li key={item}>{item}</li>)}
+                    </ul>
+                </div>
+                <div className={styles.noteBox}>
+                    <strong>Why now</strong>
+                    <ul>
+                        {decision.explanation.whyNow.slice(0, 3).map((item) => <li key={item}>{item}</li>)}
+                    </ul>
+                </div>
+                <div className={styles.noteBox}>
+                    <strong>Trust preflight</strong>
+                    {decision.trustPreflight.findings.length ? (
+                        <ul>
+                            {decision.trustPreflight.findings.slice(0, 4).map((item) => <li key={item}>{item}</li>)}
+                        </ul>
+                    ) : (
+                        <p>No blocking preflight issue from current facts.</p>
+                    )}
+                </div>
+                <div className={styles.noteBox}>
+                    <strong>Pack outputs</strong>
+                    <div className={styles.chips}>
+                        {decision.recommendedOutputs.slice(0, 6).map((output) => (
+                            <span className={styles.chip} key={output.outputType}>{displayLabel(output.outputType)}</span>
+                        ))}
+                    </div>
+                </div>
+            </div>
+            {decision.missingInputs.length ? (
+                <div className={styles.noteBox}>
+                    <strong>Needs your input</strong>
+                    <ul>
+                        {decision.missingInputs.slice(0, 4).map((input) => (
+                            <li key={`${input.type}:${input.ownerQuestion}`}>{input.ownerQuestion}</li>
+                        ))}
+                    </ul>
+                </div>
+            ) : null}
+        </article>
+    );
+}
+
 export default function CampaignCueWorkspaceApp() {
     const [state, setState] = useState<ApiState>({ loading: true });
     const [tab, setTab] = useState<CampaignCueWorkspaceTabKey>("home");
@@ -495,6 +899,7 @@ export default function CampaignCueWorkspaceApp() {
     const [editorDocument, setEditorDocument] = useState<CreativeEditorDocument | null>(null);
     const [editorSourceLabel, setEditorSourceLabel] = useState("Blank asset");
     const [outcomeDraft, setOutcomeDraft] = useState("Got replies, bookings, walk-ins, orders, or useful comments.");
+    const [selectedOutcomeSignalId, setSelectedOutcomeSignalId] = useState<string | undefined>();
     const data = state.data;
 
     const load = async () => {
@@ -514,7 +919,7 @@ export default function CampaignCueWorkspaceApp() {
                 });
                 return;
             }
-            setState({ data: payload.data, loading: false });
+            setState({ data: withFreshDailyDesk(payload.data), loading: false });
         } catch {
             setState({ loading: false, error: "Network error while opening CampaignCue." });
         }
@@ -557,7 +962,7 @@ export default function CampaignCueWorkspaceApp() {
     const updateOverview = (updater: (current: CampaignCueOverview) => CampaignCueOverview) => {
         setState((current) => (
             current.data
-                ? { ...current, data: updater(current.data), loading: false }
+                ? { ...current, data: withFreshDailyDesk(updater(current.data)), loading: false }
                 : current
         ));
     };
@@ -744,7 +1149,25 @@ export default function CampaignCueWorkspaceApp() {
             .map((output) => ({ campaign, output }))) || []
     );
 
+    const campaignCreationBlockedReason = (opportunityId?: string) => {
+        const decisions = data?.dailyDesk.candidateDecisions || [];
+        const decision = opportunityId
+            ? decisions.find((item) => item.opportunityId === opportunityId)
+            : data?.dailyDesk.decision;
+        if (!decision || decision.decisionStatus === "ready_to_prepare") return "";
+        const firstMissingInput = decision.missingInputs.find((input) => input.required) || decision.missingInputs[0];
+        if (firstMissingInput?.ownerQuestion) return firstMissingInput.ownerQuestion;
+        if (decision.decisionStatus === "blocked") return "Review blocked campaign risk before creating this pack.";
+        return "Confirm required campaign details before creating this pack.";
+    };
+
     const createCampaign = async (opportunityId?: string) => {
+        const blockedReason = campaignCreationBlockedReason(opportunityId);
+        if (blockedReason) {
+            setNotice(blockedReason);
+            setTab((data?.dailyDesk.summary.targetTab as CampaignCueWorkspaceTabKey | undefined) || "sources");
+            return;
+        }
         setBusyKey(`cue:${opportunityId || "default"}`);
         setNotice("");
         try {
@@ -799,6 +1222,7 @@ export default function CampaignCueWorkspaceApp() {
                     ...current,
                     businessBrain: result.businessBrain as CampaignCueOverview["businessBrain"],
                     opportunities: result.opportunities || current.opportunities,
+                    sourceFacts: result.sourceFacts || current.sourceFacts,
                     workspace: result.workspace as CampaignCueOverview["workspace"],
                 }));
             }
@@ -831,6 +1255,10 @@ export default function CampaignCueWorkspaceApp() {
             if (sourceInput?.id) {
                 updateOverview((current) => ({
                     ...current,
+                    sourceFacts: [
+                        ...(sourceInput.facts || []),
+                        ...current.sourceFacts.filter((fact) => !(sourceInput.facts || []).some((nextFact) => nextFact.id === fact.id)),
+                    ],
                     sourceInputs: prependBounded(current.sourceInputs, sourceInput, CAMPAIGNCUE_PAGE_SIZE),
                 }));
             }
@@ -872,11 +1300,16 @@ export default function CampaignCueWorkspaceApp() {
         campaign: CampaignCueCampaign,
         action: CampaignCueActionType,
         output?: CampaignCueOutput,
+        noteOverride?: string,
+        resultSignalId?: string,
     ) => {
         const key = `${campaign.id}:${action}:${output?.id || "campaign"}`;
         setBusyKey(key);
         setNotice("");
         try {
+            const exportZip = action === "export"
+                ? await buildCampaignPackZipBlob(campaign, data?.dailyDesk)
+                : null;
             const scheduledAt = action === "schedule"
                 ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
                 : undefined;
@@ -892,8 +1325,11 @@ export default function CampaignCueWorkspaceApp() {
                     note: action === "schedule"
                         ? "Manual CampaignCue task"
                         : action === "record_outcome"
-                            ? outcomeDraft
+                            ? noteOverride ?? outcomeDraft
                             : undefined,
+                    resultSignalId: action === "record_outcome"
+                        ? resultSignalId || selectedOutcomeSignalId
+                        : undefined,
                     idempotencyKey: buildIdempotencyKey(action),
                 }),
             });
@@ -906,8 +1342,10 @@ export default function CampaignCueWorkspaceApp() {
                 downloadText(outputFilename(campaign, output), output.text);
                 setNotice("Downloaded and recorded.");
             } else if (action === "export") {
-                downloadText(campaignPackFilename(campaign), buildCampaignPackExport(campaign));
-                setNotice("Campaign pack downloaded and recorded.");
+                if (exportZip) {
+                    downloadBlob(exportZip.filename, exportZip.blob);
+                }
+                setNotice("Campaign pack ZIP downloaded and recorded.");
             } else if (action === "record_outcome") {
                 setNotice("Result recorded.");
             } else {
@@ -924,6 +1362,8 @@ export default function CampaignCueWorkspaceApp() {
                         : current.schedules,
                 }));
             }
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : "Action could not be completed.");
         } finally {
             setBusyKey(null);
         }
@@ -1004,9 +1444,34 @@ export default function CampaignCueWorkspaceApp() {
     const creativeEditorEnabled = FEATURE_FLAGS.ENABLE_SHARED_CREATIVE_EDITOR
         && FEATURE_FLAGS.ENABLE_SHARED_CREATIVE_EDITOR_INTERACTIVE_CANVAS
         && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CREATIVE_EDITOR;
+    const creativeEditorAiToolsEnabled = creativeEditorEnabled
+        && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_AI_TOOLS;
+    const creativeEditorDesignCueEnabled = creativeEditorEnabled
+        && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_DESIGN_CUE;
     const cueLayersUploadEnabled = creativeEditorEnabled
         && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS
         && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD;
+
+    const runCreativeEditorAiTool: CreativeEditorAiToolHandler = async (request) => (
+        runCampaignCueCreativeEditorAiTool({
+            actionId: request.actionId,
+            document: request.document,
+            overview: data,
+            selectedElement: request.selectedElement,
+            selectedText: request.selectedText,
+        })
+    );
+
+    const runDesignCueRequest: CreativeEditorDesignCueHandler = async (request) => (
+        runCampaignCueDesignCue({
+            ...request,
+            overview: data,
+        })
+    );
+
+    const applyDesignCueRequest: CreativeEditorDesignCueApplyHandler = async (request) => (
+        applyCampaignCueDesignCuePatchSet(request)
+    );
 
     const openBlankCreativeEditor = () => {
         if (!data || !creativeEditorEnabled) return;
@@ -1151,7 +1616,13 @@ export default function CampaignCueWorkspaceApp() {
                             <div className={styles.outputText}>{output.text}</div>
                             <OutputFieldSummary output={output} />
                             <div className={styles.chips}>
-                                <button className={styles.ghostButton} onClick={() => recordAction(campaign, "download", output)} type="button">
+                                <button
+                                    className={styles.ghostButton}
+                                    disabled={campaignBlocksPublicUse(campaign)}
+                                    onClick={() => recordAction(campaign, "download", output)}
+                                    title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
+                                    type="button"
+                                >
                                     <LuDownload size={16} />
                                     Download
                                 </button>
@@ -1161,7 +1632,13 @@ export default function CampaignCueWorkspaceApp() {
                                         Open editor
                                     </button>
                                 ) : null}
-                                <button className={styles.ghostButton} onClick={() => recordAction(campaign, "schedule", output)} type="button">
+                                <button
+                                    className={styles.ghostButton}
+                                    disabled={campaignBlocksPublicUse(campaign)}
+                                    onClick={() => recordAction(campaign, "schedule", output)}
+                                    title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
+                                    type="button"
+                                >
                                     <LuCalendarDays size={16} />
                                     Schedule
                                 </button>
@@ -1184,57 +1661,35 @@ export default function CampaignCueWorkspaceApp() {
     if (!data) return <LoadingState />;
 
     const firstOpportunity = data.opportunities[0];
-    const businessHasContact = Boolean(
-        data.businessBrain.contacts.phone
-        || data.businessBrain.contacts.website
-        || data.businessBrain.contacts.whatsapp
-        || data.businessBrain.contacts.bookingUrl
-        || data.businessBrain.contacts.publicMenuUrl,
-    );
-    const setupSteps = [
-        {
-            actionLabel: businessHasContact ? "Review" : "Add details",
-            done: businessHasContact,
-            icon: LuStore,
-            onAction: () => setTab("details"),
-            text: businessHasContact
-                ? "Your name, area, and contact links are available for campaign messaging."
-                : "Add phone, WhatsApp, website, booking, or menu links before using packs.",
-            title: "Confirm business details",
-        },
-        {
-            actionLabel: data.sourceInputs.length ? "Review" : "Add input",
-            done: data.sourceInputs.length > 0,
-            icon: LuFileText,
-            onAction: () => setTab("sources"),
-            text: data.sourceInputs.length
-                ? `${data.sourceInputs.length} saved input${data.sourceInputs.length === 1 ? "" : "s"} can be used in packs.`
-                : "Add today's offer, service, event, or note so CampaignCue has something current.",
-            title: "Add today's input",
-        },
-        {
-            actionLabel: data.campaigns.length ? "Open packs" : "Create pack",
-            disabled: !data.campaigns.length && (!firstOpportunity || busyKey === `cue:${firstOpportunity.id}`),
-            done: data.campaigns.length > 0,
-            icon: LuPackageCheck,
-            onAction: () => (data.campaigns.length ? setTab("campaigns") : createCampaign(firstOpportunity?.id)),
-            text: data.campaigns.length
-                ? `${data.campaigns.length} campaign pack${data.campaigns.length === 1 ? "" : "s"} ready.`
-                : "Create one pack that includes campaign messaging, channel notes, and trust checks.",
-            title: "Create a campaign pack",
-        },
-        {
-            actionLabel: "Use pack",
-            disabled: !data.campaigns.length,
-            done: data.analytics.exportCount > 0 || data.analytics.usedCount > 0,
-            icon: LuDownload,
-            onAction: () => setTab("campaigns"),
-            text: data.analytics.exportCount > 0 || data.analytics.usedCount > 0
-                ? "At least one pack has been downloaded or marked used."
-                : "Download a pack, then mark it used when it goes live.",
-            title: "Post manually",
-        },
-    ];
+    const dailyDesk = data.dailyDesk;
+    const dailyDeskCampaign = dailyDesk.readyPack
+        ? data.campaigns.find((campaign) => campaign.id === dailyDesk.readyPack?.campaignId)
+        : latestCampaign;
+    const dailyDeskTasks = [
+        ...dailyDesk.missingInputs,
+        dailyDesk.resultPrompt,
+        dailyDesk.approvalPrompt,
+        dailyDesk.locationPrompt,
+    ].filter(Boolean) as NonNullable<typeof dailyDesk.resultPrompt>[];
+    const primaryCreateOpportunityId = dailyDesk.primaryOpportunity?.id || firstOpportunity?.id;
+    const primaryCreateBlockedReason = campaignCreationBlockedReason(primaryCreateOpportunityId);
+    const openDeskTarget = (target: CampaignCueWorkspaceTabKey) => setTab(target);
+    const copyHandoffValue = (value: string) => {
+        if (typeof navigator === "undefined" || !navigator.clipboard) {
+            setNotice("Copy is unavailable in this browser.");
+            return;
+        }
+        void navigator.clipboard.writeText(value)
+            .then(() => setNotice("Copied."))
+            .catch(() => setNotice("Copy failed."));
+    };
+    const runDailyDeskPrimaryAction = () => {
+        if (dailyDesk.summary.actionKind === "campaign_pack" && !dailyDesk.readyPack) {
+            void createCampaign(primaryCreateOpportunityId);
+            return;
+        }
+        openDeskTarget(dailyDesk.summary.targetTab as CampaignCueWorkspaceTabKey);
+    };
 
     return (
         <main className={styles.shell}>
@@ -1299,27 +1754,360 @@ export default function CampaignCueWorkspaceApp() {
                             <section className={styles.hero}>
                                 <div className={styles.panel}>
                                     <div className={styles.headline}>
-                                        <span className={styles.eyebrow}>Today</span>
-                                        <h1>{data.businessBrain.name}</h1>
+                                        <span className={styles.eyebrow}>Daily campaign desk</span>
+                                        <h1>{dailyDesk.summary.title}</h1>
                                         <p>
-                                            {displayLabel(data.businessBrain.businessType)}
-                                            {data.businessBrain.locality ? ` in ${data.businessBrain.locality}` : ""}
-                                            . Prepare campaign packs from saved business details, owner inputs, and ready-to-use drafts.
+                                            {dailyDesk.summary.detail}
                                         </p>
                                         <div className={styles.chips}>
-                                            <span className={styles.chip} data-tone={trustTone(data.businessBrain.readiness.status)}>
-                                                {displayLabel(data.businessBrain.readiness.status)}
+                                            <span className={styles.chip} data-tone={dailyDesk.summary.blockerCount ? "red" : dailyDesk.summary.warningCount ? "amber" : "green"}>
+                                                {dailyDesk.summary.blockerCount ? "Needs detail" : dailyDesk.summary.warningCount ? "Review first" : "Ready"}
                                             </span>
-                                            <span className={styles.chip}>{data.sourceInputs.length} saved input{data.sourceInputs.length === 1 ? "" : "s"}</span>
-                                            <span className={styles.chip}>Manual posting ready</span>
+                                            <span className={styles.chip}>{dailyDesk.recipe.title}</span>
+                                            <span className={styles.chip}>Download and post manually</span>
+                                        </div>
+                                        <div className={styles.topActions}>
+                                            <button
+                                                className={styles.button}
+                                                disabled={dailyDesk.summary.actionKind === "campaign_pack" && (!primaryCreateOpportunityId || Boolean(primaryCreateBlockedReason))}
+                                                onClick={runDailyDeskPrimaryAction}
+                                                title={primaryCreateBlockedReason || undefined}
+                                                type="button"
+                                            >
+                                                <LuPackageCheck size={16} />
+                                                {dailyDesk.summary.actionLabel}
+                                            </button>
+                                            <button className={styles.ghostButton} onClick={() => setTab("sources")} type="button">
+                                                <LuFileText size={16} />
+                                                Add input
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
                                 <div className={styles.statusGrid}>
-                                    <StatCard label="Packs" value={data.analytics.campaignCount} />
-                                    <StatCard label="Downloaded" value={data.analytics.exportCount} />
-                                    <StatCard label="Marked used" value={data.analytics.usedCount} />
-                                    <StatCard label="Scheduled" value={data.schedules.length} />
+                                    <StatCard label="Ready outputs" value={dailyDesk.summary.readyOutputCount} />
+                                    <StatCard label="Details to confirm" value={dailyDesk.summary.blockerCount + dailyDesk.summary.warningCount} />
+                                    <StatCard label="Print uses" value={dailyDesk.readyPack?.printFormats.length || dailyDesk.printTasks.length} />
+                                    <StatCard label="Results recorded" value={data.analytics.ownerReportedOutcomeCount || 0} />
+                                </div>
+                            </section>
+
+                            <section className={styles.section}>
+                                <div className={styles.sectionHeader}>
+                                    <div>
+                                        <span className={styles.eyebrow}>Why this recommendation</span>
+                                        <h2>CampaignCue decides from facts, recipes, readiness, and memory</h2>
+                                        <p>AI does not choose the campaign. The decision engine ranks safe campaign recipes from saved business facts, timing, asset readiness, trust gates, owner effort, and past results.</p>
+                                    </div>
+                                </div>
+                                <DecisionEvidenceCard decision={dailyDesk.decision} />
+                            </section>
+
+                            <section className={styles.section}>
+                                <div className={styles.sectionHeader}>
+                                    <div>
+                                        <span className={styles.eyebrow}>Missing input inbox</span>
+                                        <h2>Answer only what the pack needs</h2>
+                                        <p>CampaignCue keeps this short: current offer, date, price, photo rights, destination, or result detail when needed.</p>
+                                    </div>
+                                    <button className={styles.ghostButton} onClick={() => setTab("sources")} type="button">
+                                        <LuFileText size={16} />
+                                        Open inputs
+                                    </button>
+                                </div>
+                                <div className={styles.stepGrid}>
+                                    {dailyDesk.missingInputs.map((task) => (
+                                        <OwnerStepCard
+                                            actionLabel={task.actionLabel}
+                                            done={task.severity === "ready"}
+                                            icon={task.kind === "asset_rights" ? LuImage : LuFileText}
+                                            key={task.id}
+                                            onAction={() => openDeskTarget(task.targetTab as CampaignCueWorkspaceTabKey)}
+                                            text={task.detail}
+                                            title={task.label}
+                                        />
+                                    ))}
+                                    {!dailyDesk.missingInputs.length ? (
+                                        <div className={styles.empty}>
+                                            <p>No required input is waiting. Create or use the latest pack.</p>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </section>
+
+                            <section className={styles.section}>
+                                <div className={styles.sectionHeader}>
+                                    <div>
+                                        <span className={styles.eyebrow}>Today&apos;s cue</span>
+                                        <h2>Finish today&apos;s campaign path</h2>
+                                        <p>{dailyDesk.recipe.whenToUse}</p>
+                                    </div>
+                                </div>
+                                <div className={styles.twoGrid}>
+                                    {dailyDeskCampaign ? (
+                                        <article className={styles.campaign}>
+                                            <div className={styles.row}>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{dailyDeskCampaign.title}</h3>
+                                                    <p>{dailyDesk.readyPack?.plainAction || dailyDesk.readyPack?.outputFormats.join(", ") || "Pack is ready to review."}</p>
+                                                </div>
+                                                <span className={styles.chip} data-tone={trustTone(dailyDeskCampaign.trustGate)}>
+                                                    {displayLabel(dailyDeskCampaign.trustGate)}
+                                                </span>
+                                            </div>
+                                            <div className={styles.chips}>
+                                                <button
+                                                    className={styles.button}
+                                                    disabled={campaignBlocksPublicUse(dailyDeskCampaign)}
+                                                    onClick={() => recordAction(dailyDeskCampaign, "export")}
+                                                    title={campaignBlocksPublicUse(dailyDeskCampaign) ? publicUseBlockedLabel : undefined}
+                                                    type="button"
+                                                >
+                                                    <LuDownload size={16} />
+                                                    Download campaign pack ZIP
+                                                </button>
+                                                <button className={styles.ghostButton} onClick={() => setTab("campaigns")} type="button">
+                                                    <LuPackageCheck size={16} />
+                                                    Open pack
+                                                </button>
+                                                <button
+                                                    className={styles.ghostButton}
+                                                    disabled={campaignBlocksPublicUse(dailyDeskCampaign)}
+                                                    onClick={() => recordAction(dailyDeskCampaign, "mark_used")}
+                                                    title={campaignBlocksPublicUse(dailyDeskCampaign) ? publicUseBlockedLabel : undefined}
+                                                    type="button"
+                                                >
+                                                    <LuCheck size={16} />
+                                                    Mark used
+                                                </button>
+                                                <button className={styles.ghostButton} onClick={() => recordAction(dailyDeskCampaign, "record_outcome")} type="button">
+                                                    <LuClipboardCheck size={16} />
+                                                    Record result
+                                                </button>
+                                            </div>
+                                            {dailyDesk.readyPack?.resultOptions?.length ? (
+                                                <div className={styles.noteBox}>
+                                                    <strong>{dailyDesk.readyPack.resultQuestion}</strong>
+                                                    <div className={styles.chips}>
+                                                        {dailyDesk.readyPack.resultOptions.map((option) => {
+                                                            const note = `${option.label}: ${option.note}`;
+                                                            return (
+                                                                <button
+                                                                    className={styles.ghostButton}
+                                                                    disabled={busyKey === `${dailyDeskCampaign.id}:record_outcome:campaign`}
+                                                                    key={option.id}
+                                                                    onClick={() => {
+                                                                        setOutcomeDraft(note);
+                                                                        setSelectedOutcomeSignalId(option.id);
+                                                                        void recordAction(dailyDeskCampaign, "record_outcome", undefined, note, option.id);
+                                                                    }}
+                                                                    type="button"
+                                                                >
+                                                                    {option.label}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ) : null}
+                                        </article>
+                                    ) : (
+                                        <article className={styles.campaign}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}>
+                                                    <LuPackageCheck size={18} />
+                                                </div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{dailyDesk.primaryOpportunity?.title || firstOpportunity?.title || dailyDesk.recipe.title}</h3>
+                                                    <p>{dailyDesk.primaryOpportunity?.ownerBenefit || firstOpportunity?.ownerBenefit || dailyDesk.recipe.ownerOutcome}</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                className={styles.button}
+                                                disabled={!primaryCreateOpportunityId || Boolean(primaryCreateBlockedReason)}
+                                                onClick={() => createCampaign(primaryCreateOpportunityId)}
+                                                title={primaryCreateBlockedReason || undefined}
+                                                type="button"
+                                            >
+                                                <LuPackageCheck size={16} />
+                                                {dailyDesk.primaryOpportunity?.actionLabel || firstOpportunity?.actionLabel || "Create pack"}
+                                            </button>
+                                        </article>
+                                    )}
+                                    <div className={styles.list}>
+                                        {dailyDeskTasks.map((task) => (
+                                            <article className={styles.findingRow} key={task.id}>
+                                                <div className={styles.rowStart}>
+                                                    <div className={styles.iconBox}>
+                                                        {task.kind === "result_memory" ? <LuClipboardCheck size={18} /> : task.kind === "asset_rights" ? <LuImage size={18} /> : <LuAlertCircle size={18} />}
+                                                    </div>
+                                                    <div className={styles.titleBlock}>
+                                                        <h3>{task.label}</h3>
+                                                        <p>{task.detail}</p>
+                                                    </div>
+                                                </div>
+                                                <button className={styles.ghostButton} onClick={() => openDeskTarget(task.targetTab as CampaignCueWorkspaceTabKey)} type="button">
+                                                    {task.actionLabel}
+                                                </button>
+                                            </article>
+                                        ))}
+                                        {!dailyDeskTasks.length ? (
+                                            <div className={styles.empty}>
+                                                <p>No urgent detail is waiting. Open the latest pack or prepare the next campaign idea.</p>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </div>
+                                <div className={styles.stepGrid}>
+                                    {dailyDesk.manualDeliveryTasks.map((task) => (
+                                        <OwnerStepCard
+                                            actionLabel={task.actionLabel}
+                                            done={task.severity === "ready"}
+                                            icon={LuSend}
+                                            key={task.id}
+                                            onAction={() => openDeskTarget(task.targetTab as CampaignCueWorkspaceTabKey)}
+                                            text={task.detail}
+                                            title={task.label}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section className={styles.section}>
+                                <div className={styles.sectionHeader}>
+                                    <div>
+                                        <span className={styles.eyebrow}>Campaign pack</span>
+                                        <h2>Download once, use across channels and store</h2>
+                                        <p>{dailyDesk.recipe.ownerOutcome}</p>
+                                    </div>
+                                </div>
+                                {dailyDesk.packReview ? (
+                                    <div className={styles.grid}>
+                                        <article className={styles.campaign}>
+                                            <div className={styles.titleBlock}>
+                                                <h3>{dailyDesk.packReview.title}</h3>
+                                                <p>{dailyDesk.packReview.reason}</p>
+                                            </div>
+                                            <div className={styles.grid}>
+                                                {dailyDesk.packReview.trustSummary.slice(0, 4).map((item) => (
+                                                    <div className={styles.noteBox} key={item.id}>
+                                                        <strong>{item.label}</strong>
+                                                        <p>{item.detail}</p>
+                                                        <span className={styles.chip} data-tone={ownerStatusTone(item.status)}>
+                                                            {ownerStatusLabel(item.status)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </article>
+                                        <OutputPackSummary
+                                            busy={Boolean(dailyDeskCampaign && busyKey === `${dailyDeskCampaign.id}:export:campaign`)}
+                                            disabled={campaignBlocksPublicUse(dailyDeskCampaign)}
+                                            disabledReason={publicUseBlockedLabel}
+                                            onDownload={() => dailyDeskCampaign && recordAction(dailyDeskCampaign, "export")}
+                                            outputPack={dailyDesk.packReview.outputPack}
+                                        />
+                                        {dailyDesk.packReview.deliveryCards[0] ? (
+                                            <ManualDeliveryCard card={dailyDesk.packReview.deliveryCards[0]} onCopy={copyHandoffValue} />
+                                        ) : (
+                                            <div className={styles.empty}>
+                                                <p>Create a pack to see channel handoff fields.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : null}
+                                <div className={styles.grid}>
+                                    {(dailyDesk.readyPack?.outputFormats.length ? dailyDesk.readyPack.outputFormats : dailyDesk.recipe.outputFormats).map((format) => (
+                                        <article className={styles.provider} key={format}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}>
+                                                    <LuSend size={18} />
+                                                </div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{format}</h3>
+                                                    <p>Prepared from the same saved business facts and manual posting boundary.</p>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section className={styles.section}>
+                                <div className={styles.sectionHeader}>
+                                    <div>
+                                        <span className={styles.eyebrow}>Assets and reuse</span>
+                                        <h2>Use real photos before generic visuals</h2>
+                                        <p>Use the same pack for in-store material, simple owner photos, and safe reuse of existing images before opening the editor.</p>
+                                    </div>
+                                    {cueLayersUploadEnabled ? (
+                                        <button className={styles.ghostButton} onClick={() => cueLayerUploadInputRef.current?.click()} type="button">
+                                            <LuLayers size={16} />
+                                            Turn image into layers
+                                        </button>
+                                    ) : null}
+                                </div>
+                                <div className={styles.stepGrid}>
+                                    {dailyDesk.assetReuseTasks.map((task) => (
+                                        <OwnerStepCard
+                                            actionLabel={task.actionLabel}
+                                            done={task.severity === "ready"}
+                                            icon={LuLayers}
+                                            key={task.id}
+                                            onAction={() => openDeskTarget(task.targetTab as CampaignCueWorkspaceTabKey)}
+                                            text={task.detail}
+                                            title={task.label}
+                                        />
+                                    ))}
+                                    {dailyDesk.printTasks.slice(0, 3).map((task) => (
+                                        <OwnerStepCard
+                                            actionLabel={task.actionLabel}
+                                            done={task.severity === "ready"}
+                                            icon={LuPrinter}
+                                            key={task.id}
+                                            onAction={() => openDeskTarget(task.targetTab as CampaignCueWorkspaceTabKey)}
+                                            text={task.detail}
+                                            title={task.label}
+                                        />
+                                    ))}
+                                    {dailyDesk.photoTasks.slice(0, 1).map((task) => (
+                                        <OwnerStepCard
+                                            actionLabel={task.actionLabel}
+                                            done={task.severity === "ready"}
+                                            icon={LuCamera}
+                                            key={task.id}
+                                            onAction={() => openDeskTarget(task.targetTab as CampaignCueWorkspaceTabKey)}
+                                            text={task.detail}
+                                            title={task.label}
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section className={styles.section}>
+                                <div className={styles.sectionHeader}>
+                                    <div>
+                                        <span className={styles.eyebrow}>Local visibility</span>
+                                        <h2>Keep local search updates current</h2>
+                                        <p>Use current facts, area, destination, and approved images before preparing a Google-ready update.</p>
+                                    </div>
+                                    <button className={styles.ghostButton} onClick={() => setTab("visibility")} type="button">
+                                        <LuSearch size={16} />
+                                        Open visibility
+                                    </button>
+                                </div>
+                                <div className={styles.stepGrid}>
+                                    {dailyDesk.localVisibilityCues.slice(0, 4).map((cue) => (
+                                        <OwnerStepCard
+                                            actionLabel={cue.actionLabel}
+                                            done={cue.status === "ready"}
+                                            icon={LuSearch}
+                                            key={cue.id}
+                                            onAction={() => openDeskTarget(cue.targetTab as CampaignCueWorkspaceTabKey)}
+                                            text={cue.detail}
+                                            title={cue.label}
+                                        />
+                                    ))}
                                 </div>
                             </section>
 
@@ -1328,9 +2116,7 @@ export default function CampaignCueWorkspaceApp() {
                                     <div>
                                         <span className={styles.eyebrow}>Saved facts</span>
                                         <h2>What CampaignCue can safely use</h2>
-                                        <p>
-                                            These facts come from business details and owner inputs. Review anything marked needs review before using a pack.
-                                        </p>
+                                        <p>These facts come from business details and owner inputs. Review anything marked needs review before using a pack.</p>
                                     </div>
                                     <button className={styles.ghostButton} onClick={() => setTab("sources")} type="button">
                                         <LuFileText size={16} />
@@ -1364,54 +2150,6 @@ export default function CampaignCueWorkspaceApp() {
                                     ) : null}
                                 </div>
                             </section>
-
-                            <section className={styles.section}>
-                                <div className={styles.sectionHeader}>
-                                    <div>
-                                        <span className={styles.eyebrow}>Start here</span>
-                                        <h2>What to do first</h2>
-                                        <p>Follow these steps when opening CampaignCue for a business or location.</p>
-                                    </div>
-                                </div>
-                                <div className={styles.stepGrid}>
-                                    {setupSteps.map((step) => (
-                                        <OwnerStepCard
-                                            actionLabel={step.actionLabel}
-                                            disabled={step.disabled}
-                                            done={step.done}
-                                            icon={step.icon}
-                                            key={step.title}
-                                            onAction={step.onAction}
-                                            text={step.text}
-                                            title={step.title}
-                                        />
-                                    ))}
-                                </div>
-                            </section>
-
-                            <section className={styles.section}>
-                                <div className={styles.sectionHeader}>
-                                    <div>
-                                        <span className={styles.eyebrow}>Next idea</span>
-                                        <h2>{firstOpportunity?.title || "Add an input to get a campaign idea"}</h2>
-                                        <p>
-                                            {firstOpportunity?.ownerBenefit || firstOpportunity?.reason || "CampaignCue needs business details or a current offer, service, or event before it can prepare a useful pack."}
-                                        </p>
-                                    </div>
-                                    <button
-                                        className={styles.button}
-                                        disabled={!firstOpportunity || busyKey === `cue:${firstOpportunity?.id}`}
-                                        onClick={() => createCampaign(firstOpportunity?.id)}
-                                        type="button"
-                                    >
-                                        <LuPackageCheck size={16} />
-                                        {firstOpportunity?.actionLabel || "Create pack"}
-                                    </button>
-                                </div>
-                                <div className={styles.twoGrid}>
-                                    {data.providers.slice(0, 2).map((provider) => <ProviderCard key={provider.provider} provider={provider} />)}
-                                </div>
-                            </section>
                         </>
                     ) : null}
 
@@ -1439,8 +2177,13 @@ export default function CampaignCueWorkspaceApp() {
                                         <select className={styles.select} id="business-type" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, businessType: event.target.value }))} value={businessDraft.businessType}>
                                             <option value="restaurant">Restaurant</option>
                                             <option value="salon">Salon</option>
+                                            <option value="retail">Retail shop</option>
+                                            <option value="local_service">Local service</option>
+                                            <option value="fitness">Fitness or studio</option>
+                                            <option value="clinic">Clinic or wellness office</option>
                                             <option value="multi_location">Multi-location</option>
                                             <option value="agency_client">Agency client</option>
+                                            <option value="other">Other local business</option>
                                         </select>
                                     </div>
                                     <div className={styles.field}>
@@ -1486,6 +2229,31 @@ export default function CampaignCueWorkspaceApp() {
                                     </div>
                                 </div>
                             </div>
+                            <div className={styles.list}>
+                                {data.campaigns
+                                    .filter((campaign) => campaign.resultMemory?.lastNote)
+                                    .map((campaign) => (
+                                        <div className={styles.findingRow} key={`${campaign.id}:result-memory`}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}>
+                                                    <LuClipboardCheck size={18} />
+                                                </div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{campaign.title}</h3>
+                                                    <p>{campaign.resultMemory?.lastNote}</p>
+                                                </div>
+                                            </div>
+                                            <span className={styles.chip} data-tone={Number(campaign.resultMemory?.notUsefulCount || 0) ? "amber" : "green"}>
+                                                {Number(campaign.resultMemory?.notUsefulCount || 0) ? "Adjust next time" : "Can repeat"}
+                                            </span>
+                                        </div>
+                                    ))}
+                                {!data.campaigns.some((campaign) => campaign.resultMemory?.lastNote) ? (
+                                    <div className={styles.empty}>
+                                        <p>No result memory yet. Record one result after a pack is used.</p>
+                                    </div>
+                                ) : null}
+                            </div>
                         </section>
                     ) : null}
 
@@ -1493,14 +2261,32 @@ export default function CampaignCueWorkspaceApp() {
                         <section className={styles.section}>
                             <div className={styles.sectionHeader}>
                                 <div>
-                                    <span className={styles.eyebrow}>Inputs</span>
-                                    <h2>Offers, events, and notes</h2>
-                                    <p>Add one current thing CampaignCue can safely use in the next pack.</p>
+                                    <span className={styles.eyebrow}>Offers, events, and notes</span>
+                                    <h2>Missing Input Inbox</h2>
+                                    <p>Add only the current details CampaignCue needs: price, date, availability, destination, photo rights, terms, or result notes.</p>
                                 </div>
                                 <button className={styles.button} disabled={busyKey === "source" || !sourceDraft.label.trim() || !sourceDraft.value.trim()} onClick={createSourceInput} type="button">
                                     <LuUpload size={16} />
                                     Save input
                                 </button>
+                            </div>
+                            <div className={styles.stepGrid}>
+                                {dailyDesk.missingInputs.map((task) => (
+                                    <OwnerStepCard
+                                        actionLabel={task.actionLabel}
+                                        done={task.severity === "ready"}
+                                        icon={task.kind === "asset_rights" ? LuImage : LuFileText}
+                                        key={task.id}
+                                        onAction={() => openDeskTarget(task.targetTab as CampaignCueWorkspaceTabKey)}
+                                        text={task.detail}
+                                        title={task.label}
+                                    />
+                                ))}
+                                {!dailyDesk.missingInputs.length ? (
+                                    <div className={styles.empty}>
+                                        <p>No missing campaign detail is waiting.</p>
+                                    </div>
+                                ) : null}
                             </div>
                             <div className={styles.panel}>
                                 <div className={styles.formGrid}>
@@ -1585,10 +2371,35 @@ export default function CampaignCueWorkspaceApp() {
                                     </div>
                                     <div className={styles.titleBlock}>
                                         <h3>Day-one delivery</h3>
-                                        <p>Use Download text, Download pack, Schedule task, Request approval, Mark used, and Record result. CampaignCue does not post to social platforms.</p>
+                                        <p>Use Download text, Download campaign pack ZIP, Schedule task, Request approval, Mark used, and Record result. CampaignCue does not post to social platforms.</p>
                                     </div>
                                 </div>
                             </div>
+                            {dailyDesk.packReview ? (
+                                <section className={styles.section}>
+                                    <div className={styles.sectionHeader}>
+                                        <div>
+                                            <span className={styles.eyebrow}>Use this campaign</span>
+                                            <h2>Manual delivery cards</h2>
+                                            <p>Copy the prepared fields into the owner-managed channel. CampaignCue does not post, send, or spend.</p>
+                                        </div>
+                                    </div>
+                                    {dailyDeskCampaign ? (
+                                        <OutputPackSummary
+                                            busy={busyKey === `${dailyDeskCampaign.id}:export:campaign`}
+                                            disabled={campaignBlocksPublicUse(dailyDeskCampaign)}
+                                            disabledReason={publicUseBlockedLabel}
+                                            onDownload={() => recordAction(dailyDeskCampaign, "export")}
+                                            outputPack={dailyDesk.packReview.outputPack}
+                                        />
+                                    ) : null}
+                                    <div className={styles.grid}>
+                                        {dailyDesk.packReview.deliveryCards.map((card) => (
+                                            <ManualDeliveryCard card={card} key={card.id} onCopy={copyHandoffValue} />
+                                        ))}
+                                    </div>
+                                </section>
+                            ) : null}
                             <div className={styles.grid}>
                                 {data.providers.map((provider) => (
                                     <article className={styles.provider} key={provider.provider}>
@@ -1663,44 +2474,54 @@ export default function CampaignCueWorkspaceApp() {
                                 </div>
                             </div>
                             <div className={styles.grid}>
-                                {data.opportunities.map((cue) => (
-                                    <article className={styles.cue} key={cue.id}>
-                                        <div className={styles.rowStart}>
-                                            <div className={styles.iconBox}>
-                                                <LuSparkles size={18} />
-                                            </div>
-                                            <div className={styles.titleBlock}>
-                                                <h3>{cue.title}</h3>
-                                                <p>{cue.reason}</p>
-                                                <p>{cue.ownerBenefit}</p>
-                                            </div>
-                                        </div>
-                                        <div className={styles.chips}>
-                                            {cue.evidence.slice(0, 2).map((item) => (
-                                                <span className={styles.chip} data-tone="green" key={item}>
-                                                    {item}
-                                                </span>
-                                            ))}
-                                            {cue.channels.map((channel) => (
-                                                <span className={styles.chip} data-tone={channelTone(channel)} key={channel}>
-                                                    {displayLabel(channel)}
-                                                </span>
-                                            ))}
-                                        </div>
-                                        <button
-                                            className={styles.button}
-                                            disabled={busyKey === `cue:${cue.id}`}
-                                            onClick={() => createCampaign(cue.id)}
-                                            type="button"
-                                        >
-                                            <LuPackageCheck size={16} />
-                                            {cue.actionLabel}
-                                        </button>
-                                    </article>
+                                {dailyDesk.candidateDecisions.slice(0, 2).map((candidate) => (
+                                    <DecisionEvidenceCard decision={candidate} key={candidate.decisionId} />
                                 ))}
+                            </div>
+                            <div className={styles.grid}>
+                                {data.opportunities.map((cue) => {
+                                    const createBlockedReason = campaignCreationBlockedReason(cue.id);
+                                    return (
+                                        <article className={styles.cue} key={cue.id}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}>
+                                                    <LuSparkles size={18} />
+                                                </div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{cue.title}</h3>
+                                                    <p>{cue.reason}</p>
+                                                    <p>{cue.ownerBenefit}</p>
+                                                </div>
+                                            </div>
+                                            <div className={styles.chips}>
+                                                {cue.evidence.slice(0, 2).map((item) => (
+                                                    <span className={styles.chip} data-tone="green" key={item}>
+                                                        {item}
+                                                    </span>
+                                                ))}
+                                                {cue.channels.map((channel) => (
+                                                    <span className={styles.chip} data-tone={channelTone(channel)} key={channel}>
+                                                        {displayLabel(channel)}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            {createBlockedReason ? <p className={styles.muted}>{createBlockedReason}</p> : null}
+                                            <button
+                                                className={styles.button}
+                                                disabled={busyKey === `cue:${cue.id}` || Boolean(createBlockedReason)}
+                                                onClick={() => createCampaign(cue.id)}
+                                                title={createBlockedReason || undefined}
+                                                type="button"
+                                            >
+                                                <LuPackageCheck size={16} />
+                                                {cue.actionLabel}
+                                            </button>
+                                        </article>
+                                    );
+                                })}
                                 {!data.opportunities.length ? (
                                     <div className={styles.empty}>
-                                        <p>No ideas yet. Add a current offer, event, service, or menu link in Inputs.</p>
+                                        <p>No ideas yet. Add a current offer, event, service, or menu link in Offers, events, and notes.</p>
                                     </div>
                                 ) : null}
                             </div>
@@ -1733,6 +2554,30 @@ export default function CampaignCueWorkspaceApp() {
                                                     {displayLabel(campaign.trustGate)}
                                                 </span>
                                             </div>
+                                            {dailyDesk.packReview?.campaignId === campaign.id ? (
+                                                <div className={styles.detailStack}>
+                                                    <div className={styles.noteBox}>
+                                                        <strong>Why this pack</strong>
+                                                        <p>{dailyDesk.packReview.reason}</p>
+                                                    </div>
+                                                    <div className={styles.grid}>
+                                                        {dailyDesk.packReview.trustSummary.map((item) => (
+                                                            <div className={styles.noteBox} key={item.id}>
+                                                                <strong>{item.label}</strong>
+                                                                <p>{item.detail}</p>
+                                                                <span className={styles.chip} data-tone={ownerStatusTone(item.status)}>
+                                                                    {ownerStatusLabel(item.status)}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div className={styles.grid}>
+                                                        {dailyDesk.packReview.deliveryCards.slice(0, 3).map((card) => (
+                                                            <ManualDeliveryCard card={card} key={card.id} onCopy={copyHandoffValue} />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : null}
                                             <div className={styles.grid}>
                                                 {campaign.outputs.map((output) => (
                                                     <article className={styles.output} key={output.id}>
@@ -1748,8 +2593,9 @@ export default function CampaignCueWorkspaceApp() {
                                                         <div className={styles.chips}>
                                                             <button
                                                                 className={styles.ghostButton}
-                                                                disabled={busyKey === `${campaign.id}:download:${output.id}`}
+                                                                disabled={busyKey === `${campaign.id}:download:${output.id}` || campaignBlocksPublicUse(campaign)}
                                                                 onClick={() => recordAction(campaign, "download", output)}
+                                                                title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
                                                                 type="button"
                                                             >
                                                                 <LuDownload size={16} />
@@ -1770,7 +2616,13 @@ export default function CampaignCueWorkspaceApp() {
                                                 ))}
                                             </div>
                                             <div className={styles.chips}>
-                                                <button className={styles.ghostButton} onClick={() => recordAction(campaign, "schedule")} type="button">
+                                                <button
+                                                    className={styles.ghostButton}
+                                                    disabled={campaignBlocksPublicUse(campaign)}
+                                                    onClick={() => recordAction(campaign, "schedule")}
+                                                    title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
+                                                    type="button"
+                                                >
                                                     <LuCalendarDays size={16} />
                                                     Schedule task
                                                 </button>
@@ -1780,14 +2632,21 @@ export default function CampaignCueWorkspaceApp() {
                                                 </button>
                                                 <button
                                                     className={styles.ghostButton}
-                                                    disabled={busyKey === `${campaign.id}:export:campaign`}
+                                                    disabled={busyKey === `${campaign.id}:export:campaign` || campaignBlocksPublicUse(campaign)}
                                                     onClick={() => recordAction(campaign, "export")}
+                                                    title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
                                                     type="button"
                                                 >
                                                     <LuDownload size={16} />
-                                                    Download pack
+                                                    Download campaign pack ZIP
                                                 </button>
-                                                <button className={styles.ghostButton} onClick={() => recordAction(campaign, "mark_used")} type="button">
+                                                <button
+                                                    className={styles.ghostButton}
+                                                    disabled={campaignBlocksPublicUse(campaign)}
+                                                    onClick={() => recordAction(campaign, "mark_used")}
+                                                    title={campaignBlocksPublicUse(campaign) ? publicUseBlockedLabel : undefined}
+                                                    type="button"
+                                                >
                                                     <LuCheck size={16} />
                                                     Mark used
                                                 </button>
@@ -1923,7 +2782,13 @@ export default function CampaignCueWorkspaceApp() {
                                         assets: data.assets,
                                         businessBrain: data.businessBrain,
                                     })}
+                                    aiToolActions={creativeEditorAiToolsEnabled ? CAMPAIGNCUE_CREATIVE_EDITOR_AI_ACTIONS : []}
+                                    designCueCommands={creativeEditorDesignCueEnabled ? CAMPAIGNCUE_DESIGN_CUE_COMMANDS : []}
+                                    disabledExportFormats={activeCueLayerDesign ? ["svg", "json"] : []}
                                     initialDocument={editorDocument}
+                                    onAiToolAction={creativeEditorAiToolsEnabled ? runCreativeEditorAiTool : undefined}
+                                    onDesignCueApply={creativeEditorDesignCueEnabled ? applyDesignCueRequest : undefined}
+                                    onDesignCueRequest={creativeEditorDesignCueEnabled ? runDesignCueRequest : undefined}
                                     onDocumentChange={setEditorDraftDocument}
                                     onExport={registerEditorExport}
                                     productLabel="CampaignCue"
@@ -1955,6 +2820,26 @@ export default function CampaignCueWorkspaceApp() {
                                     <p>{trustFindings.length ? "Each output shows whether it is ready, needs review, or should not be used yet." : "Create a pack to see checks."}</p>
                                 </div>
                             </div>
+                            {dailyDesk.packReview ? (
+                                <div className={styles.grid}>
+                                    {dailyDesk.packReview.trustSummary.map((item) => (
+                                        <article className={styles.provider} key={item.id}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}>
+                                                    <LuShieldCheck size={18} />
+                                                </div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{item.label}</h3>
+                                                    <p>{item.detail}</p>
+                                                </div>
+                                            </div>
+                                            <span className={styles.chip} data-tone={ownerStatusTone(item.status)}>
+                                                {ownerStatusLabel(item.status)}
+                                            </span>
+                                        </article>
+                                    ))}
+                                </div>
+                            ) : null}
                             <div className={styles.list}>
                                 {trustFindings.map(({ campaign, output }) => (
                                     <div className={styles.findingRow} key={`${campaign.id}:${output.id}`}>
@@ -1977,6 +2862,48 @@ export default function CampaignCueWorkspaceApp() {
                         </section>
                     ) : null}
 
+                    {tab === "visibility" ? (
+                        <section className={styles.section}>
+                            <div className={styles.sectionHeader}>
+                                <div>
+                                    <span className={styles.eyebrow}>Local visibility</span>
+                                    <h2>Search and profile readiness</h2>
+                                    <p>Keep customer-facing updates current with saved facts, area, destination, approved images, and manual Google handoff.</p>
+                                </div>
+                                <button className={styles.ghostButton} onClick={() => createCampaign("cue_local_visibility_refresh")} type="button">
+                                    <LuSearch size={16} />
+                                    Create visibility pack
+                                </button>
+                            </div>
+                            <div className={styles.stepGrid}>
+                                {dailyDesk.localVisibilityCues.map((cue) => (
+                                    <OwnerStepCard
+                                        actionLabel={cue.actionLabel}
+                                        done={cue.status === "ready"}
+                                        icon={LuSearch}
+                                        key={cue.id}
+                                        onAction={() => openDeskTarget(cue.targetTab as CampaignCueWorkspaceTabKey)}
+                                        text={cue.detail}
+                                        title={cue.label}
+                                    />
+                                ))}
+                            </div>
+                            {dailyDesk.packReview?.deliveryCards.some((card) => card.channel === "google_local") ? (
+                                <div className={styles.grid}>
+                                    {dailyDesk.packReview.deliveryCards
+                                        .filter((card) => card.channel === "google_local")
+                                        .map((card) => (
+                                            <ManualDeliveryCard card={card} key={card.id} onCopy={copyHandoffValue} />
+                                        ))}
+                                </div>
+                            ) : (
+                                <div className={styles.empty}>
+                                    <p>Create a visibility pack to prepare Google update, offer, or event fields.</p>
+                                </div>
+                            )}
+                        </section>
+                    ) : null}
+
                     {tab === "calendar" ? (
                         <section className={styles.section}>
                             <div className={styles.sectionHeader}>
@@ -1986,7 +2913,13 @@ export default function CampaignCueWorkspaceApp() {
                                     <p>{data.schedules.length ? "Manual posting reminders are ready." : "No reminders yet. Schedule a pack when you want to post it later."}</p>
                                 </div>
                                 {latestCampaign ? (
-                                    <button className={styles.button} onClick={() => recordAction(latestCampaign, "schedule")} type="button">
+                                    <button
+                                        className={styles.button}
+                                        disabled={campaignBlocksPublicUse(latestCampaign)}
+                                        onClick={() => recordAction(latestCampaign, "schedule")}
+                                        title={campaignBlocksPublicUse(latestCampaign) ? publicUseBlockedLabel : undefined}
+                                        type="button"
+                                    >
                                         <LuCalendarDays size={16} />
                                         Schedule latest
                                     </button>
@@ -2188,6 +3121,24 @@ export default function CampaignCueWorkspaceApp() {
                                 <div className={styles.formGrid}>
                                     <div className={styles.fieldWide}>
                                         <label htmlFor="outcome-note">Result note</label>
+                                        <div className={styles.chips}>
+                                            {(data.dailyDesk.readyPack?.resultOptions || data.dailyDesk.resultPrompt?.resultOptions || data.dailyDesk.recipe.resultOptions).map((option) => {
+                                                const note = `${option.label}: ${option.note}`;
+                                                return (
+                                                    <button
+                                                        className={styles.ghostButton}
+                                                        key={option.id}
+                                                        onClick={() => {
+                                                            setOutcomeDraft(note);
+                                                            setSelectedOutcomeSignalId(option.id);
+                                                        }}
+                                                        type="button"
+                                                    >
+                                                        {option.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                         <textarea
                                             className={styles.textarea}
                                             id="outcome-note"

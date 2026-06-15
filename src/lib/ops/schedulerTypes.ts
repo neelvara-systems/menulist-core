@@ -59,6 +59,7 @@ export interface SchedulerRunLog {
   triggeredBy: string;              // 'system' for scheduled, userId for manual
   startedAt: any;                   // Firestore Timestamp
   completedAt: any;                 // Firestore Timestamp
+  expiresAt?: any;                  // Firestore Timestamp for retention cleanup
   durationMs: number;
   status: SchedulerRunStatus;
 

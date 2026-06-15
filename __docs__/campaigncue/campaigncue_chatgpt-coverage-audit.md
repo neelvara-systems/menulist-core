@@ -89,9 +89,10 @@
 | Marketing banner/static creative creator | Current runtime produces creative briefs and channel copy inside campaign packs. It does not render PNG/JPG banners or template images yet. | Covered as architecture and manual brief runtime; rendered asset generation intentionally inactive. |
 | UGC/video creator | Current runtime produces creator-safe UGC scripts and reel briefs. It does not render MP4 videos, avatars, AI voiceover, or subtitles. | Covered as architecture and brief-mode runtime; video rendering intentionally inactive. |
 | Campaign pack generator | Campaign creation produces source-backed multi-channel packs for WhatsApp, Google local, creative, video, UGC, ads, and calendar. | Aligned. |
-| Edit/export flow | Owner can download text outputs, download full packs, schedule manual tasks, request approval, mark used, and register assets. Visual edit/crop/subtitle controls are not active. | Aligned to export/download-first decision. |
+| Edit/export flow | Owner can download text outputs, download full packs, schedule manual tasks, request approval, mark used, register assets, and open supported assets in the shared Creative Editor. Design Cue provides deterministic editor patches, and CueLayers supports flat-safe uploaded image editing. Video subtitle/MP4 rendering remains inactive. | Aligned to export/download-first decision. |
 | Data advantage over generic tools | Runtime avoids blank-prompt flow by deriving opportunities and outputs from Business Brain/readiness. | Aligned. |
-| Restaurant/salon categories | Business Brain supports restaurant/salon types and deterministic restaurant/salon opportunity/output wording. | Aligned for first verticals. |
+| Local-business categories | Business Brain and Daily Campaign Desk support restaurant, salon, retail, local service, fitness, clinic, multi-location, agency client, and generic local-business paths. | Aligned for current vertical recipe runtime. |
+| Local-language variants | Business Brain stores locale/preferred language, and Campaign Pack ZIPs now include a deterministic language handoff note with protected facts for manual translation. Generated translation variants are not active until translation/model providers and fact-safety fixtures exist. | Aligned as a safe handoff boundary. |
 | Safety rules and fake-testimonial guardrails | Trust checks block/warn on unsupported claims, fake testimonial posture, WhatsApp manual consent, and ad spend handoff. UGC copy avoids fake customer claims. | Aligned. |
 | Monetization/credits | Credit fields and billing/permission docs exist; current runtime does not charge credits or invoke paid providers. Billing flag remains disabled. | Aligned to cost-safe decision; billing runtime intentionally inactive. |
 | Agency and multi-location | Owner screens and records exist for approvals and location records. Client portal, comments, bulk generation, and location-specific variant automation are not active. | Covered as posture/records; external automation intentionally inactive. |
@@ -104,7 +105,7 @@
 
 These items are present as product architecture or docs contracts but are not active in the current codebase because our validated decision was a safe export/download-first runtime:
 
-- Rendered PNG/JPG banner generation and visual template editing.
+- Provider-rendered PNG/JPG banner generation and automated visual template generation.
 - MP4 video assembly, avatar generation, AI voiceover, and automatic subtitles.
 - Direct WhatsApp send, Google publish, Meta/Google ad mutation, and provider webhooks.
 - Credit reservation/capture/refund and billing checkout.
@@ -112,6 +113,19 @@ These items are present as product architecture or docs contracts but are not ac
 - Agency client portal links, comments, report sharing, and bulk weekly pack jobs.
 - Multi-location child campaign fanout and outlet-specific output variants.
 - MenuList write-back or mutation of public menu/business truth.
+
+## Later Product Corrections Still Aligned
+
+After the initial ChatGPT product conversation, CampaignCue was tightened from "local business content studio" into a daily campaign operating desk. The current docs and runtime preserve that stronger direction:
+
+| Later decision | Current source of truth | Alignment verdict |
+| --- | --- | --- |
+| The model must not decide what to promote. | [campaign-decision-engine](./campaign-decision-engine/README.md), `src/lib/campaigncue/decisionEngine.ts` | Aligned: recommendations come from recipes, facts, readiness, timing, trust risk, owner effort, repetition, and compact result memory. |
+| The first screen must be the Daily Campaign Desk. | [daily-campaign-desk](./daily-campaign-desk/README.md), `CampaignCueWorkspaceApp.tsx` | Aligned: the owner starts with one recommended action, missing inputs, ready-pack controls, delivery tasks, asset reuse, and result memory. |
+| Output must be a complete Campaign Pack, not isolated posts. | [campaign-pack-output-system](./campaign-pack-output-system/README.md), `CampaignCueOutputPack` | Aligned: ZIP output includes summary, JSON, channel files, trust notes, reuse notes, mini-page/QR brief, and result prompt. |
+| Day-one delivery must be export/download/manual handoff, not direct posting. | [campaigncue-delivery-boundary.md](./campaigncue-delivery-boundary.md), delivery constants | Aligned: provider posting, direct WhatsApp send, Google publish, and ad spend mutation are disabled. |
+| The editor is secondary and shared. | [../shared-creative-editor](../shared-creative-editor/README.md), [design-cue](./design-cue/README.md), [cue-layers](./cue-layers/README.md) | Aligned: CampaignCue uses the shared editor through adapters; Design Cue and CueLayers do not create a second editor runtime. |
+| The public site must explain the full pack scope. | [campaigncue-product_website.md](./campaigncue-product/campaigncue-product_website.md), `src/app/sites/campaigncue/page.tsx` | Aligned: the homepage now names print/staff and email/SMS/QR handoff outputs in addition to WhatsApp, Google, social, video, UGC, and ads. |
 
 ## No Missed Critical Conceptual Items Found
 

@@ -104,6 +104,7 @@ export interface CampaignCueCueLayerDesign {
     current: {
         creativeEditorDocumentSnapshotAssetId?: string;
         editorProjectionAssetId?: string;
+        jobId?: string;
         layerIndexAssetId?: string;
         previewAssetId?: string;
         reconstructionAssetId?: string;

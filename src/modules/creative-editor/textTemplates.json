@@ -1,0 +1,1321 @@
+[
+  {
+    "id": "heading",
+    "type": "single",
+    "category": "Basic",
+    "label": "Heading",
+    "description": "Large headline for a post or poster.",
+    "search": "heading title headline add a heading",
+    "tags": ["basic", "headline"],
+    "previewBackground": "#f7f8fb",
+    "layers": [
+      {
+        "id": "heading-main",
+        "name": "Heading",
+        "text": "Add a heading",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 64,
+        "fontWeight": "800",
+        "lineHeight": 1.05,
+        "color": "#16231f",
+        "x": 0.1,
+        "y": 0.15,
+        "width": 0.68,
+        "height": 0.11
+      }
+    ]
+  },
+  {
+    "id": "subheading",
+    "type": "single",
+    "category": "Basic",
+    "label": "Subheading",
+    "description": "Medium supporting line.",
+    "search": "subheading subtitle support add a subheading",
+    "tags": ["basic", "subtitle"],
+    "previewBackground": "#f7f8fb",
+    "layers": [
+      {
+        "id": "subheading-main",
+        "name": "Subheading",
+        "text": "Add a subheading",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 38,
+        "fontWeight": "700",
+        "lineHeight": 1.12,
+        "color": "#16231f",
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.68,
+        "height": 0.1
+      }
+    ]
+  },
+  {
+    "id": "body",
+    "type": "single",
+    "category": "Basic",
+    "label": "Body text",
+    "description": "Short paragraph copy.",
+    "search": "body paragraph description add body text",
+    "tags": ["basic", "paragraph"],
+    "previewBackground": "#f7f8fb",
+    "layers": [
+      {
+        "id": "body-main",
+        "name": "Body text",
+        "text": "Add body text",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 26,
+        "fontWeight": "600",
+        "lineHeight": 1.22,
+        "color": "#16231f",
+        "x": 0.1,
+        "y": 0.18,
+        "width": 0.64,
+        "height": 0.14
+      }
+    ]
+  },
+  {
+    "id": "cta",
+    "type": "single",
+    "category": "Basic",
+    "label": "CTA button",
+    "description": "Simple action text.",
+    "search": "cta button order now book now call action",
+    "tags": ["basic", "cta"],
+    "previewBackground": "#f7f8fb",
+    "layers": [
+      {
+        "id": "cta-main",
+        "name": "CTA button",
+        "text": "Order now",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 32,
+        "fontWeight": "800",
+        "lineHeight": 1.05,
+        "color": "#16231f",
+        "x": 0.1,
+        "y": 0.18,
+        "width": 0.42,
+        "height": 0.09
+      }
+    ]
+  },
+  {
+    "id": "small-note",
+    "type": "single",
+    "category": "Basic",
+    "label": "Small note",
+    "description": "Fine print, timing, or validity note.",
+    "search": "small note valid today terms timing",
+    "tags": ["basic", "note"],
+    "previewBackground": "#f7f8fb",
+    "layers": [
+      {
+        "id": "small-note-main",
+        "name": "Small note",
+        "text": "Valid today",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 20,
+        "fontWeight": "600",
+        "lineHeight": 1.18,
+        "color": "#16231f",
+        "x": 0.1,
+        "y": 0.2,
+        "width": 0.42,
+        "height": 0.08
+      }
+    ]
+  },
+  {
+    "id": "big-sale",
+    "type": "composition",
+    "category": "Promotions",
+    "label": "Big sale",
+    "description": "High-contrast sale headline with a small deadline.",
+    "search": "big sale discount promotion retail offer canva vista",
+    "tags": ["sale", "retail", "discount"],
+    "previewBackground": "#fff5d6",
+    "layers": [
+      {
+        "id": "big-sale-main",
+        "name": "Sale headline",
+        "text": "BIG SALE",
+        "fontFamily": "Impact, Haettenschweiler, sans-serif",
+        "fontSize": 82,
+        "fontWeight": "800",
+        "lineHeight": 0.95,
+        "color": "#111827",
+        "shadow": { "color": "#f59e0b", "blur": 0, "offsetX": 6, "offsetY": 6 },
+        "x": 0.1,
+        "y": 0.18,
+        "width": 0.62,
+        "height": 0.13
+      },
+      {
+        "id": "big-sale-note",
+        "name": "Sale note",
+        "text": "Today only",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 28,
+        "fontWeight": "800",
+        "color": "#e7782c",
+        "x": 0.12,
+        "y": 0.31,
+        "width": 0.42,
+        "height": 0.07
+      }
+    ]
+  },
+  {
+    "id": "limited-offer",
+    "type": "composition",
+    "category": "Promotions",
+    "label": "Limited offer",
+    "description": "Urgent offer block for coupons and flash deals.",
+    "search": "limited offer coupon flash sale weekend offer scarcity",
+    "tags": ["offer", "coupon", "urgent"],
+    "previewBackground": "#fef3c7",
+    "layers": [
+      {
+        "id": "limited-offer-main",
+        "name": "Offer headline",
+        "text": "LIMITED",
+        "fontFamily": "Impact, Haettenschweiler, sans-serif",
+        "fontSize": 58,
+        "fontWeight": "800",
+        "color": "#ffffff",
+        "textBackgroundColor": "#e7782c",
+        "x": 0.11,
+        "y": 0.17,
+        "width": 0.5,
+        "height": 0.09
+      },
+      {
+        "id": "limited-offer-sub",
+        "name": "Offer detail",
+        "text": "20% OFF",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 58,
+        "fontWeight": "700",
+        "color": "#3c3a55",
+        "x": 0.11,
+        "y": 0.26,
+        "width": 0.48,
+        "height": 0.1
+      }
+    ]
+  },
+  {
+    "id": "today-only",
+    "type": "composition",
+    "category": "Promotions",
+    "label": "Today only",
+    "description": "Fast campaign text for single-day promotions.",
+    "search": "today only last chance sale daily offer",
+    "tags": ["today", "urgent", "sale"],
+    "previewBackground": "#fff7ed",
+    "layers": [
+      {
+        "id": "today-only-main",
+        "name": "Today headline",
+        "text": "TODAY",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 62,
+        "fontWeight": "800",
+        "color": "#16231f",
+        "x": 0.12,
+        "y": 0.17,
+        "width": 0.46,
+        "height": 0.09
+      },
+      {
+        "id": "today-only-sub",
+        "name": "Only label",
+        "text": "ONLY",
+        "fontFamily": "Trebuchet MS, sans-serif",
+        "fontSize": 44,
+        "fontWeight": "800",
+        "color": "#e7782c",
+        "x": 0.12,
+        "y": 0.25,
+        "width": 0.34,
+        "height": 0.08
+      }
+    ]
+  },
+  {
+    "id": "new-arrival",
+    "type": "composition",
+    "category": "Retail",
+    "label": "New arrival",
+    "description": "Simple announcement for new stock or services.",
+    "search": "new arrival new collection product launch retail",
+    "tags": ["retail", "launch", "new"],
+    "previewBackground": "#eefcf6",
+    "layers": [
+      {
+        "id": "new-arrival-main",
+        "name": "New arrival",
+        "text": "NEW",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 68,
+        "fontWeight": "800",
+        "color": "#4fac96",
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.38,
+        "height": 0.09
+      },
+      {
+        "id": "new-arrival-sub",
+        "name": "Arrival label",
+        "text": "ARRIVAL",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 42,
+        "fontWeight": "700",
+        "color": "#16231f",
+        "x": 0.12,
+        "y": 0.26,
+        "width": 0.42,
+        "height": 0.08
+      }
+    ]
+  },
+  {
+    "id": "spring-collection",
+    "type": "composition",
+    "category": "Retail",
+    "label": "Spring collection",
+    "description": "Seasonal collection label.",
+    "search": "spring collection seasonal summer fashion retail",
+    "tags": ["seasonal", "collection", "retail"],
+    "previewBackground": "#efffed",
+    "layers": [
+      {
+        "id": "spring-main",
+        "name": "Spring title",
+        "text": "Spring",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 58,
+        "fontWeight": "700",
+        "color": "#5bbf72",
+        "shadow": { "color": "rgba(91, 191, 114, 0.22)", "blur": 8, "offsetX": 0, "offsetY": 4 },
+        "x": 0.1,
+        "y": 0.16,
+        "width": 0.46,
+        "height": 0.1
+      },
+      {
+        "id": "spring-sub",
+        "name": "Collection label",
+        "text": "COLLECTION",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 20,
+        "fontWeight": "800",
+        "color": "#24564d",
+        "x": 0.17,
+        "y": 0.25,
+        "width": 0.34,
+        "height": 0.06
+      }
+    ]
+  },
+  {
+    "id": "back-online",
+    "type": "composition",
+    "category": "Service",
+    "label": "Back online",
+    "description": "Post when ordering, booking, or service resumes.",
+    "search": "back online reopened booking ordering service available",
+    "tags": ["service", "reopen", "online"],
+    "previewBackground": "#f2f7ff",
+    "layers": [
+      {
+        "id": "back-online-main",
+        "name": "Back label",
+        "text": "BACK",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 52,
+        "fontWeight": "700",
+        "fontStyle": "italic",
+        "color": "#2459c7",
+        "x": 0.1,
+        "y": 0.16,
+        "width": 0.42,
+        "height": 0.09
+      },
+      {
+        "id": "back-online-sub",
+        "name": "Online label",
+        "text": "ONLINE",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 48,
+        "fontWeight": "800",
+        "color": "#2459c7",
+        "shadow": { "color": "rgba(36, 89, 199, 0.16)", "blur": 0, "offsetX": 4, "offsetY": 4 },
+        "x": 0.14,
+        "y": 0.24,
+        "width": 0.42,
+        "height": 0.08
+      }
+    ]
+  },
+  {
+    "id": "thank-you",
+    "type": "composition",
+    "category": "Relationship",
+    "label": "Thank you",
+    "description": "Customer appreciation text.",
+    "search": "thank you shopping with us customer appreciation ecommerce",
+    "tags": ["thanks", "customer", "ecommerce"],
+    "previewBackground": "#fff1f7",
+    "layers": [
+      {
+        "id": "thank-you-main",
+        "name": "Thank you",
+        "text": "Thank You",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 46,
+        "fontWeight": "700",
+        "fontStyle": "italic",
+        "color": "#ef6680",
+        "x": 0.11,
+        "y": 0.18,
+        "width": 0.5,
+        "height": 0.08
+      },
+      {
+        "id": "thank-you-sub",
+        "name": "Shopping note",
+        "text": "FOR SHOPPING WITH US",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 18,
+        "fontWeight": "800",
+        "color": "#ef6680",
+        "x": 0.12,
+        "y": 0.27,
+        "width": 0.46,
+        "height": 0.06
+      }
+    ]
+  },
+  {
+    "id": "free-shipping",
+    "type": "composition",
+    "category": "Retail",
+    "label": "Free shipping",
+    "description": "Shipping offer for ecommerce posts.",
+    "search": "free shipping delivery ecommerce retail offer",
+    "tags": ["shipping", "delivery", "retail"],
+    "previewBackground": "#fff7ed",
+    "layers": [
+      {
+        "id": "free-shipping-main",
+        "name": "Free shipping",
+        "text": "FREE",
+        "fontFamily": "Impact, Haettenschweiler, sans-serif",
+        "fontSize": 62,
+        "fontWeight": "800",
+        "color": "#ef4444",
+        "shadow": { "color": "#ffd45d", "blur": 0, "offsetX": 5, "offsetY": 5 },
+        "x": 0.11,
+        "y": 0.17,
+        "width": 0.42,
+        "height": 0.09
+      },
+      {
+        "id": "free-shipping-sub",
+        "name": "Shipping label",
+        "text": "SHIPPING",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 40,
+        "fontWeight": "800",
+        "color": "#16231f",
+        "x": 0.11,
+        "y": 0.27,
+        "width": 0.48,
+        "height": 0.08
+      }
+    ]
+  },
+  {
+    "id": "order-now",
+    "type": "composition",
+    "category": "Food",
+    "label": "Order now",
+    "description": "Food, delivery, and product order CTA.",
+    "search": "order now call to action food delivery restaurant product",
+    "tags": ["food", "delivery", "cta"],
+    "previewBackground": "#eff6ff",
+    "layers": [
+      {
+        "id": "order-now-main",
+        "name": "Order label",
+        "text": "Order",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 40,
+        "fontWeight": "700",
+        "color": "#4ab8f1",
+        "x": 0.11,
+        "y": 0.17,
+        "width": 0.38,
+        "height": 0.08
+      },
+      {
+        "id": "order-now-sub",
+        "name": "Now label",
+        "text": "NOW",
+        "fontFamily": "Impact, Haettenschweiler, sans-serif",
+        "fontSize": 74,
+        "fontWeight": "800",
+        "color": "#e7782c",
+        "shadow": { "color": "rgba(74, 184, 241, 0.4)", "blur": 0, "offsetX": 5, "offsetY": 5 },
+        "x": 0.11,
+        "y": 0.23,
+        "width": 0.42,
+        "height": 0.1
+      }
+    ]
+  },
+  {
+    "id": "call-now",
+    "type": "composition",
+    "category": "Service",
+    "label": "Call now",
+    "description": "Phone-led CTA for local services.",
+    "search": "call now contact phone booking appointment lead",
+    "tags": ["service", "phone", "cta"],
+    "previewBackground": "#f0fdfa",
+    "layers": [
+      {
+        "id": "call-now-main",
+        "name": "Call now",
+        "text": "Call Now",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 54,
+        "fontWeight": "800",
+        "color": "#24564d",
+        "textBackgroundColor": "#d9f99d",
+        "x": 0.1,
+        "y": 0.18,
+        "width": 0.48,
+        "height": 0.09
+      },
+      {
+        "id": "call-now-sub",
+        "name": "Booking note",
+        "text": "Slots are open",
+        "fontFamily": "Trebuchet MS, sans-serif",
+        "fontSize": 24,
+        "fontWeight": "700",
+        "color": "#16231f",
+        "x": 0.12,
+        "y": 0.29,
+        "width": 0.4,
+        "height": 0.06
+      }
+    ]
+  },
+  {
+    "id": "now-open",
+    "type": "composition",
+    "category": "Local business",
+    "label": "Now open",
+    "description": "Opening or reopening announcement.",
+    "search": "now open grand opening reopening new business store restaurant",
+    "tags": ["open", "local", "launch"],
+    "previewBackground": "#fff7ed",
+    "layers": [
+      {
+        "id": "now-open-main",
+        "name": "Now open",
+        "text": "NOW OPEN!",
+        "fontFamily": "Impact, Haettenschweiler, sans-serif",
+        "fontSize": 58,
+        "fontWeight": "800",
+        "color": "#16231f",
+        "shadow": { "color": "#ffd45d", "blur": 0, "offsetX": 6, "offsetY": 4 },
+        "x": 0.1,
+        "y": 0.18,
+        "width": 0.55,
+        "height": 0.09
+      },
+      {
+        "id": "now-open-sub",
+        "name": "Welcome note",
+        "text": "Come visit us",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 24,
+        "fontWeight": "700",
+        "color": "#e7782c",
+        "x": 0.12,
+        "y": 0.29,
+        "width": 0.38,
+        "height": 0.06
+      }
+    ]
+  },
+  {
+    "id": "grand-opening",
+    "type": "composition",
+    "category": "Local business",
+    "label": "Grand opening",
+    "description": "New-store opening title.",
+    "search": "grand opening launch new store new restaurant opening day",
+    "tags": ["open", "launch", "local"],
+    "previewBackground": "#fbf5ff",
+    "layers": [
+      {
+        "id": "grand-main",
+        "name": "Grand label",
+        "text": "GRAND",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 42,
+        "fontWeight": "800",
+        "color": "#6563ff",
+        "x": 0.13,
+        "y": 0.17,
+        "width": 0.38,
+        "height": 0.07
+      },
+      {
+        "id": "grand-sub",
+        "name": "Opening label",
+        "text": "OPENING",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 58,
+        "fontWeight": "700",
+        "color": "#16231f",
+        "x": 0.1,
+        "y": 0.24,
+        "width": 0.55,
+        "height": 0.1
+      }
+    ]
+  },
+  {
+    "id": "weekend-special",
+    "type": "composition",
+    "category": "Food",
+    "label": "Weekend special",
+    "description": "Restaurant and cafe weekend offer.",
+    "search": "weekend special restaurant cafe food menu offer",
+    "tags": ["food", "weekend", "restaurant"],
+    "previewBackground": "#fff1e8",
+    "layers": [
+      {
+        "id": "weekend-main",
+        "name": "Weekend headline",
+        "text": "Weekend",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 50,
+        "fontWeight": "700",
+        "fontStyle": "italic",
+        "color": "#e7782c",
+        "x": 0.1,
+        "y": 0.16,
+        "width": 0.48,
+        "height": 0.08
+      },
+      {
+        "id": "weekend-sub",
+        "name": "Special label",
+        "text": "SPECIAL",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 46,
+        "fontWeight": "800",
+        "color": "#16231f",
+        "x": 0.12,
+        "y": 0.25,
+        "width": 0.46,
+        "height": 0.08
+      }
+    ]
+  },
+  {
+    "id": "happy-hour",
+    "type": "composition",
+    "category": "Food",
+    "label": "Happy hour",
+    "description": "Timed cafe, bar, or restaurant offer.",
+    "search": "happy hour cafe restaurant bar timing drinks offer",
+    "tags": ["food", "timed", "offer"],
+    "previewBackground": "#fffbe6",
+    "layers": [
+      {
+        "id": "happy-hour-main",
+        "name": "Happy hour",
+        "text": "HAPPY",
+        "fontFamily": "Impact, Haettenschweiler, sans-serif",
+        "fontSize": 60,
+        "fontWeight": "800",
+        "color": "#f59e0b",
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.45,
+        "height": 0.09
+      },
+      {
+        "id": "happy-hour-sub",
+        "name": "Hour label",
+        "text": "HOUR",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 56,
+        "fontWeight": "700",
+        "color": "#3c3a55",
+        "x": 0.14,
+        "y": 0.25,
+        "width": 0.38,
+        "height": 0.09
+      }
+    ]
+  },
+  {
+    "id": "fresh-today",
+    "type": "composition",
+    "category": "Food",
+    "label": "Fresh today",
+    "description": "Fresh item or daily menu text.",
+    "search": "fresh today daily menu restaurant bakery cafe",
+    "tags": ["food", "fresh", "daily"],
+    "previewBackground": "#efffed",
+    "layers": [
+      {
+        "id": "fresh-main",
+        "name": "Fresh label",
+        "text": "Fresh",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 58,
+        "fontWeight": "700",
+        "fontStyle": "italic",
+        "color": "#4fac96",
+        "x": 0.1,
+        "y": 0.16,
+        "width": 0.38,
+        "height": 0.09
+      },
+      {
+        "id": "fresh-sub",
+        "name": "Today label",
+        "text": "TODAY",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 42,
+        "fontWeight": "800",
+        "color": "#24564d",
+        "x": 0.12,
+        "y": 0.25,
+        "width": 0.38,
+        "height": 0.07
+      }
+    ]
+  },
+  {
+    "id": "chef-special",
+    "type": "composition",
+    "category": "Food",
+    "label": "Chef special",
+    "description": "Food special title with elegant type.",
+    "search": "chef special restaurant dish menu cafe food",
+    "tags": ["food", "menu", "special"],
+    "previewBackground": "#fffdfa",
+    "layers": [
+      {
+        "id": "chef-main",
+        "name": "Chef label",
+        "text": "Chef",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 54,
+        "fontWeight": "700",
+        "fontStyle": "italic",
+        "color": "#7c5838",
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.34,
+        "height": 0.08
+      },
+      {
+        "id": "chef-sub",
+        "name": "Special label",
+        "text": "SPECIAL",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 40,
+        "fontWeight": "800",
+        "color": "#16231f",
+        "x": 0.15,
+        "y": 0.25,
+        "width": 0.42,
+        "height": 0.07
+      }
+    ]
+  },
+  {
+    "id": "book-appointment",
+    "type": "composition",
+    "category": "Service",
+    "label": "Book appointment",
+    "description": "Salon, clinic, or service booking CTA.",
+    "search": "book appointment salon clinic service booking slots",
+    "tags": ["service", "booking", "salon"],
+    "previewBackground": "#fef2f2",
+    "layers": [
+      {
+        "id": "book-main",
+        "name": "Book label",
+        "text": "Book",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 54,
+        "fontWeight": "700",
+        "fontStyle": "italic",
+        "color": "#ef6680",
+        "x": 0.11,
+        "y": 0.16,
+        "width": 0.34,
+        "height": 0.08
+      },
+      {
+        "id": "book-sub",
+        "name": "Appointment label",
+        "text": "APPOINTMENT",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 34,
+        "fontWeight": "800",
+        "color": "#16231f",
+        "x": 0.11,
+        "y": 0.25,
+        "width": 0.55,
+        "height": 0.07
+      }
+    ]
+  },
+  {
+    "id": "glow-boost",
+    "type": "composition",
+    "category": "Beauty",
+    "label": "Glow boost",
+    "description": "Beauty, skincare, or salon text effect.",
+    "search": "glow boost serum beauty skincare salon spa offer",
+    "tags": ["beauty", "salon", "skincare"],
+    "previewBackground": "#fff1f2",
+    "layers": [
+      {
+        "id": "glow-main",
+        "name": "Glow label",
+        "text": "GLOW",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 62,
+        "fontWeight": "700",
+        "color": "#3c3a55",
+        "x": 0.1,
+        "y": 0.15,
+        "width": 0.42,
+        "height": 0.09
+      },
+      {
+        "id": "glow-sub",
+        "name": "Boost label",
+        "text": "BOOST",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 58,
+        "fontWeight": "700",
+        "color": "#3c3a55",
+        "x": 0.1,
+        "y": 0.24,
+        "width": 0.42,
+        "height": 0.09
+      }
+    ]
+  },
+  {
+    "id": "fitness-class",
+    "type": "composition",
+    "category": "Wellness",
+    "label": "Fitness class",
+    "description": "Class, session, or studio announcement.",
+    "search": "fitness class workout gym yoga studio session",
+    "tags": ["fitness", "class", "wellness"],
+    "previewBackground": "#f0fdf4",
+    "layers": [
+      {
+        "id": "fitness-main",
+        "name": "Workout title",
+        "text": "WORKOUT",
+        "fontFamily": "Impact, Haettenschweiler, sans-serif",
+        "fontSize": 58,
+        "fontWeight": "800",
+        "color": "#16231f",
+        "shadow": { "color": "#4fac96", "blur": 0, "offsetX": 5, "offsetY": 5 },
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.5,
+        "height": 0.09
+      },
+      {
+        "id": "fitness-sub",
+        "name": "Class label",
+        "text": "CLASS",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 36,
+        "fontWeight": "800",
+        "color": "#24564d",
+        "x": 0.12,
+        "y": 0.28,
+        "width": 0.32,
+        "height": 0.07
+      }
+    ]
+  },
+  {
+    "id": "please-rate-us",
+    "type": "composition",
+    "category": "Relationship",
+    "label": "Please rate us",
+    "description": "Review request text.",
+    "search": "please rate us review feedback stars customer",
+    "tags": ["review", "feedback", "customer"],
+    "previewBackground": "#f8fafc",
+    "layers": [
+      {
+        "id": "rate-main",
+        "name": "Rate request",
+        "text": "Please rate us",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 42,
+        "fontWeight": "800",
+        "color": "#3c3a55",
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.5,
+        "height": 0.08
+      },
+      {
+        "id": "rate-sub",
+        "name": "Review note",
+        "text": "Your review helps",
+        "fontFamily": "Trebuchet MS, sans-serif",
+        "fontSize": 24,
+        "fontWeight": "700",
+        "color": "#6563ff",
+        "x": 0.11,
+        "y": 0.27,
+        "width": 0.42,
+        "height": 0.06
+      }
+    ]
+  },
+  {
+    "id": "follow-us",
+    "type": "composition",
+    "category": "Social",
+    "label": "Follow us",
+    "description": "Social audience CTA.",
+    "search": "follow us social instagram facebook community",
+    "tags": ["social", "follow", "community"],
+    "previewBackground": "#eef2ff",
+    "layers": [
+      {
+        "id": "follow-main",
+        "name": "Follow us",
+        "text": "FOLLOW",
+        "fontFamily": "Impact, Haettenschweiler, sans-serif",
+        "fontSize": 56,
+        "fontWeight": "800",
+        "color": "#6563ff",
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.42,
+        "height": 0.08
+      },
+      {
+        "id": "follow-sub",
+        "name": "Us label",
+        "text": "US",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 56,
+        "fontWeight": "700",
+        "color": "#16231f",
+        "x": 0.34,
+        "y": 0.24,
+        "width": 0.2,
+        "height": 0.08
+      }
+    ]
+  },
+  {
+    "id": "tag-us",
+    "type": "composition",
+    "category": "Social",
+    "label": "Tag us",
+    "description": "Encourage customers to tag the business.",
+    "search": "tag us social customer photo share community",
+    "tags": ["social", "tag", "share"],
+    "previewBackground": "#f5f3ff",
+    "layers": [
+      {
+        "id": "tag-main",
+        "name": "Tag us",
+        "text": "TAG US",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 54,
+        "fontWeight": "800",
+        "color": "#3c3a55",
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.42,
+        "height": 0.08
+      },
+      {
+        "id": "tag-sub",
+        "name": "Share note",
+        "text": "We love your photos",
+        "fontFamily": "Trebuchet MS, sans-serif",
+        "fontSize": 22,
+        "fontWeight": "700",
+        "color": "#6563ff",
+        "x": 0.11,
+        "y": 0.27,
+        "width": 0.5,
+        "height": 0.06
+      }
+    ]
+  },
+  {
+    "id": "happy-birthday",
+    "type": "composition",
+    "category": "Events",
+    "label": "Happy birthday",
+    "description": "Birthday customer or event greeting.",
+    "search": "happy birthday event greeting customer celebration",
+    "tags": ["birthday", "event", "celebration"],
+    "previewBackground": "#fff1f2",
+    "layers": [
+      {
+        "id": "birthday-main",
+        "name": "Birthday greeting",
+        "text": "Happy Birthday",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 48,
+        "fontWeight": "700",
+        "fontStyle": "italic",
+        "color": "#ef6680",
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.56,
+        "height": 0.08
+      },
+      {
+        "id": "birthday-sub",
+        "name": "Birthday name",
+        "text": "MICHELLE!",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 34,
+        "fontWeight": "800",
+        "color": "#16231f",
+        "x": 0.15,
+        "y": 0.26,
+        "width": 0.42,
+        "height": 0.07
+      }
+    ]
+  },
+  {
+    "id": "save-the-date",
+    "type": "composition",
+    "category": "Events",
+    "label": "Save the date",
+    "description": "Event date typography.",
+    "search": "save the date event wedding workshop launch date",
+    "tags": ["event", "date", "announcement"],
+    "previewBackground": "#fffdfa",
+    "layers": [
+      {
+        "id": "save-date-main",
+        "name": "Save date",
+        "text": "SAVE OUR DATE",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 18,
+        "fontWeight": "700",
+        "color": "#3c3a55",
+        "charSpacing": 120,
+        "x": 0.11,
+        "y": 0.16,
+        "width": 0.42,
+        "height": 0.05
+      },
+      {
+        "id": "save-date-names",
+        "name": "Event names",
+        "text": "John + Cloe",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 40,
+        "fontWeight": "700",
+        "fontStyle": "italic",
+        "color": "#3c3a55",
+        "x": 0.1,
+        "y": 0.22,
+        "width": 0.5,
+        "height": 0.08
+      },
+      {
+        "id": "save-date-date",
+        "name": "Event date",
+        "text": "07.21 2026",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 34,
+        "fontWeight": "700",
+        "color": "#f59e0b",
+        "x": 0.14,
+        "y": 0.31,
+        "width": 0.42,
+        "height": 0.07
+      }
+    ]
+  },
+  {
+    "id": "workshop",
+    "type": "composition",
+    "category": "Events",
+    "label": "Workshop",
+    "description": "Class, training, or demo event title.",
+    "search": "workshop class demo training event photography",
+    "tags": ["event", "class", "workshop"],
+    "previewBackground": "#f8fafc",
+    "layers": [
+      {
+        "id": "workshop-main",
+        "name": "Workshop title",
+        "text": "Workshop",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 52,
+        "fontWeight": "700",
+        "color": "#16231f",
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.46,
+        "height": 0.08
+      },
+      {
+        "id": "workshop-sub",
+        "name": "Workshop detail",
+        "text": "Seats open",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 24,
+        "fontWeight": "800",
+        "color": "#4ab8f1",
+        "x": 0.12,
+        "y": 0.27,
+        "width": 0.34,
+        "height": 0.06
+      }
+    ]
+  },
+  {
+    "id": "brand-story",
+    "type": "composition",
+    "category": "Brand",
+    "label": "Brand story",
+    "description": "Elegant brand label or story opener.",
+    "search": "brand story storytelling about us label center",
+    "tags": ["brand", "story", "about"],
+    "previewBackground": "#fef3c7",
+    "layers": [
+      {
+        "id": "brand-story-main",
+        "name": "Brand story",
+        "text": "Brand Story",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 42,
+        "fontWeight": "700",
+        "color": "#111827",
+        "textBackgroundColor": "#fef3c7",
+        "x": 0.1,
+        "y": 0.18,
+        "width": 0.45,
+        "height": 0.08
+      },
+      {
+        "id": "brand-story-sub",
+        "name": "Story label",
+        "text": "LABEL CENTER",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 15,
+        "fontWeight": "800",
+        "color": "#64748b",
+        "x": 0.37,
+        "y": 0.21,
+        "width": 0.24,
+        "height": 0.05
+      }
+    ]
+  },
+  {
+    "id": "pure-gold",
+    "type": "composition",
+    "category": "Promotions",
+    "label": "Pure gold",
+    "description": "Premium effect-style sales copy.",
+    "search": "pure gold premium luxury offer text effect",
+    "tags": ["premium", "effect", "offer"],
+    "previewBackground": "#fff8dc",
+    "layers": [
+      {
+        "id": "pure-gold-small",
+        "name": "Gold intro",
+        "text": "this is pure",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 40,
+        "fontWeight": "800",
+        "color": "#111827",
+        "x": 0.12,
+        "y": 0.16,
+        "width": 0.48,
+        "height": 0.08
+      },
+      {
+        "id": "pure-gold-main",
+        "name": "Gold label",
+        "text": "GOLD",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 78,
+        "fontWeight": "700",
+        "color": "#ffd45d",
+        "shadow": { "color": "rgba(245, 158, 11, 0.38)", "blur": 10, "offsetX": 0, "offsetY": 4 },
+        "x": 0.18,
+        "y": 0.22,
+        "width": 0.5,
+        "height": 0.12
+      }
+    ]
+  },
+  {
+    "id": "good-vibes",
+    "type": "composition",
+    "category": "Social",
+    "label": "Good vibes",
+    "description": "Friendly lifestyle caption.",
+    "search": "good vibes friendly social lifestyle positive",
+    "tags": ["social", "friendly", "lifestyle"],
+    "previewBackground": "#111827",
+    "layers": [
+      {
+        "id": "good-vibes-main",
+        "name": "Good vibes",
+        "text": "GOOD",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 44,
+        "fontWeight": "700",
+        "color": "#e9d5ff",
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.4,
+        "height": 0.08
+      },
+      {
+        "id": "good-vibes-sub",
+        "name": "Vibes label",
+        "text": "VIBES",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 42,
+        "fontWeight": "800",
+        "color": "#99f6e4",
+        "x": 0.11,
+        "y": 0.25,
+        "width": 0.4,
+        "height": 0.08
+      },
+      {
+        "id": "good-vibes-note",
+        "name": "Only label",
+        "text": "Only",
+        "fontFamily": "Georgia, serif",
+        "fontSize": 30,
+        "fontWeight": "700",
+        "fontStyle": "italic",
+        "color": "#ffffff",
+        "x": 0.27,
+        "y": 0.31,
+        "width": 0.25,
+        "height": 0.06
+      }
+    ]
+  },
+  {
+    "id": "coffee-please",
+    "type": "composition",
+    "category": "Food",
+    "label": "Coffee please",
+    "description": "Coffee shop caption with a shadow style.",
+    "search": "coffee please cafe caffeine drink menu",
+    "tags": ["coffee", "cafe", "food"],
+    "previewBackground": "#fdf2e9",
+    "layers": [
+      {
+        "id": "coffee-main",
+        "name": "Coffee label",
+        "text": "COFFEE",
+        "fontFamily": "Impact, Haettenschweiler, sans-serif",
+        "fontSize": 58,
+        "fontWeight": "800",
+        "color": "#7c5838",
+        "shadow": { "color": "rgba(231, 120, 44, 0.34)", "blur": 0, "offsetX": 5, "offsetY": 5 },
+        "x": 0.1,
+        "y": 0.17,
+        "width": 0.48,
+        "height": 0.09
+      },
+      {
+        "id": "coffee-sub",
+        "name": "Please label",
+        "text": "PLEASE",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 34,
+        "fontWeight": "800",
+        "color": "#16231f",
+        "x": 0.12,
+        "y": 0.28,
+        "width": 0.38,
+        "height": 0.07
+      }
+    ]
+  },
+  {
+    "id": "we-are-hiring",
+    "type": "composition",
+    "category": "Team",
+    "label": "We're hiring",
+    "description": "Recruiting announcement for local teams.",
+    "search": "we are hiring recruitment job staff team wanted",
+    "tags": ["hiring", "team", "recruiting"],
+    "previewBackground": "#eff6ff",
+    "layers": [
+      {
+        "id": "hiring-main",
+        "name": "Hiring headline",
+        "text": "We're Hiring",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": 50,
+        "fontWeight": "800",
+        "color": "#2459c7",
+        "x": 0.1,
+        "y": 0.18,
+        "width": 0.52,
+        "height": 0.08
+      },
+      {
+        "id": "hiring-sub",
+        "name": "Hiring role",
+        "text": "Apply today",
+        "fontFamily": "Trebuchet MS, sans-serif",
+        "fontSize": 24,
+        "fontWeight": "700",
+        "color": "#16231f",
+        "x": 0.12,
+        "y": 0.28,
+        "width": 0.38,
+        "height": 0.06
+      }
+    ]
+  }
+]

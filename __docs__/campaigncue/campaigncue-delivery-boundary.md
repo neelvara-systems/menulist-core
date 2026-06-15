@@ -8,7 +8,7 @@
 The current product prepares source-backed campaign packs and lets the owner:
 
 - download a single output,
-- download the full campaign pack,
+- download the full campaign pack ZIP,
 - schedule a manual task,
 - request approval,
 - mark a pack used,
@@ -48,6 +48,8 @@ Future provider work must not reuse the export/download action path silently. It
 - `/api/campaigncue/integrations` is read-only in the active runtime and only reports future-disabled provider posture.
 - The workspace overview returns `deliveryPolicy` so owner screens can display the active mode without reading provider connection records.
 - `providerConnections` remains a reserved future data shape, but the active overview returns an empty list and does not read the collection.
+- `CampaignCueOutputPack` is response-derived state. The browser-local ZIP includes channel text/brief files, a readable summary, and a JSON contract; it does not persist ZIPs to Storage.
+- Mini-page and QR output is brief-only in the active runtime. Hosted public pages need a separate route, approval, tracking, and Firebase cost contract.
 
 ## Firebase Cost Posture
 

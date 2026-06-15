@@ -99,6 +99,24 @@ service firebase.storage {
       return (isValidImageType() || isValidSvgType() || isValidDocumentType()) && isValidSize();
     }
 
+    function canAccessCreativeEditorTemplateStore(tId, sId) {
+      return belongsToStore(tId, sId);
+    }
+
+    function isValidCreativeEditorTemplateUpload(fileName) {
+      return request.resource.size <= 750 * 1024
+             && (
+               (
+                 fileName == 'document.json'
+                 && request.resource.contentType == 'application/json'
+               )
+               || (
+                 fileName.matches('^preview\\.(png|jpg|jpeg|webp)$')
+                 && isValidImageType()
+               )
+             );
+    }
+
     function isValidMediaProfile(profile) {
       return profile.matches('^(menuItem|projectImage|menuBackground|businessLogo|businessCover|digitalScreenSlide|galleryImage)$');
     }
@@ -225,6 +243,24 @@ service firebase.storage {
       allow read: if isAuthenticated();
       allow write: if isPlatformAdmin() && isValidPlatformAssetUpload();
       allow delete: if isPlatformAdmin();
+    }
+
+    /**
+     * Creative Editor Template Registry
+     * Platform: creative-editor/templates/platform/{businessCategory}/{templateId}/{fileName}
+     * User/store: creative-editor/templates/user/{tId}/{sId}/{templateId}/{fileName}
+     */
+    match /creative-editor/templates/platform/{businessCategory}/{templateId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isPlatformAdmin() && isValidCreativeEditorTemplateUpload(fileName);
+      allow delete: if isPlatformAdmin();
+    }
+
+    match /creative-editor/templates/user/{tId}/{sId}/{templateId}/{fileName} {
+      allow read: if canAccessCreativeEditorTemplateStore(tId, sId);
+      allow write: if canAccessCreativeEditorTemplateStore(tId, sId)
+                   && isValidCreativeEditorTemplateUpload(fileName);
+      allow delete: if canAccessCreativeEditorTemplateStore(tId, sId);
     }
 
     match /tenants/logos/{fileId} {

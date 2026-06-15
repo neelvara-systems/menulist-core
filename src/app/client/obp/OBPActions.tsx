@@ -59,7 +59,7 @@ export default function OBPActions({
     tenantId,
     storeId,
     trackingEnabled = true,
-    includeLocation = true,
+    includeLocation = false,
     storeTimeZone,
     businessDayEndTime,
     countryCode,

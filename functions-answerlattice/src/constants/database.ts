@@ -14,6 +14,7 @@ export const DB_COLLECTIONS = {
     // Shared infrastructure (read by Answerlattice nightly for KPI aggregation)
     PLATFORM_SUMMARY: 'platformSummary',
     AI_SEARCH_HISTORY: 'aiSearchHistory',
+    QUERY_EMBEDDINGS: 'queryEmbeddings',
     STORES: 'stores',
 
     // Knowledge Base collections (live in Answerlattice Firestore)
@@ -39,6 +40,9 @@ export const DB_COLLECTIONS = {
     ANSWERLATTICE_SCHEDULER_RUN_LOGS: 'answerlattice_schedulerRunLogs',
     ANSWERLATTICE_CACHE_VERSIONS: 'answerlattice_cacheVersions',
     ANSWERLATTICE_NOTIFICATION_LOGS: 'answerlattice_notificationLogs',
+    OWNER_NOTIFICATION_EVENTS: 'ownerNotificationEvents',
+    OWNER_NOTIFICATION_DELIVERIES: 'ownerNotificationDeliveries',
+    OWNER_NOTIFICATION_RATE_LIMITS: 'ownerNotificationRateLimits',
     ANSWERLATTICE_CONTACT_ENQUIRIES: 'answerlattice_contactEnquiries',
     ANSWERLATTICE_SUPPORT_BOARD_CARDS: 'answerlattice_supportBoardCards',
     ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS: 'answerlattice_knowledgeIntakeJobs',

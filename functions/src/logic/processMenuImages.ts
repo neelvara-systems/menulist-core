@@ -27,6 +27,7 @@ import {
     SAFETY_SETTINGS,
     TOKENS_PER_CREDIT
 } from "../constants/ai";
+import { FUNCTION_RETENTION_CONFIG } from "../constants/features";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { genAIClient } from "../genAiClient";
 import { executeWithCircuitBreaker, geminiCircuitBreaker } from "../lib/circuitBreaker";
@@ -348,6 +349,51 @@ function removeUndefined(obj: any): any {
     return obj;
 }
 
+function summarizeFilesForOperation(files: MenuFileToProcess[]) {
+    return files.map((file) => ({
+        name: file.name,
+        type: file.type,
+        size: (file as any).size ?? null,
+    }));
+}
+
+function summarizeClientResponseForOperation(response: any) {
+    const data = response?.data || {};
+    return {
+        message: typeof response?.message === 'string' ? response.message.slice(0, 300) : null,
+        qualityScore: response?.qualityScore ?? null,
+        qualityDetails: response?.qualityDetails ?? null,
+        dataSummary: {
+            languagesCount: Array.isArray(data.languages) ? data.languages.length : 0,
+            categoriesCount: Array.isArray(data.categories) ? data.categories.length : 0,
+            itemsCount: Array.isArray(data.items) ? data.items.length : 0,
+        },
+    };
+}
+
+function compactAiOperationForStorage(transactionObject: TransactionObject): Record<string, unknown> {
+    const detailed = FUNCTION_RETENTION_CONFIG.AI_OPERATION_LOG_MODE === 'detailed';
+    const detailRetentionDays = FUNCTION_RETENTION_CONFIG.AI_OPERATION_DETAIL_RETENTION_DAYS;
+
+    return removeUndefined({
+        ...transactionObject,
+        aiLogMode: detailed ? 'detailed' : 'accounting_only',
+        clientResponse: detailed
+            ? transactionObject.clientResponse
+            : summarizeClientResponseForOperation(transactionObject.clientResponse),
+        ...(detailed ? {
+            detailExpiresAt: new Date(Date.now() + detailRetentionDays * 24 * 60 * 60 * 1000),
+        } : {}),
+        detailRetentionDays: detailed ? detailRetentionDays : 0,
+        files: detailed ? transactionObject.files : summarizeFilesForOperation(transactionObject.files),
+        geminiResponse: detailed ? transactionObject.geminiResponse : null,
+        generationConfig: detailed
+            ? transactionObject.generationConfig
+            : { responseMimeType: transactionObject.generationConfig?.responseMimeType || null },
+        source: 'firebase-function',
+    });
+}
+
 /**
  * Add AI operation to Firestore (matches addAiOperation from @database/aiOperations)
  */
@@ -356,9 +402,8 @@ async function addAiOperation(transactionObject: TransactionObject): Promise<str
     try {
         // Clean undefined values before saving to Firestore
         const cleanedTransaction = removeUndefined({
-            ...transactionObject,
+            ...compactAiOperationForStorage(transactionObject),
             createdAt: new Date(),
-            source: 'firebase-function', // Mark as from Firebase function
         });
 
         const docRef = await firestoreAdmin.collection(AI_OPERATIONS_COLLECTION).add(cleanedTransaction);

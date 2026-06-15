@@ -26,11 +26,12 @@ Included:
 - Tap a template family from a one-column list.
 - Open a bottom sheet with the preview already visible and PDF/image download actions for the tapped template.
 - Download Print Menu from the same renderer; the separate Print Menu screen remains in shell for the deeper export workflow.
+- Use the same editor-backed renderer as desktop for non-menu printable previews and downloads.
 
 Excluded:
 
 - Desktop-style multi-column template gallery.
-- Free-form design editing.
+- Free-form design editing and drag/resize customization.
 - Drag/move/resize controls.
 - Forced route navigation to desktop pages.
 
@@ -70,7 +71,7 @@ Touch rules:
 - One template family per row on mobile.
 - Each template row keeps a fixed preview thumbnail on the left and readable copy on the right.
 - The full row opens the bottom sheet; there is no separate selected-template path.
-- Preview is automatic inside the bottom sheet and uses the same generated output path as desktop. Entrance Poster, Table Tent, and Single Table Card use native image previews; Print Menu uses the generated menu PDF first-page image preview.
+- Preview is automatic inside the bottom sheet and uses the same generated output path as desktop. Non-menu printable assets use the Creative Editor document renderer; Print Menu uses the generated menu PDF first-page image preview.
 - No tiny icon-only controls without labels.
 - No text overlap on compact phones.
 - Download progress and failure state must be visible.
@@ -85,6 +86,7 @@ Mobile and desktop must call the same:
 - Menu Kit generation path
 - Print Menu generation path
 - branding policy
+- locked QR/link/attribution rules for editor-backed print documents
 
 If desktop and mobile pass the same `assetTypeId`, `templateFamilyId`, and project/store input, the downloaded file must match.
 

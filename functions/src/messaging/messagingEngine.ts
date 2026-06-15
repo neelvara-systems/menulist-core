@@ -18,7 +18,7 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
-import { FUNCTION_FLAGS } from '../constants/features';
+import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { sendEmailViaSMTP } from './providers/resend';
 import { resolveTemplate } from './templates';
@@ -36,6 +36,7 @@ import {
 let cachedFlag: boolean | null = null;
 let cachedFlagAt = 0;
 const FLAG_CACHE_TTL = 60_000; // 60 seconds
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 async function isMessagingEnabled(): Promise<boolean> {
   if (cachedFlag !== null && Date.now() - cachedFlagAt < FLAG_CACHE_TTL) {
@@ -234,6 +235,7 @@ export async function sendLifecycleMessage(payload: SendMessagePayload): Promise
     providerMessageId: result.providerMessageId,
     error: result.error,
     createdAt: Timestamp.now(),
+    expiresAt: Timestamp.fromMillis(Date.now() + FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS * DAY_MS),
   };
 
   await logMessage(logDoc);

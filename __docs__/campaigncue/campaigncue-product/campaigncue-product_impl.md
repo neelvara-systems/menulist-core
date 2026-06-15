@@ -6,7 +6,7 @@ CampaignCue should live in the same repo with a separate product boundary. Imple
 
 ## Implementation Status
 
-CampaignCue now has a repo-level public shell and a protected export/download-first runtime. The runtime adds CampaignCue workspace APIs, a dedicated Firebase Admin client, CampaignCue Firebase rules/config files, Business Brain bootstrap, source snapshots, source facts, evidence-backed opportunity cues, structured campaign packs, trust reports, asset rights metadata, manual schedule records, approval request logging, owner-reported outcomes, launch-readiness checks, and bounded analytics summaries.
+CampaignCue now has a repo-level public shell and a protected export/download-first runtime. The runtime adds CampaignCue workspace APIs, a dedicated Firebase Admin client, CampaignCue Firebase rules/config files, Business Brain bootstrap, source snapshots, source facts, evidence-backed opportunity cues, deterministic Campaign Decision Engine scoring, structured campaign packs, first-class pack reviews, canonical Campaign Pack Output ZIPs, manual delivery cards, local visibility cues, trust reports, asset rights metadata, manual schedule records, approval request logging, compact owner-reported result memory, launch-readiness checks, and bounded analytics summaries.
 
 It still does not create direct provider calls, billing checkout, ad spend mutations, WhatsApp direct sends, rendered video provider calls, or MenuList write-back.
 
@@ -31,12 +31,15 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | BusinessBrainService | Profile, catalog, brand kit, source facts, missing fact list, vertical risk context. |
 | SourceConnectionService | Manual/upload/website/MenuList/Google/WhatsApp/Meta/source links. |
 | OpportunityService | Campaign cues with owner benefit, evidence, and safe next action labels. |
+| CampaignDecisionEngine | Deterministically ranks campaign recipes from Business Brain facts, timing/readiness signals, assets, missing inputs, trust risk, owner effort, repetition, and compact result memory. It does not call AI, providers, Firebase, or Storage. |
 | CampaignService | Campaign brief, structured channel fields, manual handoff steps, and pack state. |
+| DailyDeskService | In-memory Daily Campaign Desk, pack review, missing input inbox, local visibility cues, and manual delivery cards derived from the existing overview. |
+| CampaignPackOutputService | Derived output-pack contract with channel copy, trust report, reuse notes, mini-page/QR brief, result memory, and browser-local ZIP bundle. |
 | GenerationService | Visual/script/video/ad generation jobs. |
 | AssetService | Upload, classify, rights/consent metadata. |
 | TrustService | Fact, source, consent, claim, vertical, destination, asset-rights, and spend checks. |
 | CreditService | Estimate, reserve, capture, refund. |
-| DeliveryService | Output download, full-pack download, schedule, approval, manual-use, and result tracking. Provider posting is a separate future layer. |
+| DeliveryService | Single-output download, Campaign Pack ZIP download, schedule, approval, manual-use, and result tracking. Provider posting is a separate future layer. |
 | AnalyticsService | Usage, manual execution, owner-reported outcomes, confidence labels, and provider-disabled posture. |
 
 ## Implementation Acceptance
@@ -51,6 +54,10 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Trust | Critical blockers and channel warnings enforced before export, handoff, and any future connected publish/direct send. |
 | Cost | Deterministic generation costs zero credits; paid generation remains disabled. |
 | Mobile | Owner critical actions remain within the responsive CampaignCue workspace; download/export, schedule, mark used, source input, asset metadata, and result recording use 44px touch targets. |
+| Campaign pack review | Latest campaign review is derived from already-loaded source facts, outputs, trust state, missing inputs, and visibility cues; no separate pack collection is added. |
+| Campaign Pack Output | `CampaignCueOutputPack` is derived from the same overview and downloaded as a browser-local ZIP containing summary, JSON, channel files, trust notes, reuse notes, and result prompt. |
+| Campaign decision object | Created campaigns store the selected deterministic `campaign.pack.decision` plus `recipeId` so later exports can show why the pack was recommended without re-running a model. |
+| Result memory | `record_outcome` accepts a structured `resultSignalId` and updates compact `campaign.resultMemory` for repeat/adjust recommendations without raw scans. |
 
 ## Validation Checklist
 
@@ -78,6 +85,9 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | `src/components/templates/campaigncue/*` | Workspace UI and responsive styles. |
 | `src/app/api/campaigncue/*` | Protected CampaignCue API routes. |
 | `src/lib/campaigncue/*` | Runtime guards and server services. |
+| `src/lib/campaigncue/dailyDesk.ts` | Daily Desk builder, pack review, manual delivery cards, missing input inbox, and local visibility cues. |
+| `src/lib/campaigncue/decisionEngine.ts` | Deterministic Campaign Decision Engine used by overview rendering and campaign creation. |
+| `src/constants/campaigncue/dailyDesk.ts` | CampaignCue recipe constants and owner result signals. |
 | `src/lib/firebase/campaigncue*` | Dedicated CampaignCue Firebase config/Admin boundary. |
 | `firebase-campaigncue.json`, `firestore-campaigncue.rules`, `storage-campaigncue.rules` | CampaignCue Firebase deploy files. |
 | `public/campaigncue.webmanifest` | CampaignCue-specific PWA manifest to avoid MenuList manifest leakage. |

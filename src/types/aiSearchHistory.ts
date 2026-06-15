@@ -35,4 +35,6 @@ export interface AiSearchHistory {
     surfaceFeature?: string;
     surfacePage?: string;
     surfaceWorkflow?: string;
+    expiresAt?: any;
+    retentionDays?: number;
 }

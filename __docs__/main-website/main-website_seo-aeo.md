@@ -44,7 +44,7 @@
 | Featured Choices | Featured Choices - MenuList \| Help Customers Choose More Easily     | `(website)/features/featured-choices/page.tsx` |
 | Official Business Page | Official Business Page - MenuList \| One Current Customer Link  | `(website)/features/official-business-page/page.tsx` |
 | QR Menu and Share Links | QR Menu and Share Links - MenuList \| One Current Menu Everywhere | `(website)/features/qr-menu-links/page.tsx` |
-| Print-ready Kit  | Print-ready Kit - MenuList \| Table, Counter, Social, and Printer Files | `(website)/features/print-ready-kit/page.tsx` |
+| Print-ready Kit  | Print-ready Kit - MenuList \| Templates, Editor, and Print Files | `(website)/features/print-ready-kit/page.tsx` |
 | Owner PWA Dashboard | Owner PWA Dashboard - MenuList \| Manage MenuList From Your Phone | `(website)/features/owner-phone-dashboard/page.tsx` |
 | Menu Quality Validation | Menu Quality Validation - MenuList \| Catch Menu Issues Before Customers See Them | `(website)/features/menu-quality-validation/page.tsx` |
 | Business Health  | Business Health - MenuList \| Know What Needs Attention               | `(website)/features/business-health/page.tsx` |

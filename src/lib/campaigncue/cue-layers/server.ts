@@ -53,6 +53,7 @@ import {
 } from "./storagePaths";
 
 const nowTimestamp = () => admin.firestore.Timestamp.now();
+type CampaignCueCueLayerFirestoreBatch = ReturnType<typeof firestoreAdmin.batch>;
 
 const sanitizeForAdminFirestore = (value: any): any => {
     if (value === undefined) return null;
@@ -272,25 +273,9 @@ async function checkCueLayersIdempotency(params: {
     }
 }
 
-async function completeCueLayersIdempotency(params: {
+function enqueueCueLayerEvent(batch: CampaignCueCueLayerFirestoreBatch, params: {
     action: string;
-    idempotencyKey?: string;
-    resultId: string;
-    workspaceId: string;
-}) {
-    if (!params.idempotencyKey) return;
-    await workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS)
-        .doc(params.idempotencyKey)
-        .set(sanitizeForAdminFirestore({
-            action: params.action,
-            resultId: params.resultId,
-            status: "completed",
-            updatedAt: nowTimestamp(),
-        }), { merge: true });
-}
-
-async function writeCueLayerEvent(params: {
-    action: string;
+    createdAt?: unknown;
     designId?: string;
     jobId?: string;
     metadata?: Record<string, unknown>;
@@ -299,7 +284,7 @@ async function writeCueLayerEvent(params: {
 }) {
     const ref = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOB_EVENTS)
         .doc(buildCampaignCueCueLayerId("cccl_event"));
-    await ref.set(sanitizeForAdminFirestore({
+    batch.set(ref, sanitizeForAdminFirestore({
         id: ref.id,
         workspaceId: params.workspaceId,
         actorId: params.scope.userId,
@@ -307,7 +292,7 @@ async function writeCueLayerEvent(params: {
         designId: params.designId,
         jobId: params.jobId,
         metadata: params.metadata || {},
-        createdAt: nowTimestamp(),
+        createdAt: params.createdAt || nowTimestamp(),
     }));
 }
 
@@ -379,11 +364,20 @@ export async function createCampaignCueCueLayerUploadServer(params: {
     });
     if (replayDesignId) {
         const boot = await bootCampaignCueCueLayerDesignServer({ designId: replayDesignId, scope: params.scope });
-        const jobSnap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOBS)
-            .where("designId", "==", replayDesignId)
-            .limit(1)
-            .get();
-        const job = jobSnap.docs[0]?.data() as CampaignCueCueLayerJob | undefined;
+        const replayJobId = boot.design.current.jobId;
+        let job: CampaignCueCueLayerJob | undefined;
+        if (replayJobId) {
+            const jobSnap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOBS)
+                .doc(replayJobId)
+                .get();
+            job = jobSnap.data() as CampaignCueCueLayerJob | undefined;
+        } else {
+            const jobSnap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOBS)
+                .where("designId", "==", replayDesignId)
+                .limit(1)
+                .get();
+            job = jobSnap.docs[0]?.data() as CampaignCueCueLayerJob | undefined;
+        }
         if (!job) throw new Error("CueLayers replay job is unavailable.");
         return { boot, design: boot.design, job };
     }
@@ -568,6 +562,7 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         current: {
             creativeEditorDocumentSnapshotAssetId: editorSnapshotAsset.assetId,
             editorProjectionAssetId: projectionAsset.assetId,
+            jobId,
             layerIndexAssetId: layerIndexAsset.assetId,
             reconstructionAssetId: reconstructionAsset.assetId,
             revision: 1,
@@ -636,23 +631,31 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         ...qualityReport,
         reportAssetId: qualityAsset.assetId,
     }));
+    const eventRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOB_EVENTS)
+        .doc(buildCampaignCueCueLayerId("cccl_event"));
+    batch.set(eventRef, sanitizeForAdminFirestore({
+        id: eventRef.id,
+        workspaceId,
+        actorId: params.scope.userId,
+        action: "cue_layers_upload_completed",
+        designId,
+        jobId,
+        metadata: { outcome: job.outcome, sourceKind: job.sourceKind },
+        createdAt: now,
+    }));
+    if (params.input.idempotencyKey) {
+        batch.set(
+            workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS).doc(params.input.idempotencyKey),
+            sanitizeForAdminFirestore({
+                action: "cue_layers_upload",
+                resultId: designId,
+                status: "completed",
+                updatedAt: now,
+            }),
+            { merge: true },
+        );
+    }
     await batch.commit();
-    await Promise.all([
-        writeCueLayerEvent({
-            action: "cue_layers_upload_completed",
-            designId,
-            jobId,
-            metadata: { outcome: job.outcome, sourceKind: job.sourceKind },
-            scope: params.scope,
-            workspaceId,
-        }),
-        completeCueLayersIdempotency({
-            action: "cue_layers_upload",
-            idempotencyKey: params.input.idempotencyKey,
-            resultId: designId,
-            workspaceId,
-        }),
-    ]);
     const hydratedDocument = await hydrateDocumentAssets(built.document, built.layerIndex);
     return {
         boot: {
@@ -763,9 +766,15 @@ export async function autosaveCampaignCueCueLayerDesignServer(params: {
         },
         updatedAt: now,
     };
-    await Promise.all([
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_DESIGNS).doc(design.id).set(sanitizeForAdminFirestore(update), { merge: true }),
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_VERSIONS).doc(versionId).set(sanitizeForAdminFirestore({
+    const batch = firestoreAdmin.batch();
+    batch.set(
+        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_DESIGNS).doc(design.id),
+        sanitizeForAdminFirestore(update),
+        { merge: true },
+    );
+    batch.set(
+        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_VERSIONS).doc(versionId),
+        sanitizeForAdminFirestore({
             id: versionId,
             workspaceId,
             designId: design.id,
@@ -776,8 +785,9 @@ export async function autosaveCampaignCueCueLayerDesignServer(params: {
             layerIndexPath: layerIndexAsset.storagePath,
             createdByUserId: params.scope.userId,
             createdAt: now,
-        })),
-    ]);
+        }),
+    );
+    await batch.commit();
     return {
         design: {
             ...design,
@@ -798,23 +808,25 @@ export async function repairCampaignCueCueLayerDesignServer(params: {
     }
     const repairId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.REPAIR);
     const now = nowTimestamp();
-    await Promise.all([
-        uploadJsonArtifact({
-            assetId: repairId,
-            path: buildCueLayersStoragePaths.repairPatch(workspaceId, design.id, repairId),
-            retentionClass: "repair_durable",
-            scope: { workspaceId, designId: design.id, repairId },
-            value: {
-                schemaVersion: CAMPAIGNCUE_CUE_LAYERS.SCHEMA_VERSION,
-                repairId,
-                designId: design.id,
-                sourceRevision: design.current.revision,
-                correctionType: params.input.correctionType,
-                layerId: params.input.layerId,
-                createdAt: new Date().toISOString(),
-            },
-        }),
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_REPAIR_REQUESTS).doc(repairId).set(sanitizeForAdminFirestore({
+    await uploadJsonArtifact({
+        assetId: repairId,
+        path: buildCueLayersStoragePaths.repairPatch(workspaceId, design.id, repairId),
+        retentionClass: "repair_durable",
+        scope: { workspaceId, designId: design.id, repairId },
+        value: {
+            schemaVersion: CAMPAIGNCUE_CUE_LAYERS.SCHEMA_VERSION,
+            repairId,
+            designId: design.id,
+            sourceRevision: design.current.revision,
+            correctionType: params.input.correctionType,
+            layerId: params.input.layerId,
+            createdAt: new Date().toISOString(),
+        },
+    });
+    const batch = firestoreAdmin.batch();
+    batch.set(
+        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_REPAIR_REQUESTS).doc(repairId),
+        sanitizeForAdminFirestore({
             id: repairId,
             workspaceId,
             designId: design.id,
@@ -826,16 +838,20 @@ export async function repairCampaignCueCueLayerDesignServer(params: {
             createdByUserId: params.scope.userId,
             createdAt: now,
             updatedAt: now,
-        })),
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_CORRECTION_EVENTS).doc(buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.CORRECTION)).set(sanitizeForAdminFirestore({
+        }),
+    );
+    batch.set(
+        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_CORRECTION_EVENTS).doc(buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.CORRECTION)),
+        sanitizeForAdminFirestore({
             workspaceId,
             designId: design.id,
             correctionType: params.input.correctionType,
             layerId: params.input.layerId,
             userId: params.scope.userId,
             createdAt: now,
-        })),
-    ]);
+        }),
+    );
+    await batch.commit();
     return { repairId, status: "ready" as const, message: "Original fallback is available." };
 }
 
@@ -896,8 +912,10 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
         sizeBytes: exportUpload.size,
     };
     const asset = await createCampaignCueAssetServer({ input: assetInput, scope: params.scope });
-    await Promise.all([
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_EXPORTS).doc(exportId).set(sanitizeForAdminFirestore({
+    const batch = firestoreAdmin.batch();
+    batch.set(
+        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_EXPORTS).doc(exportId),
+        sanitizeForAdminFirestore({
             id: exportId,
             workspaceId,
             designId: design.id,
@@ -914,15 +932,17 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
             createdByUserId: params.scope.userId,
             createdAt: now,
             updatedAt: now,
-        })),
-        writeCueLayerEvent({
-            action: "cue_layers_export_ready",
-            designId: design.id,
-            metadata: { exportId, assetId: asset.id, format: params.input.format },
-            scope: params.scope,
-            workspaceId,
         }),
-    ]);
+    );
+    enqueueCueLayerEvent(batch, {
+        action: "cue_layers_export_ready",
+        createdAt: now,
+        designId: design.id,
+        metadata: { exportId, assetId: asset.id, format: params.input.format },
+        scope: params.scope,
+        workspaceId,
+    });
+    await batch.commit();
     return { asset, exportId, status: "ready" as const };
 }
 

@@ -74,11 +74,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         return NextResponse.json({ data: result }, { status: result.replayed ? 200 : 201 });
     } catch (error) {
-        logCampaignCueServerError("CampaignCue campaign create API error", error, {
-            endpoint: CAMPAIGNCUE_API_ROUTES.CAMPAIGNS,
-            userId: getCampaignCueSessionScope(session).userId,
-        });
         const apiError = buildCampaignCueApiError(error, "CampaignCue campaign creation failed");
+        if (apiError.status >= 500) {
+            logCampaignCueServerError("CampaignCue campaign create API error", error, {
+                endpoint: CAMPAIGNCUE_API_ROUTES.CAMPAIGNS,
+                userId: getCampaignCueSessionScope(session).userId,
+            });
+        }
         return NextResponse.json(apiError.body, { status: apiError.status });
     }
 });

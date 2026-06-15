@@ -1,4 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { answerlatticeFirestoreAdmin as firestoreAdmin, AnswerlatticeVector as Vector } from '@lib/firebase/answerlatticeFirebaseAdmin';
 
 const COLLECTION = DB_COLLECTIONS.QUERY_EMBEDDINGS;
@@ -11,6 +12,8 @@ export interface QueryEmbeddingCache {
     vector: number[]; // Array of embedding values
     createdAt: Date;
     hitCount: number; // Track how often this embedding is reused
+    expiresAt?: any;
+    retentionDays?: number;
 }
 
 /**
@@ -21,6 +24,16 @@ export interface QueryEmbeddingCache {
  * @returns Cached Vector instance or null if not found
  */
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const toMillis = (value: any): number => {
+    if (!value) return 0;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.toDate === 'function') return value.toDate().getTime();
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+};
 
 export const getCachedEmbedding = async (cacheKey: string): Promise<VectorInstance | null> => {
     const docRef = firestoreAdmin.collection(COLLECTION).doc(cacheKey);
@@ -34,8 +47,9 @@ export const getCachedEmbedding = async (cacheKey: string): Promise<VectorInstan
 
     // TTL check: skip stale entries (>30 days). They'll be regenerated on next use.
     if (data.createdAt) {
-        const createdMs = data.createdAt instanceof Date ? data.createdAt.getTime() : new Date(data.createdAt).getTime();
+        const createdMs = toMillis(data.createdAt);
         if (Date.now() - createdMs > CACHE_TTL_MS) {
+            await docRef.delete().catch(() => undefined);
             return null;
         }
     }
@@ -64,7 +78,8 @@ export const saveCachedEmbedding = async (
         query,
         vector: vectorValues,
         createdAt: new Date(),
-        hitCount: 0
+        hitCount: 0,
+        ...getAnswerlatticeRetentionFields('queryEmbeddings'),
     };
 
     await docRef.set(cacheData);

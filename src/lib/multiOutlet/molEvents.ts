@@ -8,12 +8,9 @@
  */
 
 import { FEATURE_FLAGS } from "@config/features";
-import { DB_COLLECTIONS } from "@constant/database";
-import { replaceUndefined } from "@lib/apiHelper";
-import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { logMenuChangeForScope } from "@database/menuChangeLog";
 import { secureLog } from "@lib/security/secureLogger";
 import { MultiStoreMOLEvent } from "@type/multiOutlet.types";
-import { addDoc, collection, Timestamp } from "firebase/firestore";
 
 // ══════════════════════════════════════════════════════════════════════════
 // MOL EVENT LOGGING
@@ -39,16 +36,24 @@ export async function logMultiOutletEvent(
     }
 
     try {
-        const logEntry = replaceUndefined({
-            ...event,
-            createdOn: Timestamp.now(),
-            source: "multi-outlet",
-        });
-
-        // Fire-and-forget write
-        addDoc(
-            collection(firebaseClient, DB_COLLECTIONS.MENU_CHANGE_LOG),
-            logEntry,
+        logMenuChangeForScope(
+            {
+                projectId: event.projectId,
+                changeType: "MENU_REVISION_SUMMARY",
+                oldValue: null,
+                newValue: {
+                    source: "multi-outlet",
+                    eventType: event.type,
+                    metadata: event.metadata || {},
+                },
+                changedBy: "OWNER",
+                userId: event.actorUserId,
+                metadata: {
+                    source: "multi-outlet",
+                    eventType: event.type,
+                },
+            },
+            { tId: event.tId, sId: event.sId },
         ).catch((err) => {
             secureLog("[MOL] Failed to log multi-store event", {
                 error: err.message,

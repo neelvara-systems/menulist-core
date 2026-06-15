@@ -445,6 +445,7 @@ interface SchedulerRunLog {
   triggeredBy: string; // 'system' or userId
   startedAt: Timestamp;
   completedAt: Timestamp;
+  expiresAt: Timestamp;
   durationMs: number;
   status: "success" | "partial" | "failed";
   totalStores: number;
@@ -492,7 +493,7 @@ schedulerRunLogs: trigger ASC + startedAt DESC
 | ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 2026-01-11 | v1.0    | Initial implementation document from codebase                                                                                                                                                                                                                                                                                                                |
 | 2026-02-09 | v1.1    | Refactor: decisionBlocksScoring.ts now imports WEIGHTS/THRESHOLDS/DURATIONS/normalize from shared scoreNormalizer.ts (eliminates duplication). Removed dead types (SCORING_WEIGHTS, DisplayBlock, MenuItemStatsDaily, MenuItemStatsAggregated) from decisionBlocks.types.ts. Updated file structure to include shared intelligence modules. Status → LOCKED. |
-| 2026-02-20 | v1.2    | Added Scheduler Monitor Dashboard: persistent run logs (`schedulerRunLogs` collection), per-task tracking (8 tasks), health badge, error inspection, manual trigger, Firestore indexes. CF now persists detailed run results after each execution.                                                                                                           |
+| 2026-02-20 | v1.2    | Added Scheduler Monitor Dashboard: operational run logs (`schedulerRunLogs` collection), per-task tracking (8 tasks), health badge, error inspection, manual trigger, Firestore indexes. CF writes detailed run results for the configured retention window.                                                                                                           |
 | 2026-06-11 | v1.3    | Production-readiness audit slice: customer runtime now uses store-local time for category time-slot filtering, malformed precomputed timestamps are stale, and manual recovery uses the same compact 7-day analytics snapshot path as scheduled scoring. |
 
 ---

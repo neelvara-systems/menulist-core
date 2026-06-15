@@ -576,7 +576,7 @@ export interface TrackingData {
   timezone?: string;          // User's timezone
   storeTimeZone?: string;     // Store timezone used for local analytics day/hour bucketing
   businessDayEndTime?: string; // Store-local HH:mm analytics business-day cutoff
-  includeLocation?: boolean;  // Whether approximate location data may be collected
+  includeLocation?: boolean;  // Explicit true allows approximate location collection
 
   // Search properties
   searchTerm?: string;        // What the user searched for
@@ -710,7 +710,7 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
     // Create device key
     const deviceKey = deviceInfo.type || 'unknown';
 
-    const includeLocation = data.includeLocation !== false;
+    const includeLocation = data.includeLocation === true;
     const locationAwareEvents = new Set<TrackingEvent>([
       TrackingEvent.PAGE_VIEW,
       TrackingEvent.MENU_VIEW,
@@ -753,8 +753,6 @@ const trackFirebaseEvent = async (eventName: TrackingEvent, data: TrackingData):
     // Prepare update data
     const updateData: any = {
       date: localDate,
-      // Add session ID to all events for unique visitor tracking
-      sessionId: sessionId
     };
 
     // Map unified events to Firebase Analytics format

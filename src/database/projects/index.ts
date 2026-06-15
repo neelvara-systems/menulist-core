@@ -8,8 +8,10 @@ import {
     createExtractionCorrectionEntry,
     createItemAddedEntry,
     createItemRemovedEntry,
+    createMenuRevisionSummaryEntry,
     createPriceChangeEntry,
     logMenuChange,
+    logMenuChanges,
 } from "@database/menuChangeLog";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
@@ -68,6 +70,7 @@ import {
     SpecialMenuStatus,
 } from "@template/main-app/projects/types";
 import { UserUploadedFileType } from "@type/common";
+import type { MenuChangeLogInput } from "@type/menuObservation";
 import { TimeSlotPreset } from "@type/platform/store";
 
 const DATA_COLLECTION = DB_COLLECTIONS.PROJECTS;
@@ -123,6 +126,62 @@ function extractCategoriesMap(
     return categories;
 }
 
+type MenuRevisionSummary = {
+    addedItems: number;
+    removedItems: number;
+    priceChanges: number;
+    availabilityChanges: number;
+    activeChanges: number;
+    nameCorrections: number;
+    extractionCorrections: number;
+    affectedItemCount: number;
+    affectedItemIds: string[];
+    itemCountBefore: number;
+    itemCountAfter: number;
+    changesByType: Record<string, number>;
+};
+
+const createEmptyMenuRevisionSummary = (
+    oldItems: Record<string, ExtractedDataItem>,
+    newItems: Record<string, ExtractedDataItem>,
+): MenuRevisionSummary => ({
+    addedItems: 0,
+    removedItems: 0,
+    priceChanges: 0,
+    availabilityChanges: 0,
+    activeChanges: 0,
+    nameCorrections: 0,
+    extractionCorrections: 0,
+    affectedItemCount: 0,
+    affectedItemIds: [],
+    itemCountBefore: Object.keys(oldItems).length,
+    itemCountAfter: Object.keys(newItems).length,
+    changesByType: {},
+});
+
+const addMenuRevisionSummaryChange = (
+    summary: MenuRevisionSummary,
+    affectedItems: Set<string>,
+    type: keyof Pick<MenuRevisionSummary,
+        'addedItems' |
+        'removedItems' |
+        'priceChanges' |
+        'availabilityChanges' |
+        'activeChanges' |
+        'nameCorrections' |
+        'extractionCorrections'>,
+    changeType: string,
+    itemId: string,
+) => {
+    summary[type] += 1;
+    summary.changesByType[changeType] = (summary.changesByType[changeType] || 0) + 1;
+    affectedItems.add(itemId);
+    if (!summary.affectedItemIds.includes(itemId) && summary.affectedItemIds.length < 25) {
+        summary.affectedItemIds.push(itemId);
+    }
+    summary.affectedItemCount = affectedItems.size;
+};
+
 /**
  * Detect and log menu changes between old and new project state
  * Fire-and-forget - non-blocking, silent failures
@@ -145,6 +204,21 @@ async function detectAndLogChanges(
     try {
         const oldItems = oldProject ? extractItemsMap(oldProject) : {};
         const newItems = extractItemsMap(newProject as Project);
+        const summary = createEmptyMenuRevisionSummary(oldItems, newItems);
+        const affectedItems = new Set<string>();
+        const detailedEntries: MenuChangeLogInput[] = [];
+        const shouldWriteDetailed = FEATURE_FLAGS.MENU_OBSERVATION_MODE === "detailed";
+
+        const recordChange = (
+            entry: MenuChangeLogInput,
+            summaryKey: Parameters<typeof addMenuRevisionSummaryChange>[2],
+            itemId: string,
+        ) => {
+            addMenuRevisionSummaryChange(summary, affectedItems, summaryKey, entry.changeType, itemId);
+            if (shouldWriteDetailed) {
+                detailedEntries.push(entry);
+            }
+        };
 
         // Infrastructure Compounding 10.2: Check if item was recently extracted
         // Items with _extractedAt within 24h get EXTRACTION_CORRECTION events
@@ -162,7 +236,7 @@ async function detectAndLogChanges(
 
             if (!oldItem) {
                 // New item added
-                await logMenuChange(createItemAddedEntry(projectId, itemId, newItem));
+                recordChange(createItemAddedEntry(projectId, itemId, newItem), 'addedItems', itemId);
                 continue;
             }
 
@@ -172,21 +246,25 @@ async function detectAndLogChanges(
             if (oldItem.price !== newItem.price) {
                 if (wasExtracted) {
                     // 10.2: Log as extraction correction instead of regular price change
-                    await logMenuChange(
+                    recordChange(
                         createExtractionCorrectionEntry(
                             projectId, itemId, 'price',
                             oldItem.price, newItem.price,
                             (oldItem as any).confidence?.price,
                         ),
+                        'extractionCorrections',
+                        itemId,
                     );
                 } else {
-                    await logMenuChange(
+                    recordChange(
                         createPriceChangeEntry(
                             projectId,
                             itemId,
                             oldItem.price,
                             newItem.price,
                         ),
+                        'priceChanges',
+                        itemId,
                     );
                 }
             }
@@ -195,36 +273,43 @@ async function detectAndLogChanges(
             const oldName = oldItem.name ? Object.values(oldItem.name)[0] : '';
             const newName = newItem.name ? Object.values(newItem.name)[0] : '';
             if (wasExtracted && oldName !== newName && oldName && newName) {
-                await logMenuChange(
+                recordChange(
                     createExtractionCorrectionEntry(
                         projectId, itemId, 'name',
                         oldName, newName,
                         (oldItem as any).confidence?.name,
                     ),
+                    'extractionCorrections',
+                    itemId,
                 );
+                summary.nameCorrections += 1;
             }
 
             // Check availability change
             if (oldItem.available !== newItem.available) {
-                await logMenuChange(
+                recordChange(
                     createAvailabilityChangeEntry(
                         projectId,
                         itemId,
                         oldItem.available,
                         newItem.available,
                     ),
+                    'availabilityChanges',
+                    itemId,
                 );
             }
 
             // Check active status change
             if (oldItem.active !== newItem.active) {
-                await logMenuChange(
+                recordChange(
                     createActiveChangeEntry(
                         projectId,
                         itemId,
                         oldItem.active,
                         newItem.active,
                     ),
+                    'activeChanges',
+                    itemId,
                 );
             }
         }
@@ -232,9 +317,22 @@ async function detectAndLogChanges(
         // Detect removed items
         for (const [itemId, oldItem] of Object.entries(oldItems)) {
             if (!newItems[itemId]) {
-                await logMenuChange(createItemRemovedEntry(projectId, itemId, oldItem));
+                recordChange(createItemRemovedEntry(projectId, itemId, oldItem), 'removedItems', itemId);
             }
         }
+
+        if (summary.affectedItemCount === 0) {
+            return;
+        }
+
+        if (shouldWriteDetailed) {
+            await logMenuChanges(detailedEntries);
+            return;
+        }
+
+        await logMenuChange(createMenuRevisionSummaryEntry(projectId, summary, "OWNER", undefined, {
+            source: "project_update",
+        }));
     } catch (error) {
         // Fire-and-forget - silent fail, don't block project update
         console.warn("[MOL] Change detection error (non-blocking):", error);
@@ -259,6 +357,11 @@ async function createMenuSnapshot(
 
         const items = extractItemsMap(projectData);
         const categories = extractCategoriesMap(projectData);
+        const retentionDays = Number(FEATURE_FLAGS.MENU_SNAPSHOT_RETENTION_DAYS || 90);
+        const createdAt = Timestamp.now();
+        const expiresAt = Timestamp.fromMillis(
+            createdAt.toMillis() + retentionDays * 24 * 60 * 60 * 1000,
+        );
 
         const snapshotRef = collection(
             firebaseClient,
@@ -287,7 +390,10 @@ async function createMenuSnapshot(
                     active: cat.active,
                 })),
             },
-            createdAt: Timestamp.now(),
+            createdAt,
+            expiresAt,
+            retentionDays,
+            snapshotMode: "full_menu_short_term",
         });
 
         console.debug("[Snapshot] Menu snapshot created for", projectId);

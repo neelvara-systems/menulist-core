@@ -320,6 +320,18 @@ export const FUNCTION_FLAGS = {
 
 } as const;
 
+export const FUNCTION_RETENTION_CONFIG = {
+    AI_OPERATION_DETAIL_RETENTION_DAYS: 14,
+    AI_OPERATION_LOG_MODE: 'accounting_only' as 'accounting_only' | 'detailed',
+    IMAGE_BATCH_STATUS_HISTORY_LIMIT: 20,
+    MENU_EXTRACTION_DETAIL_RETENTION_HOURS: 2,
+    MENU_SNAPSHOT_RETENTION_DAYS: 90,
+    OWNER_NOTIFICATION_RATE_LIMIT_RETENTION_DAYS: 2,
+    OWNER_NOTIFICATION_RETENTION_DAYS: 30,
+    FEEDBACK_EVENT_RETENTION_DAYS: 180,
+    SCHEDULER_RUN_LOG_RETENTION_DAYS: 90,
+} as const;
+
 /**
  * Helper to check if a function feature is enabled
  * Also checks for environment variable overrides

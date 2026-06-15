@@ -11,6 +11,7 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from "../constants/database";
+import { FUNCTION_RETENTION_CONFIG } from "../constants/features";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { createAlert } from "../monitoring/alerts";
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from "../sharedData/platformNotificationRegistry";
@@ -263,7 +264,9 @@ export async function cleanupOldJobsLogic(): Promise<{ deleted: number }> {
 export async function pruneCompletedProjectJobPayloadsLogic(): Promise<{ pruned: number }> {
     const logger = functions.logger;
     const now = Timestamp.now();
-    const cutoff = Timestamp.fromMillis(Date.now() - 2 * 60 * 60 * 1000);
+    const cutoff = Timestamp.fromMillis(
+        Date.now() - FUNCTION_RETENTION_CONFIG.MENU_EXTRACTION_DETAIL_RETENTION_HOURS * 60 * 60 * 1000,
+    );
 
     const snapshot = await firestoreAdmin
         .collection(MENU_IMAGE_PROCESSING_JOBS_COLLECTION)
@@ -291,6 +294,7 @@ export async function pruneCompletedProjectJobPayloadsLogic(): Promise<{ pruned:
 
         batch.update(doc.ref, {
             'result.combinedData': FieldValue.delete(),
+            'result.rawBatchResponses': FieldValue.delete(),
             'result.redistributedFiles': FieldValue.delete(),
             'result.summary': result.summary || buildExtractionResultSummary(
                 result.combinedData,
@@ -299,6 +303,8 @@ export async function pruneCompletedProjectJobPayloadsLogic(): Promise<{ pruned:
             ),
             'result.dataPrunedAt': now,
             'result.dataPrunedReason': 'project_auto_saved',
+            detailPrunedAt: now,
+            detailPrunedReason: 'summary_retained_after_detail_window',
             updatedAt: now,
         });
         pruned += 1;

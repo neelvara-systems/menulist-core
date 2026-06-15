@@ -143,7 +143,7 @@ type HeaderLinkProps = Omit<ComponentProps<typeof AnswerlatticeLink>, 'basePath'
 
 function MobileNavIcon({ icon: Icon }: { icon: IconType }) {
     return (
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.035] text-teal-200">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center text-teal-200">
             <Icon size={16} aria-hidden />
         </span>
     );
@@ -566,72 +566,80 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                         </div>
 
                         <nav className="flex-1 overflow-y-auto px-5 py-4">
-                            <div className="flex flex-col gap-3">
-                                <L
-                                    href="/product"
-                                    className="flex min-h-12 items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.035] px-4 py-3 text-sm font-semibold text-[#f4f4ff] transition-colors hover:border-teal-300/25 hover:bg-teal-500/[0.06]"
-                                    onClick={closeDrawer}
-                                >
-                                    <MobileNavIcon icon={getMobileNavIcon('/product')} />
-                                    <span>Product overview</span>
-                                </L>
-                                <div className="grid gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
-                                    <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                        Support areas
+                            <div className="space-y-5">
+                                <section aria-label="Product navigation">
+                                    <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6b6b8a]">
+                                        Product
+                                    </p>
+                                    <div className="space-y-1">
+                                        <L
+                                            href="/product"
+                                            className="flex min-h-12 items-center gap-3 rounded-xl px-2 py-2.5 text-[0.95rem] font-semibold text-[#f4f4ff] transition-colors hover:bg-white/[0.045]"
+                                            onClick={closeDrawer}
+                                        >
+                                            <MobileNavIcon icon={getMobileNavIcon('/product')} />
+                                            <span>Product overview</span>
+                                        </L>
+                                        {ANSWERLATTICE_PRODUCT_AREAS.map((area) => {
+                                            const Icon = getMobileNavIcon(area.href);
+                                            return (
+                                                <L
+                                                    key={area.href}
+                                                    href={area.href}
+                                                    className="flex min-h-12 items-center gap-3 rounded-xl px-2 py-2.5 text-[0.95rem] font-medium text-[#d6d6ef] transition-colors hover:bg-white/[0.045] hover:text-white"
+                                                    onClick={closeDrawer}
+                                                >
+                                                    <MobileNavIcon icon={Icon} />
+                                                    <span>{getProductAreaNavLabel(area)}</span>
+                                                </L>
+                                            );
+                                        })}
                                     </div>
-                                    {ANSWERLATTICE_PRODUCT_AREAS.map((area) => {
-                                        const Icon = getMobileNavIcon(area.href);
-                                        return (
-                                            <L
-                                                key={area.href}
-                                                href={area.href}
-                                                className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#d6d6ef] transition-colors hover:bg-white/[0.04] hover:text-white"
-                                                onClick={closeDrawer}
-                                            >
-                                                <MobileNavIcon icon={Icon} />
-                                                <span>{getProductAreaNavLabel(area)}</span>
-                                            </L>
-                                        );
-                                    })}
-                                </div>
-                                <div className="grid gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
-                                    <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
+                                </section>
+
+                                <section aria-label="Support tools" className="border-t border-white/[0.07] pt-4">
+                                    <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6b6b8a]">
                                         Support tools
+                                    </p>
+                                    <div className="space-y-1">
+                                        {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => {
+                                            const Icon = getMobileNavIcon(feature.href);
+                                            return (
+                                                <L
+                                                    key={feature.href}
+                                                    href={feature.href}
+                                                    className="flex min-h-11 items-center gap-3 rounded-xl px-2 py-2 text-sm font-medium text-[#d6d6ef] transition-colors hover:bg-white/[0.045] hover:text-white"
+                                                    onClick={closeDrawer}
+                                                >
+                                                    <MobileNavIcon icon={Icon} />
+                                                    <span>{getProductFeatureNavLabel(feature)}</span>
+                                                </L>
+                                            );
+                                        })}
                                     </div>
-                                    {ANSWERLATTICE_SUPPORT_FEATURES.map((feature) => {
-                                        const Icon = getMobileNavIcon(feature.href);
-                                        return (
-                                            <L
-                                                key={feature.href}
-                                                href={feature.href}
-                                                className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#d6d6ef] transition-colors hover:bg-white/[0.04] hover:text-white"
-                                                onClick={closeDrawer}
-                                            >
-                                                <MobileNavIcon icon={Icon} />
-                                                <span>{getProductFeatureNavLabel(feature)}</span>
-                                            </L>
-                                        );
-                                    })}
-                                </div>
-                                <div className="grid gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
-                                    <div className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-widest text-[#6b6b8a]">
-                                        Other
+                                </section>
+
+                                <section aria-label="More navigation" className="border-t border-white/[0.07] pt-4">
+                                    <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6b6b8a]">
+                                        More
+                                    </p>
+                                    <div className="space-y-1">
+                                        {MOBILE_OTHER_LINKS.map((link) => {
+                                            const Icon = getMobileNavIcon(link.href);
+                                            return (
+                                                <L
+                                                    key={link.href}
+                                                    href={link.href}
+                                                    className="flex min-h-11 items-center gap-3 rounded-xl px-2 py-2 text-sm font-medium text-[#d6d6ef] transition-colors hover:bg-white/[0.045] hover:text-white"
+                                                    onClick={closeDrawer}
+                                                >
+                                                    <MobileNavIcon icon={Icon} />
+                                                    <span>{link.label}</span>
+                                                </L>
+                                            );
+                                        })}
                                     </div>
-                                    {MOBILE_OTHER_LINKS.map((link) => {
-                                        const Icon = getMobileNavIcon(link.href);
-                                        return (
-                                            <L
-                                                key={link.href}
-                                                href={link.href}
-                                                className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#d6d6ef] transition-colors hover:bg-white/[0.04] hover:text-white"
-                                                onClick={closeDrawer}
-                                            >
-                                                <MobileNavIcon icon={Icon} />
-                                                <span>{link.label}</span>
-                                            </L>
-                                        );
-                                    })}
-                                </div>
+                                </section>
                             </div>
                         </nav>
 

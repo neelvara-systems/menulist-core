@@ -36,7 +36,7 @@ CampaignCue is cost-sensitive because campaign generation, videos, asset process
 | Path family | Contents | Cost guard |
 | --- | --- | --- |
 | `campaigncue/assets/{workspaceId}/...` | Uploaded photos/videos/logos/service/menu files | File size/type validation and signed URL upload. |
-| `campaigncue/renders/{workspaceId}/...` | Rendered images, ZIPs, MP4s, PDFs | Expiry/retention policy required. |
+| `campaigncue/renders/{workspaceId}/...` | Rendered images, server-generated ZIPs, MP4s, PDFs | Expiry/retention policy required. Not used by the current browser-local Campaign Pack ZIP. |
 | `campaigncue/reports/{workspaceId}/...` | Agency and multi-location exports | Generate on demand and retain by plan. |
 
 ## Cloud Functions
@@ -59,12 +59,17 @@ The current implementation adds an export/download-first CampaignCue runtime:
 
 - Public site: zero Firebase reads/writes.
 - Workspace load: one bounded server overview read for workspace, Business Brain, source inputs, campaigns, assets, schedules, locations, and one analytics summary; zero realtime listeners. Provider connection records are not read in the active runtime.
+- Daily Campaign Desk and Campaign Decision Engine: computed from the same overview payload and recomputed locally after owner mutations; vertical recipes, deterministic scoring, manual delivery tasks, asset-reuse prompts, and result options add zero additional overview reads, writes, realtime listeners, Storage calls, Cloud Functions, providers, or model calls.
+- Campaign Pack Output System: `CampaignCueOutputPack` is derived from the same overview payload and downloaded as a browser-local ZIP; it adds no new collection, read, write, Storage object, Cloud Function, provider call, or model call.
 - Standalone campaign, asset, source, read-only provider posture, location, and analytics endpoints use direct workspace-only reads instead of loading the full overview.
 - First workspace load: may create workspace, business brain, source snapshot, and dashboard summary documents once for the signed-in tenant/store.
-- Owner campaign creation: reads bounded source, asset, schedule, location, and summary context so the selected cue can be resolved server-side; then atomically claims one idempotency key and writes one campaign, one trust report, one event, one atomic summary increment, and one idempotency completion.
-- Campaign action: reads the target campaign once, atomically claims one idempotency key, writes one event plus the scoped campaign update, then writes one idempotency completion; schedule, approval, and owner-reported outcome actions update summary counters without scanning raw events. The API response is built from known mutation state and does not reread the campaign after commit.
-- Blocked trust-gate actions write an `export_action_blocked` event and a completed idempotency error record so owner retries do not leave dangling `in_progress` keys.
-- Asset registration and location creation use a workspace-only guard read, then write their scoped document plus one event. Asset metadata now includes rights status, consent type, note, and tags without requiring binary upload.
+- Owner business/profile save: after workspace/business guard reads, reads the compact `sourceSnapshots/current` read model, rebuilds current facts from the new Business Brain plus saved snapshot facts, and writes workspace/business/source snapshot updates in one batch. It does not list `sourceInputs` for profile-only changes.
+- Owner source input save: after workspace/business guard reads, reads the compact `sourceSnapshots/current` read model and writes the source input, refreshed snapshot, and event in one batch. It does not scan the `sourceInputs` collection just to rebuild facts.
+- Owner campaign creation: reads bounded source, campaign history, asset, schedule, location, and summary context so the selected cue and deterministic decision can be resolved server-side; then atomically claims one idempotency key and writes one campaign with compact `pack.recipeId`/`pack.decision`, one trust report, one event, one atomic summary increment, and one idempotency completion in the same Firestore batch.
+- Campaign action: reads the target campaign once, atomically claims one idempotency key, then writes the scoped campaign update, event, summary increment, and idempotency completion in one Firestore batch. Schedule, approval, and owner-reported outcome actions update summary counters without scanning raw events. The API response is built from known mutation state and does not reread the campaign after commit.
+- Blocked or needs-fix trust-gate public-use actions (`download`, `export`, `mark_used`, `schedule`) write an `export_action_blocked` event and completed idempotency error record in one Firestore batch so owner retries do not leave dangling `in_progress` keys. Approval requests and result recording stay available so unsafe packs can still be reviewed or historically annotated.
+- Asset registration uses a workspace-only guard read, then writes the asset metadata record and event in one batch. Location creation uses a workspace-only guard read, then writes the location record plus one event. Asset metadata now includes rights status, consent type, note, and tags without requiring binary upload.
+- CueLayers flat-safe upload stores `current.jobId` on the design as a summary pointer; upload replay prefers a direct job document read and only falls back to the indexed `designId` query for legacy records.
 - Provider setup/manual confirmation writes are not active; `/api/campaigncue/integrations` is read-only posture.
 - The owner workspace UI merges successful mutation responses locally instead of reloading the full overview after every save/action.
 - Social account connection, direct provider calls, paid generation, rendered video, billing checkout, and ad spend mutation: disabled, zero provider cost.

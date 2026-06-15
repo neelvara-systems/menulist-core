@@ -32,7 +32,7 @@ export function getResolvedAnalyticsPreferences(
     enhancedEcommerce: analytics?.enhancedEcommerce === true,
     trackCustomerApp: resolveInheritedToggle(trackMenuViews, analytics?.trackCustomerApp),
     trackDecisionBlocks: resolveInheritedToggle(trackMenuViews, analytics?.trackDecisionBlocks),
-    trackLocation: resolveInheritedToggle(trackMenuViews, analytics?.trackLocation),
+    trackLocation: trackMenuViews && analytics?.trackLocation === true,
     trackMenuViews,
     trackOfficialBusinessPage: resolveInheritedToggle(trackMenuViews, analytics?.trackOfficialBusinessPage),
   };

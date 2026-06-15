@@ -1,7 +1,7 @@
 # Print Assets Verification
 
 **Status:** Freeze-ready
-**Last Updated:** June 6, 2026
+**Last Updated:** June 15, 2026
 
 ## Freeze Decision
 
@@ -9,7 +9,7 @@ Print Assets, Print Menu, Menu Kit print outputs, and the related lightweight we
 
 Freeze means:
 
-- No new print asset types, design controls, print-ordering marketplace, or quantity estimator are part of this release.
+- No new print asset types, blank design studio, print-ordering marketplace, or quantity estimator are part of this release.
 - Future work should be limited to production bugs, scan/readability regressions, accessibility fixes, and copy corrections.
 - Any new printable product line must reopen scope with docs first.
 
@@ -40,6 +40,7 @@ Included:
 - Mobile PWA Assets screen inside `MobileShell`
 - Print Menu mobile shell behavior
 - Shared desktop/mobile output generation
+- Governed desktop customization for editor-renderable single print assets
 - MenuList attribution with Premium removal policy
 - Table tent, single table/counter card, counter sticker, entrance poster, feedback QR, full Print Menu PDF, and complete Menu Kit bundle
 - Premium print hierarchy: brand top panel, logo/initials badge, purpose pill, neutral QR panel, short-link capsule, and scan-safe black QR
@@ -49,5 +50,5 @@ Not included:
 
 - Print ordering or local printer marketplace
 - Print quantity estimation
-- Owner-facing design editor
+- Blank owner-facing design studio
 - Stored/generated artifact library in Firebase

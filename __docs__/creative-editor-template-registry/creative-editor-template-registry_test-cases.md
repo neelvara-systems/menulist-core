@@ -1,0 +1,55 @@
+# Creative Editor Template Registry Test Cases
+
+**Status:** Implemented
+**Last Updated:** June 15, 2026
+
+## Desktop Printable Assets
+
+| Case | Steps | Expected |
+| --- | --- | --- |
+| Platform templates load | Open `/assets`; choose asset type. | MenuList template cards can come from the platform catalog when present. |
+| Category platform templates load | Open `/assets` with a food, service, or retail store context. | Platform request includes resolved `businessCategory`; templates from `platformAssetTemplates/{businessCategory}` render and are filtered by product, source, and selected asset type in UI. |
+| Generic fallback category loads | Open `/assets` with no resolvable business category. | `platformAssetTemplates/generic` is read as the single platform catalog fallback. |
+| Asset tab switch is local | Switch between printable asset types after `/assets` is ready. | No additional registry read is needed; cards are filtered from the already-loaded platform/user `data` arrays by product, source, and asset. |
+| Generated fallback still loads | Simulate platform catalog failure or empty catalog. | Generated MenuList template family cards render with no blocking global error. Registry failures stay inline to the template section. |
+| Save customized template | Open a generated template in editor; change copy; click Save as template. | Success message appears; template is added to Saved designs. |
+| Save line-heavy print template | Open a Table Tent or other print template that includes vertical or horizontal divider lines; click Save as template. | Valid line layers with one zero dimension are accepted; zero-size layers are still rejected. |
+| Storage quota reached | Force Firebase Storage to return `storage/quota-exceeded`; click Save as template. | Editor shows a clear storage-full message and does not create broken metadata. |
+| Saved template opens | Click a Saved designs card. | Fullscreen editor opens with saved layout. |
+| Current QR is rehydrated | Change selected project, then open saved template. | QR layer value uses selected project's current menu/feedback URL. |
+| Save failure is recoverable | Simulate DAL/Storage failure on save. | Editor remains open and generated templates still work. |
+| List failure is non-blocking | Simulate platform catalog/store template index read failure. | MenuList template cards still render. |
+| Delete saved template | Delete through client action. | Template index entry is removed from `data`, the `default` doc remains, and Storage document/preview are removed. |
+
+## Security
+
+| Case | Expected |
+| --- | --- |
+| Unauthenticated request | Firestore/Storage rules deny reads and writes. |
+| Missing tenant/store scope | DAL throws before user template read/write. |
+| Cross-store template ID | Firestore/Storage rules deny without leaking another store template. |
+| Wrong source or asset id | DAL does not open or delete a template unless product, source, and requested asset metadata match. |
+| Invalid product/source/asset type | Zod validation rejects before persistence. |
+| Oversized document | DAL rejects before Storage upload. |
+| Raw persistence path in request | Ignored/rejected; DAL computes scoped paths. |
+| Platform delete attempt | Owner UI/DAL does not expose platform delete; Storage/Firestore writes require platform admin. |
+
+## Cost
+
+| Case | Expected |
+| --- | --- |
+| Preview generated template | No registry write. |
+| Download generated template | No registry write. |
+| Edit without Save as template | No registry write. |
+| Save as template | One index read, one index write, one Storage document upload, optional Storage preview upload. |
+| List Saved designs | One bounded index doc read. |
+| Delete saved template | One index read, one index write, up to two Storage deletes; the `default` index doc remains with `data: []` when empty. |
+| List platform templates | One business-category catalog read; no per-asset or second generic platform catalog read. |
+
+## Regression Checks
+
+- Shared editor module does not import Firebase admin/client modules.
+- Saved document remains `CreativeEditorDocument`.
+- Raw Fabric JSON is not used as saved template truth.
+- Thumbnail data is persisted only as a bounded private Storage object when preview capture is enabled.
+- Existing printable asset verifier checks registry docs, DAL, Firebase rules, flags, client route, and rehydration helper.

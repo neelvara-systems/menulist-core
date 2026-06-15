@@ -70,6 +70,22 @@ export const CREATIVE_EDITOR_FABRIC_ATTRIBUTES = [
 
 const DEFAULT_SELECTION_COLOR = "#45b99f";
 
+type FabricTextStyleContext = {
+    path?: unknown;
+    pathAlign?: string;
+    _getFontDeclaration?: (charStyle?: unknown, forMeasuring?: boolean) => string;
+};
+
+type FabricTextPrototypeWithBaselinePatch = {
+    __creativeEditorBaselinePatched?: boolean;
+    _setTextStyles?: (
+        this: FabricTextStyleContext,
+        ctx: CanvasRenderingContext2D,
+        charStyle?: unknown,
+        forMeasuring?: boolean,
+    ) => void;
+};
+
 export const isWorkspaceObject = (object?: fabric.Object | null) => (
     Boolean((object as CreativeFabricObject | undefined)?.creativeEditorType === "workspace")
 );
@@ -86,9 +102,33 @@ export const isEditableFabricObject = (object?: fabric.Object | null) => (
     Boolean(object && !isWorkspaceObject(object) && !isWatermarkObject(object) && !isVisibleWatermarkObject(object))
 );
 
+function patchFabricTextBaseline(fabricApi: FabricStatic) {
+    const prototype = fabricApi.Text?.prototype as FabricTextPrototypeWithBaselinePatch | undefined;
+    if (!prototype || prototype.__creativeEditorBaselinePatched || typeof prototype._setTextStyles !== "function") return;
+
+    prototype._setTextStyles = function patchedSetTextStyles(
+        this: FabricTextStyleContext,
+        ctx: CanvasRenderingContext2D,
+        charStyle?: unknown,
+        forMeasuring?: boolean,
+    ) {
+        ctx.textBaseline = "alphabetic";
+        if (this.path) {
+            if (this.pathAlign === "center") ctx.textBaseline = "middle";
+            else if (this.pathAlign === "ascender") ctx.textBaseline = "top";
+            else if (this.pathAlign === "descender") ctx.textBaseline = "bottom";
+        }
+        if (typeof this._getFontDeclaration === "function") {
+            ctx.font = this._getFontDeclaration(charStyle, forMeasuring);
+        }
+    };
+    prototype.__creativeEditorBaselinePatched = true;
+}
+
 export function configureCreativeFabric(fabricApi: FabricStatic, selectionColor = DEFAULT_SELECTION_COLOR) {
     (fabricApi.Object as unknown as { NUM_FRACTION_DIGITS: number }).NUM_FRACTION_DIGITS = 4;
     (fabricApi as unknown as { SHARED_ATTRIBUTES: string[] }).SHARED_ATTRIBUTES = CREATIVE_EDITOR_FABRIC_ATTRIBUTES;
+    patchFabricTextBaseline(fabricApi);
     fabricApi.Object.prototype.set({
         borderColor: selectionColor,
         borderOpacityWhenMoving: 1,
@@ -107,7 +147,13 @@ export function createWorkspaceObject(fabricApi: FabricStatic, documentValue: Cr
         absolutePositioned: true,
         evented: false,
         excludeFromExport: false,
-        fill: documentValue.canvas.backgroundColor,
+        fill: createLinearGradientFill(
+            fabricApi,
+            documentValue.canvas.backgroundGradient,
+            documentValue.canvas.width,
+            documentValue.canvas.height,
+            documentValue.canvas.backgroundColor,
+        ),
         hasBorders: false,
         hasControls: false,
         height: documentValue.canvas.height,
@@ -123,6 +169,7 @@ export function createWorkspaceObject(fabricApi: FabricStatic, documentValue: Cr
     }) as CreativeFabricObject;
     workspace.id = CREATIVE_EDITOR_WORKSPACE_ID;
     workspace.creativeEditorType = "workspace";
+    workspace.gradient = documentValue.canvas.backgroundGradient;
     return workspace;
 }
 
@@ -133,6 +180,18 @@ export function findWorkspaceObject(canvas: fabric.Canvas) {
 export function keepWorkspaceAtBack(canvas: fabric.Canvas) {
     const workspace = findWorkspaceObject(canvas);
     if (workspace) workspace.sendToBack();
+}
+
+function setFabricCanvasBackground(canvas: fabric.Canvas, color: string) {
+    (canvas as unknown as { backgroundColor?: string }).backgroundColor = color;
+    const canvasWithElements = canvas as unknown as {
+        lowerCanvasEl?: HTMLCanvasElement;
+        upperCanvasEl?: HTMLCanvasElement;
+        wrapperEl?: HTMLElement;
+    };
+    if (canvasWithElements.lowerCanvasEl) canvasWithElements.lowerCanvasEl.style.backgroundColor = color;
+    if (canvasWithElements.upperCanvasEl) canvasWithElements.upperCanvasEl.style.backgroundColor = "transparent";
+    if (canvasWithElements.wrapperEl) canvasWithElements.wrapperEl.style.backgroundColor = color;
 }
 
 function applyBaseObjectData(fabricApi: FabricStatic, object: CreativeFabricObject, element: CreativeEditorElement) {
@@ -155,8 +214,9 @@ function applyBaseObjectData(fabricApi: FabricStatic, object: CreativeFabricObje
     object.angle = element.rotation || 0;
     object.flipX = Boolean(element.flipX);
     object.flipY = Boolean(element.flipY);
-    object.selectable = !element.locked;
-    object.evented = !element.locked;
+    object.selectable = true;
+    object.evented = true;
+    object.hasControls = !element.locked;
     object.lockMovementX = Boolean(element.locked);
     object.lockMovementY = Boolean(element.locked);
     object.lockScalingX = Boolean(element.locked);
@@ -377,6 +437,9 @@ function scaleObjectToElementSize(object: fabric.Object, width: number, height: 
 
 async function loadFabricImage(fabricApi: FabricStatic, src: string, options: fabric.IObjectOptions = {}) {
     return new Promise<fabric.Image>((resolve, reject) => {
+        const imageOptions = src.startsWith("data:") || src.startsWith("blob:")
+            ? undefined
+            : { crossOrigin: "anonymous" as const };
         fabricApi.Image.fromURL(
             src,
             (image) => {
@@ -387,7 +450,7 @@ async function loadFabricImage(fabricApi: FabricStatic, src: string, options: fa
                 image.set(options);
                 resolve(image);
             },
-            { crossOrigin: "anonymous" },
+            imageOptions,
         );
     });
 }
@@ -489,7 +552,8 @@ function createPathTextObject(fabricApi: FabricStatic, element: CreativeEditorPa
         strokeWidth: 0,
         top: 0,
     });
-    const text = new fabricApi.Text(element.text, {
+    const textTop = element.pathVisible === false ? element.y : Math.max(0, element.height * 0.22);
+    const text = new fabricApi.Textbox(element.text, {
         charSpacing: element.charSpacing || 0,
         fill: createLinearGradientFill(fabricApi, element.gradient, element.width, element.height, element.color),
         fontFamily: element.fontFamily || "Inter, Arial, sans-serif",
@@ -502,12 +566,11 @@ function createPathTextObject(fabricApi: FabricStatic, element: CreativeEditorPa
         objectCaching: false,
         textAlign: element.align || "center",
         textBackgroundColor: element.textBackgroundColor || "",
-        top: element.pathVisible === false ? element.y : 0,
+        top: textTop,
         underline: Boolean(element.underline),
-    } as fabric.ITextOptions) as CreativeFabricObject & { path?: fabric.Path };
-    text.path = path;
-    text.width = element.width;
-    text.height = element.height;
+        width: element.width,
+    } as fabric.ITextboxOptions) as unknown as CreativeFabricObject & { path?: fabric.Path };
+    text.height = Math.max(1, element.height - textTop);
     if (element.pathVisible !== false) {
         const guide = new fabricApi.Path(element.path, {
             evented: false,
@@ -766,14 +829,20 @@ export async function loadDocumentIntoFabricCanvas(params: {
     fabricApi: FabricStatic;
     productLabel: string;
     selectedId?: string;
+    viewportSize?: {
+        height: number;
+        width: number;
+    };
 }) {
-    const { canvas, documentValue, fabricApi, productLabel, selectedId } = params;
+    const { canvas, documentValue, fabricApi, productLabel, selectedId, viewportSize } = params;
+    const viewportWidth = Math.max(1, Math.round(viewportSize?.width || canvas.getWidth() || documentValue.canvas.width));
+    const viewportHeight = Math.max(1, Math.round(viewportSize?.height || canvas.getHeight() || documentValue.canvas.height));
     canvas.clear();
     canvas.setDimensions({
-        height: documentValue.canvas.height,
-        width: documentValue.canvas.width,
+        height: viewportHeight,
+        width: viewportWidth,
     });
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    setFabricCanvasBackground(canvas, "transparent");
     const workspace = createWorkspaceObject(fabricApi, documentValue);
     canvas.add(workspace);
     for (const element of documentValue.elements) {
@@ -791,7 +860,7 @@ export async function loadDocumentIntoFabricCanvas(params: {
 }
 
 const getCommonElementData = (object: CreativeFabricObject) => {
-    const boundingRect = object.getBoundingRect(false, true);
+    const boundingRect = object.getBoundingRect(true, true);
     const shadow = object.shadow && typeof object.shadow === "object"
         ? {
             blur: Math.round(object.shadow.blur || 0),
@@ -1023,9 +1092,14 @@ export function serializeFabricCanvasToDocument(
     return {
         ...previous,
         canvas: {
-            backgroundColor: typeof workspace?.fill === "string" ? workspace.fill : previous.canvas.backgroundColor,
-            height: Math.round(canvas.getHeight()),
-            width: Math.round(canvas.getWidth()),
+            backgroundColor: typeof workspace?.fill === "string"
+                ? workspace.fill
+                : typeof (canvas as unknown as { backgroundColor?: unknown }).backgroundColor === "string"
+                    ? (canvas as unknown as { backgroundColor: string }).backgroundColor
+                    : previous.canvas.backgroundColor,
+            backgroundGradient: workspace?.gradient?.enabled ? workspace.gradient : undefined,
+            height: Math.round(toNumber(workspace?.height, previous.canvas.height)),
+            width: Math.round(toNumber(workspace?.width, previous.canvas.width)),
         },
         elements,
         metadata: {
@@ -1039,24 +1113,44 @@ export function serializeFabricCanvasToDocument(
 export function setObjectLocked(object: CreativeFabricObject, locked: boolean) {
     object.locked = locked;
     object.set({
-        evented: !locked,
+        evented: true,
+        hasControls: !locked,
         lockMovementX: locked,
         lockMovementY: locked,
         lockRotation: locked,
         lockScalingX: locked,
         lockScalingY: locked,
-        selectable: !locked,
+        selectable: true,
     });
 }
 
-export function applyCanvasBackground(canvas: fabric.Canvas, color: string) {
+export function applyCanvasBackground(
+    canvas: fabric.Canvas,
+    color: string,
+    backgroundGradient?: CreativeEditorLinearGradient,
+) {
     const workspace = findWorkspaceObject(canvas);
-    if (!workspace) return;
-    workspace.set("fill", color);
+    setFabricCanvasBackground(canvas, workspace ? "transparent" : color);
+    if (workspace) {
+        workspace.gradient = backgroundGradient?.enabled ? backgroundGradient : undefined;
+        workspace.set("fill", createLinearGradientFill(
+            fabric as FabricStatic,
+            workspace.gradient,
+            Math.round(workspace.width || canvas.getWidth()),
+            Math.round(workspace.height || canvas.getHeight()),
+            color,
+        ));
+        workspace.dirty = true;
+    }
     canvas.requestRenderAll();
 }
 
-export function initFabricDragging(fabricApi: FabricStatic, canvas: fabric.Canvas, getGrabMode: () => boolean) {
+export function initFabricDragging(
+    fabricApi: FabricStatic,
+    canvas: fabric.Canvas,
+    getGrabMode: () => boolean,
+    onViewportChange?: () => void,
+) {
     let isDragging = false;
     let lastX = 0;
     let lastY = 0;
@@ -1086,6 +1180,7 @@ export function initFabricDragging(fabricApi: FabricStatic, canvas: fabric.Canva
         lastX = pointerEvent.clientX;
         lastY = pointerEvent.clientY;
         canvas.requestRenderAll();
+        onViewportChange?.();
     });
 
     canvas.on("mouse:up", () => {
@@ -1093,10 +1188,11 @@ export function initFabricDragging(fabricApi: FabricStatic, canvas: fabric.Canva
         isDragging = false;
         canvas.selection = true;
         canvas.getObjects().forEach((object) => {
-            if (isEditableFabricObject(object)) object.selectable = !(object as CreativeFabricObject).locked;
+            if (isEditableFabricObject(object)) object.selectable = true;
         });
         canvas.defaultCursor = getGrabMode() ? "grab" : "default";
         canvas.requestRenderAll();
+        onViewportChange?.();
     });
 
     canvas.on("mouse:wheel", (event) => {
@@ -1108,6 +1204,7 @@ export function initFabricDragging(fabricApi: FabricStatic, canvas: fabric.Canva
         wheelEvent.preventDefault();
         wheelEvent.stopPropagation();
         canvas.requestRenderAll();
+        onViewportChange?.();
     });
 }
 

@@ -13,6 +13,7 @@ Implemented now:
 - `CreativeEditorDocumentSnapshot` as durable editor truth with `cue-asset://assetId` references.
 - Boot-time signed URL hydration and autosave-time URL dehydration.
 - Flat-safe projection into the shared Creative Editor that preserves the original image as the first render.
+- Cost-shaped Firestore commits: upload completion writes design/job/version/quality/event/idempotency together, autosave batches design pointer plus version metadata, repair batches request plus correction event after the Storage artifact succeeds, and export batches CueLayers export metadata plus export-ready event after Asset Library registration succeeds.
 
 Not implemented as active runtime yet:
 
@@ -249,7 +250,7 @@ CampaignCue Storage/GCS
   -> large artifacts, immutable JSON, images, previews, exports, reports
 
 Firestore
-  -> status, current pointers, events, counters, cost summaries
+  -> status, current pointers, current job id, events, counters, cost summaries
 ```
 
 Firebase Functions may be used only for lightweight dispatch if it fits current deployment rules. Heavy processing belongs in Cloud Run-style workers.
@@ -631,6 +632,7 @@ Every durable artifact must carry a `schemaVersion` and be readable through back
 - No base64 in Firestore.
 - No broad realtime listeners.
 - Job progress uses one job/design listener while the status UI is open, or bounded polling with backoff.
+- Store the latest job pointer on the design document so replays and boot/status checks can prefer direct document reads over collection queries.
 - Store immutable artifacts in Storage/GCS with lifecycle rules.
 - Use checksums/perceptual hashes to avoid duplicate expensive processing.
 - Generate editor-resolution assets first and export-resolution assets lazily.

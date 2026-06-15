@@ -2,13 +2,13 @@
 
 ## Elevator Pitch
 
-MenuList gives every business ready-to-print menu and QR files that match its brand, without a design tool.
+MenuList gives every business ready-to-print menu and QR files that match its brand, without starting from a blank design tool.
 
 ## Feature Narrative
 
 Small business owners do not think of table cards, counter stickers, and printed menus as "assets". They think of them as the face of the business. A poor QR card makes the business look unfinished even when the digital menu is correct.
 
-Printable Asset Templates turns those files into a finished catalog. The owner chooses the file and style, then downloads. Store name, logo, color, menu link, feedback link, and MenuList branding policy are handled automatically.
+Printable Asset Templates turns those files into a finished catalog. The owner chooses the file and style, then downloads. When a practical adjustment is needed, supported desktop assets open from the finished template in a governed editor with the QR link protected. Store name, logo, color, menu link, feedback link, and MenuList branding policy are handled automatically.
 
 ## Positioning
 
@@ -24,7 +24,7 @@ Printable Asset Templates turns those files into a finished catalog. The owner c
 1. **Printed Files Carry Trust** - Customers see table and counter files before they interact with staff.
 2. **Owners Should Not Need Design Work** - Most SMB owners do not have time or skill for file prep.
 3. **Assets Screen** - One workspace for table, counter, entrance, feedback, and paper menu files.
-4. **Finished Styles** - Real choice without a design editor or duplicate output options.
+4. **Finished Styles** - Real choice without a blank design editor or duplicate output options.
 5. **Current Menu Source** - QR points back to the current approved menu.
 6. **Brand Reuse** - Store color, logo, and name are applied automatically.
 7. **Premium Detail** - Premium stores can remove visible MenuList attribution through the existing policy.
@@ -41,7 +41,7 @@ Printable Asset Templates turns those files into a finished catalog. The owner c
 
 ## Avoid
 
-- "Customize your design"
+- "Unlimited creative control"
 - "AI-powered templates"
 - "Smart design"
 - "Unlimited creative control"

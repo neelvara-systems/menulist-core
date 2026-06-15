@@ -94,6 +94,7 @@ export interface MessageLogDoc {
   providerMessageId?: string;
   error?: string;
   createdAt: Timestamp;
+  expiresAt?: Timestamp;
 }
 
 // ================================================================

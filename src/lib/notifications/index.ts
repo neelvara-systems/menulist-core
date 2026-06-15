@@ -30,6 +30,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS, ProductId } from '@constant/product';
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
 import { isOwnerNotificationTrigger } from '@data/shared/ownerNotificationRegistry';
+import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { secureError, secureLog } from '@lib/security/secureLogger';
@@ -214,6 +215,7 @@ async function writeNotificationLog(
     } = {}
 ): Promise<void> {
     try {
+        const createdAt = Timestamp.now();
         await target.db
             .collection(target.collectionName)
             .doc(getSafeLogId(payload.eventType, payload.referenceId))
@@ -227,7 +229,10 @@ async function writeNotificationLog(
                 messageId: details.messageId || null,
                 error: details.error || null,
                 reason: details.reason || null,
-                createdAt: Timestamp.now(),
+                createdAt,
+                ...(payload.productId === PRODUCT_IDS.ANSWERLATTICE
+                    ? getAnswerlatticeRetentionFields('notificationLogs', createdAt)
+                    : {}),
             }, { merge: true });
     } catch (error) {
         secureError('[Notification] Log write failed', error as Error, {
