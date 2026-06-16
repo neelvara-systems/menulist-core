@@ -165,7 +165,7 @@ Document rules:
 
 - QR layers are locked and carry source refs for menu/feedback URL.
 - Short-link layers are locked and carry source refs for the current project URL.
-- MenuList attribution layers are stripped from editor documents and saved templates.
+- Any legacy MenuList attribution elements are stripped from editor documents and saved templates.
 - Business name, headline, instruction, and CTA copy remain editable.
 - PNG/PDF export applies MenuList attribution at runtime through `resolveMenuListAttributionPolicy()`, so non-premium output is branded and eligible higher plans can remove it without placing branding inside the editor canvas.
 - The editor document is the source for preview, default download, and customized download.

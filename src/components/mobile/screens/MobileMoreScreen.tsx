@@ -527,22 +527,27 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const platformMonitoringItems: MoreListItem[] = isPlatformAdmin ? [
         { key: 'opsControlRoom', icon: <LuActivity color={token.colorError} size={20} />, keywords: ['ops', 'safe mode', 'alerts', 'republish'], label: 'Ops Control Room', description: 'SAFE_MODE, alerts, adoption pulse, integrity, and recovery controls.', onClick: () => openSubScreen('opsControlRoom') },
         { key: 'ownerBusinessAssistantMonitor', icon: <LuMessageCircle color={token.colorPrimary} size={20} />, keywords: ['business health', 'assistant', 'owner questions', 'answers', 'ai cost', 'action usage'], label: 'Business Health Monitor', description: 'Owner questions, answers, support gaps, action usage, and cost.', onClick: () => openSubScreen('ownerBusinessAssistantMonitor') },
+        ...(FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE ? [{ key: 'costPosture', icon: <LuDollarSign color={token.colorSuccess} size={20} />, keywords: ['cost', 'firebase cost', 'ai cost', 'posture', 'guardrails'], label: 'Cost Posture', description: 'Cost guardrails, expensive-operation signals, and platform cost posture.', onClick: () => openSubScreen('costPosture') }] : []),
         { key: 'schedulerMonitor', icon: <LuClock3 color={token.colorWarning} size={20} />, keywords: ['scheduler', 'nightly', 'jobs', 'settlement', 'decision intelligence'], label: 'Scheduler Monitor', description: 'Nightly jobs, analytics settlement, and scheduler recovery controls.', onClick: () => openSubScreen('schedulerMonitor') },
         { key: 'extractionMonitor', icon: <LuSparkles color={token.colorPrimary} size={20} />, keywords: ['extraction', 'upload', 'ai', 'jobs', 'quality'], label: 'Extraction Monitor', description: 'Menu extraction health, cost, quality, and recent job failures.', onClick: () => openSubScreen('extractionMonitor') },
-        ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR ? [{ key: 'answerlatticeIntakeMonitor', icon: <LuBookOpen color={token.colorSuccess} size={20} />, keywords: ['answerlattice', 'intake', 'knowledge', 'credits', 'ledger', 'scheduler'], label: 'Answerlattice Intake', description: 'Answerlattice intake jobs, support-credit ledger, media extraction, and summary health.', onClick: () => openDesktopRoute('/platform/answerlattice-intake') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR ? [{ key: 'answerlatticeIntakeMonitor', icon: <LuBookOpen color={token.colorSuccess} size={20} />, keywords: ['answerlattice', 'intake', 'knowledge', 'credits', 'ledger', 'scheduler'], label: 'Answerlattice Intake', description: 'Answerlattice intake jobs, support-credit ledger, media extraction, and summary health.', onClick: () => openSubScreen('answerlatticeIntake') }] : []),
     ] : [];
 
     const platformManagementItems: MoreListItem[] = isPlatformAdmin ? [
         { key: 'platformHub', icon: <LuShield color={token.colorError} size={20} />, keywords: ['platform', 'internal', 'users', 'tenants', 'stores', 'entity blocks'], label: 'Platform Management', description: 'Internal MenuList account administration, entity blocks, stores, tenants, users, and diagnostics.', onClick: () => openSubScreen('platformHub') },
     ] : [];
 
-    const answerlatticeManagementItems: MoreListItem[] = [];
+    const answerlatticeManagementItems: MoreListItem[] = isPlatformAdmin ? [
+        { key: 'answerlatticeHub', icon: <LuBookOpen color={token.colorPrimary} size={20} />, keywords: ['answerlattice', 'support tickets', 'knowledge base', 'widget', 'chat', 'release notes'], label: 'Answerlattice Ops', description: 'Support tickets, KB, widget, changelog, chat analytics, and intake monitors.', onClick: () => openSubScreen('answerlatticeHub') },
+    ] : [];
 
     const platformHubItems: MoreListItem[] = isPlatformAdmin ? [
         ...(FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS ? [{ key: 'entityBlocks', icon: <LuShield color={token.colorError} size={20} />, keywords: ['block tenant', 'block store', 'block user', 'entity blocks', 'access block'], label: 'Entity Blocks', description: 'Block or unblock tenants, stores, and users with audit details.', onClick: () => openSubScreen('entityBlocks') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER ? [{ key: 'assetTemplates', icon: <LuLayoutTemplate color={token.colorWarning} size={20} />, keywords: ['asset templates', 'print templates', 'platform templates', 'business category templates'], label: 'Asset Templates', description: 'Manage platform print templates and category coverage.', onClick: () => openSubScreen('assetTemplates') }] : []),
         { key: 'platformTenants', icon: <LuBuilding2 color={token.colorTextSecondary} size={20} />, keywords: ['tenants', 'business accounts', 'platform tenants'], label: 'Tenants', description: 'Manage tenant accounts and tenant-level business records.', onClick: () => openSubScreen('platformTenants') },
         { key: 'platformStores', icon: <LuMapPin color={token.colorInfo} size={20} />, keywords: ['stores', 'locations', 'outlets', 'business stores'], label: 'Stores', description: 'Manage stores, outlets, and store-level business records.', onClick: () => openSubScreen('platformStores') },
         { key: 'platformUsers', icon: <LuUsers color={token.colorPrimary} size={20} />, keywords: ['platform users', 'admins', 'roles', 'tenant users', 'store users'], label: 'Users', description: 'Manage tenant users, verification, roles, and store access.', onClick: () => openSubScreen('platformUsers') },
+        { key: 'pricingPlans', icon: <LuDollarSign color={token.colorSuccess} size={20} />, keywords: ['pricing', 'plans', 'billing plans', 'subscriptions'], label: 'Pricing Plans', description: 'Manage pricing plans shown to MenuList owners.', onClick: () => openSubScreen('pricingPlans') },
         { key: 'testSentry', icon: <LuAlertTriangle color={token.colorError} size={20} />, keywords: ['sentry', 'diagnostics', 'error test'], label: 'Sentry Test', description: 'Authenticated diagnostics page for error monitoring.', onClick: () => openDesktopRoute('/platform/test-sentry') },
     ] : [];
 
@@ -557,7 +562,35 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     ] : [];
 
     const answerlatticeHubItems: MoreListItem[] = [];
-    const answerlatticeHubSections: MoreListSection[] = [];
+    const answerlatticeHubSections: MoreListSection[] = isPlatformAdmin ? [
+        {
+            title: 'Knowledge',
+            items: [
+                { key: 'knowledgeBase', icon: <LuBookOpen color={token.colorPrimary} size={20} />, keywords: ['knowledge base', 'kb', 'docs', 'articles'], label: 'Knowledge Base', description: 'Edit and publish support knowledge.', onClick: () => openSubScreen('knowledgeBase') },
+                { key: 'kbGeneration', icon: <LuSparkles color={token.colorWarning} size={20} />, keywords: ['generate kb', 'knowledge generation', 'reconcile'], label: 'KB Generation', description: 'Generate, review, and reconcile support knowledge.', onClick: () => openSubScreen('kbGeneration') },
+                { key: 'changelog', icon: <LuBookOpen color={token.colorSuccess} size={20} />, keywords: ['changelog', 'release notes', 'updates'], label: 'Changelog', description: 'Create and publish platform release notes.', onClick: () => openSubScreen('changelog') },
+                { key: 'answerlatticeWidget', icon: <LuGlobe color={token.colorInfo} size={20} />, keywords: ['widget', 'install snippet', 'origins', 'appearance'], label: 'Widget Management', description: 'Configure widget keys, install snippets, origins, and appearance.', onClick: () => openSubScreen('answerlatticeWidget') },
+            ],
+        },
+        {
+            title: 'Support Signals',
+            items: [
+                { key: 'supportTickets', icon: <LuTicket color={token.colorWarning} size={20} />, keywords: ['support tickets', 'tickets', 'queue'], label: 'Support Tickets', description: 'Platform support queue and ticket operations.', onClick: () => openSubScreen('supportTickets') },
+                { key: 'feedbackAdmin', icon: <LuMessageCircle color={token.colorSuccess} size={20} />, keywords: ['feedback admin', 'feedback', 'signals'], label: 'Feedback Admin', description: 'Internal feedback administration tools.', onClick: () => openSubScreen('feedbackAdmin') },
+                ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR ? [{ key: 'answerlatticeIntake', icon: <LuBookOpen color={token.colorPrimary} size={20} />, keywords: ['intake', 'answerlattice intake', 'media extraction', 'ledger'], label: 'Answerlattice Intake', description: 'Intake jobs, support-credit ledger, media extraction, and summary health.', onClick: () => openSubScreen('answerlatticeIntake') }] : []),
+            ],
+        },
+        {
+            title: 'Chat Ops',
+            items: [
+                { key: 'chatManagement', icon: <LuMessageCircle color={token.colorPrimary} size={20} />, keywords: ['chat', 'conversations', 'customer chat'], label: 'Chat Management', description: 'Review and manage customer chat conversations.', onClick: () => openSubScreen('chatManagement') },
+                { key: 'chatInsights', icon: <LuBarChart3 color={token.colorSuccess} size={20} />, keywords: ['chat analytics', 'insights', 'quality'], label: 'Chat Insights', description: 'Conversation analytics and chat quality signals.', onClick: () => openSubScreen('chatInsights') },
+                { key: 'chatBackfill', icon: <LuActivity color={token.colorWarning} size={20} />, keywords: ['backfill', 'chat backfill', 'analytics backfill'], label: 'Chat Backfill', description: 'Backfill chat analytics and operational data.', onClick: () => openSubScreen('chatBackfill') },
+                { key: 'chatWeeklyDigest', icon: <LuClock3 color={token.colorInfo} size={20} />, keywords: ['weekly digest', 'chat digest'], label: 'Weekly Digest', description: 'Review weekly chat digest output.', onClick: () => openSubScreen('chatWeeklyDigest') },
+                { key: 'chatRoiCalculator', icon: <LuDollarSign color={token.colorSuccess} size={20} />, keywords: ['roi', 'calculator', 'chat roi'], label: 'ROI Calculator', description: 'Internal ROI calculator for chat operations.', onClick: () => openSubScreen('chatRoiCalculator') },
+            ],
+        },
+    ] : [];
 
     const canOpenSubScreen = useCallback((screen: MoreSubScreen) => {
         if (screen === 'main' || screen === 'accountProfile' || screen === 'accountAccess' || screen === 'help') return true;
@@ -580,6 +613,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (screen === 'specialMenus') return canManageMenu;
         if (screen === 'todayHistory') return canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY;
         if (canUseResellerScreens && ['resellerHub', 'resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(screen)) return true;
+        if (screen === 'costPosture') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE;
+        if (screen === 'assetTemplates') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER;
+        if (screen === 'answerlatticeIntake') return isPlatformAdmin && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR;
         if (isPlatformAdmin && (isPlatformInternalScreen(screen) || ['platformHub', 'opsControlRoom', 'extractionMonitor', 'schedulerMonitor'].includes(screen))) return true;
         if (['answerlatticeHelp', 'answerlatticeDocs', 'answerlatticeSupport', 'answerlatticeReleaseNotes'].includes(screen)) return true;
         return false;
