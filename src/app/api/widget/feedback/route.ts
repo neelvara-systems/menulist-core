@@ -72,6 +72,12 @@ const buildWidgetFeedbackContextMetadata = (historyData: Record<string, any>) =>
         query: cleanSignalContextText(historyData.query, 220),
         answerSource: cleanSignalContextText(historyData.answerSource, 80),
         confidence: cleanSignalContextText(historyData.confidence, 40),
+        visitorId: cleanSignalContextText(historyData.visitorId, 120),
+        visitorName: cleanSignalContextText(historyData.visitorName, 160),
+        visitorEmail: cleanSignalContextText(historyData.visitorEmail, 180),
+        widgetSessionId: cleanSignalContextText(historyData.widgetSessionId, 120),
+        requestOrigin: cleanSignalContextText(historyData.requestOrigin, 180),
+        requestPath: cleanSignalContextText(historyData.requestPath, 180),
         contextKey,
         fallbackReason: cleanSignalContextText(historyData.fallbackReason, 180),
         matchedEntityIds,
@@ -106,6 +112,21 @@ export async function POST(request: NextRequest) {
             limit: rateLimitConfig.limit,
             window: rateLimitConfig.window,
         });
+        if (
+            rateLimitResult.allowed
+            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+            && rateLimitResult.current === 0
+            && rateLimitResult.remaining === rateLimitConfig.limit
+        ) {
+            return jsonResponse(
+                request,
+                { error: 'Feedback is temporarily unavailable. Please try again later.' },
+                {
+                    status: 503,
+                    headers: { 'Cache-Control': 'no-store' },
+                }
+            );
+        }
         if (!rateLimitResult.allowed) {
             const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
             return jsonResponse(
@@ -113,7 +134,10 @@ export async function POST(request: NextRequest) {
                 { error: 'Rate limit exceeded' },
                 {
                     status: 429,
-                    headers: { 'Retry-After': String(Math.max(retryAfter, 1)) },
+                    headers: {
+                        'Cache-Control': 'no-store',
+                        'Retry-After': String(Math.max(retryAfter, 1)),
+                    },
                 }
             );
         }
@@ -157,7 +181,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Parse request body
-        const validation = FeedbackRequestSchema.safeParse(await request.json());
+        const validation = FeedbackRequestSchema.safeParse(await request.json().catch(() => null));
         if (!validation.success) {
             return jsonResponse(request, { error: 'searchHistoryId and isGood are required' }, { status: 400 });
         }
@@ -179,7 +203,7 @@ export async function POST(request: NextRequest) {
         }
 
         const alreadySubmitted = typeof historyData.submittedAt !== 'undefined'
-            || typeof historyData.modifiedOn !== 'undefined';
+            || typeof historyData.isGood === 'boolean';
         if (alreadySubmitted && historyData.isGood === isGood) {
             return jsonResponse(request, { success: true });
         }

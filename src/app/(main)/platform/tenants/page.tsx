@@ -1,9 +1,15 @@
-import PlatformSettings from "@template/platform/settings"
+'use client'
 
-function page() {
+import TenantsDashboard from "@template/platform/tenants"
+import { TenantDataType } from "@type/platform/tenant";
+import { useState } from "react";
+
+function Page() {
+    const [tenantsList, setTenantsList] = useState<TenantDataType[]>([]);
+
     return (
-        <PlatformSettings initialTab="tenants" />
+        <TenantsDashboard tenantsList={tenantsList} setTenantsList={setTenantsList} />
     )
 }
 
-export default page
+export default Page

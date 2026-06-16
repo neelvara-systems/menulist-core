@@ -22,7 +22,8 @@
 | Preview | Template modal/sheet automatically shows a generated output preview using real store/logo/color/URL and no embedded PDF viewer. |
 | Format actions | Single printable assets offer separate PDF and image downloads. Complete Menu Kit stays ZIP-only. |
 | Customize action | Table Tent, Single Card, Counter Sticker, Entrance Poster, and Feedback QR show **Customize in editor** on desktop. Print Menu and Complete Menu Kit do not. |
-| Customize editor | The fullscreen editor opens from the selected template, QR/link/attribution layers are locked, editable copy can change, and Image/Print PDF download uses the latest edited document. |
+| Customize editor | The fullscreen editor opens from the selected template, QR/link source layers are locked, editable copy can change, no MenuList attribution layer appears in the editor canvas, and Image/Print PDF download uses the latest edited document. |
+| Runtime attribution | Non-premium Image/Print PDF output includes MenuList attribution added during render, while the saved editor document remains free of MenuList branding layers. |
 | Save as template | The fullscreen editor exposes **Save as template** for supported non-menu assets and saves the current neutral document to Saved designs. |
 | Saved designs | Saved templates appear above Ready templates for the same asset type and can reopen in the editor. |
 | Rehydration | Opening a saved template after changing selected project refreshes QR/source values from the current project. |

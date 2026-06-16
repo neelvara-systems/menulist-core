@@ -135,18 +135,21 @@ Widget negative-feedback signals dedupe by `searchHistoryId` within the active r
 | Product Surface options for owner review | 10 bounded queries | 0 |
 | Product Surface assignment on feedback | 0 | 5 |
 | Add selected feedback to Support Board | 0 | 2 |
-| Article likes/dislikes | 30 | 30 |
-| Changelog likes/dislikes | 30 | 30 |
-| Content comments | 10 | 10 |
-| **Total** | **~190 bounded reads** | **87** |
+| Article likes/dislikes + capped reaction audit log | 60 | 60 |
+| Changelog likes/dislikes + capped reaction audit log | 60 | 60 |
+| Owner opens reaction details | 10 bounded document reads | 0 |
+| Content comments | Included in reaction audit log | Included in reaction audit log |
+| **Total** | **~250 bounded reads** | **147** |
 
 ### Monthly Cost
 
 | Resource | Usage | Cost |
 |----------|-------|------|
-| Firestore reads | ~190 bounded reads | ~$0.00008 |
-| Firestore writes | ~87 | ~$0.00010 |
-| **Total** | | **~$0.0001/month** |
+| Firestore reads | ~250 bounded reads | ~$0.00010 |
+| Firestore writes | ~147 | ~$0.00018 |
+| **Total** | | **~$0.0003/month** |
+
+Reaction activity is capped at 200 events per article/changelog entry document, and owner reaction details load only when a specific entry preview is opened. Normal changelog/article browsing still uses existing aggregate counters and does not read the reaction activity log.
 
 Essentially free at any reasonable scale.
 
@@ -171,8 +174,10 @@ Feedback review reads are capped in the DAL at 200 rows even if a caller passes 
 |------------|------|--------|---------------|
 | `feedback` | Platform admin, support-control users in same `tId+sId`, or the submitting user reading their own row | Platform admin/support-control users, or an authenticated tenant user creating their own feedback row | Support-control update only; delete denied |
 | `answerlattice_signalEvents` | Support-control users in same `tId+sId` | Support-control users, plus self-scoped `type='feedback'` events from Help Center feedback | Append-only; client update/delete denied. Answerlattice nightly/admin TTL owns archival. |
+| `article_feedback/{tId}/{sId}/{docId}` | Platform admin or authenticated Answerlattice tenant members with product permissions for the same path scope | Authenticated same-tenant Answerlattice users only; document must carry `pId='AL'`, matching `tId+sId`, and a capped `list` array | Append-style updates only; `list`, `modifiedOn`, and `modifiedBy` can change; delete denied |
+| `changelog_feedback/{tId}/{sId}/{docId}` | Platform admin or authenticated Answerlattice tenant members with product permissions for the same path scope | Authenticated same-tenant Answerlattice users only; document must carry `pId='AL'`, matching `tId+sId`, and a capped `list` array | Append-style updates only; `list`, `modifiedOn`, and `modifiedBy` can change; delete denied |
 
-This allows end users to submit and view their own latest feedback without granting them access to owner review surfaces.
+This allows end users to submit and view their own latest feedback without granting them access to owner review surfaces. Content reaction logs are separate because the current client transaction must read the entry-specific feedback document before appending the next capped reaction event.
 
 ---
 

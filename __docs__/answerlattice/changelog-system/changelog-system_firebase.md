@@ -31,6 +31,8 @@
 | **Avg Doc Size** | 0.5-5 KB (feedback list array) |
 | **Growth Rate** | Per-feedback submission |
 
+Separate Answerlattice Firebase mode must allow this nested path in `firestore-answerlattice.rules`. Runtime rules require `pId='AL'`, matching `tId+sId`, a capped `list` array, and append-style updates only.
+
 ---
 
 ## 2. Firebase Storage

@@ -1,5 +1,5 @@
 import countryData from "@atoms/phoneNumberInput/countryData";
-import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@constant/common";
+import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { DB_COLLECTIONS } from "@constant/database";
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";

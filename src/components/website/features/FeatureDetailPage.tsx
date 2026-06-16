@@ -8,6 +8,7 @@ import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import FeatureDetailJourney from './FeatureDetailJourney';
 import FeatureDetailVisual from './FeatureDetailVisual';
+import FeatureScreenshotProofGallery from './FeatureScreenshotProofGallery';
 import { featureDetailConfigs, type FeatureDetailSlug } from './featureDetailConfig';
 import PrintReadyKitProofGallery from './PrintReadyKitProofGallery';
 
@@ -57,6 +58,8 @@ export default function FeatureDetailPage({ slug }: FeatureDetailPageProps) {
       </section>
 
       <FeatureDetailJourney config={config} />
+
+      <FeatureScreenshotProofGallery slug={slug} />
 
       {slug === 'print-ready-kit' ? <PrintReadyKitProofGallery /> : null}
 

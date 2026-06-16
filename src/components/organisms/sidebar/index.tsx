@@ -61,10 +61,24 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
 
     useEffect(() => {
+        const navFeatureAllowed = (nav: NavItemType) => {
+            if (nav.route === NAVIGARIONS_ROUTINGS.PLATFORM_ENTITY_BLOCKS) {
+                return FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS;
+            }
+            if (nav.route === NAVIGARIONS_ROUTINGS.PLATFORM_ASSET_TEMPLATES) {
+                return FEATURE_FLAGS.ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER;
+            }
+            if (nav.route === NAVIGARIONS_ROUTINGS.PLATFORM_COST_POSTURE) {
+                return FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE;
+            }
+            return true;
+        };
+
         const getVisibleSubNav = (nav: NavItemType) => {
             const parentPermissionAllowed = canShowNavForPermissions(nav);
 
             return nav.subNav?.filter(subnav => {
+                if (!navFeatureAllowed(subnav)) return false;
                 const platformRoleAllowed = !subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole);
                 const subNavPermissionAllowed = canShowNavForPermissions(subnav)
                     || (Boolean(nav.defaultRoute) && subnav.route === nav.defaultRoute && parentPermissionAllowed);
@@ -91,6 +105,9 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
             if (nav.route === NAVIGARIONS_ROUTINGS.RESELLER) {
                 return FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD
                     && [ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE].includes(platformRole);
+            }
+            if (!navFeatureAllowed(nav)) {
+                return false;
             }
             if (nav.allowedPlatformRoles?.length && !nav.allowedPlatformRoles.includes(platformRole)) {
                 return false;

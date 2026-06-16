@@ -2,7 +2,7 @@
 import DrawerElement from '@antdComponent/drawerElement';
 import ImageUploadInput from '@atoms/imageUploadInput';
 import Saperator from '@atoms/Saperator';
-import { BUSINESS_TYPES } from '@constant/common';
+import { BUSINESS_TYPES } from '@data/shared/businessTypes';
 import { ECOMSAI_PLATFORM_TENANT_ID } from '@constant/user';
 import { getStoreById } from '@database/stores';
 import { addTenant, updateTenant } from '@database/tenants';

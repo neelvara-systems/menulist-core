@@ -1,7 +1,21 @@
 # Creative Editor Template Registry Test Cases
 
 **Status:** Implemented
-**Last Updated:** June 15, 2026
+**Last Updated:** June 16, 2026
+
+## Platform Manager
+
+| Case | Steps | Expected |
+| --- | --- | --- |
+| Platform access guard | Open `/platform/asset-templates` as a non-platform user. | Manager content does not render; platform access required message appears. |
+| Category catalog load | Open `/platform/asset-templates`; choose `generic`, `food`, or `service`. | Exactly one selected `platformAssetTemplates/{businessCategory}` catalog is read and cards update for that category. |
+| Asset filtering is local | After a category loads, switch asset type. | Cards filter by `assetTypeId` without another catalog read. |
+| Non-renderable asset disabled | Open asset type selector. | Asset types that do not use the Fabric editor yet are disabled for platform design creation. |
+| Create draft platform template | Select category, renderable asset, family, status `Draft`, then start design and save. | Storage document is uploaded and the category catalog receives a draft summary hidden from owner Ready templates. |
+| Publish metadata | Select an existing draft, change status to `Published`, and save metadata. | One catalog read/write updates status; no Storage upload is needed. |
+| Reopen unpublished template | Select a draft or archived template and choose Edit design. | Platform manager opens the stored editor document even though owner-facing opens still require published templates. |
+| Delete platform template | Delete a selected platform template. | Summary is removed from `data`; document and preview Storage cleanup runs best-effort. |
+| Feature flag off | Disable `ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER`. | Platform nav item hides and direct manager route shows disabled state. |
 
 ## Desktop Printable Assets
 

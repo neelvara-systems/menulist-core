@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { getStaticAnswerlatticeAppleStartupImages } from '@lib/answerlattice/pwaAssets';
 import AnswerlatticeAnalytics from './components/AnswerlatticeAnalytics';
 import AnswerlatticeScrollReveal from './components/AnswerlatticeScrollReveal';
+import AnswerlatticeSmoothScroll from './components/AnswerlatticeSmoothScroll';
 import { AnswerlatticeThemeProvider } from './components/AnswerlatticeThemeProvider';
 import { buildAnswerlatticeUrl, ANSWERLATTICE_SITE_DESCRIPTION, ANSWERLATTICE_SITE_TITLE, ANSWERLATTICE_SITE_URL } from './siteConfig';
 import {
@@ -148,6 +149,7 @@ export default function AnswerlatticeWebsiteLayout({ children }: AnswerlatticeLa
             <AnswerlatticeThemeBootstrapScript />
             <AnswerlatticeThemeProvider>
                 <AnswerlatticeAnalytics />
+                <AnswerlatticeSmoothScroll />
                 <AnswerlatticeScrollReveal />
                 {/* AnswerlatticeClientLayout is imported dynamically to avoid making the entire layout a client component */}
                 {children}

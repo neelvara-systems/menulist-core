@@ -197,6 +197,7 @@ Desktop:
 - Unsupported answer displays calm refusal.
 - Action button opens confirmation/draft UI.
 - Price, description, and image actions stay disabled or route to existing screens until their adapters, confirmation path, and billing accounting are implemented.
+- A high-demand active item with no photo creates an `image_gap` card with `Add photo`, while a high-demand item with a photo but no description remains `metadata_demand` with `Add description`; one item missing both fields must not produce both cards in the same action-plan build.
 - Action UI is hidden or read-only when Action Support is disabled.
 - Public-truth warning is visible for public writes.
 - Source/freshness label is visible.
@@ -355,9 +356,10 @@ Testing is complete when:
 9. Sales/revenue/profit questions are safe unless sourced.
 10. Public-truth writes require explicit confirmation and cache handling.
 11. Price/description/image action tests prove disabled/blocked behavior until verified adapters, confirmation path, and billing accounting are implemented.
-12. Optional chat history and internal answer-event logging remain separately flag-gated.
-13. Platform monitoring shows quality and cost signals without exposing provider internals.
-14. Separate Business Health and Action Support flags are verified in both enabled and disabled states.
-15. Mobile is usable without desktop assumptions.
-16. Public customer routes are unaffected.
-17. Docs match implementation truth.
+12. Catalog intelligence tests prove missing-photo demand uses `image_gap`, missing-description demand stays under `metadata_demand`, and one item is not duplicated across both cards.
+13. Optional chat history and internal answer-event logging remain separately flag-gated.
+14. Platform monitoring shows quality and cost signals without exposing provider internals.
+15. Separate Business Health and Action Support flags are verified in both enabled and disabled states.
+16. Mobile is usable without desktop assumptions.
+17. Public customer routes are unaffected.
+18. Docs match implementation truth.

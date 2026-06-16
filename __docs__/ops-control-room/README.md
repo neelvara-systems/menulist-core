@@ -65,6 +65,16 @@ The manual recovery button uses the selected store from `platformSummary/storesS
 
 Manual recovery creates a deterministic `schedulerRunLogs/manual_store_{tId}_{sId}_{timestamp}` document before work starts. Failed runs keep `phase`, `manualScope`, `runLogId`, task counts, and structured `errors[]` entries with `code`, `operation`, optional `settlementDate`, and safe details so the broken step can be fixed before retrying. MenuList scheduler run logs carry `expiresAt` and are retained for the configured operational window rather than permanent history.
 
+## Cost Posture Monitor
+
+`/platform/cost-posture` is the related internal monitor for known cost posture. It links existing cost-adjacent platform screens together and keeps the original cost-tracking rejection intact:
+
+- No `ops_daily_cost` collection.
+- No `ops_baselines` collection.
+- No Firestore-driven billing forecast scheduler.
+- Known AI/provider signals come from existing bounded logs.
+- Whole-bill Firebase forecasting remains blocked until Cloud Billing export to BigQuery is configured.
+
 ## Key Decision: What ChatGPT Got Wrong
 
 ChatGPT proposed 7 sections including cost tracking (ops_daily_cost) and baseline comparisons. **Rejected** because:
@@ -84,5 +94,6 @@ No feature flag needed. Access control via route-level superadmin check.
 
 | Version | Date              | Changes                                   |
 | ------- | ----------------- | ----------------------------------------- |
+| 1.2     | June 16, 2026     | Added link to Platform Cost Posture as the accepted bounded cost visibility surface |
 | 1.1     | May 1, 2026       | Added scheduler settlement monitoring boundary |
 | 1.0     | February 20, 2026 | Initial documentation from ChatGPT review |

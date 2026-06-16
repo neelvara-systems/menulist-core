@@ -1,6 +1,6 @@
 'use client'
 
-import { BUSINESS_TYPES, resolveStoreBusinessCategory } from '@constant/common';
+import { BUSINESS_TYPES, resolveStoreBusinessCategory } from '@data/shared/businessTypes';
 import { updateStore } from '@database/stores';
 import { updateTenant } from '@database/tenants';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';

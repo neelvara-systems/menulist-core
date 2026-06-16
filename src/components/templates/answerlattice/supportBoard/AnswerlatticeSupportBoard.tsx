@@ -4,6 +4,7 @@ import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/a
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { useSupportBoard } from '@hook/answerlattice/useSupportBoard';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
 import {
     ANSWERLATTICE_SUPPORT_BOARD_PRIORITY,
@@ -125,6 +126,30 @@ const formatDateTime = (value: any) => {
     return date.toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 
+const getCardSourceIdentity = (card: AnswerlatticeSupportBoardCard) => (
+    getAnswerlatticeCustomerIdentity({
+        uId: card.sourceCustomerUserId,
+        userName: card.sourceCustomerName,
+        userEmail: card.sourceCustomerEmail,
+        userPhone: card.sourceCustomerPhone,
+        requestOrigin: card.sourceOrigin,
+        requestPath: card.sourcePath,
+        widgetSessionId: card.sourceSessionId,
+    })
+);
+
+const hasCardSourceIdentity = (card: AnswerlatticeSupportBoardCard) => (
+    Boolean(
+        card.sourceCustomerName
+        || card.sourceCustomerEmail
+        || card.sourceCustomerPhone
+        || card.sourceCustomerUserId
+        || card.sourceOrigin
+        || card.sourcePath
+        || card.sourceSessionId,
+    )
+);
+
 const splitCsv = (value?: string) => (
     String(value || '')
         .split(',')
@@ -142,6 +167,8 @@ function SupportBoardCard({
     onMove: (card: AnswerlatticeSupportBoardCard, status: AnswerlatticeSupportBoardStatus) => void;
 }) {
     const { token } = theme.useToken();
+    const sourceIdentity = getCardSourceIdentity(card);
+    const hasSourceIdentity = hasCardSourceIdentity(card);
     const nextStatus = card.status === ANSWERLATTICE_SUPPORT_BOARD_STATUS.RESOLVED
         ? null
         : BOARD_COLUMNS[BOARD_COLUMNS.findIndex((column) => column.status === card.status) + 1]?.status || null;
@@ -177,6 +204,18 @@ function SupportBoardCard({
                     {card.relatedProposalId ? <Tag color="purple">Proposal linked</Tag> : null}
                     {card.notesCount ? <Tag color="default">{card.notesCount} note{card.notesCount === 1 ? '' : 's'}</Tag> : null}
                 </Space>
+                {hasSourceIdentity ? (
+                    <Flex vertical gap={2}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            Customer: {sourceIdentity.displayName}
+                        </Text>
+                        {(sourceIdentity.email || sourceIdentity.phone) ? (
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                {sourceIdentity.email || sourceIdentity.phone}
+                            </Text>
+                        ) : null}
+                    </Flex>
+                ) : null}
                 {Array.isArray(card.tags) && card.tags.length > 0 ? (
                     <Space size={[4, 4]} wrap>
                         {card.tags.slice(0, 4).map((tag) => (
@@ -600,6 +639,38 @@ export default function AnswerlatticeSupportBoard() {
                             {selectedCard.dueDate ? <Tag color="warning">Due {formatDate(selectedCard.dueDate) || selectedCard.dueDate}</Tag> : null}
                             {selectedCard.relatedProposalId ? <Tag color="purple">Proposal {selectedCard.relatedProposalId.slice(0, 8)}</Tag> : null}
                         </Space>
+
+                        {hasCardSourceIdentity(selectedCard) ? (() => {
+                            const sourceIdentity = getCardSourceIdentity(selectedCard);
+                            return (
+                                <Card size="small" title="Source customer">
+                                    <Flex vertical gap={8}>
+                                        <Flex justify="space-between" gap={12} wrap="wrap">
+                                            <Text type="secondary">Name</Text>
+                                            <Text>{sourceIdentity.displayName}</Text>
+                                        </Flex>
+                                        {(sourceIdentity.email || sourceIdentity.phone) ? (
+                                            <Flex justify="space-between" gap={12} wrap="wrap">
+                                                <Text type="secondary">Contact</Text>
+                                                <Text>{[sourceIdentity.email, sourceIdentity.phone].filter(Boolean).join(' · ')}</Text>
+                                            </Flex>
+                                        ) : null}
+                                        {(sourceIdentity.origin || sourceIdentity.path) ? (
+                                            <Flex justify="space-between" gap={12} wrap="wrap">
+                                                <Text type="secondary">Where it happened</Text>
+                                                <Text>{[sourceIdentity.origin, sourceIdentity.path].filter(Boolean).join(' · ')}</Text>
+                                            </Flex>
+                                        ) : null}
+                                        {sourceIdentity.sessionId ? (
+                                            <Flex justify="space-between" gap={12} wrap="wrap">
+                                                <Text type="secondary">Session</Text>
+                                                <Text code>{sourceIdentity.sessionId}</Text>
+                                            </Flex>
+                                        ) : null}
+                                    </Flex>
+                                </Card>
+                            );
+                        })() : null}
 
                         <Form form={detailForm} layout="vertical">
                             <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Add a title' }]}>

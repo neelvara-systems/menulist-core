@@ -54,6 +54,7 @@ import {
     normalizeWidgetAllowedOrigins,
     normalizeWidgetConfig,
 } from '@lib/answerlattice/widgetConfig';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import {
     ANSWERLATTICE_WIDGET_SCRIPT_URL,
 } from '@lib/answerlattice/installContract/constants';
@@ -122,6 +123,15 @@ type WidgetActivityItem = {
     confidence?: string | null;
     referenceCount?: number;
     feedback?: 'good' | 'bad' | null;
+    visitorId?: string | null;
+    visitorName?: string | null;
+    visitorEmail?: string | null;
+    widgetSessionId?: string | null;
+    requestOrigin?: string | null;
+    requestPath?: string | null;
+    contextKey?: string | null;
+    surfacePage?: string | null;
+    surfaceFeature?: string | null;
     createdAt?: string | null;
 };
 
@@ -216,6 +226,14 @@ const formatActivityDate = (value?: string | null): string => {
         hour: '2-digit',
         minute: '2-digit',
     });
+};
+
+const getWidgetActivityLocation = (item: WidgetActivityItem): string | null => {
+    const parts = [
+        item.requestPath || item.surfacePage || item.contextKey,
+        item.requestOrigin,
+    ].filter(Boolean);
+    return parts.length ? parts.join(' - ') : null;
 };
 
 const isRuntimePathBlocked = (path: string | null | undefined, blockedRoutes: string[]) => {
@@ -612,6 +630,11 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         "      workflow: 'manage_subscription',",
         "      role: 'member',",
         "      locale: navigator.language || 'en',",
+        '    });',
+        '    window.AnswerlatticeWidget?.identify?.({',
+        "      id: currentUser?.supportCustomerId,",
+        "      name: currentUser?.name,",
+        "      email: currentUser?.email,",
         '    });',
         '  });',
         '</script>',
@@ -1098,31 +1121,43 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                     <List
                                                         size="small"
                                                         dataSource={activityItems}
-                                                        renderItem={(item) => (
-                                                            <List.Item>
-                                                                <List.Item.Meta
-                                                                    title={(
-                                                                        <Flex gap={8} wrap="wrap" align="center">
-                                                                            <Text strong style={{ wordBreak: 'break-word' }}>{item.query}</Text>
-                                                                            {item.canonical ? <Tag color="success">Canonical</Tag> : <Tag>Fallback</Tag>}
-                                                                            {item.feedback ? <Tag color={item.feedback === 'good' ? 'success' : 'warning'}>{item.feedback === 'good' ? 'Useful' : 'Needs review'}</Tag> : null}
-                                                                        </Flex>
-                                                                    )}
-                                                                    description={(
-                                                                        <Flex vertical gap={4}>
-                                                                            <Text type="secondary">
-                                                                                {formatActivityDate(item.createdAt)}
-                                                                                {typeof item.referenceCount === 'number' ? ` - ${item.referenceCount} reference${item.referenceCount === 1 ? '' : 's'}` : ''}
-                                                                                {item.confidence ? ` - ${item.confidence} confidence` : ''}
-                                                                            </Text>
-                                                                            {item.answerPreview ? (
-                                                                                <Text type="secondary" style={{ wordBreak: 'break-word' }}>{item.answerPreview}</Text>
-                                                                            ) : null}
-                                                                        </Flex>
-                                                                    )}
-                                                                />
-                                                            </List.Item>
-                                                        )}
+                                                        renderItem={(item) => {
+                                                            const requester = getAnswerlatticeCustomerIdentity(item as any);
+                                                            const location = getWidgetActivityLocation(item);
+                                                            return (
+                                                                <List.Item>
+                                                                    <List.Item.Meta
+                                                                        title={(
+                                                                            <Flex gap={8} wrap="wrap" align="center">
+                                                                                <Text strong style={{ wordBreak: 'break-word' }}>{item.query}</Text>
+                                                                                {item.canonical ? <Tag color="success">Canonical</Tag> : <Tag>Fallback</Tag>}
+                                                                                {item.feedback ? <Tag color={item.feedback === 'good' ? 'success' : 'warning'}>{item.feedback === 'good' ? 'Useful' : 'Needs review'}</Tag> : null}
+                                                                            </Flex>
+                                                                        )}
+                                                                        description={(
+                                                                            <Flex vertical gap={4}>
+                                                                                <Text type="secondary">
+                                                                                    {requester.displayName}
+                                                                                    {requester.email ? ` - ${requester.email}` : ''}
+                                                                                    {requester.sessionId ? ` - session ${requester.sessionId}` : ''}
+                                                                                </Text>
+                                                                                <Text type="secondary">
+                                                                                    {formatActivityDate(item.createdAt)}
+                                                                                    {typeof item.referenceCount === 'number' ? ` - ${item.referenceCount} reference${item.referenceCount === 1 ? '' : 's'}` : ''}
+                                                                                    {item.confidence ? ` - ${item.confidence} confidence` : ''}
+                                                                                </Text>
+                                                                                {location ? (
+                                                                                    <Text type="secondary" style={{ wordBreak: 'break-all' }}>{location}</Text>
+                                                                                ) : null}
+                                                                                {item.answerPreview ? (
+                                                                                    <Text type="secondary" style={{ wordBreak: 'break-word' }}>{item.answerPreview}</Text>
+                                                                                ) : null}
+                                                                            </Flex>
+                                                                        )}
+                                                                    />
+                                                                </List.Item>
+                                                            );
+                                                        }}
                                                     />
                                                 )}
                                             </div>
@@ -1134,7 +1169,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                     <Card title={<Flex align="center" gap={8}><LuCode size={16} /> Page Context</Flex>}>
                                         <Flex vertical gap={12}>
                                             <Paragraph style={{ margin: 0 }}>
-                                                Send a stable contextKey plus page, feature, workflow, and entity hints after route changes. Do not send internal account IDs, workspace IDs, emails, or phone numbers.
+                                                Send a stable contextKey plus page, feature, workflow, and entity hints after route changes. Do not send internal account IDs, workspace IDs, emails, or phone numbers through page context. Use identify only for the signed-in customer contact shown to support owners.
                                             </Paragraph>
                                             <Input.TextArea
                                                 value={spaSnippet}

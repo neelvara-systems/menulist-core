@@ -71,10 +71,14 @@
         "Ops Control Room": "Ops Control Room",
         "Scheduler Monitor": "Scheduler Monitor",
         "Extraction Monitor": "Extraction Monitor",
+        "Business Health Monitor": "Business Health Monitor",
+        "Cost Posture": "Cost Posture",
         "Entity Blocks": "Entity Blocks",
+        "Asset Templates": "Asset Templates",
         "Tenants": "Tenants",
         "Stores": "Stores",
         "Platform Users": "Platform Users",
+        "Pricing Plans": "Pricing Plans",
         "Support Tickets": "Support Tickets",
         "Feedback Admin": "Feedback Admin",
         "Knowledge Base": "Knowledge Base",
@@ -4967,6 +4971,72 @@
                 "support1Item0": "Owner review before action",
                 "support1Item1": "Private feedback inbox",
                 "support1Item2": "Quiet attention signal"
+            }
+        },
+        "FeatureDetailScreenshots": {
+            "menuImport": {
+                "label": "Menu import product screenshot proof",
+                "eyebrow": "Real owner screen",
+                "title": "The original menu source stays visible during setup.",
+                "highlight": "source stays visible",
+                "subtitle": "This screenshot uses the current owner workflow to show that MenuList starts from the menu the business already has instead of asking owners to rebuild everything from a blank screen.",
+                "sourceMenu": {
+                    "kicker": "Imported source",
+                    "title": "Menu link kept with the working menu",
+                    "desc": "The owner side keeps the imported menu source connected to the prepared menu so review work starts from real business content.",
+                    "alt": "MenuList owner screen showing an imported menu link source connected to a menu setup flow"
+                }
+            },
+            "qrMenuLinks": {
+                "label": "QR menu and link product screenshot proof",
+                "eyebrow": "Share proof",
+                "title": "The same current menu can move into QR, links, and public sharing.",
+                "highlight": "same current menu",
+                "subtitle": "These captures show the real owner sharing surface and the customer menu reached from the public link. The promise stays simple: customers should land on the current approved menu.",
+                "shareKit": {
+                    "kicker": "Owner share screen",
+                    "title": "Copy links, QR assets, and placement tasks from one place",
+                    "desc": "Owners can collect the public menu link, screen link, QR code, and placement checklist without hunting through separate tools.",
+                    "alt": "MenuList owner sharing screen showing menu link, screen link, QR code, and placement checklist controls"
+                },
+                "publicMenu": {
+                    "kicker": "Customer menu",
+                    "title": "The shared link opens the customer-facing menu",
+                    "desc": "The public menu shows categories, item cards, descriptions, prices, and customer actions from the current published source.",
+                    "alt": "MenuList public customer menu showing categories, menu items, prices, and customer actions"
+                }
+            },
+            "customerFeedbackLoop": {
+                "label": "Customer feedback loop product screenshot proof",
+                "eyebrow": "Correction loop",
+                "title": "Customers can report issues, while owners keep control.",
+                "highlight": "owners keep control",
+                "subtitle": "Feedback is useful only when it helps correct the approved source. These captures show the public report path and the private owner review surface.",
+                "publicForm": {
+                    "kicker": "Public report",
+                    "title": "Customers flag the issue from the public side",
+                    "desc": "A customer can report wrong prices, missing items, outdated details, or other menu issues without making the report public.",
+                    "alt": "MenuList public feedback form allowing a customer to report a menu or business information issue"
+                },
+                "ownerInbox": {
+                    "kicker": "Owner review",
+                    "title": "The owner reviews feedback privately",
+                    "desc": "The owner inbox keeps the report, status, and source context together before anything changes on the public menu.",
+                    "alt": "MenuList owner feedback inbox showing private customer feedback status and review controls"
+                }
+            },
+            "publicDiscovery": {
+                "label": "Public discovery product screenshot proof",
+                "eyebrow": "Public source proof",
+                "title": "Discovery work is framed as source clarity, not ranking promises.",
+                "highlight": "source clarity",
+                "subtitle": "The owner side keeps discovery-related placement and public-source tasks grounded in what MenuList can truthfully support.",
+                "presenceChecklist": {
+                    "kicker": "Presence checklist",
+                    "title": "Manual public placement stays visible",
+                    "desc": "MenuList can help owners track where their official link should be placed, while still avoiding automatic external-platform claims.",
+                    "alt": "MenuList owner screen showing a public presence checklist for placing the official menu link on external channels"
+                }
             }
         },
         "Stats": {

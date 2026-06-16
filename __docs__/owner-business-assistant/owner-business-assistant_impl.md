@@ -318,6 +318,7 @@ Builder rules:
 - Keep guest feedback reads scheduler-only and capped; `/answer`, `/current`, and `/analytics` must not read `guestFeedback`.
 - Record source availability and unsupported data explicitly.
 - Never call provider models inside the snapshot builder by default.
+- Catalog-aware owner actions may split high-demand missing item photos into `image_gap` and missing item descriptions into `metadata_demand`, but only from the project catalog data and settled analytics maps already loaded by the scheduler/dashboard summary path. The description candidate must skip the item already selected for `image_gap` so one owner card does not repeat the same item twice. Do not add a new analytics event, runtime catalog scan, or provider call for this signal.
 
 ## 6. Maintenance Scheduler Integration
 

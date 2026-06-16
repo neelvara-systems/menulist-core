@@ -227,7 +227,7 @@
 | `createMenuProcessingJob`   | `src/lib/firebase/menuProcessing.ts`    | Manual dashboard/mobile analog. Messaging writes the same `menuImageProcessingJobs` contract via Admin SDK with `skipProjectSave: true` |
 | `createDefaultRoles`        | `src/data/defaultRoles.ts`              | Helper (used in publish)      |
 | `getDefaultTimeSlotPresets` | `src/config/defaultTimeSlotPresets.ts`  | Helper (used in publish)      |
-| `getBusinessCategory`       | `src/constants/common.ts`               | Helper (used in publish)      |
+| `getBusinessCategory`       | `src/data/shared/businessTypes.ts`      | Helper (used in publish)      |
 | `syncStoreToSummary`        | `src/database/platformSummary/index.ts` | Write (used in publish)       |
 
 ---

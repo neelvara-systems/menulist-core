@@ -4,6 +4,10 @@
 
 These files are **exact copies** of `src/data/shared/` (frontend primary source).
 
+Sibling imports inside this folder are allowed only when the frontend primary
+source imports the matching sibling file from `src/data/shared/`. Do not import
+app-only, frontend-only, Firebase, React, Next.js, DAL, or UI modules here.
+
 ### How to Update
 
 1. Edit the file in `src/data/shared/` (frontend — PRIMARY SOURCE)
@@ -20,7 +24,9 @@ These files are **exact copies** of `src/data/shared/` (frontend primary source)
 |---|---|
 | `businessTypes.ts` | `src/data/shared/businessTypes.ts` |
 | `businessAttributeInference.ts` | `src/data/shared/businessAttributeInference.ts` |
+| `categoryIconSuggestions.ts` | `src/data/shared/categoryIconSuggestions.ts` |
 | `defaultRoles.ts` | `src/data/shared/defaultRoles.ts` |
+| `extractedBusinessProfile.ts` | `src/data/shared/extractedBusinessProfile.ts` |
 | `ownerBusinessHealthQuestionSuggestions.ts` | `src/data/shared/ownerBusinessHealthQuestionSuggestions.ts` |
 | `countryData.ts` | `src/components/atoms/phoneNumberInput/countryData.ts` |
 

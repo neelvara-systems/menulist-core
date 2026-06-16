@@ -1,7 +1,7 @@
 'use client'
 
 import { calculateOfflineAmount, getActiveResellerTiers, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
-import { BUSINESS_TYPES } from '@constant/common';
+import { BUSINESS_TYPES } from '@data/shared/businessTypes';
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { formatInrPaise } from '@util/formatters';
 import { theme } from 'antd';

@@ -6,6 +6,83 @@
 
 ---
 
+## June 16, 2026 - Platform Cost Posture
+
+### Added
+
+- **Internal cost posture screen added** - Platform users can open `/platform/cost-posture` to see known internal cost signals, SAFE_MODE state, cost/usage alerts, source coverage, and guardrails across existing platform monitors.
+- **Ops navigation linked** - `/ops` now links to Cost Posture, and the Platform sidebar exposes Cost Posture for platform users.
+
+### Improved
+
+- **Platform admin pages separated from settings** - Platform admin and ops surfaces now open as dedicated `/platform/*` pages instead of mounting through the Platform Settings tab shell. Platform Settings stays limited to app settings, fonts, and static assets.
+
+### Cost
+
+- **Bounded read-only platform monitor** - The new screen reads one ops config document, up to 30 alert rows, up to 300 extraction audit rows, and up to 200 Business Health answer events only on manual platform access. It adds no Firestore writes, listeners, scheduler, rules, indexes, or owner/customer runtime reads.
+- **Billing forecast boundary preserved** - The screen does not claim whole Firebase bill accuracy until Cloud Billing export to BigQuery is configured.
+
+## June 16, 2026 - Business Health Image Gap Signal
+
+### Improved
+
+- **High-demand missing photos separated** - Business Health owner action planning now uses `image_gap` for active menu items that have current customer attention but no item photo, while missing descriptions stay under `metadata_demand`.
+
+### Cost
+
+- **No new Firebase read path added** - The signal reuses already-loaded project catalog data and settled item views/taps inside dashboard summary aggregation. It adds no collection, listener, index, Storage path, analytics event, or media write.
+
+## June 16, 2026 - Answerlattice Production Hardening Sweep
+
+### Fixed
+
+- **Widget feedback idempotency corrected** - Widget feedback no longer treats a search row's normal `modifiedOn` timestamp as proof that the user already submitted feedback.
+- **Public API debug leakage closed** - Production canonical-answer API responses no longer expose internal entity-resolution debug traces through `includeDebug`.
+- **Signal ingestion retry noise reduced** - Server-side signal writes now use deterministic IDs for explicit source/request identifiers so public API and widget feedback retries do not append duplicate signal rows.
+- **Translation route capped and guarded** - Article translation now respects safe mode, handles invalid JSON as a client error, returns provider throttling as `429`, and blocks oversized article text before the Gemini call.
+- **Public bundle proxy protected** - Compiled public context bundle cache misses are now rate-limited before Firebase Storage existence/download calls.
+- **Separate Firebase reaction rules restored** - Answerlattice `changelog_feedback/{tId}/{sId}` and `article_feedback/{tId}/{sId}` now have product-scoped Firestore rules in `firestore-answerlattice.rules`, so owner-visible reaction activity works when `ANSWERLATTICE_FIREBASE_MODE=separate`.
+- **Multi-language KB tab made usable** - The governance Languages tab now loads scoped KB article IDs from the category cache, fetches article translation status in capped chunks, shows loading/error states, and refreshes only the translated article after a successful translation.
+- **Hosted help limiter outage closed** - Hosted Help public pages and settings routes now fail closed when rate limiting is enabled but the limiter provider is unavailable.
+
+### Cost
+
+- **No new collection scans or listeners** - Public API auth remains hash-key scoped and rate-limited; bundle cache hits stay in memory/browser/CDN caches; signal retry hardening prevents duplicate signal documents for explicit external IDs; translation rejects oversized prompts before AI spend; the Languages tab performs one scoped category read plus chunked article reads only when opened.
+
+## June 16, 2026 - Answerlattice Customer Tracking Hardening
+
+### Fixed
+
+- **Owner-visible requester details added** - Answerlattice feedback review, conversations, tickets, Support Board cards, changelog reaction activity, and widget recent questions now surface available customer/requester identity instead of hiding it behind IDs.
+- **Widget visitor tracking added** - The v1 widget contract now supports `AnswerlatticeWidget.identify({ id, name, email })`, stored on existing widget search-history rows with session, origin, and path metadata.
+- **Changelog/article reactions made auditable** - Likes, dislikes, removals, and comments now write a capped actor activity log so owners can see who reacted when a specific entry is opened.
+
+### Cost
+
+- **No new collection scans or listeners** - Widget activity continues to read the bounded recent search-history query, feedback review remains limit 200, conversations remain paginated, Support Board source identity rides the already-loaded card document, and reaction details read one capped document only when an owner opens an entry preview.
+
+## June 16, 2026 - CampaignCue Pack Template Registry Planning
+
+### Added
+
+- **CampaignCue pack-template registry docs added** - CampaignCue now has a docs-first plan for curated platform campaign pack templates by shared business category, owner-saved reusable packs, event tags, trust checks, and Storage-backed payloads.
+
+### Cost
+
+- **One category catalog read planned** - The default owner flow reads one `campaigncuePlatformPackTemplates/{businessCategory}` document and searches/filter locally, with overflow docs loaded only after explicit owner action.
+
+## June 16, 2026 - Platform Asset Template Manager
+
+### Added
+
+- **Platform template management added** - Platform users can manage printable asset platform templates from `/platform/asset-templates`, with business-category catalogs, asset-type filtering, template family metadata, draft/published/archived status, full editor customization, and delete.
+- **Platform template writes added to the client DAL** - Platform catalog management now uses `platformAssetTemplates/{businessCategory}` plus Storage-backed editor documents, matching the owner-facing template registry pattern without adding API routes.
+
+### Cost
+
+- **Platform manager reads one category catalog at a time** - Loading the manager reads the selected `platformAssetTemplates/{businessCategory}` document and filters asset types locally.
+- **Platform template saves are explicit** - Saving a platform design reads and writes one bounded category catalog document and uploads one Storage document, with an optional preview upload.
+
 ## June 15, 2026 - Shared Creative Editor Toolbar Anchor
 
 ### Fixed
@@ -49,7 +126,7 @@
 ### Cost
 
 - **Generated templates remain zero-write** - Preview, download, and opening generated MenuList templates still do not create registry writes.
-- **Explicit template saves are bounded** - A Save as template action writes one Firestore metadata document and uploads document JSON, with optional thumbnail upload, through authenticated server API routes.
+- **Explicit template saves are bounded** - A Save as template action writes one Firestore metadata document and uploads document JSON, with optional thumbnail upload, through the authenticated client-side registry DAL.
 
 ## June 14, 2026 - Shared Creative Editor Right-Panel Editing Smoothness
 
@@ -5530,7 +5607,7 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
   - Moved `useTodayCampaigns` SWR hook to `src/hooks/useTodayCampaigns.ts` — pure DAL hook now shared by desktop `TodayScreen` and mobile `MobileTodayScreen`
   - Old desktop hook location re-exports with `@deprecated` marker for backward compatibility
 
-- **Messaging Onboarding (Documentation v1.6 — Renamed + Multi-Provider + Tracking + Access Model + Business Type + Deep Cross-Check)** — Full documentation suite for Messaging Onboarding — MenuList's primary acquisition engine. Provider-agnostic architecture (WhatsApp v1, Telegram/LINE/Viber future-ready). Provider adapter layer (`IMessagingProvider`). Deep review: publish pipeline field mapping, email handling (`@msg.menulist.ai`), magic link login (ADR-8), extraction watcher (ADR-9), preview→publish connection (ADR-10). **Onboarding Observation Layer (§16):** MOL-inspired internal tracking with 35 event types, fire-and-forget logger, `messagingOnboardingEvents` collection (ADR-11). **Post-Publish Access Model (§17, ADR-12):** Free publish → 24h public grace → dashboard restricted → owner pays via existing Razorpay. Store fields: `onboardingSource`, `activationDeadline`. **Business Type Auto-Detection (§8.4, §17.8):** AI detects businessType from menu using existing `BUSINESS_TYPES`/`BUSINESS_CATEGORIES` from `src/constants/common.ts` (60+ types, 7 categories). Confidence-based fallback to Restaurant/food. Editable on preview page. 136 test cases across 14 categories (94 P0), 12 ADRs. Renamed from `whatsapp-onboarding` to `messaging-onboarding` (Feb 17, 2026). See [help doc](__docs__/messaging-onboarding/messaging-onboarding_helpdoc.md).
+- **Messaging Onboarding (Documentation v1.6 — Renamed + Multi-Provider + Tracking + Access Model + Business Type + Deep Cross-Check)** — Full documentation suite for Messaging Onboarding — MenuList's primary acquisition engine. Provider-agnostic architecture (WhatsApp v1, Telegram/LINE/Viber future-ready). Provider adapter layer (`IMessagingProvider`). Deep review: publish pipeline field mapping, email handling (`@msg.menulist.ai`), magic link login (ADR-8), extraction watcher (ADR-9), preview→publish connection (ADR-10). **Onboarding Observation Layer (§16):** MOL-inspired internal tracking with 35 event types, fire-and-forget logger, `messagingOnboardingEvents` collection (ADR-11). **Post-Publish Access Model (§17, ADR-12):** Free publish → 24h public grace → dashboard restricted → owner pays via existing Razorpay. Store fields: `onboardingSource`, `activationDeadline`. **Business Type Auto-Detection (§8.4, §17.8):** AI detects businessType from menu using existing `BUSINESS_TYPES`/`BUSINESS_CATEGORIES` from `src/data/shared/businessTypes.ts` (60+ types, 7 categories). Confidence-based fallback to Restaurant/food. Editable on preview page. 136 test cases across 14 categories (94 P0), 12 ADRs. Renamed from `whatsapp-onboarding` to `messaging-onboarding` (Feb 17, 2026). See [help doc](__docs__/messaging-onboarding/messaging-onboarding_helpdoc.md).
 
 ### Fixed
 

@@ -40,11 +40,26 @@ export async function authenticateAnswerlatticePublicApi(
         window: rateLimit.window,
     });
 
+    if (
+        rateLimitResult.allowed
+        && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+        && rateLimitResult.current === 0
+        && rateLimitResult.remaining === rateLimit.limit
+    ) {
+        return {
+            ok: false,
+            response: apiError('RATE_LIMIT_UNAVAILABLE', 'Public API temporarily unavailable', 503, {
+                'Cache-Control': 'no-store',
+            }),
+        };
+    }
+
     if (!rateLimitResult.allowed) {
         const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
         return {
             ok: false,
             response: apiError('RATE_LIMIT_EXCEEDED', 'Too many requests', 429, {
+                'Cache-Control': 'no-store',
                 'Retry-After': String(Math.max(retryAfter, 1)),
             }),
         };
@@ -52,6 +67,7 @@ export async function authenticateAnswerlatticePublicApi(
 
     const result = await validatePublicApiKey(apiKey, {
         allowLegacyRawFallback: false,
+        cacheTtlMs: 30_000,
     });
     if (!result) {
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };

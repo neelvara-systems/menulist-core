@@ -1,6 +1,7 @@
 import { Timestamp } from 'firebase/firestore';
 import { UserUploadedFileType } from './common';
 import { KnowledgeBaseArticleType } from './knowledgeBase';
+import type { SourceContext } from './multiProduct';
 
 export interface ChatMessage {
     id: string;
@@ -52,6 +53,9 @@ export interface ChatSession {
     // Session-related fields that will be added by the DAL
     uId?: string;
     userName?: string; // User's display name for UI (e.g., "John Doe")
+    userEmail?: string;
+    userPhone?: string;
+    sourceContext?: SourceContext;
     tId?: number;
     sId?: number;
     createdOn?: Timestamp; // Should be a server timestamp

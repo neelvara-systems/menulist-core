@@ -32,6 +32,7 @@ Private reads and all client writes are denied by Storage rules. Server/admin co
 - Widget and MCP runtime reads must not query raw source collections.
 - Storage bundles must be versioned and cacheable.
 - Storage downloads are still billable, so server, browser, and CDN caches are required.
+- Public bundle proxy cache misses are rate-limited by `ANSWERLATTICE_PUBLIC_BUNDLE` before Storage existence/download calls; when rate limiting is enabled but the provider is bypassing, the proxy fails closed with a no-store `503`.
 - Bundle rebuild reads are bounded and source-change driven.
 - Runtime reads never trigger rebuilds.
 - MCP session auth avoids API-key Firestore lookup per tool call.

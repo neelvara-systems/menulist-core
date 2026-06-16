@@ -42,9 +42,18 @@ import { z } from 'zod';
 
 const MAX_QUERY_LENGTH = 500;
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
+const WidgetVisitorSchema = z.object({
+    id: z.string().max(120).optional(),
+    customerId: z.string().max(120).optional(),
+    name: z.string().max(160).optional(),
+    displayName: z.string().max(160).optional(),
+    email: z.string().max(180).optional(),
+}).strip();
 const WidgetSearchRequestSchema = z.object({
     query: z.string().trim().min(1).max(MAX_QUERY_LENGTH),
     context: z.unknown().optional(),
+    visitor: WidgetVisitorSchema.optional(),
+    sessionId: z.string().max(120).optional(),
     conversationHistory: z.array(z.object({
         role: z.enum(['user', 'assistant']),
         content: z.string().max(2000).optional(),
@@ -62,6 +71,28 @@ const WidgetSearchRequestSchema = z.object({
 });
 
 const isLikelyBase64 = (value: string): boolean => /^[A-Za-z0-9+/]+={0,2}$/.test(value);
+
+const cleanWidgetIdentityText = (value: unknown, maxLength = 160): string | null => {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    if (!text) return null;
+    return text.length > maxLength ? text.slice(0, maxLength) : text;
+};
+
+const cleanWidgetEmail = (value: unknown): string | null => {
+    const email = cleanWidgetIdentityText(value, 180)?.toLowerCase() || null;
+    if (!email) return null;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+};
+
+const detectUserAgentFamily = (userAgent: string | null): string | null => {
+    const value = String(userAgent || '').toLowerCase();
+    if (!value) return null;
+    if (value.includes('edg/')) return 'edge';
+    if (value.includes('chrome/') || value.includes('crios/')) return 'chrome';
+    if (value.includes('firefox/') || value.includes('fxios/')) return 'firefox';
+    if (value.includes('safari/')) return 'safari';
+    return 'other';
+};
 
 const jsonResponse = (
     request: NextRequest,
@@ -96,6 +127,21 @@ export async function POST(request: NextRequest) {
             limit: rateLimitConfig.limit,
             window: rateLimitConfig.window,
         });
+        if (
+            rateLimitResult.allowed
+            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+            && rateLimitResult.current === 0
+            && rateLimitResult.remaining === rateLimitConfig.limit
+        ) {
+            return jsonResponse(
+                request,
+                { error: 'Search is temporarily unavailable. Please try again later.' },
+                {
+                    status: 503,
+                    headers: { 'Cache-Control': 'no-store' },
+                }
+            );
+        }
         if (!rateLimitResult.allowed) {
             const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
             return jsonResponse(
@@ -103,7 +149,10 @@ export async function POST(request: NextRequest) {
                 { error: 'Rate limit exceeded. Please try again later.' },
                 {
                     status: 429,
-                    headers: { 'Retry-After': String(Math.max(retryAfter, 1)) },
+                    headers: {
+                        'Cache-Control': 'no-store',
+                        'Retry-After': String(Math.max(retryAfter, 1)),
+                    },
                 }
             );
         }
@@ -148,7 +197,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Parse and validate request body
-        const validation = WidgetSearchRequestSchema.safeParse(await request.json());
+        const validation = WidgetSearchRequestSchema.safeParse(await request.json().catch(() => null));
         if (!validation.success) {
             return jsonResponse(request, { error: 'Query is required' }, { status: 400 });
         }
@@ -211,11 +260,20 @@ export async function POST(request: NextRequest) {
             mountContext: 'widget',
             tId,
             sId,
-            uId: 'widget',
+            uId: cleanWidgetIdentityText(body.visitor?.id || body.visitor?.customerId, 120) || 'widget',
             mode: conversationHistory && conversationHistory.length > 0 ? 'assistant' : 'qna',
             productContext: validatedContext,
             conversationHistory,
             imageBuffer,
+            requestMetadata: {
+                visitorId: cleanWidgetIdentityText(body.visitor?.id || body.visitor?.customerId, 120),
+                visitorName: cleanWidgetIdentityText(body.visitor?.name || body.visitor?.displayName, 160),
+                visitorEmail: cleanWidgetEmail(body.visitor?.email),
+                widgetSessionId: cleanWidgetIdentityText(body.sessionId, 120),
+                requestOrigin: cleanWidgetIdentityText(requestOrigin, 180),
+                requestPath: cleanWidgetIdentityText(validatedContext?.path, 180),
+                userAgentFamily: detectUserAgentFamily(request.headers.get('user-agent')),
+            },
         });
 
         // ===== FORMAT RESPONSE for Widget frontend =====
@@ -305,7 +363,10 @@ export async function POST(request: NextRequest) {
                 },
                 {
                     status: 429,
-                    headers: { 'Retry-After': String(retryAfter) },
+                    headers: {
+                        'Cache-Control': 'no-store',
+                        'Retry-After': String(retryAfter),
+                    },
                 }
             );
         }

@@ -163,6 +163,11 @@ const editorAdapter = read('src/lib/printable-asset-templates/editorDocumentAdap
   'renderPrintableAssetEditorDocument',
   'rehydratePrintableAssetEditorDocument',
   'renderPrintableAssetEditorTemplate',
+  'stripPrintableAssetEditorAttributionLayers',
+  'applyRuntimeMenuListAttribution',
+  'drawMenuListAttribution',
+  'isPrintableAssetPlatformAttribution',
+  'resolveMenuListAttributionPolicy({ activePlanType: params.activePlanType }).showAttribution',
   'CreativeEditorDocument',
   'locked: true',
   'resolveMenuListAttributionPolicy',
@@ -250,6 +255,9 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'Save as template',
   'templateSaveLabel="Save as template"',
   'templateSavePreview',
+  'stripPrintableAssetEditorAttributionLayers',
+  'activePlanType: input.activePlanType',
+  'activePlanType: editorState.activePlanType',
   'listCreativeEditorTemplates',
   'saveCreativeEditorTemplate',
   'getCreativeEditorTemplate',
@@ -262,7 +270,8 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'template.sourceSurface === templateRegistryContext.sourceSurface',
   'canLoadUserTemplates',
   'rehydratePrintableAssetEditorDocument',
-  'resolveBusinessCategoryOrFallback',
+  'resolveBusinessCategory',
+  "|| 'generic'",
   'platformTemplateRegistryContext',
   'businessCategory: platformBusinessCategory',
   'secondaryLabel: project.url.replace',
@@ -325,15 +334,10 @@ if (templateRegistryDal.includes('apiCallComposer')) {
 
 const templateSchemas = read('src/lib/validation/creativeEditorTemplateSchemas.ts');
 [
+  'BUSINESS_CATEGORIES',
   'creativeEditorPlatformBusinessCategorySchema',
   '"generic"',
-  '"food"',
-  '"service"',
-  '"retail"',
-  '"professional"',
-  '"creative"',
-  '"health"',
-  '"specialty"',
+  'BUSINESS_CATEGORIES.some',
   'businessCategory',
   'Element must have width or height',
 ].forEach((token) => requireToken(templateSchemas, token, 'creative editor template registry schemas'));
@@ -394,6 +398,7 @@ const creativeEditor = read('src/modules/creative-editor/CreativeEditor.tsx');
   'Save as template',
   'showInternalExportTools',
   'const showInternalExportTools = chromeMode === "full"',
+  'showCanvasWatermark: chromeMode === "full"',
 ].forEach((token) => requireToken(creativeEditor, token, 'shared creative editor template save callback'));
 
 if (desktopAssetsRoute.includes('getProjectData(data.projectId)')) {

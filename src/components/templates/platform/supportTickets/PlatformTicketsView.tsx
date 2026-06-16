@@ -65,7 +65,9 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
                 ticket.displayId.toLowerCase().includes(searchMatch) ||
                 ticket.subject.toLowerCase().includes(searchMatch) ||
                 ticket.clientDetails?.storeName?.toLowerCase()?.includes(searchMatch) ||
-                ticket.clientDetails?.tenantName?.toLowerCase()?.includes(searchMatch)
+                ticket.clientDetails?.tenantName?.toLowerCase()?.includes(searchMatch) ||
+                ticket.clientDetails?.email?.toLowerCase()?.includes(searchMatch) ||
+                ticket.clientDetails?.phone?.toLowerCase()?.includes(searchMatch)
             );
 
             const matchesFilters =
@@ -257,4 +259,3 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
 PlatformTicketsView.displayName = 'PlatformTicketsView';
 
 export default PlatformTicketsView;
-

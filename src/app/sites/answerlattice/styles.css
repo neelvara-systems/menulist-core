@@ -97,6 +97,31 @@ html:has(.answerlattice-site) {
     scroll-behavior: smooth;
 }
 
+html.lenis:has(.answerlattice-site),
+html.lenis:has(.answerlattice-site) body {
+    height: auto;
+}
+
+html.lenis.lenis-smooth:has(.answerlattice-site) {
+    scroll-behavior: auto !important;
+}
+
+html.lenis:has(.answerlattice-site) [data-lenis-prevent],
+html.lenis:has(.answerlattice-site) [data-lenis-prevent-wheel],
+html.lenis:has(.answerlattice-site) [data-lenis-prevent-touch],
+html.lenis:has(.answerlattice-site) [data-lenis-prevent-vertical],
+html.lenis:has(.answerlattice-site) [data-lenis-prevent-horizontal] {
+    overscroll-behavior: contain;
+}
+
+html.lenis.lenis-smooth:has(.answerlattice-site) iframe {
+    pointer-events: none;
+}
+
+html.lenis:not(.lenis-autoToggle).lenis-stopped:has(.answerlattice-site) {
+    overflow: clip;
+}
+
 html[data-answerlattice-theme='light']:has(.answerlattice-site),
 html[data-answerlattice-theme='light'] body:has(.answerlattice-site) {
     background: #f8fafc !important;

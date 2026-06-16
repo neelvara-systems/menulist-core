@@ -61,7 +61,15 @@ function main() {
                             available: true,
                             category: 'drinks',
                             name: { en: 'Cold Coffee' },
+                            description: { en: 'Chilled coffee drink' },
                             tags: [],
+                        },
+                        {
+                            id: 'seasonal-juice',
+                            active: true,
+                            available: true,
+                            category: 'drinks',
+                            name: { en: 'Seasonal Juice' },
                         },
                         {
                             id: 'family-platter',
@@ -69,6 +77,8 @@ function main() {
                             available: true,
                             category: 'mains',
                             name: { en: 'Family Platter' },
+                            description: { en: 'Family sharing meal' },
+                            images: [{ url: 'https://example.com/family-platter.jpg' }],
                             attributes: [
                                 { id: 'regular', active: true, name: { en: 'Regular' }, price: '499' },
                                 { id: 'large', active: true, name: { en: 'Large' }, price: '699' },
@@ -98,6 +108,7 @@ function main() {
                             name: { en: 'Vegan Bowl' },
                             dietaryTags: ['vegan'],
                             duration: 20,
+                            images: [{ url: 'https://example.com/vegan-bowl.jpg' }],
                         },
                         {
                             id: 'premium-thali',
@@ -122,7 +133,8 @@ function main() {
         totalViews: 40,
         viewsByItem: {
             'paneer-tikka': 2,
-            'cold-coffee': 8,
+            'cold-coffee': 9,
+            'seasonal-juice': 12,
             'family-platter': 6,
             'hidden-soup': 3,
             'breakfast-combo': 5,
@@ -131,6 +143,7 @@ function main() {
         },
         clicksByItem: {
             'cold-coffee': 2,
+            'seasonal-juice': 3,
             'family-platter': 2,
             'breakfast-combo': 2,
             'vegan-bowl': 1,
@@ -163,6 +176,7 @@ function main() {
         'category_reorder',
         'hidden_demand',
         'variant_clarity',
+        'image_gap',
         'metadata_demand',
         'timed_category',
         'price_signal',
@@ -181,6 +195,10 @@ function main() {
     assert(byType(actions, 'unavailable_demand').id.includes('paneer-tikka'), 'Expected unavailable demand to target Paneer Tikka');
     assert(byType(actions, 'category_reorder').description.includes('Breakfast'), 'Expected category reorder to target Breakfast');
     assert(byType(actions, 'variant_clarity').id.includes('family-platter'), 'Expected variant clarity to target item with active variants');
+    assert(byType(actions, 'image_gap').id.includes('seasonal-juice'), 'Expected image gap to target high-demand item missing a photo');
+    assert(byType(actions, 'image_gap').actionLabel === 'Add photo', 'Expected image gap to route to photo action label');
+    assert(byType(actions, 'metadata_demand').id.includes('vegan-bowl'), 'Expected metadata demand to remain scoped to missing descriptions');
+    assert(!byType(actions, 'metadata_demand').id.includes('seasonal-juice'), 'Expected metadata demand to skip the item already selected for image gap');
     assert(byType(actions, 'price_signal').id.includes('premium-thali'), 'Expected price signal to target reviewed price item');
 
     const proEntitlement = resolveAnalyticsAiEntitlement({ activePlanType: 'pro' });

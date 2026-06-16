@@ -10,8 +10,8 @@
 
 | Field                 | Firestore Key      | Type     | Example Values                                                                               | Purpose                                                                                                                                                            | Source of Truth                                                                                                        |
 | --------------------- | ------------------ | -------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| **Business Type**     | `businessType`     | `string` | `"Restaurant"`, `"Salon"`, `"Cafe"`, `"Gym"`, `"Other"`                                      | The actual business type when known. `Other` is the canonical fallback when intake cannot identify a confident exact type. Drives schema.org, OBP, time slots, UI labels, filters, image generation, decision blocks, AI prompts. | `src/constants/common.ts` → `BUSINESS_TYPES[].value` (60+ values + `Other`)                                            |
-| **Business Category** | `businessCategory` | `string` | `"food"`, `"service"`, `"retail"`, `"health"`, `"creative"`, `"professional"`, `"specialty"` | Broad vertical used for category-level logic (filter allowlists, decision block scoring, time slot defaults). For exact canonical types it is derived from `businessType`; for `Other` and legacy/free-text types it may carry the best known broad category. | `src/constants/common.ts` → `BUSINESS_CATEGORIES[].value` (7 values). Persisted through `resolveStoreBusinessCategory()`. |
+| **Business Type**     | `businessType`     | `string` | `"Restaurant"`, `"Salon"`, `"Cafe"`, `"Gym"`, `"Other"`                                      | The actual business type when known. `Other` is the canonical fallback when intake cannot identify a confident exact type. Drives schema.org, OBP, time slots, UI labels, filters, image generation, decision blocks, AI prompts. | `src/data/shared/businessTypes.ts` → `BUSINESS_TYPES[].value` (60+ values + `Other`)                                            |
+| **Business Category** | `businessCategory` | `string` | `"food"`, `"service"`, `"retail"`, `"health"`, `"creative"`, `"professional"`, `"specialty"` | Broad vertical used for category-level logic (filter allowlists, decision block scoring, time slot defaults). For exact canonical types it is derived from `businessType`; for `Other` and legacy/free-text types it may carry the best known broad category. | `src/data/shared/businessTypes.ts` → `BUSINESS_CATEGORIES[].value` (7 values). Persisted through `resolveStoreBusinessCategory()`. |
 | **Business Industry** | `businessIndustry` | `string` | `"B2C"`, `"B2B"`                                                                             | Plan/industry identifier. B2C = SMB businesses (restaurants, salons, etc.). B2B = POS software providers, agencies. Future scope — MenuList is currently B2C only. | `src/data/common.ts` → `PlanType` = `'B2C' \| 'B2B'`                                                                   |
 
 ---
@@ -68,7 +68,7 @@ IMAGE_VIEW_TYPES.find((t) => t.businessType === store.businessType); // → imag
 ### `BUSINESS_TYPES` — 60+ types across 7 categories
 
 ```
-src/constants/common.ts:173-257
+src/data/shared/businessTypes.ts
 
 Food & Beverage (food):     Restaurant, Cafe, Cake Shop, Bakery, Coffee Shop,
                             Specialty Coffee Shop, Ice Cream Shop
@@ -89,7 +89,7 @@ Specialty (specialty):      Car Dealership, Auto Repair, 3D Printing Studio,
 ### `BUSINESS_CATEGORIES` — 7 broad verticals
 
 ```
-src/constants/common.ts:163-171
+src/data/shared/businessTypes.ts
 
 food          — Food & Beverage
 service       — Service Businesses

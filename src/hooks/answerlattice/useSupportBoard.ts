@@ -12,6 +12,7 @@ import {
 } from '@database/answerlattice/supportBoard';
 import { getRecentSignalEvents } from '@database/answerlattice/signalEvents';
 import { getStoresTickets } from '@database/tickets';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import {
     ANSWERLATTICE_MUTATION_STATUS,
@@ -134,6 +135,35 @@ const sourceKeyForCard = (sourceType?: string | null, sourceId?: string | null) 
     sourceType && sourceId ? `${sourceType}:${sourceId}` : null
 );
 
+const sourceIdentityFields = (record: Parameters<typeof getAnswerlatticeCustomerIdentity>[0]) => {
+    const identity = getAnswerlatticeCustomerIdentity(record);
+    const hasIdentity = Boolean(identity.userId || identity.email || identity.phone || identity.displayName !== 'Unknown customer');
+
+    return {
+        sourceCustomerName: hasIdentity ? identity.displayName : null,
+        sourceCustomerEmail: identity.email || null,
+        sourceCustomerPhone: identity.phone || null,
+        sourceCustomerUserId: identity.userId || null,
+        sourceOrigin: identity.origin || null,
+        sourcePath: identity.path || null,
+        sourceSessionId: identity.sessionId || null,
+    };
+};
+
+const signalIdentityRecord = (metadata: Record<string, any>) => ({
+    uId: metadata.userId || metadata.uId,
+    userName: metadata.userName || metadata.customerName || metadata.name,
+    userEmail: metadata.userEmail || metadata.customerEmail || metadata.email,
+    userPhone: metadata.userPhone || metadata.customerPhone || metadata.phone,
+    visitorId: metadata.visitorId,
+    visitorName: metadata.visitorName,
+    visitorEmail: metadata.visitorEmail,
+    sourceContext: metadata.sourceContext,
+    requestOrigin: metadata.requestOrigin || metadata.origin,
+    requestPath: metadata.requestPath || metadata.path,
+    widgetSessionId: metadata.widgetSessionId || metadata.sessionId,
+});
+
 const cardInputFromTicket = (ticket: SupportTicketType, tId: number, sId: number): CreateAnswerlatticeSupportBoardCardInput => ({
     tId,
     sId,
@@ -143,6 +173,12 @@ const cardInputFromTicket = (ticket: SupportTicketType, tId: number, sId: number
     priority: mapTicketPriority(ticket.priority),
     sourceType: ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.TICKET,
     sourceId: ticket.id,
+    ...sourceIdentityFields({
+        uId: ticket.uId,
+        clientDetails: ticket.clientDetails,
+        requestPath: ticket.escalationContext?.productContext?.page,
+        widgetSessionId: ticket.escalationContext?.conversationId,
+    }),
     relatedTicketId: ticket.id,
     relatedEntityId: getTicketEntityId(ticket),
     relatedConversationId: ticket.escalationContext?.conversationId || null,
@@ -169,6 +205,7 @@ const cardInputFromSignal = (signal: AnswerlatticeSignalEvent, tId: number, sId:
         priority: getSignalPriority(signal),
         sourceType: ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.SIGNAL,
         sourceId: signal.id,
+        ...sourceIdentityFields(signalIdentityRecord(metadata)),
         relatedTicketId: ticketId,
         relatedConversationId: conversationId,
         relatedSurfaceId: surfaceId,

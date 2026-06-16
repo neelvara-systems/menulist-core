@@ -1,3 +1,4 @@
+'use client'
 
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { PricingPlan } from '@data/common';

@@ -128,7 +128,7 @@ This appendix lists the exact code/doc references used for the Answerlattice dat
 
 | Claim | Evidence |
 | --- | --- |
-| Signal emitter is feature-gated, non-blocking, sanitizes metadata, dedupes common cases in memory, and writes `answerlattice_signalEvents`. | `src/lib/answerlattice/signalEmitter.ts:1-17`, `src/lib/answerlattice/signalEmitter.ts:34-37`, `src/lib/answerlattice/signalEmitter.ts:62-92`, `src/lib/answerlattice/signalEmitter.ts:107-133` |
+| Signal emitter is feature-gated, non-blocking, sanitizes metadata, dedupes common cases in memory, uses deterministic server document IDs for explicit request/source IDs, and writes `answerlattice_signalEvents`. | `src/lib/answerlattice/signalEmitter.ts:1-17`, `src/lib/answerlattice/signalEmitter.ts:34-37`, `src/lib/answerlattice/signalEmitter.ts:62-92`, `src/lib/answerlattice/signalEmitter.ts:107-196` |
 | Friction aggregation reads today's signals and canonical misses from `aiSearchHistory`, writes daily stats, and writes compact `platformSummary/frictionSnapshot_*`. | `functions-answerlattice/src/answerlattice/frictionAggregation.ts:119-193`, `functions-answerlattice/src/answerlattice/frictionAggregation.ts:249-365` |
 | Friction daily stats cleanup deletes records older than 90 days. | `functions-answerlattice/src/answerlattice/frictionAggregation.ts:379-414` |
 | Signal TTL archive deletes signal events older than 12 months. | `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts:1281-1328` |

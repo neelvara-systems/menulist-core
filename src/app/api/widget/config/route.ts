@@ -174,13 +174,30 @@ export async function GET(request: NextRequest) {
             limit: rateLimitConfig.limit,
             window: rateLimitConfig.window,
         });
+        if (
+            rateLimitResult.allowed
+            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+            && rateLimitResult.current === 0
+            && rateLimitResult.remaining === rateLimitConfig.limit
+        ) {
+            return withPublicApiCors(NextResponse.json(
+                { error: 'Widget config temporarily unavailable' },
+                {
+                    status: 503,
+                    headers: { 'Cache-Control': 'no-store' },
+                }
+            ), request);
+        }
         if (!rateLimitResult.allowed) {
             const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
             return withPublicApiCors(NextResponse.json(
                 { error: 'Rate limit exceeded' },
                 {
                     status: 429,
-                    headers: { 'Retry-After': String(Math.max(retryAfter, 1)) },
+                    headers: {
+                        'Cache-Control': 'no-store',
+                        'Retry-After': String(Math.max(retryAfter, 1)),
+                    },
                 }
             ), request);
         }

@@ -223,7 +223,12 @@ export default async function AnswerlatticeHostedHelpPage({ params, searchParams
         limit: rateLimitConfig.limit,
         window: rateLimitConfig.window,
     });
-    if (!rateLimit.allowed) {
+    const rateLimitUnavailable =
+        rateLimit.allowed
+        && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+        && rateLimit.current === 0
+        && rateLimit.remaining === rateLimitConfig.limit;
+    if (rateLimitUnavailable || !rateLimit.allowed) {
         return (
             <HostedHelpClient
                 categories={null}

@@ -73,7 +73,7 @@ Flow 2 and Flow 3 are product goals but are not enabled in the current runtime. 
 ### Flow 1 - Upload Existing Image
 
 1. Owner opens CampaignCue Asset Library or Creative Studio.
-2. Owner selects **Turn image into layers**.
+2. Owner selects **Reuse old image**.
 3. Owner uploads a PNG, JPEG, or WebP.
 4. CampaignCue verifies type, size, ownership, and workspace scope.
 5. CueLayers creates a source package and job.

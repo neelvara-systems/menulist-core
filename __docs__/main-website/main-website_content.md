@@ -1587,6 +1587,17 @@ Secondary CTA:
 
 ## Meta Content (All Pages)
 
+## Feature Screenshot Proof Copy
+
+v3.6.57 adds localized screenshot-proof captions under `Website.FeatureDetailScreenshots` for the feature pages where current captures are clean enough to publish:
+
+- Menu Import: imported source proof only.
+- QR Menu and Links: owner share kit plus public customer menu proof.
+- Customer Feedback Loop: public report form plus private owner inbox proof.
+- Public Discovery: placement/source checklist proof.
+
+Do not add screenshot captions for rough captures just to fill every feature page. Official Business Page, Featured Choices, Owner PWA Dashboard, Business Health, Menu Content Prep, and Menu Quality Validation should receive public screenshot copy only after the demo tenant/state is clean enough to publish.
+
 ## Owner Reassurance Placement Rules
 
 Owner reassurance should reduce friction without turning into repeated wallpaper copy.

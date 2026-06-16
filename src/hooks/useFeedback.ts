@@ -18,7 +18,7 @@ interface FeedbackHandlers {
     storeFeedback: (userId: string, contentId: string, type: FeedbackType) => void;
     getStoredFeedback: (userId: string, contentId: string) => FeedbackType | null;
     removeStoredFeedback: (userId: string, contentId: string) => void;
-    submitComment?: (contentType: ContentType, contentId: string, comment: string, sentiment: FeedbackType) => Promise<any>;
+    submitComment?: (contentType: ContentType, contentId: string, comment: string, sentiment: FeedbackType, action?: 'added' | 'removed') => Promise<any>;
 }
 
 interface UseFeedbackReturn {
@@ -99,7 +99,13 @@ export const useFeedback = (
 
             try {
                 // Decrement the count in database
-                await updateFeedback(contentId, type, false, pageId);
+                const promises: Promise<any>[] = [
+                    updateFeedback(contentId, type, false, pageId)
+                ];
+                if (submitComment) {
+                    promises.push(submitComment(contentType, contentId, '', type, 'removed'));
+                }
+                await Promise.all(promises);
                 message.success('Feedback removed.');
             } catch (error) {
                 message.error('Failed to remove feedback. Please try again.');
@@ -131,7 +137,13 @@ export const useFeedback = (
             storeFeedback(user.id, contentId, type);
 
             try {
-                await updateFeedback(contentId, type, true, pageId);
+                const promises: Promise<any>[] = [
+                    updateFeedback(contentId, type, true, pageId)
+                ];
+                if (submitComment) {
+                    promises.push(submitComment(contentType, contentId, '', type, 'added'));
+                }
+                await Promise.all(promises);
             } catch (error) {
                 message.error('Failed to submit feedback. Please try again.');
                 setLikes(prev => prev - 1);
@@ -160,7 +172,7 @@ export const useFeedback = (
 
             // Add comment submission if handler provided
             if (submitComment) {
-                promises.push(submitComment(contentType, contentId, comment, 'dislike'));
+                promises.push(submitComment(contentType, contentId, comment, 'dislike', 'added'));
             }
 
             await Promise.all(promises);

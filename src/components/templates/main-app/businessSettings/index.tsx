@@ -11,7 +11,7 @@ import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
-import { resolveStoreBusinessCategory } from "@constant/common";
+import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";

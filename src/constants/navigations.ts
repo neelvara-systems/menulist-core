@@ -1,4 +1,4 @@
-import { LuActivity, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuMapPin, LuPrinter, LuQrCode, LuReceipt, LuShare2, LuShieldCheck, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
+import { LuActivity, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDollarSign, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLayoutTemplate, LuMapPin, LuPrinter, LuQrCode, LuReceipt, LuShare2, LuShieldCheck, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
 import { MdOutlineManageHistory } from 'react-icons/md';
 import { TbSettingsHeart } from 'react-icons/tb';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from './user';
@@ -48,6 +48,10 @@ export const NAVIGARIONS_ROUTINGS = {
     SIGNIN: `/signin`,
     FORGOT_PASSWORD: 'forgot-password',
     PLATFORM_ENTITY_BLOCKS: `/platform/entity-blocks`,
+    PLATFORM_ASSET_TEMPLATES: `/platform/asset-templates`,
+    PLATFORM_OWNER_BUSINESS_ASSISTANT: `/platform/owner-business-assistant`,
+    PLATFORM_COST_POSTURE: `/platform/cost-posture`,
+    PLATFORM_PRICING_PLANS: `/platform/pricing-plans`,
     PLATFORM_TENANTS: `/platform/tenants`,
     PLATFORM_STORES: `/platform/stores`,
     PLATFORM_USERS: `/platform/users`,
@@ -106,10 +110,14 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
             { label: 'Scheduler Monitor', route: NAVIGARIONS_ROUTINGS.OPS_SCHEDULER_MONITOR, icon: LuClock3 },
             { label: 'Extraction Monitor', route: NAVIGARIONS_ROUTINGS.OPS_EXTRACTION_MONITOR, icon: LuSparkles },
             { label: 'Answerlattice Intake', route: NAVIGARIONS_ROUTINGS.OPS_ANSWERLATTICE_INTAKE_MONITOR, icon: LuBookOpen },
+            { label: 'Business Health Monitor', route: NAVIGARIONS_ROUTINGS.PLATFORM_OWNER_BUSINESS_ASSISTANT, icon: LuActivity, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
+            { label: 'Cost Posture', route: NAVIGARIONS_ROUTINGS.PLATFORM_COST_POSTURE, icon: LuDollarSign, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
             { label: 'Entity Blocks', route: NAVIGARIONS_ROUTINGS.PLATFORM_ENTITY_BLOCKS, icon: LuShieldOff },
+            { label: 'Asset Templates', route: NAVIGARIONS_ROUTINGS.PLATFORM_ASSET_TEMPLATES, icon: LuLayoutTemplate, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
             { label: 'Tenants', route: NAVIGARIONS_ROUTINGS.PLATFORM_TENANTS, icon: LuBuilding2 },
             { label: 'Stores', route: NAVIGARIONS_ROUTINGS.PLATFORM_STORES, icon: LuMapPin },
             { label: 'Platform Users', route: NAVIGARIONS_ROUTINGS.PLATFORM_USERS, icon: LuUsers },
+            { label: 'Pricing Plans', route: NAVIGARIONS_ROUTINGS.PLATFORM_PRICING_PLANS, icon: LuDollarSign, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
         ]
     },
     {

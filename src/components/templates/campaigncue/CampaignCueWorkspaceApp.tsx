@@ -31,6 +31,15 @@ import { buildCampaignCueDailyDesk } from "@lib/campaigncue/dailyDesk";
 import { applyCampaignCueDesignCuePatchSet } from "@lib/campaigncue/design-cue/apply";
 import { runCampaignCueDesignCue } from "@lib/campaigncue/design-cue/intent";
 import {
+    buildCampaignCueWorkspaceTemplateSaveInput,
+    summarizeCampaignCuePackTemplateApplication,
+} from "@lib/campaigncue/pack-templates/applyTemplate";
+import {
+    getCampaignCuePackTemplate,
+    listCampaignCuePackTemplates,
+} from "@lib/campaigncue/pack-templates/catalog";
+import { saveCampaignCueWorkspacePackTemplate } from "@lib/campaigncue/pack-templates/workspaceTemplates";
+import {
     type CreativeEditorDocument,
     type CreativeEditorDesignCueApplyHandler,
     type CreativeEditorDesignCueHandler,
@@ -47,20 +56,28 @@ import type {
     CampaignCueAsset,
     CampaignCueCampaign,
     CampaignCueChannel,
+    CampaignCueDailyDeskTask,
     CampaignCueDecision,
     CampaignCueLocation,
     CampaignCueManualDeliveryCard,
     CampaignCueOutput,
     CampaignCueOutputPack,
+    CampaignCueSourceFact,
     CampaignCueOverview,
     CampaignCueProviderStatus,
     CampaignCueSourceInput,
+    CampaignCueTrustSummaryItem,
 } from "@type/campaigncue";
 import type {
     CampaignCueCueLayerBootPackage,
     CampaignCueCueLayerDesign,
     CampaignCueCueLayerUploadResult,
 } from "@type/campaigncueCueLayers";
+import type {
+    CampaignCuePackTemplateHydrated,
+    CampaignCuePackTemplateListResult,
+    CampaignCuePackTemplateSummary,
+} from "@type/campaigncuePackTemplates";
 import dynamic from "next/dynamic";
 import type { ChangeEvent, ComponentType } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -90,6 +107,7 @@ import {
     LuUploadCloud,
     LuUsers,
 } from "react-icons/lu";
+import PackTemplatePicker from "./PackTemplatePicker";
 import styles from "./CampaignCueWorkspaceApp.module.scss";
 
 const CreativeEditor = dynamic(() => import("@/modules/creative-editor/CreativeEditor"), {
@@ -107,6 +125,41 @@ interface ApiState {
     error?: string;
     loading: boolean;
     status?: number;
+}
+
+interface PackTemplateState {
+    catalog?: CampaignCuePackTemplateListResult;
+    error?: string;
+    loading: boolean;
+}
+
+type CampaignCueEditorContextKind = "blank" | "campaign_output" | "cue_layers" | "pack_template";
+
+interface CampaignCueEditorProtectedFact {
+    id: string;
+    label: string;
+    sourceRef?: string;
+    status: "ready" | "needs_review" | "blocked";
+    value: string;
+}
+
+interface CampaignCueEditorContext {
+    campaign?: CampaignCueCampaign;
+    cueLayerDesign?: CampaignCueCueLayerDesign;
+    deliveryCards: CampaignCueManualDeliveryCard[];
+    kind: CampaignCueEditorContextKind;
+    mobileNote: string;
+    output?: CampaignCueOutput;
+    outputFormats: string[];
+    outputPack?: CampaignCueOutputPack;
+    printFormats: string[];
+    protectedFacts: CampaignCueEditorProtectedFact[];
+    resultOptions: CampaignCueDailyDeskTask["resultOptions"];
+    resultQuestion: string;
+    subtitle: string;
+    tasks: CampaignCueDailyDeskTask[];
+    title: string;
+    trustSummary: CampaignCueTrustSummaryItem[];
 }
 
 const channelTone = (channel: CampaignCueChannel) => {
@@ -404,6 +457,335 @@ const outputPackStatusCounts = (outputPack?: CampaignCueOutputPack) => {
         total: files.length,
     };
 };
+
+const sourceFactStatus = (fact: CampaignCueSourceFact): CampaignCueEditorProtectedFact["status"] => {
+    if (fact.risk === "blocked") return "blocked";
+    if (fact.risk === "needs_review") return "needs_review";
+    return "ready";
+};
+
+const protectedFactFromSourceFact = (fact: CampaignCueSourceFact): CampaignCueEditorProtectedFact => ({
+    id: fact.id,
+    label: fact.label,
+    sourceRef: fact.sourceRef,
+    status: sourceFactStatus(fact),
+    value: fact.value,
+});
+
+const dedupeEditorProtectedFacts = (
+    facts: CampaignCueEditorProtectedFact[],
+): CampaignCueEditorProtectedFact[] => {
+    const seen = new Set<string>();
+    return facts.filter((fact) => {
+        const key = `${fact.label}:${fact.value}`.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return Boolean(fact.value);
+    });
+};
+
+const buildBusinessProtectedFacts = (overview: CampaignCueOverview): CampaignCueEditorProtectedFact[] => {
+    const business = overview.businessBrain;
+    const contact = business.contacts.whatsapp
+        || business.contacts.phone
+        || business.contacts.bookingUrl
+        || business.contacts.publicMenuUrl
+        || business.contacts.website
+        || "";
+    const primaryItem = business.catalog.items.find((item) => item.available)
+        || business.catalog.services.find((item) => item.available);
+    return dedupeEditorProtectedFacts([
+        {
+            id: "business-name",
+            label: "Business name",
+            status: business.name ? "ready" : "needs_review",
+            value: business.name,
+        },
+        {
+            id: "business-locality",
+            label: "Location",
+            status: business.locality ? "ready" : "needs_review",
+            value: business.locality,
+        },
+        {
+            id: "business-contact",
+            label: "Contact",
+            status: contact ? "ready" : "needs_review",
+            value: contact,
+        },
+        {
+            id: "primary-item",
+            label: "Item or service",
+            status: primaryItem?.name ? "ready" : "needs_review",
+            value: primaryItem?.name || "",
+        },
+        {
+            id: "primary-price",
+            label: "Price",
+            status: primaryItem?.priceLabel ? "ready" : "needs_review",
+            value: primaryItem?.priceLabel || "",
+        },
+    ]);
+};
+
+const collectEditorProtectedFacts = (params: {
+    campaign?: CampaignCueCampaign;
+    outputPack?: CampaignCueOutputPack;
+    overview: CampaignCueOverview;
+    sourceFacts?: CampaignCueSourceFact[];
+}) => {
+    const sourceFacts = dedupeEditorProtectedFacts([
+        ...(params.sourceFacts || []),
+        ...params.overview.sourceFacts,
+        ...params.overview.sourceInputs.flatMap((input) => input.facts),
+    ].map(protectedFactFromSourceFact));
+    const selectedIds = new Set([
+        ...(params.outputPack?.facts.usedFactRefs || []),
+        ...(params.campaign?.pack?.sourceFactIds || []),
+    ]);
+    const selectedFacts = selectedIds.size
+        ? sourceFacts.filter((fact) => selectedIds.has(fact.id) || (fact.sourceRef && selectedIds.has(fact.sourceRef)))
+        : [];
+    return dedupeEditorProtectedFacts([
+        ...selectedFacts,
+        ...buildBusinessProtectedFacts(params.overview),
+        ...sourceFacts,
+    ]).slice(0, 8);
+};
+
+const outputFormatsForEditorContext = (
+    campaign?: CampaignCueCampaign,
+    output?: CampaignCueOutput,
+    outputPack?: CampaignCueOutputPack,
+) => {
+    const formats = new Set<string>();
+    output?.fields.outputFormats?.forEach((format) => formats.add(format));
+    campaign?.outputs.forEach((campaignOutput) => campaignOutput.fields.outputFormats?.forEach((format) => formats.add(format)));
+    outputPack?.creative.visualAssets.forEach((asset) => formats.add(`${displayLabel(asset.channel)} ${asset.size}`));
+    return Array.from(formats).slice(0, 8);
+};
+
+const printFormatsForEditorContext = (
+    campaign?: CampaignCueCampaign,
+    output?: CampaignCueOutput,
+    outputPack?: CampaignCueOutputPack,
+) => {
+    const formats = new Set<string>();
+    output?.fields.printFormats?.forEach((format) => formats.add(format));
+    campaign?.outputs.forEach((campaignOutput) => campaignOutput.fields.printFormats?.forEach((format) => formats.add(format)));
+    outputPack?.creative.visualAssets
+        .filter((asset) => asset.exportFormat === "pdf_flattened")
+        .forEach((asset) => formats.add(`${displayLabel(asset.channel)} ${asset.size}`));
+    return Array.from(formats).slice(0, 6);
+};
+
+const buildCampaignOutputEditorContext = (
+    overview: CampaignCueOverview,
+    campaign: CampaignCueCampaign,
+    output: CampaignCueOutput,
+): CampaignCueEditorContext => {
+    const packReview = overview.dailyDesk.packReview?.campaignId === campaign.id
+        ? overview.dailyDesk.packReview
+        : undefined;
+    const outputPack = outputPackForCampaign(campaign, overview.dailyDesk);
+    const deliveryCards = (packReview?.deliveryCards || []).filter((card) => (
+        card.outputId === output.id || card.channel === output.channel
+    ));
+    const tasks = [
+        ...(packReview?.missingInputs || []),
+        ...overview.dailyDesk.manualDeliveryTasks,
+        ...overview.dailyDesk.assetReuseTasks,
+        ...overview.dailyDesk.printTasks,
+        overview.dailyDesk.resultPrompt,
+    ].filter(Boolean) as CampaignCueDailyDeskTask[];
+    const trustSummary = packReview?.trustSummary.length
+        ? packReview.trustSummary
+        : [{
+            detail: output.trustGate === "clear"
+                ? "Current output has no blocking trust issue."
+                : "Review this output before public use.",
+            id: `${output.id}:trust`,
+            label: output.label,
+            status: output.trustGate === "blocked" || output.trustGate === "needs_fix"
+                ? "blocked"
+                : output.trustGate === "warning"
+                    ? "needs_review"
+                    : "ready",
+        } satisfies CampaignCueTrustSummaryItem];
+
+    return {
+        campaign,
+        deliveryCards,
+        kind: "campaign_output",
+        mobileNote: "Mobile is for review, copy, download, and result capture. Use desktop for precise layer editing.",
+        output,
+        outputFormats: outputFormatsForEditorContext(campaign, output, outputPack),
+        outputPack,
+        printFormats: printFormatsForEditorContext(campaign, output, outputPack),
+        protectedFacts: collectEditorProtectedFacts({
+            campaign,
+            outputPack,
+            overview,
+            sourceFacts: packReview?.sourceFacts,
+        }),
+        resultOptions: packReview?.resultOptions || overview.dailyDesk.readyPack?.resultOptions || overview.dailyDesk.resultPrompt?.resultOptions,
+        resultQuestion: packReview?.resultQuestion
+            || campaign.pack?.resultQuestion
+            || overview.dailyDesk.readyPack?.resultQuestion
+            || overview.dailyDesk.recipe.resultQuestion,
+        subtitle: `${displayLabel(output.channel)} · ${output.fields.dimensions}`,
+        tasks: dedupeDailyDeskTasks(tasks).slice(0, 6),
+        title: campaign.title,
+        trustSummary: trustSummary.slice(0, 6),
+    };
+};
+
+const dedupeDailyDeskTasks = (tasks: CampaignCueDailyDeskTask[]) => {
+    const seen = new Set<string>();
+    return tasks.filter((task) => {
+        if (seen.has(task.id)) return false;
+        seen.add(task.id);
+        return true;
+    });
+};
+
+const buildPackTemplateEditorContext = (
+    overview: CampaignCueOverview,
+    template: CampaignCuePackTemplateHydrated,
+): CampaignCueEditorContext => {
+    const requiredFactSlots = template.payload.factSlots.filter((slot) => slot.required);
+    const templateProtectedFacts = template.payload.factSlots
+        .filter((slot) => slot.protected)
+        .map((slot): CampaignCueEditorProtectedFact => ({
+            id: `template:${template.summary.templateId}:fact:${slot.type}`,
+            label: displayLabel(slot.type),
+            status: slot.required ? "needs_review" : "ready",
+            value: slot.required ? "Required before reuse" : "Optional",
+        }));
+    const outputFormats = Array.from(new Set([
+        ...template.payload.outputPackShape.channels.map(displayLabel),
+        ...template.summary.outputTypes.map(displayLabel),
+        ...(overview.dailyDesk.readyPack?.outputFormats || []),
+    ].filter(Boolean))).slice(0, 8);
+    const printFormats = Array.from(new Set([
+        ...template.payload.outputPackShape.printFormats.map(displayLabel),
+        ...(overview.dailyDesk.readyPack?.printFormats || []),
+    ].filter(Boolean))).slice(0, 6);
+    const templateTasks = template.payload.factSlots.map((slot): CampaignCueDailyDeskTask => ({
+        actionLabel: slot.required ? "Confirm fact" : "Review fact",
+        detail: slot.ownerQuestion,
+        id: `template:${template.summary.templateId}:slot:${slot.type}`,
+        inputType: slot.type as CampaignCueDailyDeskTask["inputType"],
+        kind: "source_input",
+        label: `${slot.required ? "Required" : "Optional"} · ${displayLabel(slot.type)}`,
+        severity: slot.required ? "needs_fix" : "info",
+        sourceReferences: [`template:${template.summary.templateId}`],
+        targetTab: "sources",
+    }));
+    const deliveryCards = template.payload.outputPackShape.deliveryCards
+        .slice(0, 3)
+        .map((cardTitle, index): CampaignCueManualDeliveryCard => ({
+            channel: template.summary.channels[index] || template.summary.channels[0] || "creative",
+            fields: [{
+                copyable: false,
+                id: `template:${template.summary.templateId}:delivery:${index}:field`,
+                label: "Template handoff",
+                required: false,
+                status: requiredFactSlots.length ? "needs_review" : "ready",
+                value: displayLabel(cardTitle),
+            }],
+            id: `template:${template.summary.templateId}:delivery:${index}`,
+            instructions: [
+                "Confirm protected facts before using this saved pack.",
+                "Generate or refresh the campaign pack, then download or copy the handoff items.",
+            ],
+            ownerUseCase: "Reuse this saved campaign handoff without starting from a blank canvas.",
+            status: requiredFactSlots.length ? "needs_review" : "ready",
+            title: displayLabel(cardTitle),
+        }));
+    const trustSummary = [
+        ...(requiredFactSlots.length ? [{
+            detail: `${requiredFactSlots.length} required template input${requiredFactSlots.length === 1 ? "" : "s"} must be confirmed before export.`,
+            id: `template:${template.summary.templateId}:required-facts`,
+            label: "Template facts",
+            status: "needs_review" as const,
+        }] : []),
+        ...template.payload.trustChecks.map((check): CampaignCueTrustSummaryItem => ({
+            detail: "Template reuse keeps this check visible before owner export.",
+            id: `template:${template.summary.templateId}:trust:${check}`,
+            label: displayLabel(check),
+            status: requiredFactSlots.length ? "needs_review" : "ready",
+        })),
+        ...(overview.dailyDesk.packReview?.trustSummary || []),
+    ].slice(0, 6);
+
+    return {
+        deliveryCards: deliveryCards.length ? deliveryCards : overview.dailyDesk.packReview?.deliveryCards.slice(0, 3) || [],
+        kind: "pack_template",
+        mobileNote: "Mobile can review the saved pack, download files, and record results. Precise template editing stays on desktop.",
+        outputFormats,
+        outputPack: overview.dailyDesk.outputPack || overview.dailyDesk.packReview?.outputPack,
+        printFormats,
+        protectedFacts: dedupeEditorProtectedFacts([
+            ...templateProtectedFacts,
+            ...collectEditorProtectedFacts({ overview }),
+        ]).slice(0, 8),
+        resultOptions: overview.dailyDesk.resultPrompt?.resultOptions || overview.dailyDesk.readyPack?.resultOptions,
+        resultQuestion: template.payload.outputPackShape.resultQuestion || overview.dailyDesk.recipe.resultQuestion,
+        subtitle: `Saved pack base · ${displayLabel(template.summary.businessCategory)} · ${requiredFactSlots.length ? `${requiredFactSlots.length} inputs need review` : "ready for reuse"}`,
+        tasks: dedupeDailyDeskTasks([
+            ...templateTasks,
+            ...overview.dailyDesk.manualDeliveryTasks,
+            ...overview.dailyDesk.assetReuseTasks,
+            overview.dailyDesk.resultPrompt,
+        ].filter(Boolean) as CampaignCueDailyDeskTask[]).slice(0, 6),
+        title: template.summary.title,
+        trustSummary,
+    };
+};
+
+const buildBlankEditorContext = (overview: CampaignCueOverview): CampaignCueEditorContext => ({
+    deliveryCards: [],
+    kind: "blank",
+    mobileNote: "Mobile review can confirm facts and downloads later. Build the editable layout on desktop first.",
+    outputFormats: overview.dailyDesk.readyPack?.outputFormats || ["WhatsApp image", "Instagram square", "Story"],
+    printFormats: overview.dailyDesk.readyPack?.printFormats || ["Poster PDF"],
+    protectedFacts: collectEditorProtectedFacts({ overview }),
+    resultOptions: overview.dailyDesk.resultPrompt?.resultOptions || overview.dailyDesk.readyPack?.resultOptions,
+    resultQuestion: overview.dailyDesk.recipe.resultQuestion,
+    subtitle: "Start with saved business facts. Design Cue can add contact, location, checks, and export guidance.",
+    tasks: dedupeDailyDeskTasks([
+        ...overview.dailyDesk.missingInputs,
+        ...overview.dailyDesk.photoTasks,
+        ...overview.dailyDesk.manualDeliveryTasks,
+    ]).slice(0, 6),
+    title: "New campaign asset",
+    trustSummary: overview.dailyDesk.packReview?.trustSummary.slice(0, 4) || [],
+});
+
+const buildCueLayersEditorContext = (
+    overview: CampaignCueOverview,
+    boot: CampaignCueCueLayerBootPackage,
+): CampaignCueEditorContext => ({
+    cueLayerDesign: boot.design,
+    deliveryCards: overview.dailyDesk.packReview?.deliveryCards || [],
+    kind: "cue_layers",
+    mobileNote: "Mobile can review the reused image and download exports. Dense layer editing stays on desktop.",
+    outputFormats: ["Editable approximation", "PNG export", "Asset Library reuse"],
+    outputPack: overview.dailyDesk.outputPack || overview.dailyDesk.packReview?.outputPack,
+    printFormats: overview.dailyDesk.readyPack?.printFormats || ["Poster PDF", "Flyer PDF"],
+    protectedFacts: collectEditorProtectedFacts({ overview }),
+    resultOptions: overview.dailyDesk.resultPrompt?.resultOptions || overview.dailyDesk.readyPack?.resultOptions,
+    resultQuestion: overview.dailyDesk.recipe.resultQuestion,
+    subtitle: "Original preserved. Edit only what is safe, keep uncertain text as image, and export manually.",
+    tasks: dedupeDailyDeskTasks([
+        ...overview.dailyDesk.assetReuseTasks,
+        ...overview.dailyDesk.manualDeliveryTasks,
+        ...overview.dailyDesk.missingInputs,
+    ]).slice(0, 6),
+    title: boot.design.title,
+    trustSummary: overview.dailyDesk.packReview?.trustSummary.slice(0, 4) || [],
+});
 
 const buildCampaignPackZipBlob = async (
     campaign: CampaignCueCampaign,
@@ -897,9 +1279,11 @@ export default function CampaignCueWorkspaceApp() {
     const [activeCueLayerRevision, setActiveCueLayerRevision] = useState<number | null>(null);
     const [editorDraftDocument, setEditorDraftDocument] = useState<CreativeEditorDocument | null>(null);
     const [editorDocument, setEditorDocument] = useState<CreativeEditorDocument | null>(null);
+    const [editorContext, setEditorContext] = useState<CampaignCueEditorContext | null>(null);
     const [editorSourceLabel, setEditorSourceLabel] = useState("Blank asset");
     const [outcomeDraft, setOutcomeDraft] = useState("Got replies, bookings, walk-ins, orders, or useful comments.");
     const [selectedOutcomeSignalId, setSelectedOutcomeSignalId] = useState<string | undefined>();
+    const [packTemplateState, setPackTemplateState] = useState<PackTemplateState>({ loading: false });
     const data = state.data;
 
     const load = async () => {
@@ -929,6 +1313,36 @@ export default function CampaignCueWorkspaceApp() {
         void load();
     }, []);
 
+    const loadPackTemplates = async (overview: CampaignCueOverview | undefined = data) => {
+        if (!FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY || !overview) return;
+        setPackTemplateState((current) => ({ ...current, error: undefined, loading: true }));
+        try {
+            const catalog = await listCampaignCuePackTemplates({
+                businessCategory: (overview.businessBrain as CampaignCueOverview["businessBrain"] & { businessCategory?: string }).businessCategory,
+                businessType: overview.businessBrain.businessType,
+                includeWorkspaceTemplates: true,
+                workspaceId: overview.workspace.workspaceId,
+            });
+            setPackTemplateState({ catalog, loading: false });
+        } catch (error) {
+            setPackTemplateState((current) => ({
+                ...current,
+                error: error instanceof Error ? error.message : "Templates could not be loaded.",
+                loading: false,
+            }));
+        }
+    };
+
+    useEffect(() => {
+        if (!data || !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY) return;
+        void loadPackTemplates(data);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        data?.workspace.workspaceId,
+        data?.businessBrain.businessType,
+        (data?.businessBrain as (CampaignCueOverview["businessBrain"] & { businessCategory?: string }) | undefined)?.businessCategory,
+    ]);
+
     useEffect(() => {
         if (!data || !FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS) return;
         void loadCueLayerDesigns();
@@ -942,7 +1356,7 @@ export default function CampaignCueWorkspaceApp() {
         if (cueLayerAutosaveTimeoutRef.current) window.clearTimeout(cueLayerAutosaveTimeoutRef.current);
         cueLayerAutosaveTimeoutRef.current = window.setTimeout(() => {
             void saveCueLayerDocumentNow(editorDraftDocument).catch((error) => {
-                setNotice(error instanceof Error ? error.message : "Layered image autosave failed.");
+                setNotice(error instanceof Error ? error.message : "Reusable image autosave failed.");
             });
         }, 1800);
         return () => {
@@ -988,6 +1402,7 @@ export default function CampaignCueWorkspaceApp() {
         setEditorDraftDocument(boot.document);
         cueLayerLastSavedFingerprintRef.current = fingerprintDocument(boot.document);
         setEditorSourceLabel(`CueLayers · ${boot.design.title}`);
+        if (data) setEditorContext(buildCueLayersEditorContext(data, boot));
         setTab("editor");
     };
 
@@ -1001,7 +1416,7 @@ export default function CampaignCueWorkspaceApp() {
             });
             const payload = await res.json().catch(() => ({}));
             if (!res.ok) {
-                setNotice(payload?.error || "Layered image could not open.");
+                setNotice(payload?.error || "Reusable image could not open.");
                 return;
             }
             openCueLayerBootPackage(payload.data as CampaignCueCueLayerBootPackage);
@@ -1030,7 +1445,7 @@ export default function CampaignCueWorkspaceApp() {
         });
         const payload = await res.json().catch(() => ({}));
         if (!res.ok) {
-            throw new Error(payload?.error || "Layered image could not be saved.");
+            throw new Error(payload?.error || "Reusable image could not be saved.");
         }
         const revision = Number(payload?.data?.revision || activeCueLayerRevision);
         const design = payload?.data?.design as CampaignCueCueLayerDesign | undefined;
@@ -1069,19 +1484,19 @@ export default function CampaignCueWorkspaceApp() {
                     idempotencyKey: buildIdempotencyKey("cue_layers_upload"),
                     mimeType: file.type,
                     sourceKind: "user_upload",
-                    title: `${file.name.replace(/\.[a-z0-9]+$/i, "")} layered edit`,
+                    title: `${file.name.replace(/\.[a-z0-9]+$/i, "")} reusable edit`,
                     width: dimensions.width,
                 }),
             });
             const payload = await res.json().catch(() => ({}));
             if (!res.ok) {
-                setNotice(payload?.error || "Image could not be layered.");
+                setNotice(payload?.error || "Image could not be prepared for reuse.");
                 return;
             }
             const result = payload.data as CampaignCueCueLayerUploadResult;
             setCueLayerDesigns((current) => prependBounded(current, result.design, CAMPAIGNCUE_PAGE_SIZE));
             openCueLayerBootPackage(result.boot);
-            setNotice("Layered image ready. Original preserved.");
+            setNotice("Reusable image ready. Original preserved.");
         } finally {
             setBusyKey(null);
         }
@@ -1161,14 +1576,22 @@ export default function CampaignCueWorkspaceApp() {
         return "Confirm required campaign details before creating this pack.";
     };
 
-    const createCampaign = async (opportunityId?: string) => {
+    const createCampaign = async (
+        opportunityId?: string,
+        templateDraft?: {
+            brief: string;
+            channels: CampaignCueChannel[];
+            templateId: string;
+            title: string;
+        },
+    ) => {
         const blockedReason = campaignCreationBlockedReason(opportunityId);
         if (blockedReason) {
             setNotice(blockedReason);
             setTab((data?.dailyDesk.summary.targetTab as CampaignCueWorkspaceTabKey | undefined) || "sources");
             return;
         }
-        setBusyKey(`cue:${opportunityId || "default"}`);
+        setBusyKey(templateDraft ? `cue-template:${templateDraft.templateId}` : `cue:${opportunityId || "default"}`);
         setNotice("");
         try {
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.CAMPAIGNS, {
@@ -1176,7 +1599,10 @@ export default function CampaignCueWorkspaceApp() {
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                    brief: templateDraft?.brief,
+                    channels: templateDraft?.channels,
                     opportunityId,
+                    title: templateDraft?.title,
                     idempotencyKey: buildIdempotencyKey("create"),
                 }),
             });
@@ -1185,7 +1611,7 @@ export default function CampaignCueWorkspaceApp() {
                 setNotice(payload?.error || "Campaign pack could not be created.");
                 return;
             }
-            setNotice("Campaign pack created.");
+            setNotice(templateDraft ? "Campaign pack created from reusable base." : "Campaign pack created.");
             setTab("campaigns");
             const result = payload?.data as { campaign?: CampaignCueCampaign; replayed?: boolean };
             if (result?.campaign) {
@@ -1452,6 +1878,73 @@ export default function CampaignCueWorkspaceApp() {
         && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS
         && FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD;
 
+    const saveCurrentCampaignPackTemplate = async () => {
+        if (!data || !latestCampaign) {
+            setNotice("Create or open a campaign pack before saving it as a reusable base.");
+            return;
+        }
+        setBusyKey("pack-template-save");
+        setNotice("");
+        try {
+            const outputPack = outputPackForCampaign(latestCampaign, data.dailyDesk);
+            const reusableEditorDocument = editorDocument && editorContext?.kind !== "cue_layers"
+                ? editorDocument
+                : undefined;
+            const input = buildCampaignCueWorkspaceTemplateSaveInput({
+                businessBrain: data.businessBrain,
+                campaign: latestCampaign,
+                editorDocument: reusableEditorDocument,
+                outputPack,
+                workspaceId: data.workspace.workspaceId,
+            });
+            await saveCampaignCueWorkspacePackTemplate(input);
+            setNotice(reusableEditorDocument
+                ? "Reusable campaign pack and editor layout saved."
+                : "Reusable campaign pack saved.");
+            await loadPackTemplates(data);
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : "Reusable campaign pack could not be saved.");
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
+    const openCampaignCuePackTemplate = async (template: CampaignCuePackTemplateSummary) => {
+        if (!data) return;
+        setBusyKey(`pack-template-open:${template.templateId}`);
+        setNotice("");
+        try {
+            const hydrated = await getCampaignCuePackTemplate(template);
+            setNotice(summarizeCampaignCuePackTemplateApplication(hydrated));
+            if (hydrated.editorDocument && creativeEditorEnabled) {
+                setActiveCueLayerDesign(null);
+                setActiveCueLayerRevision(null);
+                setEditorDraftDocument(null);
+                cueLayerLastSavedFingerprintRef.current = "";
+                setEditorDocument(hydrated.editorDocument);
+                setEditorContext(buildPackTemplateEditorContext(data, hydrated));
+                setEditorSourceLabel(`Template · ${template.title}`);
+                setTab("editor");
+                return;
+            }
+            const requiredMissingInputCount = hydrated.payload.factSlots.filter((slot) => slot.required).length;
+            if (requiredMissingInputCount) {
+                setTab("sources");
+                return;
+            }
+            await createCampaign(undefined, {
+                brief: template.description,
+                channels: template.channels,
+                templateId: template.templateId,
+                title: template.title,
+            });
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : "Campaign pack template could not be opened.");
+        } finally {
+            setBusyKey(null);
+        }
+    };
+
     const runCreativeEditorAiTool: CreativeEditorAiToolHandler = async (request) => (
         runCampaignCueCreativeEditorAiTool({
             actionId: request.actionId,
@@ -1483,6 +1976,7 @@ export default function CampaignCueWorkspaceApp() {
             businessBrain: data.businessBrain,
             workspace: data.workspace,
         }));
+        setEditorContext(buildBlankEditorContext(data));
         setEditorSourceLabel("Blank CampaignCue asset");
         setTab("editor");
     };
@@ -1499,6 +1993,7 @@ export default function CampaignCueWorkspaceApp() {
             output,
             workspace: data.workspace,
         }));
+        setEditorContext(buildCampaignOutputEditorContext(data, campaign, output));
         setEditorSourceLabel(`${campaign.title} · ${displayLabel(output.channel)}`);
         setTab("editor");
     };
@@ -1510,7 +2005,7 @@ export default function CampaignCueWorkspaceApp() {
         try {
             if (activeCueLayerDesign && activeCueLayerRevision != null) {
                 if (result.format === "svg") {
-                    setNotice("Use PNG export for layered images.");
+                    setNotice("Use PNG export for reused images.");
                     return;
                 }
                 const savedRevision = await saveCueLayerDocumentNow(result.document);
@@ -1530,7 +2025,7 @@ export default function CampaignCueWorkspaceApp() {
                 });
                 const payload = await res.json().catch(() => ({}));
                 if (!res.ok) {
-                    setNotice(payload?.error || "Layered export could not be saved.");
+                    setNotice(payload?.error || "Reusable export could not be saved.");
                     return;
                 }
                 const asset = payload?.data?.asset as CampaignCueAsset | undefined;
@@ -1540,7 +2035,7 @@ export default function CampaignCueWorkspaceApp() {
                         assets: prependBounded(current.assets, asset, CAMPAIGNCUE_PAGE_SIZE),
                     }));
                 }
-                setNotice("Layered export saved in Asset Library.");
+                setNotice("Reusable export saved in Asset Library.");
                 return;
             }
             const metadata = result.document.metadata || {};
@@ -1689,6 +2184,234 @@ export default function CampaignCueWorkspaceApp() {
             return;
         }
         openDeskTarget(dailyDesk.summary.targetTab as CampaignCueWorkspaceTabKey);
+    };
+    const editorPublicUseBlocked = Boolean(editorContext?.campaign && campaignBlocksPublicUse(editorContext.campaign));
+    const editorHeaderActions = editorContext?.campaign ? [
+        {
+            disabled: editorPublicUseBlocked,
+            icon: <LuSend size={16} />,
+            id: "campaigncue-use-campaign",
+            label: "Use this campaign",
+            onClick: () => openDeskTarget("delivery"),
+            tone: "primary" as const,
+        },
+        {
+            disabled: editorPublicUseBlocked || busyKey === "campaign-pack-zip",
+            icon: <LuDownload size={16} />,
+            id: "campaigncue-download-pack",
+            label: "Download pack",
+            loading: busyKey === "campaign-pack-zip",
+            onClick: async () => {
+                if (!editorContext.campaign) return;
+                setBusyKey("campaign-pack-zip");
+                try {
+                    await downloadCampaignPackZip(editorContext.campaign, data.dailyDesk);
+                    await recordAction(editorContext.campaign, "export");
+                } finally {
+                    setBusyKey(null);
+                }
+            },
+            tone: "accent" as const,
+        },
+        {
+            icon: <LuClipboardCheck size={16} />,
+            id: "campaigncue-record-result",
+            label: "Record result",
+            onClick: () => openDeskTarget("analytics"),
+            tone: "default" as const,
+        },
+    ] : editorContext ? [
+        {
+            icon: <LuShieldCheck size={16} />,
+            id: "campaigncue-check-facts",
+            label: "Check facts",
+            onClick: () => openDeskTarget("trust"),
+            tone: "default" as const,
+        },
+        {
+            disabled: !cueLayersUploadEnabled,
+            icon: <LuUploadCloud size={16} />,
+            id: "campaigncue-reuse-image",
+            label: "Reuse old image",
+            onClick: () => cueLayerUploadInputRef.current?.click(),
+            tone: "default" as const,
+        },
+    ] : [];
+    const renderEditorOwnerPanel = () => {
+        if (!editorContext) return null;
+        const outputChips = [
+            ...editorContext.outputFormats,
+            ...editorContext.printFormats,
+        ].filter(Boolean).slice(0, 10);
+        const resultOptions = editorContext.resultOptions || [];
+        return (
+            <aside className={styles.editorOwnerPanel} aria-label="CampaignCue editor context">
+                <div className={styles.editorPanelHeader}>
+                    <span className={styles.eyebrow}>
+                        {editorContext.kind === "cue_layers" ? "Reuse old asset" : "Campaign Pack Editor Mode"}
+                    </span>
+                    <h3>{editorContext.title}</h3>
+                    <p>{editorContext.subtitle}</p>
+                    <div className={styles.chips}>
+                        {editorContext.output ? (
+                            <span className={styles.chip} data-tone={trustTone(editorContext.output.trustGate)}>
+                                {displayLabel(editorContext.output.trustGate)}
+                            </span>
+                        ) : null}
+                        {editorContext.outputPack ? (
+                            <span className={styles.chip} data-tone={ownerStatusTone(editorContext.outputPack.trustReport.status)}>
+                                {ownerStatusLabel(editorContext.outputPack.trustReport.status)}
+                            </span>
+                        ) : null}
+                        {editorContext.cueLayerDesign ? (
+                            <span className={styles.chip} data-tone={cueLayerDesignTone(editorContext.cueLayerDesign.status)}>
+                                Original preserved
+                            </span>
+                        ) : null}
+                    </div>
+                </div>
+
+                <div className={styles.editorPanelBlock}>
+                    <div className={styles.rowStart}>
+                        <div className={styles.iconBox}><LuClipboardCheck size={18} /></div>
+                        <div className={styles.titleBlock}>
+                            <h3>Safe tasks</h3>
+                            <p>Use these before detailed layer edits.</p>
+                        </div>
+                    </div>
+                    <div className={styles.editorTaskList}>
+                        {editorContext.tasks.length ? editorContext.tasks.slice(0, 4).map((task) => (
+                            <button
+                                className={styles.editorTaskButton}
+                                key={task.id}
+                                onClick={() => openDeskTarget(task.targetTab as CampaignCueWorkspaceTabKey)}
+                                type="button"
+                            >
+                                <span>{task.label}</span>
+                                <small>{task.actionLabel}</small>
+                            </button>
+                        )) : (
+                            <p className={styles.muted}>No blocking input for this editor session.</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className={styles.editorPanelBlock}>
+                    <div className={styles.rowStart}>
+                        <div className={styles.iconBox}><LuShieldCheck size={18} /></div>
+                        <div className={styles.titleBlock}>
+                            <h3>Protected business text</h3>
+                            <p>Design Cue uses saved facts only.</p>
+                        </div>
+                    </div>
+                    <div className={styles.protectedFactList}>
+                        {editorContext.protectedFacts.slice(0, 6).map((fact) => (
+                            <div className={styles.protectedFact} key={fact.id}>
+                                <span>{fact.label}</span>
+                                <strong>{fact.value}</strong>
+                                <em data-tone={ownerStatusTone(fact.status)}>{ownerStatusLabel(fact.status)}</em>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className={styles.editorPanelBlock}>
+                    <div className={styles.rowStart}>
+                        <div className={styles.iconBox}><LuPackageCheck size={18} /></div>
+                        <div className={styles.titleBlock}>
+                            <h3>One design, many outputs</h3>
+                            <p>Prepare the asset once, then use the pack handoff.</p>
+                        </div>
+                    </div>
+                    <div className={styles.chips}>
+                        {outputChips.length ? outputChips.map((format) => (
+                            <span className={styles.chip} key={format}>{format}</span>
+                        )) : <span className={styles.chip}>Manual export</span>}
+                    </div>
+                    <button className={styles.ghostButton} onClick={() => openDeskTarget("delivery")} type="button">
+                        <LuSend size={16} />
+                        Use this campaign
+                    </button>
+                </div>
+
+                <div className={styles.editorPanelBlock}>
+                    <div className={styles.rowStart}>
+                        <div className={styles.iconBox}><LuShieldCheck size={18} /></div>
+                        <div className={styles.titleBlock}>
+                            <h3>Trust check</h3>
+                            <p>Ready, review, or blocked before public use.</p>
+                        </div>
+                    </div>
+                    {editorContext.trustSummary.length ? (
+                        <div className={styles.editorTrustList}>
+                            {editorContext.trustSummary.slice(0, 4).map((item) => (
+                                <div className={styles.editorTrustItem} key={item.id}>
+                                    <span>{item.label}</span>
+                                    <strong data-tone={ownerStatusTone(item.status)}>{ownerStatusLabel(item.status)}</strong>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className={styles.muted}>Run Check facts or open Trust Center before sharing.</p>
+                    )}
+                    <button className={styles.ghostButton} onClick={() => openDeskTarget("trust")} type="button">
+                        <LuShieldCheck size={16} />
+                        Open Trust Center
+                    </button>
+                </div>
+
+                <div className={styles.editorPanelBlock}>
+                    <div className={styles.rowStart}>
+                        <div className={styles.iconBox}><LuSend size={18} /></div>
+                        <div className={styles.titleBlock}>
+                            <h3>Manual delivery</h3>
+                            <p>No direct posting. Copy fields and download files.</p>
+                        </div>
+                    </div>
+                    {editorContext.deliveryCards.length ? (
+                        <div className={styles.editorTrustList}>
+                            {editorContext.deliveryCards.slice(0, 3).map((card) => (
+                                <div className={styles.editorTrustItem} key={card.id}>
+                                    <span>{card.title}</span>
+                                    <strong data-tone={ownerStatusTone(card.status)}>{ownerStatusLabel(card.status)}</strong>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className={styles.muted}>Open delivery cards after the pack is ready.</p>
+                    )}
+                </div>
+
+                <div className={styles.editorPanelBlock}>
+                    <div className={styles.rowStart}>
+                        <div className={styles.iconBox}><LuRefreshCw size={18} /></div>
+                        <div className={styles.titleBlock}>
+                            <h3>Result memory</h3>
+                            <p>{editorContext.resultQuestion}</p>
+                        </div>
+                    </div>
+                    <div className={styles.chips}>
+                        {resultOptions.slice(0, 3).map((option) => (
+                            <span className={styles.chip} key={option.id}>{option.label}</span>
+                        ))}
+                    </div>
+                    <button className={styles.ghostButton} onClick={() => openDeskTarget("analytics")} type="button">
+                        <LuClipboardCheck size={16} />
+                        Record result later
+                    </button>
+                </div>
+
+                <div className={styles.editorPanelBlock}>
+                    <div className={styles.rowStart}>
+                        <div className={styles.iconBox}><LuCamera size={18} /></div>
+                        <div className={styles.titleBlock}>
+                            <h3>Mobile review</h3>
+                            <p>{editorContext.mobileNote}</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        );
     };
 
     return (
@@ -2033,6 +2756,23 @@ export default function CampaignCueWorkspaceApp() {
                                 </div>
                             </section>
 
+                            {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY ? (
+                                <PackTemplatePicker
+                                    businessCategory={packTemplateState.catalog?.businessCategory || "specialty"}
+                                    canSaveCurrent={Boolean(latestCampaign)}
+                                    error={packTemplateState.error}
+                                    loading={packTemplateState.loading}
+                                    onOpenTemplate={openCampaignCuePackTemplate}
+                                    onRefresh={() => void loadPackTemplates(data)}
+                                    onSaveCurrent={() => void saveCurrentCampaignPackTemplate()}
+                                    saving={busyKey === "pack-template-save"}
+                                    templates={[
+                                        ...(packTemplateState.catalog?.workspaceTemplates || []),
+                                        ...(packTemplateState.catalog?.platformTemplates || []),
+                                    ]}
+                                />
+                            ) : null}
+
                             <section className={styles.section}>
                                 <div className={styles.sectionHeader}>
                                     <div>
@@ -2043,7 +2783,7 @@ export default function CampaignCueWorkspaceApp() {
                                     {cueLayersUploadEnabled ? (
                                         <button className={styles.ghostButton} onClick={() => cueLayerUploadInputRef.current?.click()} type="button">
                                             <LuLayers size={16} />
-                                            Turn image into layers
+                                            Reuse old image
                                         </button>
                                     ) : null}
                                 </div>
@@ -2672,8 +3412,8 @@ export default function CampaignCueWorkspaceApp() {
                             <div className={styles.sectionHeader}>
                                 <div>
                                     <span className={styles.eyebrow}>Creative Editor</span>
-                                    <h2>Image editor</h2>
-                                    <p>Create a campaign asset, open a prepared output, or turn an existing image into a safe editable layer set.</p>
+                                    <h2>Campaign pack editor</h2>
+                                    <p>Edit the campaign asset, keep protected facts visible, reuse old images safely, and prepare manual delivery.</p>
                                 </div>
                                 <div className={styles.topActions}>
                                     {cueLayersUploadEnabled ? (
@@ -2684,7 +3424,7 @@ export default function CampaignCueWorkspaceApp() {
                                             type="button"
                                         >
                                             <LuUploadCloud size={16} />
-                                            Turn image into layers
+                                            Reuse old image
                                         </button>
                                     ) : null}
                                     {creativeEditorEnabled ? (
@@ -2704,11 +3444,11 @@ export default function CampaignCueWorkspaceApp() {
                                                     <LuLayers size={18} />
                                                 </div>
                                                 <div className={styles.titleBlock}>
-                                                    <h3>{activeCueLayerDesign ? activeCueLayerDesign.title : "Layered image reuse"}</h3>
+                                                    <h3>{activeCueLayerDesign ? activeCueLayerDesign.title : "Reuse old image"}</h3>
                                                     <p>
                                                         {activeCueLayerDesign
                                                             ? "Original image is preserved. Save or export from the editor when the result is ready."
-                                                            : "Upload an existing image when you want a reusable editor version."}
+                                                            : "Upload an existing poster, screenshot, or flat image when you want a reusable editor version."}
                                                     </p>
                                                 </div>
                                             </div>
@@ -2774,26 +3514,32 @@ export default function CampaignCueWorkspaceApp() {
                                 </>
                             ) : null}
                             {creativeEditorEnabled && editorDocument ? (
-                                <CreativeEditor
-                                    allowDesignImport={!activeCueLayerDesign}
-                                    allowNewDesign={!activeCueLayerDesign}
-                                    allowRasterImports={!activeCueLayerDesign}
-                                    assetSources={activeCueLayerDesign ? [] : buildCampaignCueCreativeAssetSources({
-                                        assets: data.assets,
-                                        businessBrain: data.businessBrain,
-                                    })}
-                                    aiToolActions={creativeEditorAiToolsEnabled ? CAMPAIGNCUE_CREATIVE_EDITOR_AI_ACTIONS : []}
-                                    designCueCommands={creativeEditorDesignCueEnabled ? CAMPAIGNCUE_DESIGN_CUE_COMMANDS : []}
-                                    disabledExportFormats={activeCueLayerDesign ? ["svg", "json"] : []}
-                                    initialDocument={editorDocument}
-                                    onAiToolAction={creativeEditorAiToolsEnabled ? runCreativeEditorAiTool : undefined}
-                                    onDesignCueApply={creativeEditorDesignCueEnabled ? applyDesignCueRequest : undefined}
-                                    onDesignCueRequest={creativeEditorDesignCueEnabled ? runDesignCueRequest : undefined}
-                                    onDocumentChange={setEditorDraftDocument}
-                                    onExport={registerEditorExport}
-                                    productLabel="CampaignCue"
-                                    sourceLabel={editorSourceLabel}
-                                />
+                                <div className={styles.editorWorkspace}>
+                                    {renderEditorOwnerPanel()}
+                                    <div className={styles.editorCanvasPanel}>
+                                        <CreativeEditor
+                                            allowDesignImport={!activeCueLayerDesign}
+                                            allowNewDesign={!activeCueLayerDesign}
+                                            allowRasterImports={!activeCueLayerDesign}
+                                            assetSources={activeCueLayerDesign ? [] : buildCampaignCueCreativeAssetSources({
+                                                assets: data.assets,
+                                                businessBrain: data.businessBrain,
+                                            })}
+                                            aiToolActions={creativeEditorAiToolsEnabled ? CAMPAIGNCUE_CREATIVE_EDITOR_AI_ACTIONS : []}
+                                            designCueCommands={creativeEditorDesignCueEnabled ? CAMPAIGNCUE_DESIGN_CUE_COMMANDS : []}
+                                            disabledExportFormats={activeCueLayerDesign ? ["svg", "json"] : []}
+                                            headerActions={editorHeaderActions}
+                                            initialDocument={editorDocument}
+                                            onAiToolAction={creativeEditorAiToolsEnabled ? runCreativeEditorAiTool : undefined}
+                                            onDesignCueApply={creativeEditorDesignCueEnabled ? applyDesignCueRequest : undefined}
+                                            onDesignCueRequest={creativeEditorDesignCueEnabled ? runDesignCueRequest : undefined}
+                                            onDocumentChange={setEditorDraftDocument}
+                                            onExport={registerEditorExport}
+                                            productLabel="CampaignCue"
+                                            sourceLabel={editorSourceLabel}
+                                        />
+                                    </div>
+                                </div>
                             ) : creativeEditorEnabled ? (
                                 <div className={styles.empty}>
                                     <p>Start from a blank asset, upload an existing image, or open a campaign output from Packs or Social.</p>
@@ -2962,7 +3708,7 @@ export default function CampaignCueWorkspaceApp() {
                                             type="button"
                                         >
                                             <LuUploadCloud size={16} />
-                                            Turn image into layers
+                                            Reuse old image
                                         </button>
                                     ) : null}
                                     {creativeEditorEnabled ? (

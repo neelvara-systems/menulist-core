@@ -120,10 +120,10 @@ export const CAMPAIGNCUE_CREATIVE_EDITOR_AI_ACTIONS: CreativeEditorAiToolAction[
     {
         category: "image",
         costLabel: "No provider call",
-        description: "Use the CueLayers upload path when a flat image needs reusable layers.",
+        description: "Use the CueLayers upload path when an old poster, screenshot, or flat image should become reusable.",
         id: CAMPAIGNCUE_CREATIVE_EDITOR_AI_ACTION_IDS.LAYER_SELECTED_IMAGE,
-        label: "Turn image into layers",
-        ownerHint: "Use Asset Library upload for the full flow.",
+        label: "Reuse old image",
+        ownerHint: "Original stays preserved.",
         requiresImageSelection: true,
     },
     {

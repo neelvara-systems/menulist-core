@@ -603,7 +603,7 @@ Every durable artifact must carry a `schemaVersion` and be readable through back
 
 | Area | Required behavior |
 | --- | --- |
-| Entry | "Turn image into layers" from Asset Library/Creative Studio. |
+| Entry | "Reuse old image" from Asset Library/Creative Studio. Internally this still uses the CueLayers upload/reconstruction path. |
 | Progress | Owner sees queued, processing, needs review, ready, failed, cancelled. |
 | Ready state | Only after visual and text gates pass or mark needs review. |
 | Layer row | Shows type, confidence, fallback, warning, lock, visibility, reorder, duplicate, delete. |

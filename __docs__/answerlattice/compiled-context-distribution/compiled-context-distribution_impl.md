@@ -90,7 +90,7 @@ The repair builder keeps the same immutable Storage paths as the manual rebuild 
 - active bundle version
 - public bundle proxy URLs/paths when ready
 
-The widget config path uses the server-side manifest cache before falling back to Firestore. Public bundle proxy responses also keep a bounded in-process cache before Firebase Storage, while immutable object paths and browser/CDN cache headers handle repeated browser loads. If Storage Admin credentials or access are unavailable, the proxy returns a no-store `503 Bundle unavailable` response instead of caching or exposing raw infrastructure errors. Search remains server-mediated.
+The widget config path uses the server-side manifest cache before falling back to Firestore. Public bundle proxy responses also keep a bounded in-process cache before Firebase Storage, while immutable object paths and browser/CDN cache headers handle repeated browser loads. Cache misses on `/api/answerlattice/bundles/public/[...path]` are rate-limited by `ANSWERLATTICE_PUBLIC_BUNDLE` before Storage existence/download calls so random path probing cannot create unbounded Storage reads. If the rate-limit provider is bypassing while rate limiting is enabled, the proxy fails closed with a no-store `503` instead of touching Storage. If Storage Admin credentials or access are unavailable, the proxy returns a no-store `503 Bundle unavailable` response instead of caching or exposing raw infrastructure errors. Search remains server-mediated.
 
 ## Public API Flow
 

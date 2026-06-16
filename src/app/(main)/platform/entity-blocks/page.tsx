@@ -1,8 +1,8 @@
-import PlatformSettings from "@template/platform/settings"
+import EntityBlockSettings from "@template/platform/settings/EntityBlockSettings"
 
 function page() {
     return (
-        <PlatformSettings initialTab="entity-blocks" />
+        <EntityBlockSettings />
     )
 }
 

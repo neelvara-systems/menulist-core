@@ -12,7 +12,7 @@
  * even if some blocks are disabled for that category (via enabledBlocks).
  */
 
-import { resolveBusinessCategory } from '@constant/common';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 
 // ============================================
 // TYPES

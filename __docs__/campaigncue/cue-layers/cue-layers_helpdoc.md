@@ -32,7 +32,7 @@ CueLayers helps you reuse an existing image. Upload a poster or choose a Campaig
 
 1. Open CampaignCue.
 2. Go to **Assets** or **Creative**.
-3. Click **Turn image into layers**.
+3. Click **Reuse old image**.
 4. Choose an image from your device.
 5. Wait while CampaignCue prepares the editable version.
 6. Open the result when it is ready.
@@ -156,4 +156,3 @@ What to do:
 ## Need More Help?
 
 Contact support through the current CampaignCue support channel. Include the design name, source image, and what looked wrong. Do not send private customer data unless support asks for it through an approved channel.
-

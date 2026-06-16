@@ -4,6 +4,7 @@ import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import ScrollToBottomButton, { useScrollToBottom } from '@atoms/ScrollToBottomButton/ScrollToBottomButton';
 import ArticleViewModal from '@organisms/ArticleViewModal';
 import { updateChatSession } from '@database/chatSessions';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { ChatSession, ADMIN_STATUS_OPTIONS, ADMIN_PRIORITY_OPTIONS } from '@type/chatSession';
 import { Avatar, Button, Empty, Flex, Input, message, Popover, Tag, theme, Tooltip, Typography } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -120,10 +121,13 @@ function ConversationDetail({ session, onNoteUpdate, onSessionUpdate }: Conversa
     };
 
     const generateTranscript = (session: ChatSession): string => {
+        const requester = getAnswerlatticeCustomerIdentity(session);
         const lines: string[] = [];
         lines.push(`# Chat Transcript - ${new Date().toLocaleDateString()}`);
         lines.push(`**Conversation ID:** ${session.id || 'N/A'}`);
-        lines.push(`**User:** ${session.userName || `User ${session.uId}` || 'Unknown'}`);
+        lines.push(`**User:** ${requester.displayName}`);
+        if (requester.email) lines.push(`**Email:** ${requester.email}`);
+        if (requester.phone) lines.push(`**Phone:** ${requester.phone}`);
         lines.push(`**Mode:** ${session.mode === 'qna' ? 'QnA' : 'Assistant'}`);
         lines.push(`**Created:** ${session.createdOn?.toDate().toLocaleString() || 'N/A'}`);
 
@@ -200,6 +204,7 @@ function ConversationDetail({ session, onNoteUpdate, onSessionUpdate }: Conversa
             </Flex>
         );
     }
+    const requester = getAnswerlatticeCustomerIdentity(session);
 
     return (
         <Flex vertical style={{ height: '100%', overflow: 'hidden' }}>
@@ -233,8 +238,13 @@ function ConversationDetail({ session, onNoteUpdate, onSessionUpdate }: Conversa
                         </Tooltip>
                         <Flex gap={8} align="center">
                             <Text type="secondary" style={{ fontSize: 13 }}>
-                                {session.userName || `User ${session.uId}`}
+                                {requester.displayName}
                             </Text>
+                            {requester.email ? (
+                                <Text type="secondary" style={{ fontSize: 13 }}>
+                                    {requester.email}
+                                </Text>
+                            ) : null}
                             <Tag
                                 icon={session.mode === 'qna' ? <LuMessageSquare size={10} /> : <LuSparkles size={10} />}
                                 color={session.mode === 'qna' ? 'blue' : 'cyan'}

@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, query, runTransaction, setDoc, where, writeBatch } from "@firebase/firestore";
+import { collection, deleteDoc, doc, documentId, getDoc, getDocs, limit, query, runTransaction, setDoc, where, writeBatch } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
@@ -12,6 +12,7 @@ import { addDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.KB_ARTICLES;
 const KB_ARTICLE_LIST_LIMIT = 500;
+const KB_ARTICLE_ID_QUERY_CHUNK_SIZE = 30;
 
 const getCollectionRef = async () => {
     return collection(answerlatticeFirebaseClient, `${COLLECTION}`)
@@ -239,12 +240,20 @@ export const getArticlesByIds = async (ids: string[]) => {
                 return [];
             }
             const collectionRef = await getCollectionRef();
-            const q = query(collectionRef, where('__name__', 'in', ids));
-            const querySnapshot = await getDocs(q);
+            const uniqueIds = Array.from(new Set(
+                ids
+                    .map(id => String(id || '').trim())
+                    .filter(Boolean)
+            )).slice(0, KB_ARTICLE_LIST_LIMIT);
             const articles: KnowledgeBaseArticleType[] = [];
-            querySnapshot.forEach((doc) => {
-                articles.push({ id: doc.id, ...doc.data() } as KnowledgeBaseArticleType);
-            });
+            for (let index = 0; index < uniqueIds.length; index += KB_ARTICLE_ID_QUERY_CHUNK_SIZE) {
+                const chunk = uniqueIds.slice(index, index + KB_ARTICLE_ID_QUERY_CHUNK_SIZE);
+                const q = query(collectionRef, where(documentId(), 'in', chunk));
+                const querySnapshot = await getDocs(q);
+                querySnapshot.forEach((doc) => {
+                    articles.push({ id: doc.id, ...doc.data() } as KnowledgeBaseArticleType);
+                });
+            }
             return articles;
         },
         ids,

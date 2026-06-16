@@ -112,9 +112,28 @@ type DesignCuePatchSet = {
 | Check facts | Text scan against source facts and protected facts. | No |
 | Check brand | Brand color/name/logo presence check. | No |
 | Export checklist | Static checklist from delivery boundary and rights status. | No |
+| Ready for WhatsApp | Static readiness findings for business name, approved contact, text density, and manual WhatsApp handoff. | No |
+| Ready for Google | Static readiness findings for business name, contact, locality, destination, and Google Business Profile handoff. | No |
+| Ready for print | Static readiness findings for saved export state, legibility, protected facts, and image rights. | No |
 | Make it premium/simple | Current implementation uses deterministic style patches or review findings. Model may later propose style direction, but patch stays programmatic. | No today; optional later |
 | This looks too busy | Current implementation uses heuristic review findings and does not delete layers automatically. | No today; optional later |
 | Rewrite this more friendly | Current implementation uses deterministic fallback copy on selected text. Model candidate copy remains disabled. | No today; optional later |
+
+## Campaign Pack Editor Mode
+
+CampaignCue now wraps the product-neutral shared editor with a CampaignCue-only context panel in `CampaignCueWorkspaceApp.tsx`.
+
+The panel must stay outside `src/modules/creative-editor/` and shows:
+
+- safe tasks from Daily Desk
+- protected business text from Business Brain/source facts
+- one-design-many-output format reminders
+- Trust Center status
+- manual delivery cards
+- result memory prompt
+- mobile review guidance
+
+This keeps the shared editor reusable while making the CampaignCue editor feel like last-mile campaign-pack work instead of a generic blank canvas.
 
 ## Model Boundary
 

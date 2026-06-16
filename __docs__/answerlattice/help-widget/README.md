@@ -65,7 +65,9 @@ MenuList is wired as a normal external client through `src/components/answerlatt
 
 MenuList suppresses the external widget on owner-mobile viewports because the mobile owner app already has native help and internal admin screens. When the current route is blocked or the viewport is mobile, the embed closes and hides any already-mounted widget before rendering nothing, so the iframe cannot remain over the app after sidebar navigation.
 
-Any client-specific context must be passed through the v1 widget browser contract or script attributes. Answerlattice accepts only sanitized path, title, feature, workflow, role, and locale context. Legacy plan and entity-hint fields are compatibility-only public labels. Client tenant IDs, store IDs, user IDs, and raw business records are not required and must not be hardcoded into the Answerlattice runtime.
+Any client-specific page context must be passed through the v1 widget browser contract or script attributes. Answerlattice accepts only sanitized path, title, feature, workflow, role, and locale context. Legacy plan and entity-hint fields are compatibility-only public labels. Client tenant IDs, store IDs, user IDs, emails, phone numbers, and raw business records must not be sent through page context.
+
+If a client product wants Answerlattice owners to see which signed-in product user asked a widget question, the product may call `window.AnswerlatticeWidget.identify({ id, name, email })` after its own auth state is known. This identity snapshot is sanitized separately from page context, capped at 1KB, stored on the existing `aiSearchHistory` row with widget session/origin/path metadata, and shown in the Widget Management recent-questions list. Anonymous widget users continue to work; the dashboard falls back to "Unknown customer" when no visitor identity is provided.
 
 ## Widget Management Console
 
@@ -154,6 +156,7 @@ Answerlattice follows the durable parts of those patterns while preserving doctr
 
 | Date       | Version | Change                                                                                                                                                                                                                                                    |
 | ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-16 | 2.5.0   | Added optional widget visitor identification through `AnswerlatticeWidget.identify`, owner-visible recent-question requester metadata, and explicit separation between page context and customer contact identity. |
 | 2026-05-25 | 2.4.9   | Replaced the single widget key surface with a bounded Google-style key manager on the store doc: named keys, rename, delete, copy for encrypted widget keys, legacy hash-only compatibility, and no new collections. |
 | 2026-05-22 | 2.4.4   | Added launch-grade widget branding controls for header title, accent color propagation, greeting, and powered-by visibility without adding runtime Firestore reads. |
 | 2026-05-24 | 2.4.6   | Restored predictive support as a guarded runtime capability. The widget calls predictive help only when config confirms active triggers, allowed origin, safe context, rate limits, and cooldown storage are in place. |

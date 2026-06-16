@@ -27,6 +27,13 @@ June 10 owner signal presentation pass:
 - Reuses already-loaded Business Health current and analytics-index responses in desktop and mobile UI.
 - Translates owner-visible labels only: Menu views, Top demand, Best source, and Needs attention mapped to Promote, Fix, Restock, or Update.
 
+June 16 image-gap signal pass:
+
+- Adds no Firestore collection, document, index, Storage path, analytics event, or scheduler task.
+- Reuses project catalog data already loaded for dashboard summary aggregation plus existing settled item views/taps.
+- Separates high-demand missing item photos into `image_gap`; missing descriptions stay in `metadata_demand`.
+- Does not upload, generate, rewrite, or store media. Owner action handling remains disabled or routed through existing screens until Action Support media adapters are explicitly implemented.
+
 ## Why This Uses `platformSummary`
 
 ChatGPT suggested new top-level snapshot collections. That is not the best cost-first repo fit.
@@ -379,7 +386,7 @@ Function changes, if implemented:
 
 | Function | Change |
 | --- | --- |
-| `computeDecisionBlocksScores` | Add Business Health snapshot build inside existing store-local scheduler path |
+| `computeDecisionBlocksScores` | Add Business Health snapshot build inside existing store-local scheduler path; dashboard summary aggregation may emit catalog-aware `image_gap` action cards from already-loaded catalog/analytics data |
 | `triggerStoreNightlyScheduler` | Include Business Health rebuild in manual store recovery |
 | `menulistMaintenanceScheduler` | Add cleanup tasks under workflow doc flags |
 

@@ -1,0 +1,248 @@
+[
+  {
+    "businessCategory": "food",
+    "templateId": "food_lunch_push_whatsapp_google",
+    "title": "Lunch push pack",
+    "description": "Prepare a WhatsApp, Instagram, Google update, and counter poster pack for a confirmed lunch item.",
+    "eventTags": ["weekday", "local_visibility"],
+    "recipeIds": ["restaurant_today_item_push"],
+    "ownerGoals": ["bring_people_today"],
+    "channels": ["whatsapp", "google_local", "creative"],
+    "outputTypes": ["whatsapp_image", "whatsapp_message", "instagram_square", "instagram_story", "google_update", "poster_pdf"],
+    "requiredFactTypes": ["menu_item", "price", "availability_date", "whatsapp_number", "location_detail"],
+    "optionalFactTypes": ["photo", "offer_end_date"],
+    "trustChecks": ["price_confirmed", "phone_confirmed", "date_confirmed", "photo_rights_confirmed"],
+    "styleTags": ["friendly", "clear_offer"],
+    "supportedBusinessTypes": ["restaurant", "cafe", "bakery"],
+    "priority": 900,
+    "decisionSeed": {
+      "ownerGoal": "bring_people_today",
+      "recipeId": "restaurant_today_item_push",
+      "whyThis": ["Food item and contact details can create a useful same-day pack."],
+      "whyNow": ["Lunch and weekday offers are time-sensitive for food businesses."]
+    },
+    "factSlots": [
+      { "type": "menu_item", "required": true, "ownerQuestion": "Which item should this campaign promote?", "protected": true },
+      { "type": "price", "required": true, "ownerQuestion": "What confirmed price should be shown?", "protected": true },
+      { "type": "offer_end_date", "required": false, "ownerQuestion": "When should this offer stop?", "protected": true },
+      { "type": "photo", "required": false, "ownerQuestion": "Upload one real food photo if available.", "protected": false }
+    ],
+    "outputPackShape": {
+      "channels": ["whatsapp", "google_local", "creative"],
+      "deliveryCards": ["WhatsApp sales pack", "Google update handoff", "Counter poster"],
+      "copyBlocks": ["WhatsApp short message", "Instagram caption", "Google description", "Staff share text"],
+      "printFormats": ["counter_poster_pdf"],
+      "resultQuestion": "Did this lunch campaign get replies, orders, or walk-ins?"
+    }
+  },
+  {
+    "businessCategory": "service",
+    "templateId": "service_weekend_slot_filler",
+    "title": "Weekend slot filler",
+    "description": "Prepare a booking-focused pack for confirmed open slots, price/package, and contact details.",
+    "eventTags": ["weekend"],
+    "recipeIds": ["salon_weekend_slot_filler"],
+    "ownerGoals": ["fill_slots"],
+    "channels": ["whatsapp", "creative", "google_local"],
+    "outputTypes": ["whatsapp_image", "whatsapp_message", "instagram_story", "google_update", "poster_pdf"],
+    "requiredFactTypes": ["availability", "price", "booking_link", "whatsapp_number"],
+    "optionalFactTypes": ["photo", "location_detail"],
+    "trustChecks": ["price_confirmed", "booking_link_confirmed", "phone_confirmed", "photo_rights_confirmed"],
+    "styleTags": ["friendly", "booking"],
+    "supportedBusinessTypes": ["salon", "spa", "local_service"],
+    "priority": 900,
+    "decisionSeed": {
+      "ownerGoal": "fill_slots",
+      "recipeId": "salon_weekend_slot_filler",
+      "whyThis": ["Open appointment capacity can become a clear booking pack."],
+      "whyNow": ["Weekend slots need a timely reminder before they pass."]
+    },
+    "factSlots": [
+      { "type": "availability", "required": true, "ownerQuestion": "Which time slots are open?", "protected": true },
+      { "type": "price", "required": true, "ownerQuestion": "What package price should be shown?", "protected": true },
+      { "type": "booking_link", "required": true, "ownerQuestion": "Which booking link should be used?", "protected": true }
+    ],
+    "outputPackShape": {
+      "channels": ["whatsapp", "creative", "google_local"],
+      "deliveryCards": ["WhatsApp booking pack", "Instagram story", "Google update", "Reception poster"],
+      "copyBlocks": ["WhatsApp short message", "Story text", "Google description", "Reception script"],
+      "printFormats": ["reception_poster_pdf"],
+      "resultQuestion": "Did this get bookings or calls?"
+    }
+  },
+  {
+    "businessCategory": "retail",
+    "templateId": "retail_new_product_push",
+    "title": "New product push",
+    "description": "Prepare a product launch pack with a photo, price, WhatsApp/customer reply text, and store handoff.",
+    "eventTags": ["seasonal"],
+    "recipeIds": ["retail_new_product_push"],
+    "ownerGoals": ["sell_product"],
+    "channels": ["whatsapp", "creative", "ads"],
+    "outputTypes": ["whatsapp_image", "whatsapp_message", "instagram_square", "ad_handoff_copy", "poster_pdf"],
+    "requiredFactTypes": ["product", "price", "photo", "whatsapp_number"],
+    "optionalFactTypes": ["offer_end_date", "terms"],
+    "trustChecks": ["price_confirmed", "phone_confirmed", "photo_rights_confirmed"],
+    "styleTags": ["product", "clear_offer"],
+    "supportedBusinessTypes": ["retail", "fashion boutique", "jewelry store"],
+    "priority": 860,
+    "decisionSeed": {
+      "ownerGoal": "sell_product",
+      "recipeId": "retail_new_product_push",
+      "whyThis": ["A confirmed product and price can become a reusable sales pack."],
+      "whyNow": ["New product visibility works best while stock is fresh."]
+    },
+    "factSlots": [
+      { "type": "product", "required": true, "ownerQuestion": "Which product should be promoted?", "protected": true },
+      { "type": "price", "required": true, "ownerQuestion": "What confirmed price should be shown?", "protected": true },
+      { "type": "photo", "required": true, "ownerQuestion": "Upload one product photo.", "protected": false }
+    ],
+    "outputPackShape": {
+      "channels": ["whatsapp", "creative", "ads"],
+      "deliveryCards": ["WhatsApp product pack", "Instagram post", "Ad handoff", "Store poster"],
+      "copyBlocks": ["Product caption", "WhatsApp reply script", "Ad headline", "Staff share text"],
+      "printFormats": ["store_poster_pdf"],
+      "resultQuestion": "Did this get product inquiries or sales?"
+    }
+  },
+  {
+    "businessCategory": "professional",
+    "templateId": "professional_consultation_booking",
+    "title": "Consultation booking pack",
+    "description": "Prepare a local consultation pack with service details, booking link, proof point, and safe claims.",
+    "eventTags": ["local_visibility"],
+    "recipeIds": ["professional_consultation_push"],
+    "ownerGoals": ["book_service"],
+    "channels": ["google_local", "creative", "ads"],
+    "outputTypes": ["google_update", "instagram_square", "ad_handoff_copy", "flyer_pdf"],
+    "requiredFactTypes": ["service", "booking_link", "location_detail", "approved_claim"],
+    "optionalFactTypes": ["photo", "terms"],
+    "trustChecks": ["booking_link_confirmed", "location_confirmed", "unsupported_claims_blocked"],
+    "styleTags": ["direct", "trusted"],
+    "supportedBusinessTypes": ["professional", "law firm", "real estate agent"],
+    "priority": 820,
+    "decisionSeed": {
+      "ownerGoal": "book_service",
+      "recipeId": "professional_consultation_push",
+      "whyThis": ["A confirmed service and destination can create a safer consultation handoff."],
+      "whyNow": ["Local visibility improves when fresh service updates are ready."]
+    },
+    "factSlots": [
+      { "type": "service", "required": true, "ownerQuestion": "Which service should be promoted?", "protected": true },
+      { "type": "booking_link", "required": true, "ownerQuestion": "Which booking or inquiry link should be used?", "protected": true },
+      { "type": "approved_claim", "required": true, "ownerQuestion": "Which claim is approved to use?", "protected": true }
+    ],
+    "outputPackShape": {
+      "channels": ["google_local", "creative", "ads"],
+      "deliveryCards": ["Google service update", "Instagram post", "Ad handoff", "Flyer"],
+      "copyBlocks": ["Google description", "Service caption", "Ad description", "Inquiry script"],
+      "printFormats": ["flyer_pdf"],
+      "resultQuestion": "Did this get inquiries or bookings?"
+    }
+  },
+  {
+    "businessCategory": "creative",
+    "templateId": "creative_showcase_booking",
+    "title": "Showcase and booking pack",
+    "description": "Prepare a visual portfolio pack with rights reminders, booking CTA, and staff/client handoff text.",
+    "eventTags": ["seasonal"],
+    "recipeIds": ["creative_showcase_push"],
+    "ownerGoals": ["book_service"],
+    "channels": ["creative", "whatsapp", "ads"],
+    "outputTypes": ["instagram_square", "instagram_story", "whatsapp_message", "ad_handoff_copy"],
+    "requiredFactTypes": ["service", "photo", "usage_rights", "booking_link"],
+    "optionalFactTypes": ["price", "terms"],
+    "trustChecks": ["photo_rights_confirmed", "booking_link_confirmed", "unsupported_claims_blocked"],
+    "styleTags": ["portfolio", "premium"],
+    "supportedBusinessTypes": ["creative", "photography studio", "makeup studio"],
+    "priority": 820,
+    "decisionSeed": {
+      "ownerGoal": "book_service",
+      "recipeId": "creative_showcase_push",
+      "whyThis": ["Real portfolio assets can create a stronger booking pack than generic visuals."],
+      "whyNow": ["Seasonal and portfolio pushes need rights-safe assets before sharing."]
+    },
+    "factSlots": [
+      { "type": "photo", "required": true, "ownerQuestion": "Which approved work photo should be used?", "protected": false },
+      { "type": "usage_rights", "required": true, "ownerQuestion": "Do you have permission to use this photo?", "protected": true },
+      { "type": "booking_link", "required": true, "ownerQuestion": "Which booking link should be used?", "protected": true }
+    ],
+    "outputPackShape": {
+      "channels": ["creative", "whatsapp", "ads"],
+      "deliveryCards": ["Instagram showcase", "WhatsApp inquiry text", "Ad handoff"],
+      "copyBlocks": ["Portfolio caption", "WhatsApp reply script", "Ad headline", "Client-safe note"],
+      "printFormats": [],
+      "resultQuestion": "Did this get inquiries or bookings?"
+    }
+  },
+  {
+    "businessCategory": "health",
+    "templateId": "health_class_or_appointment_push",
+    "title": "Class or appointment push",
+    "description": "Prepare a fact-safe pack for a confirmed class, appointment opening, or wellness service.",
+    "eventTags": ["weekend", "local_visibility"],
+    "recipeIds": ["health_class_booking_push"],
+    "ownerGoals": ["fill_slots"],
+    "channels": ["whatsapp", "google_local", "creative"],
+    "outputTypes": ["whatsapp_message", "instagram_story", "google_update", "poster_pdf"],
+    "requiredFactTypes": ["service", "availability", "booking_link", "location_detail"],
+    "optionalFactTypes": ["price", "photo", "terms"],
+    "trustChecks": ["booking_link_confirmed", "location_confirmed", "unsupported_claims_blocked"],
+    "styleTags": ["calm", "clear_booking"],
+    "supportedBusinessTypes": ["clinic", "fitness", "yoga studio"],
+    "priority": 820,
+    "decisionSeed": {
+      "ownerGoal": "fill_slots",
+      "recipeId": "health_class_booking_push",
+      "whyThis": ["Confirmed availability can become a clear, safe booking pack."],
+      "whyNow": ["Health and wellness openings are time-sensitive."]
+    },
+    "factSlots": [
+      { "type": "service", "required": true, "ownerQuestion": "Which class or service should be promoted?", "protected": true },
+      { "type": "availability", "required": true, "ownerQuestion": "Which time or date is available?", "protected": true },
+      { "type": "booking_link", "required": true, "ownerQuestion": "Which booking link should be used?", "protected": true }
+    ],
+    "outputPackShape": {
+      "channels": ["whatsapp", "google_local", "creative"],
+      "deliveryCards": ["WhatsApp booking pack", "Google update", "Story", "Poster"],
+      "copyBlocks": ["WhatsApp reminder", "Story copy", "Google description", "Front desk script"],
+      "printFormats": ["poster_pdf"],
+      "resultQuestion": "Did this get bookings, calls, or walk-ins?"
+    }
+  },
+  {
+    "businessCategory": "specialty",
+    "templateId": "specialty_local_visibility_update",
+    "title": "Local visibility update",
+    "description": "Prepare a safe Google/local pack when the business has no stronger offer ready yet.",
+    "eventTags": ["local_visibility"],
+    "recipeIds": ["local_visibility_maintenance"],
+    "ownerGoals": ["prepare_local_pack"],
+    "channels": ["google_local", "creative"],
+    "outputTypes": ["google_update", "instagram_square", "flyer_pdf"],
+    "requiredFactTypes": ["business_name", "location_detail", "phone", "service"],
+    "optionalFactTypes": ["photo", "website", "terms"],
+    "trustChecks": ["business_name_confirmed", "location_confirmed", "phone_confirmed"],
+    "styleTags": ["direct", "maintenance"],
+    "supportedBusinessTypes": ["other", "specialty", "multi_location"],
+    "priority": 760,
+    "decisionSeed": {
+      "ownerGoal": "prepare_local_pack",
+      "recipeId": "local_visibility_maintenance",
+      "whyThis": ["A safe local update is useful when no stronger offer is confirmed."],
+      "whyNow": ["Fresh local facts help owners stay visible without inventing an offer."]
+    },
+    "factSlots": [
+      { "type": "business_name", "required": true, "ownerQuestion": "Which business name should be used?", "protected": true },
+      { "type": "location_detail", "required": true, "ownerQuestion": "Which location should be shown?", "protected": true },
+      { "type": "service", "required": true, "ownerQuestion": "Which service or business update should be shared?", "protected": true }
+    ],
+    "outputPackShape": {
+      "channels": ["google_local", "creative"],
+      "deliveryCards": ["Google update", "Social post", "Flyer"],
+      "copyBlocks": ["Google description", "Local caption", "Staff note"],
+      "printFormats": ["flyer_pdf"],
+      "resultQuestion": "Did this update get calls, visits, or useful comments?"
+    }
+  }
+]

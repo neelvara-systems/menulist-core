@@ -1,7 +1,7 @@
 # Answerlattice Public API — Implementation
 
 > **Status:** Implemented
-> **Last Updated:** 2026-05-19
+> **Last Updated:** 2026-06-16
 
 ---
 
@@ -48,6 +48,7 @@ Widget credentials are intentionally separate:
 - Optionally validates context with `AnswerlatticeContextSchema`.
 - Calls `attemptCanonicalRetrieval()`.
 - Returns governed canonical answer data only.
+- Suppresses internal entity-resolution debug traces in production responses; retrieval debug stays inside owner-controlled escalation/ticket diagnostics.
 - Does not run RAG fallback or provider-heavy AI work.
 
 ### `GET /api/answerlattice/public/v1/entities`
@@ -63,6 +64,7 @@ Widget credentials are intentionally separate:
 - Requires an explicit `signals:write` public API key scope; `public:read` alone cannot write signals.
 - Validates signal type against `ANSWERLATTICE_SIGNAL_TYPE`.
 - Sanitizes metadata to primitive values with key and value limits.
+- Treats `externalId`, `requestId`, or `idempotencyKey` as server-side signal idempotency keys when present.
 - Calls `emitAnswerlatticeSignal()`.
 - Returns `202 Accepted`.
 
@@ -75,7 +77,7 @@ Widget credentials are intentionally separate:
 - Rate limiting runs before key validation.
 - Answer retrieval does not call Gemini/RAG.
 - Entity registry reads are capped at 200 documents.
-- Signal ingestion writes one signal document and uses existing dedup logic where applicable.
+- Signal ingestion writes one signal document and uses deterministic document IDs for explicit source/request IDs so retries do not append duplicate signal rows.
 
 ---
 
@@ -83,6 +85,7 @@ Widget credentials are intentionally separate:
 
 - API keys are never stored raw.
 - API responses do not include internal audit trails, mutation proposals, user data, or raw Firestore documents.
+- Public answer responses do not expose entity-resolution debug internals in production.
 - Signal ingestion never mutates canonical answers directly; it only feeds the governed mutation pipeline.
 - Tenant isolation is key-derived and server-side.
 

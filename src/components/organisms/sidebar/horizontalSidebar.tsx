@@ -57,8 +57,24 @@ const HorizontalSidebarComponent = () => {
 
     const getMenuItems = () => {
         const menuCopy = [];
+        const navFeatureAllowed = (nav: NavItemType) => {
+            if (nav.route === NAVIGARIONS_ROUTINGS.PLATFORM_ENTITY_BLOCKS) {
+                return FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS;
+            }
+            if (nav.route === NAVIGARIONS_ROUTINGS.PLATFORM_ASSET_TEMPLATES) {
+                return FEATURE_FLAGS.ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER;
+            }
+            if (nav.route === NAVIGARIONS_ROUTINGS.PLATFORM_COST_POSTURE) {
+                return FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE;
+            }
+            return true;
+        };
+
         SIDEBAR_DASHBOARD_LAYOUT.map((nav: NavItemType) => {
             if (hasStarterAccess && !isStarterWorkspaceRoute(nav.route)) {
+                return;
+            }
+            if (!navFeatureAllowed(nav)) {
                 return;
             }
             if (nav.route === NAVIGARIONS_ROUTINGS.LOCATIONS) {
@@ -85,6 +101,7 @@ const HorizontalSidebarComponent = () => {
             }
             const parentPermissionAllowed = canShowNavForPermissions(nav);
             const visibleSubNav = nav.subNav?.filter((subnav) => {
+                if (!navFeatureAllowed(subnav)) return false;
                 const platformRoleAllowed = !subnav.allowedPlatformRoles?.length || subnav.allowedPlatformRoles.includes(platformRole);
                 const subNavPermissionAllowed = canShowNavForPermissions(subnav)
                     || (Boolean(nav.defaultRoute) && subnav.route === nav.defaultRoute && parentPermissionAllowed);

@@ -628,7 +628,7 @@ export const CAMPAIGNCUE_DAILY_DESK_RECIPES: CampaignCueDailyDeskRecipe[] = [
         ],
         recommendedChannels: ["creative", "whatsapp", "google_local", "calendar"],
         outputFormats: [
-            "Layered image reuse",
+            "Reusable image",
             "Updated WhatsApp image",
             "Updated poster",
             "Google image handoff",

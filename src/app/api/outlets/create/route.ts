@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
  */
 import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
 import { FEATURE_FLAGS } from "@config/features";
-import { resolveStoreBusinessCategory } from "@constant/common";
+import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { isReservedOutletSlug } from "@constant/reservedSlugs";
@@ -293,7 +293,7 @@ export const POST = withAuth(async (request, session) => {
             const userSnap = userRef ? await tx.get(userRef) : null;
             const newStoreId = (summary.data()?.stores?.count || 0) + 1;
             const storeKey = outletName.toLowerCase().replaceAll(" ", "_");
-            const businessType = masterStore.businessType || 'restaurant';
+            const businessType = masterStore.businessType || FALLBACK_BUSINESS_TYPE;
             const businessCategory = resolveStoreBusinessCategory(businessType, masterStore.businessCategory);
             const defaultPresets = getDefaultTimeSlotPresets(businessType, tenantId, newStoreId, businessCategory);
             const roles = createDefaultRoles(newStoreId, session.user?.email || 'system');

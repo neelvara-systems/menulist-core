@@ -295,6 +295,20 @@ service cloud.firestore {
         );
     }
 
+    match /changelog_feedback/{tId}/{sId}/{docId} {
+      allow read: if isAnswerlatticeContentFeedbackRead(tId, sId);
+      allow create: if isAnswerlatticeContentFeedbackCreate(tId, sId);
+      allow update: if isAnswerlatticeContentFeedbackUpdate(tId, sId);
+      allow delete: if false;
+    }
+
+    match /article_feedback/{tId}/{sId}/{docId} {
+      allow read: if isAnswerlatticeContentFeedbackRead(tId, sId);
+      allow create: if isAnswerlatticeContentFeedbackCreate(tId, sId);
+      allow update: if isAnswerlatticeContentFeedbackUpdate(tId, sId);
+      allow delete: if false;
+    }
+
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -409,6 +423,78 @@ service cloud.firestore {
         && request.resource.data.metadata is map
         && request.resource.data.metadata.keys().hasAll(['source'])
         && request.resource.data.metadata.source == 'help_center_feedback';
+    }
+
+    function answerlatticeContentFeedbackKeys() {
+      return [
+        'list',
+        'pId',
+        'sourceContext',
+        'traceId',
+        'requestId',
+        'sId',
+        'tId',
+        'role',
+        'uId',
+        'modifiedBy',
+        'modifiedOn',
+        'createdOn',
+        'createdBy'
+      ];
+    }
+
+    function isAnswerlatticeContentFeedbackDoc(data) {
+      return data.keys().hasAll(['list', 'pId', 'tId', 'sId'])
+        && data.keys().hasOnly(answerlatticeContentFeedbackKeys())
+        && data.pId == 'AL'
+        && data.list is list
+        && data.list.size() <= 200;
+    }
+
+    function isAnswerlatticeContentFeedbackRead(tId, sId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeTenantPath(tId, sId)
+            && hasAnyAnswerlatticePermission()
+          )
+        );
+    }
+
+    function isAnswerlatticeContentFeedbackCreate(tId, sId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeTenantPath(tId, sId)
+            && isAnswerlatticeTenantMember(request.resource.data)
+            && hasAnyAnswerlatticePermission()
+            && isAnswerlatticeContentFeedbackDoc(request.resource.data)
+          )
+        );
+    }
+
+    function isAnswerlatticeContentFeedbackUpdate(tId, sId) {
+      return isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            isAnswerlatticeTenantPath(tId, sId)
+            && isAnswerlatticeTenantMember(resource.data)
+            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.tId == resource.data.tId
+            && request.resource.data.sId == resource.data.sId
+            && hasAnyAnswerlatticePermission()
+            && isAnswerlatticeContentFeedbackDoc(resource.data)
+            && isAnswerlatticeContentFeedbackDoc(request.resource.data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['list', 'modifiedOn', 'modifiedBy'])
+            && (
+              request.resource.data.list.size() == resource.data.list.size() + 1
+              || (resource.data.list.size() == 200 && request.resource.data.list.size() == 200)
+            )
+          )
+        );
     }
 
     function kbCategoriesDocMatchesCurrentStore(docId) {

@@ -12,8 +12,11 @@
  * When updating this file, copy-paste the ENTIRE file to the backend.
  * Do NOT cherry-pick or modify — always full file replacement.
  *
- * Keep this file self-contained. Do not import app or Functions modules.
+ * It may import sibling shared data files only. Do not import app or
+ * Functions modules.
  */
+
+import { normalizeBusinessCategory } from './businessTypes';
 
 export type BusinessAttributeKind = 'food' | 'retail' | 'service' | 'venue';
 
@@ -85,11 +88,12 @@ function normalizeAliasToken(value: string): string {
 
 export function getBusinessAttributeKindForCategory(businessCategory?: string): BusinessAttributeKind {
     const normalized = String(businessCategory || '').trim().toLowerCase();
-    if (normalized === 'food') return 'food';
-    if (normalized === 'retail') return 'retail';
     if (normalized === 'venue') return 'venue';
-    if (['service', 'professional', 'creative', 'health', 'specialty'].includes(normalized)) return 'service';
-    return 'food';
+    const category = normalizeBusinessCategory(businessCategory);
+    if (!category) return 'food';
+    if (category === 'food') return 'food';
+    if (category === 'retail') return 'retail';
+    return 'service';
 }
 
 export function getBusinessAttributeInferenceConfigForCategory(

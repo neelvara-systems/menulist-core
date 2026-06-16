@@ -135,12 +135,25 @@ The Home tab label is now Daily desk. The first screen shows:
 
 The Start navigation exposes `Inputs` for the Missing Input Inbox. The Operations navigation exposes `Visibility` for local search/profile readiness and manual Google-ready handoff fields.
 
-The Creative Editor remains separate under Editor/Assets. CueLayers is surfaced only as a reuse action: "Turn image into layers."
+The Creative Editor remains separate under Editor/Assets, but it no longer opens as a context-free design surface for CampaignCue. Campaign Pack Editor Mode wraps the shared editor with owner context:
+
+- safe tasks from the Daily Desk and Missing Input Inbox
+- protected business text from Business Brain and source facts
+- one-design-many-output format reminders
+- Trust Center status
+- manual delivery cards
+- result memory prompt
+- mobile review guidance
+
+CueLayers is surfaced as the owner action "Reuse old image". The implementation still uses the CueLayers upload/reconstruction path internally, but owner copy should describe old posters, screenshots, or flat images being reused safely.
 
 The editor AI Tools drawer now starts with owner outcome actions:
 
 - Check if ready to share
 - Add missing business details
 - Improve this design
+- Ready for WhatsApp
+- Ready for Google
+- Ready for print
 
 These actions are deterministic and run without a provider call.

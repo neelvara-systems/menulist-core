@@ -6,6 +6,7 @@ import {
 import {
     deleteObject,
     getBlob,
+    getDownloadURL,
     ref,
     uploadString,
 } from "firebase/storage";
@@ -26,6 +27,7 @@ const STORE_ASSET_TEMPLATES_COLLECTION = DB_COLLECTIONS.STORE_ASSET_TEMPLATES;
 const STORAGE_ROOT = "creative-editor/templates";
 const MAX_DOCUMENT_BYTES = 750_000;
 const MAX_INDEX_TEMPLATES = 100;
+const MAX_PLATFORM_INDEX_TEMPLATES = 200;
 const PLATFORM_TEMPLATE_GENERIC_CATEGORY = "generic";
 const STORE_TEMPLATE_DOC_ID = "default";
 
@@ -37,6 +39,7 @@ export type CreativeEditorTemplateScope = {
 export type CreativeEditorTemplateContext = {
     assetTypeId?: string;
     businessCategory?: string;
+    includeUnpublished?: boolean;
     productId: string;
     scope?: CreativeEditorTemplateScope | null;
     sourceSurface: string;
@@ -49,6 +52,24 @@ export type CreativeEditorTemplateSaveParams = CreativeEditorTemplateContext & {
     templateId?: string;
     thumbnailDataUrl?: string;
     title: string;
+};
+
+export type CreativeEditorPlatformTemplateSaveParams = Omit<CreativeEditorTemplateContext, "scope" | "templateType"> & {
+    description?: string;
+    document: CreativeEditorDocument;
+    status?: "draft" | "published" | "archived";
+    templateFamilyId?: string;
+    templateId?: string;
+    thumbnailDataUrl?: string;
+    title: string;
+};
+
+export type CreativeEditorPlatformTemplateMetadataParams = Omit<CreativeEditorTemplateContext, "scope" | "templateType"> & {
+    description?: string;
+    status?: "draft" | "published" | "archived";
+    templateFamilyId?: string;
+    templateId: string;
+    title?: string;
 };
 
 type TemplateStorageBackend = "storage";
@@ -84,6 +105,7 @@ type CreativeEditorTemplateRecord = {
     tId?: string;
     modifiedBy?: string;
     modifiedOn?: unknown;
+    sortIndex?: number;
     updatedAt: string;
     updatedAtMs: number;
     uId?: string;
@@ -182,6 +204,16 @@ const buildUserDocumentPath = (
     "document.json",
 ].join("/");
 
+const buildPlatformDocumentPath = (
+    params: { businessCategory?: string; templateId: string },
+) => [
+    STORAGE_ROOT,
+    "platform",
+    buildPlatformCategoryKey(params.businessCategory),
+    safePathPart(params.templateId),
+    "document.json",
+].join("/");
+
 const buildUserPreviewPath = (
     scope: CreativeEditorTemplateScope,
     params: { templateId: string; thumbnailDataUrl?: string },
@@ -197,6 +229,22 @@ const buildUserPreviewPath = (
         `preview.${extension}`,
     ].join("/");
 };
+
+const buildPlatformPreviewPath = (
+    params: { businessCategory?: string; templateId: string; thumbnailDataUrl?: string },
+) => {
+    const contentType = parseDataUrlContentType(params.thumbnailDataUrl);
+    const extension = contentType === "image/webp" ? "webp" : contentType === "image/png" ? "png" : "jpg";
+    return [
+        STORAGE_ROOT,
+        "platform",
+        buildPlatformCategoryKey(params.businessCategory),
+        safePathPart(params.templateId),
+        `preview.${extension}`,
+    ].join("/");
+};
+
+const getDocumentBytes = (value: string) => new TextEncoder().encode(value).length;
 
 const parseDataUrlContentType = (value?: string) => {
     if (!value) return null;
@@ -264,6 +312,15 @@ const readIndexRecords = (
 
 const sortRecords = (records: CreativeEditorTemplateRecord[]) => (
     [...records].sort((left, right) => (right.updatedAtMs || 0) - (left.updatedAtMs || 0))
+);
+
+const sortPlatformRecords = (records: CreativeEditorTemplateRecord[]) => (
+    [...records].sort((left, right) => {
+        const leftSort = typeof left.sortIndex === "number" ? left.sortIndex : Number.MAX_SAFE_INTEGER;
+        const rightSort = typeof right.sortIndex === "number" ? right.sortIndex : Number.MAX_SAFE_INTEGER;
+        if (leftSort !== rightSort) return leftSort - rightSort;
+        return (right.updatedAtMs || 0) - (left.updatedAtMs || 0);
+    })
 );
 
 const dedupePlatformRecords = (records: CreativeEditorTemplateRecord[]) => {
@@ -350,7 +407,7 @@ async function listCreativeEditorPlatformTemplates(
     const records = readIndexRecords(catalogData, params)
         .map((record) => toPlatformRecord(record, requestedCategory, params));
 
-    const sortedRecords = sortRecords(dedupePlatformRecords(records) as CreativeEditorPlatformTemplateRecord[])
+    const sortedRecords = sortPlatformRecords(dedupePlatformRecords(records) as CreativeEditorPlatformTemplateRecord[])
         .filter((record) => (record.status || "published") === "published")
         .slice(0, params.limit)
         .map((record) => ({
@@ -400,6 +457,33 @@ export async function listCreativeEditorTemplates(
     return listCreativeEditorTemplatesRaw(params);
 }
 
+export async function listCreativeEditorPlatformTemplateCatalog(params: {
+    businessCategory?: string;
+    includeArchived?: boolean;
+    limit?: number;
+}): Promise<CreativeEditorTemplateSummary[]> {
+    try {
+        const businessCategory = buildPlatformCategoryKey(params.businessCategory);
+        const catalog = await getDoc(getPlatformCatalogRef(businessCategory));
+        const catalogData = catalog.exists() ? catalog.data() as CreativeEditorPlatformCatalogRecord : null;
+        const records = readIndexRecords(catalogData, {
+            productId: "menulist",
+            sourceSurface: "printable-asset-templates",
+        }).map((record) => toPlatformRecord(record, businessCategory, {
+            productId: record.productId || "menulist",
+            sourceSurface: record.sourceSurface || "printable-asset-templates",
+        }));
+        const filteredRecords = params.includeArchived
+            ? records
+            : records.filter((record) => (record.status || "published") !== "archived");
+        return sortPlatformRecords(dedupePlatformRecords(filteredRecords))
+            .slice(0, params.limit || MAX_PLATFORM_INDEX_TEMPLATES)
+            .map(toSummary);
+    } catch (error) {
+        throwTemplateRegistryError(error, "Platform templates could not be loaded");
+    }
+}
+
 async function getCreativeEditorPlatformTemplate(
     params: CreativeEditorTemplateGetQuery & { templateId: string },
 ): Promise<{ document: CreativeEditorDocument; template: CreativeEditorTemplateSummary } | null> {
@@ -409,7 +493,7 @@ async function getCreativeEditorPlatformTemplate(
     const match = readIndexRecords(catalog.data(), params)
         .find((item) => item.id === params.templateId && recordMatchesRequest(item, params));
     const record = match ? toPlatformRecord(match, requestedCategory, params) : undefined;
-    if (!record || (record.status || "published") !== "published" || !record.documentPath) return null;
+    if (!record || (!params.includeUnpublished && (record.status || "published") !== "published") || !record.documentPath) return null;
     const document = await readStorageJson<CreativeEditorDocument>(record.documentPath);
     return {
         document,
@@ -510,13 +594,16 @@ async function saveCreativeEditorTemplateRaw(
     });
 
     let previewPath = existingRecord?.previewPath || null;
+    let thumbnailUrl = existingRecord?.thumbnailUrl || null;
     const previewContentType = parseDataUrlContentType(input.thumbnailDataUrl);
     if (input.thumbnailDataUrl && previewContentType) {
         previewPath = buildUserPreviewPath(scope, { templateId, thumbnailDataUrl: input.thumbnailDataUrl });
-        await uploadString(ref(firebaseStorage, previewPath), input.thumbnailDataUrl, "data_url", {
+        const previewRef = ref(firebaseStorage, previewPath);
+        await uploadString(previewRef, input.thumbnailDataUrl, "data_url", {
             cacheControl: "private, max-age=31536000, immutable",
             contentType: previewContentType,
         });
+        thumbnailUrl = await getDownloadURL(previewRef);
     }
 
     const record = await requestBodyComposer({
@@ -542,7 +629,7 @@ async function saveCreativeEditorTemplateRaw(
         status: "published",
         templateFamilyId: input.templateFamilyId,
         templateType: "user",
-        thumbnailUrl: null,
+        thumbnailUrl,
         title: input.title,
         tId: scope.tId,
         updatedAt: nowIso,
@@ -583,6 +670,191 @@ export async function saveCreativeEditorTemplate(
         return result as unknown as CreativeEditorTemplateSummary;
     } catch (error) {
         throwTemplateRegistryError(error, "Template could not be saved");
+    }
+}
+
+async function saveCreativeEditorPlatformTemplateRaw(
+    params: CreativeEditorPlatformTemplateSaveParams,
+): Promise<CreativeEditorTemplateSummary> {
+    const input = creativeEditorTemplateSaveSchema.parse({
+        ...params,
+        templateType: "platform",
+    }) as unknown as CreativeEditorPlatformTemplateSaveParams;
+    const businessCategory = buildPlatformCategoryKey(params.businessCategory);
+    const templateId = input.templateId || buildTemplateId();
+    const documentValue: CreativeEditorDocument = {
+        ...input.document,
+        metadata: {
+            ...input.document.metadata,
+            templateId,
+            updatedAt: new Date().toISOString(),
+        },
+        productContext: {
+            ...input.document.productContext,
+            productId: input.productId,
+            sourceSurface: input.sourceSurface,
+        },
+        title: input.title,
+    } as CreativeEditorDocument;
+    const documentJson = JSON.stringify(documentValue);
+    const documentBytes = getDocumentBytes(documentJson);
+    if (documentBytes > MAX_DOCUMENT_BYTES) {
+        throw new Error("Template document is too large");
+    }
+
+    const catalogRef = getPlatformCatalogRef(businessCategory);
+    const catalogDoc = await getDoc(catalogRef);
+    const existingCatalog = catalogDoc.exists() ? catalogDoc.data() as CreativeEditorPlatformCatalogRecord : null;
+    const existingRecords = readIndexRecords(existingCatalog, {
+        productId: input.productId,
+        sourceSurface: input.sourceSurface,
+    });
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const nowMs = now.getTime();
+    const requestMatch = {
+        assetTypeId: input.assetTypeId,
+        productId: input.productId,
+        sourceSurface: input.sourceSurface,
+    };
+    const existingRecord = existingRecords.find((record) => (
+        record.id === templateId
+        && recordMatchesRequest(record, requestMatch)
+    ));
+    const documentPath = buildPlatformDocumentPath({ businessCategory, templateId });
+
+    await uploadString(ref(firebaseStorage, documentPath), documentJson, "raw", {
+        cacheControl: "private, max-age=31536000, immutable",
+        contentType: "application/json",
+    });
+
+    let previewPath = existingRecord?.previewPath || null;
+    let thumbnailUrl = existingRecord?.thumbnailUrl || null;
+    const previewContentType = parseDataUrlContentType(input.thumbnailDataUrl);
+    if (input.thumbnailDataUrl && previewContentType) {
+        previewPath = buildPlatformPreviewPath({ businessCategory, templateId, thumbnailDataUrl: input.thumbnailDataUrl });
+        const previewRef = ref(firebaseStorage, previewPath);
+        await uploadString(previewRef, input.thumbnailDataUrl, "data_url", {
+            cacheControl: "private, max-age=31536000, immutable",
+            contentType: previewContentType,
+        });
+        thumbnailUrl = await getDownloadURL(previewRef);
+    }
+
+    const sortIndex = typeof existingRecord?.sortIndex === "number"
+        ? existingRecord.sortIndex
+        : existingRecords.length;
+    const record = await requestBodyComposer({
+        assetTypeId: input.assetTypeId,
+        businessCategory,
+        createdBy: existingRecord?.createdBy,
+        createdAt: existingRecord?.createdAt || nowIso,
+        createdAtMs: existingRecord?.createdAtMs || nowMs,
+        createdOn: existingRecord?.createdOn,
+        description: input.description || existingRecord?.description,
+        documentBytes,
+        documentPath,
+        documentStorage: "storage",
+        elementCount: documentValue.elements.length,
+        height: documentValue.canvas.height,
+        id: templateId,
+        origin: "platform",
+        previewPath,
+        previewStorage: previewPath ? "storage" : undefined,
+        productId: input.productId,
+        schemaVersion: 2,
+        sortIndex,
+        sourceSurface: input.sourceSurface,
+        status: input.status || existingRecord?.status || "draft",
+        templateFamilyId: input.templateFamilyId,
+        templateType: "platform",
+        thumbnailUrl,
+        title: input.title,
+        updatedAt: nowIso,
+        updatedAtMs: nowMs,
+        version: (existingRecord?.version || 0) + 1,
+        width: documentValue.canvas.width,
+    }) as CreativeEditorTemplateRecord;
+    const templates = sortPlatformRecords([
+        record,
+        ...existingRecords.filter((item) => !(
+            item.id === templateId
+            && recordMatchesRequest(item, requestMatch)
+        )),
+    ]).slice(0, MAX_PLATFORM_INDEX_TEMPLATES);
+
+    await setDoc(catalogRef, {
+        businessCategory,
+        data: templates,
+        schemaVersion: 2,
+        updatedAt: nowIso,
+        updatedAtMs: nowMs,
+    } satisfies CreativeEditorPlatformCatalogRecord);
+    return toSummary(record);
+}
+
+export async function saveCreativeEditorPlatformTemplate(
+    params: CreativeEditorPlatformTemplateSaveParams,
+): Promise<CreativeEditorTemplateSummary> {
+    try {
+        const result = await saveCreativeEditorPlatformTemplateRaw(params);
+        if (!isRecord(result) || typeof result.id !== "string") {
+            throw new Error("Platform template could not be saved");
+        }
+        return result as CreativeEditorTemplateSummary;
+    } catch (error) {
+        throwTemplateRegistryError(error, "Platform template could not be saved");
+    }
+}
+
+async function updateCreativeEditorPlatformTemplateMetadataRaw(
+    params: CreativeEditorPlatformTemplateMetadataParams,
+): Promise<CreativeEditorTemplateSummary> {
+    const query = creativeEditorTemplateGetQuerySchema.parse({
+        ...params,
+        templateType: "platform",
+    }) as CreativeEditorTemplateGetQuery;
+    const businessCategory = buildPlatformCategoryKey(params.businessCategory);
+    const catalogRef = getPlatformCatalogRef(businessCategory);
+    const catalogDoc = await getDoc(catalogRef);
+    if (!catalogDoc.exists()) throw new Error("Template not found");
+    const records = readIndexRecords(catalogDoc.data(), query);
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const nowMs = now.getTime();
+    let updatedRecord: CreativeEditorTemplateRecord | null = null;
+    const nextRecords = records.map((record) => {
+        if (record.id !== params.templateId || !recordMatchesRequest(record, query)) return record;
+        updatedRecord = {
+            ...record,
+            description: params.description ?? record.description,
+            status: params.status || record.status || "draft",
+            templateFamilyId: params.templateFamilyId ?? record.templateFamilyId,
+            title: params.title || record.title,
+            updatedAt: nowIso,
+            updatedAtMs: nowMs,
+            version: (record.version || 0) + 1,
+        };
+        return updatedRecord;
+    });
+    if (!updatedRecord) throw new Error("Template not found");
+    await setDoc(catalogRef, {
+        businessCategory,
+        data: sortPlatformRecords(nextRecords).slice(0, MAX_PLATFORM_INDEX_TEMPLATES),
+        schemaVersion: 2,
+        updatedAt: nowIso,
+        updatedAtMs: nowMs,
+    } satisfies CreativeEditorPlatformCatalogRecord);
+    return toSummary(updatedRecord);
+}
+
+export async function updateCreativeEditorPlatformTemplateMetadata(
+    params: CreativeEditorPlatformTemplateMetadataParams,
+): Promise<CreativeEditorTemplateSummary> {
+    try {
+        return await updateCreativeEditorPlatformTemplateMetadataRaw(params);
+    } catch (error) {
+        throwTemplateRegistryError(error, "Platform template could not be updated");
     }
 }
 
@@ -628,5 +900,42 @@ export async function deleteCreativeEditorTemplate(params: CreativeEditorTemplat
         await deleteCreativeEditorTemplateRaw(params);
     } catch (error) {
         throwTemplateRegistryError(error, "Template could not be deleted");
+    }
+}
+
+async function deleteCreativeEditorPlatformTemplateRaw(params: CreativeEditorTemplateContext & { templateId: string }): Promise<void> {
+    const query = creativeEditorTemplateGetQuerySchema.parse({
+        ...params,
+        templateType: "platform",
+    }) as CreativeEditorTemplateGetQuery;
+    const businessCategory = buildPlatformCategoryKey(params.businessCategory);
+    const catalogRef = getPlatformCatalogRef(businessCategory);
+    const catalogDoc = await getDoc(catalogRef);
+    if (!catalogDoc.exists()) throw new Error("Template not found");
+    const records = readIndexRecords(catalogDoc.data(), query);
+    const record = records.find((item) => item.id === params.templateId && recordMatchesRequest(item, query));
+    if (!record) throw new Error("Template not found");
+
+    const now = new Date();
+    const remainingTemplates = records.filter((item) => item !== record);
+    await setDoc(catalogRef, {
+        businessCategory,
+        data: sortPlatformRecords(remainingTemplates).slice(0, MAX_PLATFORM_INDEX_TEMPLATES),
+        schemaVersion: 2,
+        updatedAt: now.toISOString(),
+        updatedAtMs: now.getTime(),
+    } satisfies CreativeEditorPlatformCatalogRecord);
+
+    await Promise.all([
+        deleteStoragePath(record.documentPath),
+        deleteStoragePath(record.previewPath),
+    ]).catch(() => undefined);
+}
+
+export async function deleteCreativeEditorPlatformTemplate(params: CreativeEditorTemplateContext & { templateId: string }): Promise<void> {
+    try {
+        await deleteCreativeEditorPlatformTemplateRaw(params);
+    } catch (error) {
+        throwTemplateRegistryError(error, "Platform template could not be deleted");
     }
 }

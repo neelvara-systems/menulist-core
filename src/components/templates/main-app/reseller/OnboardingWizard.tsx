@@ -1,7 +1,7 @@
 'use client';
 
 import { getActiveResellerTiers, calculateOfflineAmount, RESELLER_COMMITMENT_OPTIONS, ResellerPricingTier } from "@config/resellerPricing";
-import { BUSINESS_TYPES } from "@constant/common";
+import { BUSINESS_TYPES } from "@data/shared/businessTypes";
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { formatInrPaise } from "@util/formatters";
 import { Button, Card, Col, Divider, Flex, Form, Input, InputNumber, message, Radio, Result, Row, Select, Steps, Typography, theme } from "antd";

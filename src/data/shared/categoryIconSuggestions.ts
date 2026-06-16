@@ -3,7 +3,8 @@
  * ═══════════════════════════════════════════════════════════════
  *
  * PRIMARY SOURCE — This file is the single source of truth.
- * It MUST be self-contained (no imports from other project files).
+ * It may import sibling shared data files only. Do not import app or
+ * Functions-only modules.
  *
  * COPY RULE: This exact file is copied as-is to:
  *   functions/src/sharedData/categoryIconSuggestions.ts
@@ -11,6 +12,8 @@
  * When updating this file, copy-paste the ENTIRE file to the backend.
  * Do NOT cherry-pick or modify — always full file replacement.
  */
+
+import { normalizeBusinessCategory as normalizeSharedBusinessCategory } from './businessTypes';
 
 export type CategoryIconMatchSource = 'category-name' | 'item-context' | 'fallback';
 export type CategoryIconMatchConfidence = 'high' | 'medium' | 'low';
@@ -38,16 +41,6 @@ export interface CategoryIconItemContext {
     categoryId?: string | number;
     name?: Record<string, string>;
 }
-
-const BUSINESS_CATEGORY_VALUES = new Set([
-    'food',
-    'service',
-    'retail',
-    'health',
-    'creative',
-    'professional',
-    'specialty',
-]);
 
 const COMMON_SUGGESTIONS: CategoryIconSuggestion[] = [
     { icon: 'lu:LuStore', keywords: ['featured', 'highlights', 'top picks', 'popular', 'special', 'signature'] },
@@ -142,9 +135,8 @@ const BUSINESS_CATEGORY_ICON_SUGGESTIONS: Record<string, CategoryIconSuggestion[
     ],
 };
 
-function normalizeBusinessCategory(value?: string): string {
-    const normalized = String(value || '').trim().toLowerCase();
-    return BUSINESS_CATEGORY_VALUES.has(normalized) ? normalized : 'food';
+function resolveIconBusinessCategory(value?: string): string {
+    return normalizeSharedBusinessCategory(value) || 'food';
 }
 
 function normalizeKeyword(value: string): string {
@@ -195,7 +187,7 @@ function isValidCategoryIcon(value: unknown): value is string {
 }
 
 export function getCategoryIconSuggestions(categoryName?: string, businessCategory?: string, limit = 8): string[] {
-    const normalizedCategory = normalizeBusinessCategory(businessCategory);
+    const normalizedCategory = resolveIconBusinessCategory(businessCategory);
     const scopedSuggestions = BUSINESS_CATEGORY_ICON_SUGGESTIONS[normalizedCategory] || [];
     const normalizedName = normalizeKeyword(categoryName || '');
 
@@ -221,7 +213,7 @@ export function resolveCategoryIcon(
     businessCategory?: string,
     itemContext: string[] = [],
 ): CategoryIconMatch | null {
-    const normalizedCategory = normalizeBusinessCategory(businessCategory);
+    const normalizedCategory = resolveIconBusinessCategory(businessCategory);
     const scopedSuggestions = BUSINESS_CATEGORY_ICON_SUGGESTIONS[normalizedCategory] || [];
     const normalizedName = normalizeKeyword(categoryName || '');
 

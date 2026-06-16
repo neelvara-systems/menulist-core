@@ -135,6 +135,26 @@ export const getTicketTableColumns = ({ token, onView, onEdit, onDelete, onResto
             sorter: (a, b) => a.subject.localeCompare(b.subject),
         },
         {
+            title: 'Requester',
+            dataIndex: 'clientDetails',
+            key: 'requester',
+            width: 220,
+            render: (clientDetails: SupportTicketType['clientDetails']) => (
+                <Space direction="vertical" size={0} style={{ maxWidth: 210 }}>
+                    <Text strong ellipsis style={{ fontSize: 13 }}>
+                        {clientDetails?.storeName || clientDetails?.tenantName || 'Unknown customer'}
+                    </Text>
+                    <Text type="secondary" ellipsis style={{ fontSize: 12 }}>
+                        {clientDetails?.email || clientDetails?.phone || 'No contact saved'}
+                    </Text>
+                </Space>
+            ),
+            sorter: (a, b) => (
+                (a.clientDetails?.storeName || a.clientDetails?.tenantName || '')
+                    .localeCompare(b.clientDetails?.storeName || b.clientDetails?.tenantName || '')
+            ),
+        },
+        {
             title: 'Category',
             dataIndex: 'category',
             key: 'category',

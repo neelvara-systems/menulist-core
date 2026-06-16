@@ -1,4 +1,5 @@
 export const CAMPAIGNCUE_COLLECTIONS = {
+    PLATFORM_PACK_TEMPLATES: "campaigncuePlatformPackTemplates",
     WORKSPACES: "campaigncueWorkspaces",
     BUSINESS_BRAINS: "businessBrains",
     SOURCE_SNAPSHOTS: "sourceSnapshots",
@@ -13,6 +14,7 @@ export const CAMPAIGNCUE_COLLECTIONS = {
     APPROVAL_REQUESTS: "approvalRequests",
     USAGE_LEDGER: "usageLedger",
     PROVIDER_CONNECTIONS: "providerConnections",
+    PACK_TEMPLATE_INDEXES: "packTemplateIndexes",
     LOCATIONS: "locations",
     AGENCY_CLIENT_LINKS: "agencyClientLinks",
     IDEMPOTENCY_KEYS: "idempotencyKeys",

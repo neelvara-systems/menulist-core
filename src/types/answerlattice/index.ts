@@ -1530,6 +1530,13 @@ export interface AnswerlatticeSupportBoardCard extends AnswerlatticeDocumentIden
     priority: AnswerlatticeSupportBoardPriority;
     sourceType: AnswerlatticeSupportBoardSourceType;
     sourceId?: string | null;
+    sourceCustomerName?: string | null;
+    sourceCustomerEmail?: string | null;
+    sourceCustomerPhone?: string | null;
+    sourceCustomerUserId?: string | null;
+    sourceOrigin?: string | null;
+    sourcePath?: string | null;
+    sourceSessionId?: string | null;
 
     assigneeId?: string | null;
     assigneeName?: string | null;

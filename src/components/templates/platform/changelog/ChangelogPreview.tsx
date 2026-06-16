@@ -3,18 +3,19 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, helpCenterChangelogRouting, helpCenterTabRouting } from '@constant/navigations';
 import FeedbackSection from '@molecules/FeedbackSection';
-import { addContentFeedback } from '@database/contentFeedback';
+import { addContentFeedback, getContentFeedbackForEntry, type ContentFeedbackItem } from '@database/contentFeedback';
 import { updateChangelogFeedbackGeneric } from '@database/feedback/genericFeedback';
 import { useContentViewTracking } from '@hook/useContentViewTracking';
 import { useFeedback } from '@hook/useFeedback';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { renderPublicTiptapHtml } from '@lib/answerlattice/publicRichText';
 import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeedback } from '@lib/contentFeedbackStorage';
 import ArticleViewModal from '@organisms/ArticleViewModal';
 import { ChangelogEntry } from '@type/changelog';
 import { KnowledgeBaseArticleMeta } from '@type/knowledgeBase';
 import { getYouTubeID } from '@util/utils';
-import { Breadcrumb, Card, Flex, Grid, Image, Typography, theme } from 'antd';
+import { Alert, Breadcrumb, Card, Flex, Grid, Image, List, Skeleton, Tag, Typography, theme } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import ChangelogTagRenderer from './ChangelogTagRenderer';
 
@@ -26,19 +27,45 @@ interface ChangelogPreviewProps {
     pageId?: string; // Required if showFeedback is true
     mode: 'modal' | 'inline';
     disableTracking?: boolean; // Disable view tracking when viewing from Recently Viewed
+    showFeedbackDetails?: boolean;
 }
 
-const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode, disableTracking = false }) => {
+const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode, disableTracking = false, showFeedbackDetails = false }) => {
     const { token } = useToken();
     const screens = Grid.useBreakpoint();
     const { categoriesData, getCategoriesCached } = useKBCategoriesCache();
     const [articleModal, setArticleModal] = useState<{ active: boolean; article: KnowledgeBaseArticleMeta | null }>({ active: false, article: null });
+    const [feedbackEvents, setFeedbackEvents] = useState<ContentFeedbackItem[]>([]);
+    const [feedbackEventsLoading, setFeedbackEventsLoading] = useState(false);
+    const [feedbackEventsError, setFeedbackEventsError] = useState<string | null>(null);
     const isMobile = screens.md === false;
 
     useEffect(() => {
         if (!item.kbSources?.length) return;
         void getCategoriesCached().catch(() => undefined);
     }, [getCategoriesCached, item.id, item.kbSources?.length]);
+
+    useEffect(() => {
+        if (!showFeedbackDetails || !item.id) return;
+        let mounted = true;
+        setFeedbackEventsLoading(true);
+        setFeedbackEventsError(null);
+        getContentFeedbackForEntry('changelog', item.id)
+            .then((events) => {
+                if (!mounted) return;
+                setFeedbackEvents(events || []);
+            })
+            .catch(() => {
+                if (!mounted) return;
+                setFeedbackEventsError('Could not load reaction details.');
+                setFeedbackEvents([]);
+            })
+            .finally(() => {
+                if (!mounted) return;
+                setFeedbackEventsLoading(false);
+            });
+        return () => { mounted = false; };
+    }, [item.id, showFeedbackDetails]);
 
     // Track changelog view for analytics and recently viewed (disabled when viewing from Recently Viewed)
     useContentViewTracking(
@@ -335,6 +362,52 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                 onModalClose={() => feedback.setIsFeedbackModalVisible(false)}
                 contentLabel="changelog entry"
             />
+            {showFeedbackDetails ? (
+                <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, padding: 16 }}>
+                    <Title level={5} style={{ marginTop: 0 }}>Reaction activity</Title>
+                    {feedbackEventsError ? (
+                        <Alert type="warning" showIcon message={feedbackEventsError} />
+                    ) : feedbackEventsLoading ? (
+                        <Skeleton active paragraph={{ rows: 3 }} />
+                    ) : feedbackEvents.length === 0 ? (
+                        <Text type="secondary">No identified reaction activity yet.</Text>
+                    ) : (
+                        <List
+                            size="small"
+                            dataSource={feedbackEvents}
+                            renderItem={(event) => {
+                                const requester = getAnswerlatticeCustomerIdentity(event as any);
+                                const actionLabel = event.action === 'removed' ? 'removed' : 'added';
+                                return (
+                                    <List.Item>
+                                        <List.Item.Meta
+                                            title={(
+                                                <Flex align="center" gap={8} wrap="wrap">
+                                                    <Text strong>{requester.displayName}</Text>
+                                                    {requester.email ? <Text type="secondary">{requester.email}</Text> : null}
+                                                    <Tag color={event.sentiment === 'like' ? 'success' : 'warning'}>
+                                                        {actionLabel} {event.sentiment}
+                                                    </Tag>
+                                                </Flex>
+                                            )}
+                                            description={(
+                                                <Flex vertical gap={4}>
+                                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                                        <DateTimeDisplay value={event.createdOn} mode="datetime" />
+                                                    </Text>
+                                                    {event.comment ? (
+                                                        <Text style={{ wordBreak: 'break-word' }}>{event.comment}</Text>
+                                                    ) : null}
+                                                </Flex>
+                                            )}
+                                        />
+                                    </List.Item>
+                                );
+                            }}
+                        />
+                    )}
+                </div>
+            ) : null}
             <ArticleViewModal
                 open={articleModal.active}
                 onClose={() => setArticleModal({ active: false, article: null })}

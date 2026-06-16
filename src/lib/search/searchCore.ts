@@ -326,6 +326,28 @@ const buildSearchHistoryContextFields = (productContext: CoreSearchInput['produc
     };
 };
 
+const buildSearchHistoryRequestFields = (requestMetadata: CoreSearchInput['requestMetadata']) => {
+    if (!requestMetadata) return {};
+
+    const visitorId = cleanSearchContextText(requestMetadata.visitorId, 120);
+    const visitorName = cleanSearchContextText(requestMetadata.visitorName, 160);
+    const visitorEmail = cleanSearchContextText(requestMetadata.visitorEmail, 180);
+    const widgetSessionId = cleanSearchContextText(requestMetadata.widgetSessionId, 120);
+    const requestOrigin = cleanSearchContextText(requestMetadata.requestOrigin, 180);
+    const requestPath = cleanSearchContextText(requestMetadata.requestPath, 180);
+    const userAgentFamily = cleanSearchContextText(requestMetadata.userAgentFamily, 40);
+
+    return {
+        ...(visitorId ? { visitorId } : {}),
+        ...(visitorName ? { visitorName } : {}),
+        ...(visitorEmail ? { visitorEmail } : {}),
+        ...(widgetSessionId ? { widgetSessionId } : {}),
+        ...(requestOrigin ? { requestOrigin } : {}),
+        ...(requestPath ? { requestPath } : {}),
+        ...(userAgentFamily ? { userAgentFamily } : {}),
+    };
+};
+
 /**
  * Core search pipeline — the single source of truth for Answerlattice knowledge retrieval.
  *
@@ -363,6 +385,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         imageUrl,
         imageBuffer: inlineImageBuffer,
         productContext,
+        requestMetadata,
     } = input;
 
     const withAiProviderUsage = <T extends CoreSearchResult>(result: T): T => ({
@@ -618,6 +641,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             confidence: cached.confidence,
                             sourceVersions: cached.sourceVersions,
                             ...buildSearchHistoryContextFields(effectiveProductContext),
+                            ...buildSearchHistoryRequestFields(requestMetadata),
                         });
 
                         await writeLogEntry({
@@ -709,6 +733,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 ? { [ANSWERLATTICE_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
                 : undefined,
             ...buildSearchHistoryContextFields(effectiveProductContext),
+            ...buildSearchHistoryRequestFields(requestMetadata),
         });
 
         return withAiProviderUsage({
@@ -834,6 +859,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             confidence: canonicalResult.confidence,
             sourceVersions: canonicalSourceVersions,
             ...buildSearchHistoryContextFields(effectiveProductContext),
+            ...buildSearchHistoryRequestFields(requestMetadata),
         });
 
         perfMetrics.total = Date.now() - perfStart;
@@ -1266,6 +1292,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 ? { [ANSWERLATTICE_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
                 : undefined,
             ...buildSearchHistoryContextFields(effectiveProductContext),
+            ...buildSearchHistoryRequestFields(requestMetadata),
         });
 
         perfMetrics.total = Date.now() - perfStart;

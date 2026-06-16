@@ -67,8 +67,22 @@ export async function POST(request: NextRequest) {
             key: `canon-predict:${apiKeyRateLimitId}`,
             ...rateLimitConfig,
         });
+        if (
+            rateLimitResult.allowed
+            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+            && rateLimitResult.current === 0
+            && rateLimitResult.remaining === rateLimitConfig.limit
+        ) {
+            return emptyCorsResponse(request, {
+                status: 204,
+                headers: { 'Cache-Control': 'no-store' },
+            });
+        }
         if (!rateLimitResult.allowed) {
-            return emptyCorsResponse(request, { status: 204 });
+            return emptyCorsResponse(request, {
+                status: 204,
+                headers: { 'Cache-Control': 'no-store' },
+            });
         }
 
         const authResult = await validatePublicApiKey(apiKey, {
@@ -110,7 +124,7 @@ export async function POST(request: NextRequest) {
             return emptyCorsResponse(request, { status: 204 });
         }
 
-        const validation = PredictiveHelpRequestSchema.safeParse(await request.json());
+        const validation = PredictiveHelpRequestSchema.safeParse(await request.json().catch(() => null));
         if (!validation.success) {
             return emptyCorsResponse(request, { status: 204 });
         }

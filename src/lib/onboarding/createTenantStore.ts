@@ -15,7 +15,7 @@
  */
 
 import { getDefaultTimeSlotPresets } from '@config/defaultTimeSlotPresets';
-import { resolveStoreBusinessCategory } from '@constant/common';
+import { resolveStoreBusinessCategory } from '@data/shared/businessTypes';
 import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
 import { createDefaultRoles, getOwnerRoleId } from '@data/defaultRoles';

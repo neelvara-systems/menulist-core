@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { resolveStoreBusinessCategory } from "@constant/common";
+import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { collection, getDocs } from "@firebase/firestore";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";

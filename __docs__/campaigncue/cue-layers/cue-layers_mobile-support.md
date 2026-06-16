@@ -48,7 +48,7 @@ Because speed and touch only partially pass, mobile gets a limited operational s
 ```text
 CampaignCue mobile workspace
   -> Asset Library or Creative Studio
-  -> Turn image into layers
+  -> Reuse old image
   -> Upload/select generated source
   -> Status card
   -> Preview result

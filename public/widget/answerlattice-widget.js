@@ -16,6 +16,7 @@
  * JavaScript API (optional):
  *   window.AnswerlatticeWidget.setContext({ path: '/billing', title: 'Billing', feature: 'billing', workflow: 'manage_subscription' })
  *   window.AnswerlatticeWidget.page({ path: '/billing', title: 'Billing', feature: 'billing', workflow: 'manage_subscription' })
+ *   window.AnswerlatticeWidget.identify({ id: 'customer_123', name: 'Jane Customer', email: 'jane@example.com' })
  *   window.AnswerlatticeWidget.open()
  *   window.AnswerlatticeWidget.close()
  *   window.AnswerlatticeWidget.hide()
@@ -107,6 +108,7 @@
     var useRemoteConfig = script.getAttribute('data-use-remote-config') !== 'false';
     var widgetHost = new URL(script.src).origin;
     var maxContextPayloadBytes = 2048;
+    var maxVisitorPayloadBytes = 1024;
     var remoteConfigCacheTtlMs = 60000;
     var sensitiveContextPattern = /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?\d[\d\s().-]{7,}\d)/i;
 
@@ -133,6 +135,7 @@
     var predictiveSuggestionCacheTtlMs = 60000;
     var contextBundleConfig = null;
     var eventListeners = {};
+    var visitorContext = null;
 
     function isValidChoice(value, allowed) {
         return allowed.indexOf(value) !== -1;
@@ -420,6 +423,38 @@
         return getPayloadByteLength(output) <= maxContextPayloadBytes ? output : null;
     }
 
+    function sanitizeVisitorText(value, maxLength) {
+        if (typeof value !== 'string') return null;
+        var normalized = value.trim().replace(/[<>{}]/g, '').replace(/\s+/g, ' ').slice(0, maxLength || 160);
+        return normalized || null;
+    }
+
+    function sanitizeVisitorEmail(value) {
+        var email = sanitizeVisitorText(value, 180);
+        if (!email) return null;
+        email = email.toLowerCase();
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+    }
+
+    function sanitizeVisitorId(value) {
+        if (typeof value !== 'string' && typeof value !== 'number') return null;
+        var normalized = String(value).trim().replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 120);
+        return normalized || null;
+    }
+
+    function sanitizeVisitorPayload(visitor) {
+        if (!visitor || typeof visitor !== 'object' || Array.isArray(visitor)) return null;
+        var output = {};
+        var id = sanitizeVisitorId(visitor.id || visitor.customerId);
+        var name = sanitizeVisitorText(visitor.name || visitor.displayName, 160);
+        var email = sanitizeVisitorEmail(visitor.email);
+        if (id) output.id = id;
+        if (name) output.name = name;
+        if (email) output.email = email;
+        if (!output.id && !output.name && !output.email) return null;
+        return getPayloadByteLength(output) <= maxVisitorPayloadBytes ? output : null;
+    }
+
     function readInitialContextFromAttributes() {
         var ctx = {
             contextVersion: 1,
@@ -653,6 +688,10 @@
         postToIframe({ type: 'answerlattice-context-update', context: productContext });
     }
 
+    function sendVisitorToIframe() {
+        postToIframe({ type: 'answerlattice-visitor-update', visitor: visitorContext });
+    }
+
     function sendSuggestionToIframe() {
         if (pendingSuggestion && iframe && iframe.contentWindow) {
             postToIframe({ type: 'answerlattice-predictive-suggestion', suggestion: pendingSuggestion });
@@ -677,6 +716,7 @@
         }
         sendConfigToIframe();
         sendContextToIframe();
+        sendVisitorToIframe();
         sendSuggestionToIframe();
     }
 
@@ -773,6 +813,16 @@
             if (sanitizedContext && !forceHidden && !isCurrentRouteBlocked()) requestPredictiveHelp(sanitizedContext);
         },
         page: function (ctx) { this.setContext(ctx); },
+        identify: function (visitor) {
+            visitorContext = sanitizeVisitorPayload(visitor);
+            emitEvent('identify', { visitor: visitorContext });
+            sendVisitorToIframe();
+        },
+        clearIdentity: function () {
+            visitorContext = null;
+            emitEvent('identify:clear', {});
+            sendVisitorToIframe();
+        },
         open: function () { openWidget(); },
         close: function () { closeWidget(); },
         hide: function () { hideWidget(); },
@@ -790,6 +840,7 @@
             eventListeners[eventName] = eventListeners[eventName].filter(function (current) { return current !== callback; });
         },
         getContext: function () { return productContext; },
+        getVisitor: function () { return visitorContext; },
     };
 
     function requestPredictiveHelp(ctx) {
@@ -821,13 +872,17 @@
         }
 
         predictiveRequestTimer = window.setTimeout(function () {
+            var predictivePayload = Object.assign({}, ctx);
+            if (visitorContext && visitorContext.id) {
+                predictivePayload.userId = visitorContext.id;
+            }
             fetch(widgetHost + '/api/answerlattice/predictive-help', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-API-Key': apiKey,
                 },
-                body: JSON.stringify(ctx),
+                body: JSON.stringify(predictivePayload),
             }).then(function (response) {
                 if (response.status !== 200) {
                     predictiveSuggestionCache[contextKey] = {

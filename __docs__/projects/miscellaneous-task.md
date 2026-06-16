@@ -375,7 +375,7 @@ Later, when you say "now let's do the pending/misc tasks", we can just open this
 **Original State**: Using universal term "Catalog" for all business types  
 ~~**Deferred To**: Phase 2~~
 
-**What Was Built**: `src/config/businessLabels.ts` provides `getOwnerLabels()` for business-type-aware UI labels. `getBusinessCategory()` in `src/constants/common.ts` maps business types to categories. Labels are used in editor components.
+**What Was Built**: `src/config/businessLabels.ts` provides `getOwnerLabels()` for business-type-aware UI labels. `getBusinessCategory()` in `src/data/shared/businessTypes.ts` maps business types to categories. Labels are used in editor components.
 
 ### Context
 
@@ -394,7 +394,7 @@ The tool is used by multiple SMB business types (Restaurant, Cafe, Gym, Salon, S
 
 ### Implementation Plan
 
-1. **Store business type** in tenant/store settings (check if exists in `BUSINESS_TYPES` constant in `src/constants/common.ts`)
+1. **Store business type** in tenant/store settings (check if exists in the `BUSINESS_TYPES` constant in `src/data/shared/businessTypes.ts`)
 
 2. **Create label mapping utility**:
 
@@ -489,7 +489,7 @@ Two different implementations of `getBusinessCategory()` existed:
 
 | Location                                 | Approach                               | Issue                  |
 | ---------------------------------------- | -------------------------------------- | ---------------------- |
-| `src/constants/common.ts`                | Exact lookup in `BUSINESS_TYPES` array | ✅ Correct             |
+| `src/data/shared/businessTypes.ts`       | Exact lookup in `BUSINESS_TYPES` array | ✅ Correct             |
 | `functions/src/recommendationScoring.ts` | Crude `.includes()` string matching    | ❌ Wrong, inconsistent |
 
 **Example of Mismatch**:

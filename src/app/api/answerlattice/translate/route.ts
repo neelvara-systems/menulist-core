@@ -20,6 +20,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
+import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
@@ -39,6 +40,21 @@ const TranslateRequestSchema = z.object({
     articleId: z.string().trim().min(1).max(160),
     targetLocale: z.enum(ANSWERLATTICE_SUPPORTED_LOCALES as unknown as [string, ...string[]]),
 });
+const MAX_TRANSLATION_TEXT_FOR_PROMPT = 8000;
+const MAX_TRANSLATED_CONTENT_CHARS = 12000;
+const MAX_TRANSLATED_TITLE_CHARS = 300;
+
+const cleanTranslationOutput = (value: unknown, fallback: string, maxLength: number): string => {
+    const text = typeof value === 'string' ? value.trim() : '';
+    return (text || fallback || '').slice(0, maxLength);
+};
+
+const getTranslationResponseText = (response: any): string => {
+    if (!response) return '';
+    if (typeof response.text === 'function') return String(response.text() || '');
+    if (typeof response.text === 'string') return response.text;
+    return '';
+};
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     try {
@@ -49,9 +65,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
         if (permission.response) return permission.response;
 
-        const validation = TranslateRequestSchema.safeParse(await request.json());
+        const { checkSafeMode } = await import('@lib/ops/safeMode');
+        const safeModeResponse = await checkSafeMode();
+        if (safeModeResponse) return safeModeResponse;
+
+        const requestBody = await request.json().catch(() => null);
+        const validation = TranslateRequestSchema.safeParse(requestBody);
         if (!validation.success) {
-            return NextResponse.json({ error: `Invalid locale. Supported: ${ANSWERLATTICE_SUPPORTED_LOCALES.join(', ')}` }, { status: 400 });
+            return NextResponse.json({ error: `Invalid translation request. Supported locales: ${ANSWERLATTICE_SUPPORTED_LOCALES.join(', ')}` }, { status: 400 });
         }
         const { articleId, targetLocale } = validation.data;
         if (targetLocale === 'en-US') {
@@ -64,8 +85,29 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             key: `answerlattice-translate:${session.user.id}`,
             ...rateLimitConfig,
         });
+        if (
+            rateLimitResult.allowed
+            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+            && rateLimitResult.current === 0
+            && rateLimitResult.remaining === rateLimitConfig.limit
+        ) {
+            return NextResponse.json(
+                { error: 'Translation is temporarily unavailable. Please try again later.' },
+                { status: 503, headers: { 'Cache-Control': 'no-store' } },
+            );
+        }
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({ error: 'Rate limit exceeded. Try again later.' }, { status: 429 });
+            const retryAfter = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+            return NextResponse.json(
+                { error: 'Rate limit exceeded. Try again later.' },
+                {
+                    status: 429,
+                    headers: {
+                        'Cache-Control': 'no-store',
+                        'Retry-After': String(Math.max(retryAfter, 1)),
+                    },
+                },
+            );
         }
 
         const sessionScope = resolveAnswerlatticeSessionScope(session);
@@ -105,9 +147,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         } catch {
             plainContent = JSON.stringify(article.content || '');
         }
+        plainContent = plainContent.replace(/\s+\n/g, '\n').trim();
 
         if (!title && !plainContent) {
             return NextResponse.json({ error: 'Article has no content to translate.' }, { status: 400 });
+        }
+        if (plainContent.length > MAX_TRANSLATION_TEXT_FOR_PROMPT) {
+            return NextResponse.json(
+                { error: 'Article is too long for one-click translation. Shorten or split it before translating.' },
+                { status: 413 },
+            );
         }
 
         // Call Gemini for translation
@@ -149,7 +198,7 @@ Respond in this exact JSON format:
             contents: prompt,
         });
 
-        const responseText = response.text || '';
+        const responseText = getTranslationResponseText(response);
 
         // Parse response
         let translatedTitle = title;
@@ -158,11 +207,11 @@ Respond in this exact JSON format:
         try {
             const cleaned = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
             const parsed = JSON.parse(cleaned);
-            translatedTitle = parsed.translatedTitle || title;
-            translatedContent = parsed.translatedContent || plainContent;
+            translatedTitle = cleanTranslationOutput(parsed.translatedTitle, title, MAX_TRANSLATED_TITLE_CHARS);
+            translatedContent = cleanTranslationOutput(parsed.translatedContent, plainContent, MAX_TRANSLATED_CONTENT_CHARS);
         } catch {
             // If JSON parse fails, use raw response as content
-            translatedContent = responseText;
+            translatedContent = cleanTranslationOutput(responseText, plainContent, MAX_TRANSLATED_CONTENT_CHARS);
         }
 
         // Build TipTap JSON for translated content (simple paragraph wrapping)
@@ -216,6 +265,22 @@ Respond in this exact JSON format:
         });
 
     } catch (error) {
+        if (isAIProviderRateLimitError(error)) {
+            const retryAfter = getAIProviderRetryAfter(error) || 60;
+            return NextResponse.json(
+                {
+                    error: `Translation is temporarily busy. Please wait ${retryAfter} seconds before trying again.`,
+                    retryAfter,
+                },
+                {
+                    status: 429,
+                    headers: {
+                        'Cache-Control': 'no-store',
+                        'Retry-After': String(retryAfter),
+                    },
+                },
+            );
+        }
         secureError('[Answerlattice Translate] Failed', error as Error, { userId: session.user.id });
         return NextResponse.json(
             { error: 'Translation failed. Please try again.' },

@@ -1,5 +1,5 @@
 import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
-import { resolveStoreBusinessCategory } from "@constant/common";
+import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { DB_COLLECTIONS } from "@constant/database";
 import { createDefaultRoles } from "@data/defaultRoles";
 import {
@@ -70,17 +70,18 @@ export const getAllStoresByTenantId = async (tenantId: any) => {
     );
 }
 
+export const readStoreById = async (id: number) => {
+    const collectionDocRef = await getDocRef(id);
+    const docSnap = await getDoc(collectionDocRef);
+    if (docSnap.exists()) {
+        return docSnap.data();
+    }
+    return null;
+}
+
 export const getStoreById = async (id: number) => {
     return await apiCallComposer(
-        async () => {
-            const collectionDocRef = await getDocRef(id);
-            const docSnap = await getDoc(collectionDocRef);
-            if (docSnap.exists()) {
-                return docSnap.data();
-            } else {
-                return null
-            }
-        },
+        () => readStoreById(id),
         id,
         "getStoreById"
     );

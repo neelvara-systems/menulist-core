@@ -219,7 +219,7 @@ function ChangelogTemplate() {
                         width={isMobile ? '96vw' : '60vw'}
                         centered
                     >
-                        <ChangelogPreview item={previewingEntry} mode="modal" pageId={changelogPage?.id || ''} />
+                        <ChangelogPreview item={previewingEntry} mode="modal" pageId={changelogPage?.id || ''} showFeedbackDetails />
                     </Modal>
                 )}
             </Content>

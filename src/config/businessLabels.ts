@@ -10,7 +10,7 @@
  * This config maps business categories to appropriate labels.
  */
 
-import { resolveBusinessCategory } from '@constant/common';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 
 // Labels for availability status by business category
 export interface AvailabilityLabels {

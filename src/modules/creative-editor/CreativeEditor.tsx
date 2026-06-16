@@ -1988,6 +1988,7 @@ export default function CreativeEditor({
                 fabricApi,
                 productLabel,
                 selectedId: nextSelectedId,
+                showCanvasWatermark: chromeMode === "full",
                 viewportSize: getStageViewportSize(),
             });
             canvasElementRef.current?.setAttribute("data-creative-object-count", String(canvas.getObjects().length));

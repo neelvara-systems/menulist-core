@@ -33,7 +33,7 @@
 | Print-shop handoff | Copy action places the printer specs and menu link on the clipboard. |
 | Output preview | Template click shows an immediate generated output preview inside the modal or sheet without opening a PDF viewer or downloading the full ZIP. |
 | Format actions | Single printable assets expose separate PDF and image download actions from the modal or sheet. |
-| Desktop customization | Supported single assets open **Customize in editor**, keep QR/link/attribution layers locked, and download edited Image/Print PDF output without storing artifacts. |
+| Desktop customization | Supported single assets open **Customize in editor**, keep QR/link source layers locked, keep MenuList attribution out of the editor canvas, and download edited Image/Print PDF output with runtime plan-aware attribution. |
 | Reprint guidance | Explains that content/price updates do not require reprint and lists the cases that do. |
 | Mobile More | Assets opens inside More sub-screen. |
 | Mobile Share | Assets shortcut opens mobile sub-screen without reload. |

@@ -213,7 +213,7 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 Reseller enters:
 
 - **Business Name** (required, text)
-- **Business Type** (required, dropdown — uses existing `BUSINESS_TYPES` from `src/constants/common.ts`)
+- **Business Type** (required, dropdown — uses existing `BUSINESS_TYPES` from `src/data/shared/businessTypes.ts`)
 - **Owner Phone** (required — country dropdown + local phone number for client's login/contact)
 - **Owner Email** (optional contact email — dashboard access is delivered through the claim link unless an existing unclaimed user is found)
 

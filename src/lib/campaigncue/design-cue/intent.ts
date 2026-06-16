@@ -20,6 +20,7 @@ import {
     buildCampaignCueDesignCueFriendlyRewritePatch,
     buildCampaignCueDesignCueLocationPatch,
     buildCampaignCueDesignCuePremiumPatch,
+    buildCampaignCueDesignCueChannelReadyPatch,
     buildCampaignCueDesignCueResizePatch,
     buildCampaignCueDesignCueShorterTextPatch,
     buildCampaignCueDesignCueSimplePatch,
@@ -61,6 +62,9 @@ const resolveFreeTextAction = (comment?: string): CampaignCueDesignCueActionId |
     if (/\b(short|shorter|trim|reduce words)\b/.test(text)) return CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.SHORTER_TEXT;
     if (/\b(fact|price|date|check|correct)\b/.test(text)) return CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.CHECK_FACTS;
     if (/\b(brand|logo|color|colour)\b/.test(text)) return CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.CHECK_BRAND;
+    if (/\b(whatsapp ready|ready for whatsapp|whatsapp pack)\b/.test(text)) return CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_WHATSAPP_READY;
+    if (/\b(google ready|ready for google|google post|google offer|business profile)\b/.test(text)) return CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_GOOGLE_READY;
+    if (/\b(print ready|ready for print|poster ready|flyer ready)\b/.test(text)) return CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_PRINT_READY;
     if (/\b(export|download|ready|post)\b/.test(text)) return CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.EXPORT_CHECKLIST;
     if (/\b(simple|simpler|clean|minimal)\b/.test(text)) return CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_SIMPLE;
     if (/\b(premium|luxury|elegant)\b/.test(text)) return CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_PREMIUM;
@@ -101,6 +105,13 @@ export const runCampaignCueDesignCue = (params: CampaignCueDesignCueRunParams): 
     }
     if (actionId === CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.EXPORT_CHECKLIST) {
         return buildCampaignCueDesignCueExportChecklistPatch(context, target);
+    }
+    if (
+        actionId === CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_WHATSAPP_READY
+        || actionId === CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_GOOGLE_READY
+        || actionId === CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_PRINT_READY
+    ) {
+        return buildCampaignCueDesignCueChannelReadyPatch(actionId, context, target);
     }
     if (actionId === CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_SIMPLE) {
         return buildCampaignCueDesignCueSimplePatch(context, target);

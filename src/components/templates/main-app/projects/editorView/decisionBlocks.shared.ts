@@ -1,4 +1,4 @@
-import { resolveBusinessCategory } from '@constant/common';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { trackOwnerControlUsage } from '@database/ownerControlUsage';
 import { removeObjRef } from '@util/utils';
 import type { Project, ProjectFileType } from '../types/project.types';

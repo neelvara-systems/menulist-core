@@ -125,6 +125,9 @@ const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
     'platformTenants',
     'platformStores',
     'platformUsers',
+    'costPosture',
+    'assetTemplates',
+    'pricingPlans',
 ];
 
 const answerlatticeInternalScreens: MobilePlatformInternalScreenKey[] = [
@@ -133,6 +136,7 @@ const answerlatticeInternalScreens: MobilePlatformInternalScreenKey[] = [
     'knowledgeBase',
     'kbGeneration',
     'changelog',
+    'answerlatticeIntake',
     'answerlatticeWidget',
     'chatManagement',
     'chatInsights',
@@ -197,11 +201,15 @@ export type MoreSubScreen =
     | 'platformTenants'
     | 'platformStores'
     | 'platformUsers'
+    | 'costPosture'
+    | 'assetTemplates'
+    | 'pricingPlans'
     | 'supportTickets'
     | 'feedbackAdmin'
     | 'knowledgeBase'
     | 'kbGeneration'
     | 'changelog'
+    | 'answerlatticeIntake'
     | 'chatManagement'
     | 'chatInsights'
     | 'chatBackfill'

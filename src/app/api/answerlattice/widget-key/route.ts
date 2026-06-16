@@ -97,8 +97,22 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             limit: 10,
             window: 60,
         });
+        if (
+            rateLimitResult.allowed
+            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+            && rateLimitResult.current === 0
+            && rateLimitResult.remaining === 10
+        ) {
+            return NextResponse.json({ error: 'Widget key management is temporarily unavailable' }, {
+                status: 503,
+                headers: { 'Cache-Control': 'no-store' },
+            });
+        }
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+            return NextResponse.json({ error: 'Too many requests' }, {
+                status: 429,
+                headers: { 'Cache-Control': 'no-store' },
+            });
         }
 
         const validation = RequestSchema.safeParse(await request.json().catch(() => null));

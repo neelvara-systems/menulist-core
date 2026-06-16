@@ -154,7 +154,7 @@ All mobile screens write data in **identical format** to desktop:
 | Working hours values | `HH:mm-HH:mm` (24h)                      | `HH:mm-HH:mm` (24h)              | ✅    |
 | Feedback field names | `customerEmail`, `customerPhone`         | `customerEmail`, `customerPhone` | ✅    |
 | Feedback status      | `'new'` \| `'resolved'`                  | `'new'` \| `'resolved'`          | ✅    |
-| Business types       | `BUSINESS_TYPES` from `@constant/common` | Same constant                    | ✅    |
+| Business types       | `BUSINESS_TYPES` from `@data/shared/businessTypes` | Same shared taxonomy             | ✅    |
 | Project ID field     | `projectId`                              | `projectId`                      | ✅    |
 | Share URLs           | `generateProjectUrl()`                   | `generateProjectUrl()`           | ✅    |
 | Store address field  | `addressLine`                            | `addressLine` (type)             | ✅    |

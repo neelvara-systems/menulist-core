@@ -1,6 +1,6 @@
 'use client';
 import PhoneNumberInput from '@atoms/phoneNumberInput';
-import { BUSINESS_CATEGORIES, BUSINESS_TYPES, resolveStoreBusinessCategory } from '@constant/common';
+import { BUSINESS_CATEGORIES, BUSINESS_TYPES, resolveStoreBusinessCategory } from '@data/shared/businessTypes';
 import { Card, Col, Divider, Form, Input, Row, Select, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { forwardRef, memo, useMemo } from 'react';

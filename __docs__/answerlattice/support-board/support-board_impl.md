@@ -28,11 +28,12 @@
 5. Ticket/signal source sync CTAs render only when `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SOURCE_SYNC` is true.
 6. Ticket sync reads at most 50 store tickets and creates up to 20 cards for unresolved tickets not already represented.
 7. Signal sync reads at most 50 recent signal events and creates up to 20 cards for actionable signals not already represented.
-8. Internal notes are embedded on the card with a cap of 25 notes.
-9. Card status changes append to capped `statuses[]` history while the top-level `status` remains the query/filter field.
-10. If the card has `relatedEntityId`, owner can create a `new_answer_required` mutation proposal.
-11. Knowledge Governance remains the place where drafts are generated, edited, approved, and published.
-12. UI reads `platformSummary/supportBoardSummary_{tId}_{sId}` only when `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY` is enabled.
+8. Ticket, feedback, and signal source cards preserve available source customer identity in the card document so the board does not need to re-read the original ticket, conversation, feedback row, or signal event just to show who raised it.
+9. Internal notes are embedded on the card with a cap of 25 notes.
+10. Card status changes append to capped `statuses[]` history while the top-level `status` remains the query/filter field.
+11. If the card has `relatedEntityId`, owner can create a `new_answer_required` mutation proposal.
+12. Knowledge Governance remains the place where drafts are generated, edited, approved, and published.
+13. UI reads `platformSummary/supportBoardSummary_{tId}_{sId}` only when `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY` is enabled.
 
 ## Manual Sync
 
@@ -79,6 +80,13 @@ Operational fields:
 - `priority`
 - `sourceType`
 - `sourceId`
+- `sourceCustomerName`
+- `sourceCustomerEmail`
+- `sourceCustomerPhone`
+- `sourceCustomerUserId`
+- `sourceOrigin`
+- `sourcePath`
+- `sourceSessionId`
 - `assigneeName`
 - `dueDate`
 - `tags`

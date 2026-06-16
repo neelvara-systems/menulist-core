@@ -5,6 +5,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getProductSurfacesForSession } from '@database/answerlattice/productSurfaces';
 import { createAnswerlatticeSupportBoardCard } from '@database/answerlattice/supportBoard';
 import { getAllFeedback, getFeedbackForWorkspace, updateFeedbackSurfaceForWorkspace } from '@database/feedback';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -37,7 +38,9 @@ const getFeedbackCardTitle = (feedback: Feedback) => {
 };
 
 const getFeedbackCardDescription = (feedback: Feedback) => {
+    const requester = getAnswerlatticeCustomerIdentity(feedback);
     const parts = [
+        `Submitted by: ${requester.displayName}${requester.email ? ` <${requester.email}>` : ''}`,
         feedback.surfaceLabel || feedback.contextKey ? `Product surface: ${feedback.surfaceLabel || feedback.contextKey}` : '',
         feedback.comment ? `Comment: ${feedback.comment}` : '',
         feedback.featureComment ? `Feature feedback: ${feedback.featureComment}` : '',
@@ -62,8 +65,21 @@ const getFeedbackCardTags = (feedback: Feedback) => ([
     feedback.rating ? `rating:${feedback.rating}` : '',
     feedback.featureRequest ? 'feature-request' : '',
     feedback.contextKey ? `surface:${feedback.contextKey}` : '',
+    getAnswerlatticeCustomerIdentity(feedback).email ? 'identified-customer' : '',
     ...(feedback.featureIssues || []).slice(0, 4),
 ].filter(Boolean) as string[]);
+
+const getFeedbackSourceCustomerFields = (feedback: Feedback) => {
+    const requester = getAnswerlatticeCustomerIdentity(feedback);
+    const hasIdentity = Boolean(requester.userId || requester.email || requester.phone || requester.displayName !== 'Unknown customer');
+
+    return {
+        sourceCustomerName: hasIdentity ? requester.displayName : null,
+        sourceCustomerEmail: requester.email || null,
+        sourceCustomerPhone: requester.phone || null,
+        sourceCustomerUserId: requester.userId || null,
+    };
+};
 
 const getFeedbackContextKeys = (feedback: Feedback) => (
     Array.from(new Set([
@@ -203,6 +219,7 @@ function FeedbackAdminTemplate({
                 priority: getFeedbackCardPriority(selected),
                 sourceType: ANSWERLATTICE_SUPPORT_BOARD_SOURCE_TYPE.FEEDBACK,
                 sourceId: selected.id || null,
+                ...getFeedbackSourceCustomerFields(selected),
                 relatedSurfaceId: selected.surfaceId || null,
                 relatedContextKeys: getFeedbackContextKeys(selected),
                 tags: getFeedbackCardTags(selected),
@@ -263,6 +280,10 @@ function FeedbackAdminTemplate({
                                         {getSurfaceDisplayLabel(item) ? <Tag color="geekblue">{getSurfaceDisplayLabel(item)}</Tag> : <Tag>Unsorted</Tag>}
                                     </Flex>}
                                     description={<Flex vertical gap={2}>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            Submitted by {getAnswerlatticeCustomerIdentity(item).displayName}
+                                            {getAnswerlatticeCustomerIdentity(item).email ? ` - ${getAnswerlatticeCustomerIdentity(item).email}` : ''}
+                                        </Text>
                                         {item.comment && <Text ellipsis style={{ maxWidth: 500 }}>{item.comment}</Text>}
                                         {item.featureRequest && <Text type="secondary" ellipsis style={{ maxWidth: 500 }}>Request: {item.featureRequest}</Text>}
                                         <Text type="secondary" style={{ fontSize: 11 }}><DateTimeDisplay value={item.createdOn} mode="datetime" /></Text>
@@ -277,6 +298,10 @@ function FeedbackAdminTemplate({
                         <Flex vertical gap={16}>
                             <Descriptions column={1} bordered size="small">
                                 <Descriptions.Item label="Type"><Tag color={TYPE_COLORS[selected.type] || 'default'}>{TYPE_LABELS[selected.type] || selected.type}</Tag></Descriptions.Item>
+                                <Descriptions.Item label="Submitted By">{getAnswerlatticeCustomerIdentity(selected).displayName}</Descriptions.Item>
+                                {getAnswerlatticeCustomerIdentity(selected).email && <Descriptions.Item label="Email">{getAnswerlatticeCustomerIdentity(selected).email}</Descriptions.Item>}
+                                {getAnswerlatticeCustomerIdentity(selected).phone && <Descriptions.Item label="Phone">{getAnswerlatticeCustomerIdentity(selected).phone}</Descriptions.Item>}
+                                {getAnswerlatticeCustomerIdentity(selected).userId && <Descriptions.Item label="User ID">{getAnswerlatticeCustomerIdentity(selected).userId}</Descriptions.Item>}
                                 {selected.rating && <Descriptions.Item label="Rating"><Rate disabled value={selected.rating} /></Descriptions.Item>}
                                 {selected.comment && <Descriptions.Item label="Comment">{selected.comment}</Descriptions.Item>}
                                 {selected.featureComment && <Descriptions.Item label="Feature Comment">{selected.featureComment}</Descriptions.Item>}

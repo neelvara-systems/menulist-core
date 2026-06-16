@@ -86,7 +86,7 @@ Mobile and desktop must call the same:
 - Menu Kit generation path
 - Print Menu generation path
 - branding policy
-- locked QR/link/attribution rules for editor-backed print documents
+- locked QR/link source rules for editor-backed print documents, with MenuList attribution applied only during output rendering when policy requires it
 
 If desktop and mobile pass the same `assetTypeId`, `templateFamilyId`, and project/store input, the downloaded file must match.
 

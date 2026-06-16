@@ -34,6 +34,7 @@ The Ops Control Room links internal platform-role-only monitors without adding o
 
 - `/ops/scheduler` for scheduler runs and manual recovery.
 - `/ops/extraction` for extraction/job review and cost telemetry.
+- `/platform/cost-posture` for known internal cost signals, source coverage, billing-export readiness, and cost guardrails.
 - `/ops/messaging-onboarding` for WhatsApp onboarding intake operations.
 - `/ops/platform-notifications` for founder/operator alerts from `systemAlerts`, including acknowledgement and manual Email/WhatsApp Web handoff.
 - `/ops/owner-notifications` for owner email/WhatsApp delivery tracking and retry.

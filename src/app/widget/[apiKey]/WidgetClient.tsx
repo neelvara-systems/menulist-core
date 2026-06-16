@@ -28,6 +28,7 @@ import {
 
 const MAX_SESSION_MESSAGES = 5;
 const MAX_CONTEXT_PAYLOAD_BYTES = 2048;
+const MAX_VISITOR_PAYLOAD_BYTES = 1024;
 
 type WidgetHistoryMode = 'session' | 'forget';
 
@@ -148,6 +149,39 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
     return payloadBytes <= MAX_CONTEXT_PAYLOAD_BYTES ? output : null;
 };
 
+const sanitizeVisitorText = (value: unknown, maxLength = 160): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim().replace(/[<>{}]/g, '').replace(/\s+/g, ' ').slice(0, maxLength);
+    return normalized || null;
+};
+
+const sanitizeVisitorId = (value: unknown): string | null => {
+    if (typeof value !== 'string' && typeof value !== 'number') return null;
+    const normalized = String(value).trim().replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 120);
+    return normalized || null;
+};
+
+const sanitizeVisitorEmail = (value: unknown): string | null => {
+    const email = sanitizeVisitorText(value, 180)?.toLowerCase() || null;
+    if (!email) return null;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+};
+
+const sanitizeVisitorPayload = (value: unknown): Record<string, any> | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const input = value as Record<string, unknown>;
+    const output: Record<string, any> = {};
+    const id = sanitizeVisitorId(input.id || input.customerId);
+    const name = sanitizeVisitorText(input.name || input.displayName, 160);
+    const email = sanitizeVisitorEmail(input.email);
+    if (id) output.id = id;
+    if (name) output.name = name;
+    if (email) output.email = email;
+    if (!output.id && !output.name && !output.email) return null;
+    const payloadBytes = new TextEncoder().encode(JSON.stringify(output)).length;
+    return payloadBytes <= MAX_VISITOR_PAYLOAD_BYTES ? output : null;
+};
+
 const normalizeSuggestion = (value: unknown): string | null => {
     if (typeof value === 'string') {
         const text = value.trim();
@@ -220,6 +254,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [error, setError] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<{ base64: string; mimeType: string; name: string } | null>(null);
     const [productContext, setProductContext] = useState<Record<string, any> | null>(null);
+    const [visitorContext, setVisitorContext] = useState<Record<string, any> | null>(null);
     const [historyMode, setHistoryMode] = useState<WidgetHistoryMode>('session');
     const [greeting, setGreeting] = useState('How can we help?');
     const [headerTitle, setHeaderTitle] = useState('Help');
@@ -229,6 +264,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const activeRequestRef = useRef(0);
+    const widgetSessionIdRef = useRef(`w_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -256,6 +292,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (e.data?.type === 'answerlattice-context-update') {
                 const nextContext = sanitizeContextPayload(e.data.context);
                 setProductContext(nextContext);
+            }
+            if (e.data?.type === 'answerlattice-visitor-update') {
+                setVisitorContext(sanitizeVisitorPayload(e.data.visitor));
             }
             if (e.data?.type === 'answerlattice-widget-visibility') {
                 const nextHistoryMode: WidgetHistoryMode = e.data.historyMode === 'forget' ? 'forget' : 'session';
@@ -365,6 +404,11 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (productContext) {
                 body.context = productContext;
             }
+
+            if (visitorContext) {
+                body.visitor = visitorContext;
+            }
+            body.sessionId = widgetSessionIdRef.current;
 
             // Image support: send base64 inline
             if (currentImage) {
@@ -490,13 +534,20 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         ));
 
         try {
-            await fetch('/api/widget/feedback', {
+            const response = await fetch('/api/widget/feedback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
                 body: JSON.stringify({ searchHistoryId: msg.searchHistoryId, isGood }),
             });
-        } catch {
-            // Fire-and-forget — don't revert UI on failure
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.error || 'Could not save feedback');
+            }
+        } catch (feedbackError: any) {
+            setMessages(prev => prev.map(m =>
+                m.id === msgId ? { ...m, feedback: null } : m
+            ));
+            setError(feedbackError?.message || 'Could not save feedback. Try again.');
         }
     };
 

@@ -1,7 +1,7 @@
 # Creative Editor Template Registry Spec
 
 **Status:** Implemented
-**Last Updated:** June 15, 2026
+**Last Updated:** June 16, 2026
 **Owner:** Shared editor infrastructure + MenuList product adapter
 
 ## Owner Problem
@@ -19,6 +19,7 @@ Add a product-owned template registry that saves edited shared-editor documents 
 - Keep live MenuList source data current when templates are reused.
 - Keep the shared editor product-neutral.
 - Keep Firebase cost bounded and predictable.
+- Let platform users manage business-category platform templates without a code deploy.
 - Support future products without copying Fabric-specific persistence.
 
 ## Non-Goals
@@ -42,6 +43,17 @@ All template summaries use `templateType: "platform" | "user"` so the UI can sha
 
 Platform template targeting is **business category** scoped, not exact business type scoped. MenuList uses the shared `businessTypes.ts` category system (`food`, `service`, `retail`, `professional`, `creative`, `health`, `specialty`) and may use `generic` only as a fallback/default category when a store category cannot be resolved. A normal owner page load reads one platform category document. Generic/common templates that should appear for every owner must be present inside each category document's `data` array instead of requiring a second Firestore read. Exact business types such as `Cafe` or `Salon` should influence template copy and source rehydration, but not create separate platform catalog documents.
 
+## Platform Template Manager Flow
+
+1. Platform user opens `/platform/asset-templates`.
+2. Platform user selects business category, asset type, template family, and status.
+3. Platform user starts a new design or reopens an existing category template.
+4. The shared editor opens full-screen with platform save enabled.
+5. Saving writes the editor document to Storage and updates the selected `platformAssetTemplates/{businessCategory}` catalog document.
+6. Draft templates stay hidden from owner Ready templates.
+7. Published templates appear in the owner Assets route for the matching business category and asset type.
+8. Archived templates stay available to platform users but stay hidden from owner catalogs.
+
 ## MenuList Printable Asset Flow
 
 1. Owner opens `/assets`.
@@ -63,6 +75,7 @@ Platform template targeting is **business category** scoped, not exact business 
 - Saved templates store `CreativeEditorDocument` JSON, not raw Fabric JSON.
 - Firestore list metadata does not contain base64 image payloads or full editor documents.
 - Platform template list reads use one owner business-category catalog document, then filter in-document summaries by `productId`, `sourceSurface`, and `assetTypeId` in UI.
+- Platform users can create, edit, publish, archive, and delete templates from a platform-only route without adding API routes.
 - User template list reads use one bounded `storeAssetTemplates/{tenantId}/{storeId}/default` document, then filter in-document summaries by `productId`, `sourceSurface`, and `assetTypeId` in UI.
 - Full template documents and previews are stored outside metadata documents.
 - Document payload is size-limited.

@@ -4,6 +4,7 @@ import * as admin from 'firebase-admin';
 import type { NextRequest } from 'next/server';
 
 const TELEMETRY_WRITE_INTERVAL_MS = 15 * 60 * 1000;
+const TELEMETRY_CHANGE_WRITE_MIN_INTERVAL_MS = 60 * 1000;
 const MAX_TELEMETRY_FIELD_LENGTH = 120;
 
 const getTimestampMillis = (value: any): number => {
@@ -73,12 +74,25 @@ export function getWidgetRuntimeStatusFromStoreData(storeData: Record<string, an
 
 export function shouldUpdateWidgetRuntimeStatus(
     existing: AnswerlatticeWidgetRuntimeStatus | null,
-    _next: Omit<AnswerlatticeWidgetRuntimeStatus, 'lastSeenAt' | 'seenCount'>,
+    next: Omit<AnswerlatticeWidgetRuntimeStatus, 'lastSeenAt' | 'seenCount'>,
 ): boolean {
     if (!existing?.lastSeenAt) return true;
 
     const lastSeen = getTimestampMillis(existing.lastSeenAt);
-    return !lastSeen || Date.now() - lastSeen >= TELEMETRY_WRITE_INTERVAL_MS;
+    if (!lastSeen) return true;
+
+    const ageMs = Date.now() - lastSeen;
+    const telemetryChanged = (
+        existing.lastOrigin !== next.lastOrigin
+        || existing.lastPath !== next.lastPath
+        || existing.lastContextKey !== next.lastContextKey
+        || existing.lastFeature !== next.lastFeature
+        || existing.lastPage !== next.lastPage
+        || existing.userAgentFamily !== next.userAgentFamily
+    );
+
+    if (telemetryChanged && ageMs >= TELEMETRY_CHANGE_WRITE_MIN_INTERVAL_MS) return true;
+    return ageMs >= TELEMETRY_WRITE_INTERVAL_MS;
 }
 
 export function buildWidgetRuntimeStatusWrite(

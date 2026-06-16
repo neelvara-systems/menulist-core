@@ -645,6 +645,13 @@ export const getConversationsPaginated = async (
                     if (session.title?.toLowerCase().includes(searchLower)) return true;
                     // Search in userName
                     if (session.userName?.toLowerCase().includes(searchLower)) return true;
+                    if (session.userEmail?.toLowerCase().includes(searchLower)) return true;
+                    if (String(session.uId || '').toLowerCase().includes(searchLower)) return true;
+                    const sourceContext = session.sourceContext && typeof session.sourceContext === 'object'
+                        ? session.sourceContext
+                        : {};
+                    if (String(sourceContext.email || '').toLowerCase().includes(searchLower)) return true;
+                    if (String(sourceContext.name || '').toLowerCase().includes(searchLower)) return true;
                     // Note: Message content search happens client-side for better UX
                     return false;
                 });

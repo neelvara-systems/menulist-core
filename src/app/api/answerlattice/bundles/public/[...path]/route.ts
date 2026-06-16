@@ -1,8 +1,12 @@
 export const dynamic = 'force-dynamic';
 
+import { FEATURE_FLAGS } from '@config/features';
 import { answerlatticeStorageAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { handlePublicApiCorsPreflight, withPublicApiCors } from '@lib/publicApi/auth';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { secureError } from '@lib/security/secureLogger';
+import { getClientIp } from 'src/middleware/publicApi';
 import { NextRequest, NextResponse } from 'next/server';
 
 const PUBLIC_BUNDLE_PATH_PATTERN = /^pb_[A-Za-z0-9_-]{8,80}\/v\d+\/[A-Za-z0-9_./-]+\.json$/;
@@ -53,6 +57,51 @@ const rememberPublicBundle = (storagePath: string, buffer: Buffer, cacheControl:
     });
 };
 
+const checkBundleCacheMissRateLimit = async (request: NextRequest): Promise<NextResponse | null> => {
+    const config = getRateLimitForFeature('ANSWERLATTICE_PUBLIC_BUNDLE');
+    try {
+        const result = await checkRateLimit({
+            key: `answerlattice-public-bundle:${getClientIp(request)}`,
+            limit: config.limit,
+            window: config.window,
+        });
+        if (
+            result.allowed
+            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+            && result.current === 0
+            && result.remaining === config.limit
+        ) {
+            return jsonResponse(request, { error: 'Bundle temporarily unavailable' }, {
+                status: 503,
+                headers: {
+                    'Cache-Control': 'no-store',
+                },
+            });
+        }
+        if (result.allowed) return null;
+
+        const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
+        return jsonResponse(request, { error: 'Too many requests' }, {
+            status: 429,
+            headers: {
+                'Cache-Control': 'no-store',
+                'Retry-After': String(Math.max(retryAfter, 1)),
+            },
+        });
+    } catch (error) {
+        secureError('[Answerlattice Bundles] Bundle proxy rate limit check failed', error as Error);
+        if (FEATURE_FLAGS.ENABLE_RATE_LIMITING) {
+            return jsonResponse(request, { error: 'Bundle temporarily unavailable' }, {
+                status: 503,
+                headers: {
+                    'Cache-Control': 'no-store',
+                },
+            });
+        }
+        return null;
+    }
+};
+
 export function OPTIONS(request: NextRequest) {
     return handlePublicApiCorsPreflight(request);
 }
@@ -70,6 +119,9 @@ export async function GET(request: NextRequest, context: { params: { path?: stri
             return buildBundleResponse(request, cached.buffer, cached.cacheControl);
         }
         if (cached) publicBundleProxyCache.delete(storagePath);
+
+        const rateLimitResponse = await checkBundleCacheMissRateLimit(request);
+        if (rateLimitResponse) return rateLimitResponse;
 
         const file = getBucket().file(storagePath);
         const [exists] = await file.exists();

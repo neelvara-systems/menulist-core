@@ -43,6 +43,7 @@ This is separate from:
 - Ticket creation, feedback, chat history, and authenticated user data are not exposed.
 - Public article body rendering uses a server-safe Tiptap JSON renderer followed by DOMPurify sanitization.
 - Public page reads are rate-limited per domain/IP.
+- Settings saves and manual DNS refreshes fail closed with a temporary error when rate limiting is enabled but unavailable; public pages show the empty shell instead of reading hosted content during that condition.
 - `noIndex` can block SEO indexing during setup.
 - In production, `/answerlattice-hosted-help` is an internal rewrite target only. Direct hits are redirected, and the `?domain=` test override is accepted only in local/dev rewrite mode.
 

@@ -28,6 +28,8 @@ You can:
 
 Each synced item keeps a link back to its source where possible.
 
+Ticket, feedback, and signal cards also show the available customer/source details, such as requester name, email, phone, product page, or widget session. Manual cards only show those details when your team adds them to the support context.
+
 ## What does the nightly sync do?
 
 When enabled for your workspace, Answerlattice checks bounded recent support activity once per nightly run. It prepares review cards only when there is meaningful support work, such as repeated unanswered questions, repeated negative feedback, drifted approved answers, or release changes that affect stale support.

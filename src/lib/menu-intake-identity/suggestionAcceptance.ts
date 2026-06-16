@@ -1,5 +1,5 @@
 import countryData from '@atoms/phoneNumberInput/countryData';
-import { BUSINESS_TYPES, normalizeBusinessCategory } from '@constant/common';
+import { BUSINESS_TYPES, normalizeBusinessCategory } from '@data/shared/businessTypes';
 import { normalizeCurrencyCode, normalizeLanguageCodes } from '@data/shared/extractedBusinessProfile';
 import type { MenuIntakeIdentityResponse } from './client';
 import type { StoreDataType } from '@type/platform/store';

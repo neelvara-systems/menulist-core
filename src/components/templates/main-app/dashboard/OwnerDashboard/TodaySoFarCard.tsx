@@ -169,7 +169,10 @@ const TodaySoFarCard: React.FC<TodaySoFarCardProps> = ({
                 </Col>
                 {topLanguage ? (
                     <Col xs={12} sm={6}>
-                        <Statistic title={t('metrics.topLanguage')} value={topLanguage.label} />
+                        <div className={styles.simpleMetric}>
+                            <Text type="secondary">{t('metrics.topLanguage')}</Text>
+                            <Text strong>{topLanguage.label}</Text>
+                        </div>
                     </Col>
                 ) : null}
             </Row>

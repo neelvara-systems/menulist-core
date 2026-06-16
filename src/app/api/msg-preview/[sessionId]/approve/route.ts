@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { FALLBACK_BUSINESS_TYPE } from "@constant/common";
+import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
 import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { executeMessagingOnboardingPublish } from "@lib/messaging-onboarding/publish";

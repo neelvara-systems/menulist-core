@@ -4,7 +4,7 @@
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
 **Status:** Implemented behind feature flags
-**Last Updated:** June 10, 2026
+**Last Updated:** June 16, 2026
 
 ---
 
@@ -137,6 +137,8 @@ The owner dashboard should show:
 7. Entry to the full Business Health page.
 
 Raw analytics labels such as conversion funnel, bounce rate, session duration, device type, or attribution model must not be primary owner UI. If a metric cannot map to Promote, Fix, Restock, or Update, keep it internal or hide it from the owner surface.
+
+Catalog-backed owner action cards may include an `image_gap` card for an active, available item that has current customer attention but no item photo. Missing descriptions remain `metadata_demand`, and the same item should not appear in both cards during one action-plan build. Both cards are built from already-loaded catalog truth plus settled views/taps in the scheduler/dashboard-summary path; they must not add runtime menu scans, new analytics events, media writes, or provider calls.
 
 Desktop and mobile dashboards both follow this contract. Desktop renders `BusinessHealthDashboardCard` and `BusinessHealthAnalyticsStrip` near the top of the owner dashboard. Mobile renders `MobileBusinessHealthCard` before the detailed analytics tabs and feeds it from the same cached current Health and selected-menu analytics-index hooks.
 

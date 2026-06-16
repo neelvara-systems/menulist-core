@@ -191,6 +191,12 @@ export function buildAnswerlatticeSafeContextSnippet() {
         "  role: 'owner',",
         "  locale: 'en',",
         '});',
+        '',
+        'window.AnswerlatticeWidget?.identify?.({',
+        "  id: currentUser?.supportCustomerId,",
+        "  name: currentUser?.name,",
+        "  email: currentUser?.email,",
+        '});',
     ].join('\n');
 }
 
@@ -227,6 +233,8 @@ Canonical install contract:
 - Browser global: ${ANSWERLATTICE_WIDGET_GLOBAL_NAME}
 - Context methods:
 ${ANSWERLATTICE_CONTEXT_METHODS.map((method) => `  - ${ANSWERLATTICE_WIDGET_GLOBAL_NAME}.${method}(context)`).join('\n')}
+- Optional visitor method:
+  - ${ANSWERLATTICE_WIDGET_GLOBAL_NAME}.identify({ id, name, email })
 
 Implementation rules:
 1. Find the app root, global layout, document shell, or main client entry point.
@@ -234,15 +242,17 @@ Implementation rules:
 3. Prefer an environment variable for the widget key when the framework supports it.
 4. If the packet shows ${ANSWERLATTICE_FULL_WIDGET_KEY_PLACEHOLDER}, replace it with the full one-time al_* value saved from key creation. Do not use the saved key identifier or identifier + ellipsis as the widget key.
 5. Do not install the widget separately on each page.
-6. Do not expose tenantId, storeId, internal user IDs, emails, billing data, tokens, cookies, secrets, or private account metadata.
+6. Do not expose tenantId, storeId, internal user IDs, billing data, tokens, cookies, secrets, or private account metadata.
 7. Pass only safe page context: path, title, feature, workflow, role, and locale.
-8. Update AnswerLattice context after client-side route changes.
-9. Do not create app settings for allowed origins or blocked routes. AnswerLattice dashboard owns those values.
-10. If this repository has a central third-party-script guard, use the dashboard-saved blocked routes above to avoid mounting AnswerLattice on sensitive screens.
-11. Also avoid routes containing token, invite, reset-password, payment, secret, api-key, or webhook setup screens.
-12. Add a short code comment explaining that this is the AnswerLattice v1 widget contract.
-13. Run lint, typecheck, and build commands available in the repository.
-14. Report changed files, where the script was installed, how route context updates, test commands run, and assumptions.
+8. Do not put customer emails, phone numbers, internal account IDs, tenant IDs, store IDs, or private records in page context.
+9. If the product has a signed-in customer and the product owner wants requester tracking, call identify with only a support-safe customer id, display name, and email after auth state is known.
+10. Update AnswerLattice context after client-side route changes.
+11. Do not create app settings for allowed origins or blocked routes. AnswerLattice dashboard owns those values.
+12. If this repository has a central third-party-script guard, use the dashboard-saved blocked routes above to avoid mounting AnswerLattice on sensitive screens.
+13. Also avoid routes containing token, invite, reset-password, payment, secret, api-key, or webhook setup screens.
+14. Add a short code comment explaining that this is the AnswerLattice v1 widget contract.
+15. Run lint, typecheck, and build commands available in the repository.
+16. Report changed files, where the script was installed, how route context updates, visitor identity handling if added, test commands run, and assumptions.
 
 Acceptance criteria:
 - The app builds.
@@ -252,6 +262,7 @@ Acceptance criteria:
 - Dashboard-owned allowed origins and blocked routes are not duplicated as product settings.
 - The widget is absent on blocked routes when a local route guard is present; otherwise AnswerLattice dashboard route rules control runtime visibility.
 - Safe page context updates on route changes.
+- Optional visitor identity is sent only through identify, never through page context.
 - No forbidden identifiers or secrets are sent to AnswerLattice.
 - The browser console has no AnswerLattice integration errors.
 `);
@@ -353,7 +364,19 @@ window.AnswerlatticeWidget?.page({
 });
 \`\`\`
 
-Never send tenant IDs, store IDs, internal user IDs, emails, tokens, cookies, billing data, payment data, or private metadata.
+Never send tenant IDs, store IDs, internal user IDs, emails, phone numbers, tokens, cookies, billing data, payment data, or private metadata through page context.
+
+Optional requester tracking:
+
+\`\`\`js
+window.AnswerlatticeWidget?.identify?.({
+  id: currentUser?.supportCustomerId,
+  name: currentUser?.name,
+  email: currentUser?.email
+});
+\`\`\`
+
+Use identify only after the host product has a known signed-in customer. Do not send private account records, billing identifiers, tenant IDs, or store IDs.
 
 ## Verification
 
@@ -1037,6 +1060,14 @@ Never send:
 ${formatList(ANSWERLATTICE_FORBIDDEN_CONTEXT_FIELDS)}
 
 Allowed origins and blocked routes are dashboard-owned AnswerLattice settings. Do not create duplicate product settings for them.
+
+Requester identity is not page context. If the host product has a signed-in customer and wants owner-visible requester tracking, call:
+
+\`\`\`js
+window.AnswerlatticeWidget?.identify?.({ id, name, email });
+\`\`\`
+
+Do not include tenant IDs, store IDs, private account records, billing IDs, tokens, or phone numbers in identify.
 `),
         'answerlattice-verification-contract-v1.md': normalizeLines(`
 # AnswerLattice Verification Contract v1

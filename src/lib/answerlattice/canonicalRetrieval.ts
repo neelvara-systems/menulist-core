@@ -149,6 +149,34 @@ const getEntityByIdServer = async (entityId: string, tId: number, sId: number): 
     return entity;
 };
 
+const getApplicableVersionWindow = (answer: Partial<AnswerlatticeCanonicalAnswer>): { from: number; to: number | null } | null => {
+    const rawWindow = answer.productBinding?.applicableVersions;
+    const from = Number(rawWindow?.from);
+    const rawTo = rawWindow?.to as unknown;
+    const to = rawTo === null || rawTo === undefined || rawTo === '' ? null : Number(rawTo);
+    if (!Number.isFinite(from) || from <= 0) return null;
+    if (to !== null && (!Number.isFinite(to) || to < from)) return null;
+    return { from, to };
+};
+
+const isRetrievableCanonicalAnswer = (answer: Partial<AnswerlatticeCanonicalAnswer>): answer is AnswerlatticeCanonicalAnswer => {
+    const entityIds = answer.scope?.entityIds;
+    const structuredSummary = answer.content?.structuredSummary;
+    return Boolean(answer.id)
+        && answer.status === 'active'
+        && Array.isArray(entityIds)
+        && entityIds.length > 0
+        && Boolean(getApplicableVersionWindow(answer))
+        && typeof structuredSummary === 'string'
+        && structuredSummary.trim().length > 0;
+};
+
+const getAnswerConfidenceScore = (answer: Partial<AnswerlatticeCanonicalAnswer>): number => {
+    const score = Number(answer.validation?.confidenceScore ?? 0);
+    if (!Number.isFinite(score)) return 0;
+    return Math.max(0, Math.min(score, 1));
+};
+
 // ═══════════════════════════════════════════════════════════════
 // LAYER 1 — DETERMINISTIC ENTITY INDEX LOOKUP
 // ═══════════════════════════════════════════════════════════════
@@ -371,7 +399,9 @@ function scoreBySpecificity(
 
             // Version window match (highest weight)
             if (context.currentVersion) {
-                const { from, to } = answer.productBinding.applicableVersions;
+                const versionWindow = getApplicableVersionWindow(answer);
+                if (!versionWindow) return { answer, score: Number.NEGATIVE_INFINITY };
+                const { from, to } = versionWindow;
                 if (context.currentVersion >= from && (!to || context.currentVersion <= to)) {
                     score += 100;
                 }
@@ -397,16 +427,16 @@ function scoreBySpecificity(
             }
 
             // Validation recency (newer = slightly higher)
-            if (answer.validation.lastValidatedOn) {
+            if (answer.validation?.lastValidatedOn && typeof answer.validation.lastValidatedOn.toMillis === 'function') {
                 const daysSinceValidation = (Date.now() - answer.validation.lastValidatedOn.toMillis()) / (1000 * 60 * 60 * 24);
                 score += Math.max(0, 10 - daysSinceValidation / 30); // Decay over months
             }
 
             // Confidence score
-            score += answer.validation.confidenceScore * 5;
+            score += getAnswerConfidenceScore(answer) * 5;
 
             // Drift penalty
-            if (answer.governance.driftFlag) {
+            if (answer.governance?.driftFlag) {
                 score -= 50;
             }
 
@@ -573,8 +603,9 @@ export async function attemptCanonicalRetrieval(
         for (const answers of answerResults) {
             if (answers) allAnswers.push(...answers);
         }
+        const retrievableAnswers = allAnswers.filter(isRetrievableCanonicalAnswer);
 
-        if (allAnswers.length === 0) {
+        if (retrievableAnswers.length === 0) {
             return {
                 found: false,
                 canonical: false,
@@ -587,11 +618,13 @@ export async function attemptCanonicalRetrieval(
 
         // Filter by version window
         const versionFiltered = currentVersion
-            ? allAnswers.filter(a => {
-                const { from, to } = a.productBinding.applicableVersions;
+            ? retrievableAnswers.filter(a => {
+                const versionWindow = getApplicableVersionWindow(a);
+                if (!versionWindow) return false;
+                const { from, to } = versionWindow;
                 return currentVersion! >= from && (!to || currentVersion! <= to);
             })
-            : allAnswers;
+            : retrievableAnswers;
 
         if (versionFiltered.length === 0) {
             return {
@@ -616,7 +649,7 @@ export async function attemptCanonicalRetrieval(
         const topEntityScore = matchedEntities[0].score;
         let confidence: CanonicalRetrievalResult['confidence'] = 'high';
         if (topEntityScore < 3) confidence = 'medium';
-        if (bestAnswer.governance.driftFlag) confidence = 'medium';
+        if (bestAnswer.governance?.driftFlag) confidence = 'medium';
 
         // Knowledge Graph: rebuild suggestions now that we have bestAnswer
         if (graphExpansion && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH) {

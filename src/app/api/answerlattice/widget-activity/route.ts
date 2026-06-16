@@ -66,6 +66,15 @@ const serializeActivityItem = (docSnapshot: FirebaseFirestore.QueryDocumentSnaps
         confidence: typeof data.confidence === 'string' ? data.confidence : null,
         referenceCount: references.length,
         feedback: typeof data.isGood === 'boolean' ? (data.isGood ? 'good' : 'bad') : null,
+        visitorId: typeof data.visitorId === 'string' ? data.visitorId.slice(0, 120) : null,
+        visitorName: typeof data.visitorName === 'string' ? data.visitorName.slice(0, 160) : null,
+        visitorEmail: typeof data.visitorEmail === 'string' ? data.visitorEmail.slice(0, 180) : null,
+        widgetSessionId: typeof data.widgetSessionId === 'string' ? data.widgetSessionId.slice(0, 120) : null,
+        requestOrigin: typeof data.requestOrigin === 'string' ? data.requestOrigin.slice(0, 180) : null,
+        requestPath: typeof data.requestPath === 'string' ? data.requestPath.slice(0, 180) : null,
+        contextKey: typeof data.contextKey === 'string' ? data.contextKey.slice(0, 140) : null,
+        surfacePage: typeof data.surfacePage === 'string' ? data.surfacePage.slice(0, 120) : null,
+        surfaceFeature: typeof data.surfaceFeature === 'string' ? data.surfaceFeature.slice(0, 120) : null,
         createdAt: toIsoString(data.createdOn || data.modifiedOn),
     };
 };
@@ -104,6 +113,7 @@ const fetchFallbackWidgetActivity = async (
         .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
         .where('tId', '==', tenantId)
         .where('sId', '==', storeId)
+        .orderBy('createdOn', 'desc')
         .limit(FALLBACK_SCAN_LIMIT)
         .get();
 

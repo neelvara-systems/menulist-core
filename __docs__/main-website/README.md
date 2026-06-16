@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.56 (Print-ready Kit Editor Proof)
+**Version:** 3.6.57 (Feature Screenshot Proof Pack)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 15, 2026
+**Last Updated:** June 16, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.56** | **Print-ready Kit Editor Proof** | **"Finished templates can open into supported editor customization."** | **ACTIVE** |
+| **3.6.57** | **Feature Screenshot Proof Pack** | **"Real product proof appears only where the capture is launch-clean."** | **ACTIVE** |
+
+Version 3.6.57 adds a shared screenshot-proof gallery to selected dedicated feature pages after a Chrome capture pass against the current authenticated owner dashboard and public MenuList routes. `FeatureScreenshotProofGallery.tsx` mounts approved, compressed public assets for `/features/menu-import`, `/features/qr-menu-links`, `/features/customer-feedback-loop`, and `/features/public-discovery`, while raw source captures stay under `__docs__/main-website/asset-production/feature-screenshots/raw/`. The pass deliberately does not publish rough captures for Official Business Page, Featured Choices, Owner PWA Dashboard, Business Health, Menu Content Prep, or Menu Quality Validation because the available states included broken media, unready status, or non-launch demo data. This is static public website component/CSS/locale/docs/image-asset work only; owner dashboard runtime, public menu runtime, guest feedback runtime, Business Health runtime, Assets runtime, pricing, payment, auth, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
 Version 3.6.56 updates `/features/print-ready-kit` after the print-assets editor integration. The dedicated page now positions the flow as finished templates first, supported editor customization when useful, and then image/PDF/printer-file download from the current approved menu source. The hero visual now shows template choice plus editor/export proof, and a dedicated proof section shows an always-visible asset-type rail plus current product screenshots from `public/images/website/print-ready-kit/` for the Assets template list and editor screen. The page intentionally uses a static rail instead of a carousel so SMB owners see all supported file types without hunting through slides. The dashboard screenshot is cropped away from account-header details. The `/features` card copy, header dropdown description, route metadata, `llms.txt`, SEO docs, and print-assets docs are updated to match. This is static public website component/CSS/locale/docs/image-asset work only; owner Assets runtime, creative editor runtime, printable renderer, mobile PWA runtime, customer menu runtime, pricing, payment, auth, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 

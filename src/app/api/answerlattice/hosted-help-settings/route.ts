@@ -73,6 +73,13 @@ const getHostedHelpDomainStatuses = async (db: any, domains: string[]) => {
     ));
 };
 
+const isRateLimitUnavailable = (rateLimitResult: { allowed: boolean; current: number; remaining: number }, limit: number) => (
+    rateLimitResult.allowed
+    && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+    && rateLimitResult.current === 0
+    && rateLimitResult.remaining === limit
+);
+
 const buildStatusPatch = (params: {
     verified: boolean;
     verification?: Record<string, any> | null;
@@ -179,13 +186,23 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         let domainStatuses;
 
         if (refreshDomains) {
+            const rateLimitConfig = { limit: 10, window: 60 };
             const rateLimitResult = await checkRateLimit({
                 key: `answerlattice-hosted-help-domain-refresh:${scope.storeId}`,
-                limit: 10,
-                window: 60,
+                limit: rateLimitConfig.limit,
+                window: rateLimitConfig.window,
             });
+            if (isRateLimitUnavailable(rateLimitResult, rateLimitConfig.limit)) {
+                return NextResponse.json(
+                    { error: 'Hosted help domain checks are temporarily unavailable' },
+                    { status: 503, headers: { 'Cache-Control': 'no-store' } },
+                );
+            }
             if (!rateLimitResult.allowed) {
-                return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+                return NextResponse.json(
+                    { error: 'Too many requests' },
+                    { status: 429, headers: { 'Cache-Control': 'no-store' } },
+                );
             }
             domainStatuses = await refreshHostedHelpDomainStatuses({ db, scope, config });
         } else {
@@ -220,13 +237,23 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
     }
 
+    const rateLimitConfig = { limit: 20, window: 60 };
     const rateLimitResult = await checkRateLimit({
         key: `answerlattice-hosted-help-settings:${scope.storeId}`,
-        limit: 20,
-        window: 60,
+        limit: rateLimitConfig.limit,
+        window: rateLimitConfig.window,
     });
+    if (isRateLimitUnavailable(rateLimitResult, rateLimitConfig.limit)) {
+        return NextResponse.json(
+            { error: 'Hosted help settings are temporarily unavailable' },
+            { status: 503, headers: { 'Cache-Control': 'no-store' } },
+        );
+    }
     if (!rateLimitResult.allowed) {
-        return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        return NextResponse.json(
+            { error: 'Too many requests' },
+            { status: 429, headers: { 'Cache-Control': 'no-store' } },
+        );
     }
 
     const body = await request.json().catch(() => null);

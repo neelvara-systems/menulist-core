@@ -82,6 +82,8 @@ Response:
 
 The API does not run RAG fallback. If no governed answer matches, it returns `canonical: false` with a deterministic fallback reason. This keeps the external API predictable and cost-controlled.
 
+Production responses do not include internal entity-resolution debug traces. Retrieval debug stays inside owner-controlled escalation/ticket diagnostics; `includeDebug` is ignored in production public API payloads.
+
 ---
 
 ## Signal Ingestion
@@ -111,10 +113,13 @@ Response:
 
 Signal ingestion requires `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION` because signals feed the mutation governance loop.
 
+`externalId` acts as an idempotency key for server-side signal ingestion. Retries with the same key for the same workspace and signal type do not append duplicate signal-event documents.
+
 ---
 
 ## Version History
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-06-16 | 1.0.1 | Hardened production answers to suppress internal debug traces and made explicit external signal IDs idempotent |
 | 2026-05-16 | 1.0.0 | Implemented flag-gated public answers, entities, and signal ingestion API |

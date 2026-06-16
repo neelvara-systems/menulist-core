@@ -5,7 +5,7 @@ import {
     CreativeEditorElement,
 } from "@/modules/creative-editor/types";
 import { getOfferingLabels } from "@lib/menu-kit/businessTypeLabels";
-import { createMenuListLogoMarkDataUrl, MENU_LIST_DOMAIN } from "@lib/menu-kit/platformAttribution";
+import { drawMenuListAttribution, MENU_LIST_DOMAIN } from "@lib/menu-kit/platformAttribution";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
 import { getPrintableAssetType } from "./assetTypes";
 import { resolvePrintableTemplateBrandTokens } from "./templateStyles";
@@ -48,7 +48,6 @@ type BuildContext = {
     labels: ReturnType<typeof getOfferingLabels>;
     muted: string;
     qrValue: string;
-    showAttribution: boolean;
     surface: string;
     text: string;
 };
@@ -233,38 +232,20 @@ function addIdentityBadge(ctx: BuildContext, x: number, y: number, size: number,
     }));
 }
 
-function addAttribution(ctx: BuildContext, x: number, y: number, scale = 1, rotation = 0) {
-    if (!ctx.showAttribution || typeof document === "undefined") return;
-    const mark = createMenuListLogoMarkDataUrl(Math.round(34 * scale));
-    ctx.elements.push(imageElement(ctx, {
-        height: mark.height,
-        name: "MenuList mark",
-        opacity: 0.9,
-        rotation,
-        src: mark.dataUrl,
-        width: mark.width,
-        x,
-        y,
-    }));
-    ctx.elements.push(textElement(ctx, {
-        color: ctx.muted,
-        fontSize: Math.round(22 * scale),
-        fontWeight: "700",
-        height: Math.round(34 * scale),
-        locked: true,
-        name: "MenuList attribution",
-        rotation,
-        sourceRefs: [{
-            label: "MenuList attribution",
-            locked: true,
-            productId: "menulist",
-            value: MENU_LIST_DOMAIN,
-        }],
-        text: MENU_LIST_DOMAIN,
-        width: Math.round(220 * scale),
-        x: x + Math.round(56 * scale),
-        y: y + Math.round(4 * scale),
-    }));
+function isPrintableAssetPlatformAttribution(element: CreativeEditorElement): boolean {
+    const name = element.name.trim().toLowerCase();
+    if (name === "menulist mark" || name === "menulist attribution") return true;
+    return Boolean(element.sourceRefs?.some((sourceRef) => (
+        sourceRef.label.toLowerCase() === "menulist attribution"
+        || sourceRef.value === MENU_LIST_DOMAIN
+    )));
+}
+
+export function stripPrintableAssetEditorAttributionLayers(documentValue: CreativeEditorDocument): CreativeEditorDocument {
+    return {
+        ...documentValue,
+        elements: documentValue.elements.filter((element) => !isPrintableAssetPlatformAttribution(element)),
+    };
 }
 
 function addQrPanel(ctx: BuildContext, x: number, y: number, size: number, rotation = 0) {
@@ -482,7 +463,6 @@ function buildTableTent(ctx: BuildContext) {
         x: faceWidth,
         y: 0,
     });
-    addAttribution(ctx, ctx.canvasWidth - 260, ctx.canvasHeight - 70, 0.9);
 }
 
 function buildSingleCard(ctx: BuildContext) {
@@ -497,7 +477,6 @@ function buildSingleCard(ctx: BuildContext) {
         x: 0,
         y: 0,
     });
-    addAttribution(ctx, ctx.canvasWidth - 260, ctx.canvasHeight - 76, 1);
 }
 
 function buildSticker(ctx: BuildContext) {
@@ -592,7 +571,6 @@ function buildEntrancePoster(ctx: BuildContext) {
         x: margin,
         y: Math.round(ctx.canvasHeight * 0.86),
     }));
-    addAttribution(ctx, ctx.canvasWidth - 330, ctx.canvasHeight - 110, 1.15);
 }
 
 function buildContext(input: PrintableAssetRenderInput): BuildContext {
@@ -619,7 +597,6 @@ function buildContext(input: PrintableAssetRenderInput): BuildContext {
         labels: getOfferingLabels(input.businessType, input.businessCategory),
         muted: tokens.muted,
         qrValue,
-        showAttribution: resolveMenuListAttributionPolicy({ activePlanType: input.activePlanType }).showAttribution,
         surface: tokens.surface,
         text: tokens.text,
     };
@@ -756,18 +733,91 @@ export function rehydratePrintableAssetEditorDocument(
     };
 }
 
+function readBlobAsDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Failed to read generated image"));
+        reader.readAsDataURL(blob);
+    });
+}
+
+function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("Failed to load generated image"));
+        image.src = dataUrl;
+    });
+}
+
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Failed to render branded image"));
+        }, "image/png");
+    });
+}
+
+async function applyRuntimeMenuListAttribution(params: {
+    activePlanType?: string | null;
+    blob: Blob;
+    documentValue: CreativeEditorDocument;
+}): Promise<Blob> {
+    if (!resolveMenuListAttributionPolicy({ activePlanType: params.activePlanType }).showAttribution) {
+        return params.blob;
+    }
+    if (typeof document === "undefined") return params.blob;
+
+    const image = await loadImageFromDataUrl(await readBlobAsDataUrl(params.blob));
+    const width = Math.max(1, image.naturalWidth || params.documentValue.canvas.width);
+    const height = Math.max(1, image.naturalHeight || params.documentValue.canvas.height);
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return params.blob;
+    ctx.drawImage(image, 0, 0, width, height);
+
+    const fontSize = Math.round(Math.min(28, Math.max(16, width * 0.014)));
+    const marginX = Math.round(Math.min(96, Math.max(42, width * 0.04)));
+    const marginY = Math.round(Math.min(96, Math.max(44, height * 0.04)));
+    drawMenuListAttribution(ctx, {
+        activePlanType: params.activePlanType,
+        align: "right",
+        color: "rgba(75, 85, 99, 0.78)",
+        font: `700 ${fontSize}px Inter, Arial, sans-serif`,
+        gap: Math.max(6, Math.round(fontSize * 0.36)),
+        logoHeight: Math.max(18, Math.round(fontSize * 1.35)),
+        text: MENU_LIST_DOMAIN,
+        x: width - marginX,
+        y: height - marginY,
+    });
+
+    return canvasToPngBlob(canvas);
+}
+
 export async function renderPrintableAssetEditorDocument(params: {
+    activePlanType?: string | null;
     assetTypeId: PrintableAssetTypeId;
     document: CreativeEditorDocument;
     outputFormat: Exclude<PrintableAssetOutputFormat, "zip">;
     templateFamilyId?: string;
 }): Promise<PrintableAssetRenderResult> {
     const assetType = getPrintableAssetType(params.assetTypeId);
+    const documentValue = stripPrintableAssetEditorAttributionLayers(params.document);
     if (params.outputFormat === "png") {
-        const result = await renderCreativeEditorPngBlob(params.document);
+        const result = await renderCreativeEditorPngBlob(documentValue);
         if (!result.blob) throw new Error("PNG export failed");
-        return {
+        const blob = await applyRuntimeMenuListAttribution({
+            activePlanType: params.activePlanType,
             blob: result.blob,
+            documentValue,
+        });
+        return {
+            blob,
             filename: result.filename.replace(/\.png$/i, `_${params.assetTypeId}.png`),
             label: assetType.title,
             mimeType: "image/png",
@@ -775,14 +825,14 @@ export async function renderPrintableAssetEditorDocument(params: {
         };
     }
 
-    const result = await renderCreativeEditorPngBlob(params.document);
+    const result = await renderCreativeEditorPngBlob(documentValue);
     if (!result.blob) throw new Error("PDF export failed");
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(new Error("Failed to read generated image"));
-        reader.readAsDataURL(result.blob as Blob);
+    const blob = await applyRuntimeMenuListAttribution({
+        activePlanType: params.activePlanType,
+        blob: result.blob,
+        documentValue,
     });
+    const dataUrl = await readBlobAsDataUrl(blob);
     const dims = PRINT_DIMENSIONS[params.assetTypeId];
     const { jsPDF } = await import("jspdf");
     const pdf = new jsPDF({
@@ -806,6 +856,7 @@ export async function renderPrintableAssetEditorTemplate(input: PrintableAssetRe
     }
     const documentValue = buildPrintableAssetEditorDocument(input);
     return renderPrintableAssetEditorDocument({
+        activePlanType: input.activePlanType,
         assetTypeId: input.assetTypeId,
         document: documentValue,
         outputFormat: input.outputFormat === "pdf" ? "pdf" : "png",

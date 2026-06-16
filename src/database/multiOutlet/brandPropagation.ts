@@ -11,7 +11,7 @@
  * @see __docs__/official-business-page/official-business-page_impl.md ADR-7
  */
 
-import { resolveStoreBusinessCategory } from "@constant/common";
+import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { DB_COLLECTIONS } from "@constant/database";
 import { mergeStoreSummaryFields } from "@database/platformSummary";
 import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";

@@ -179,5 +179,11 @@ export function buildAnswerlatticeWidgetRouteSnippet(): string {
         "  role: 'owner',",
         "  locale: navigator.language || 'en',",
         '});',
+        '',
+        'window.AnswerlatticeWidget?.identify?.({',
+        "  id: currentUser?.supportCustomerId,",
+        "  name: currentUser?.name,",
+        "  email: currentUser?.email,",
+        '});',
     ].join('\n');
 }

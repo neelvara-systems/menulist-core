@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@constant/common";
+import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { checkRateLimit } from "@lib/rateLimit";

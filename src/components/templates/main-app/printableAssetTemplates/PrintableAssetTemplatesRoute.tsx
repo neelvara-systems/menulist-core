@@ -1,7 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { resolveBusinessCategoryOrFallback } from '@data/shared/businessTypes';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { getExistingProjectsListWithoutLoader, getProjectDataWithoutLoader } from '@database/projects';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
@@ -14,6 +14,7 @@ import {
     isPrintableAssetEditorRenderable,
     rehydratePrintableAssetEditorDocument,
     renderPrintableAssetEditorDocument,
+    stripPrintableAssetEditorAttributionLayers,
 } from '@lib/printable-asset-templates/editorDocumentAdapter';
 import { renderPrintableAsset } from '@lib/printable-asset-templates/renderPrintableAsset';
 import { getPrintableTemplateFamiliesForAsset, getPrintableTemplateFamily, normalizePrintableTemplateFamilyId } from '@lib/printable-asset-templates/templateFamilies';
@@ -93,6 +94,7 @@ type PreviewAssetState = {
 };
 
 type PrintAssetEditorState = {
+    activePlanType?: string | null;
     assetTypeId: PrintableAssetTypeId;
     initialDocument: CreativeEditorDocument;
     savedTemplateId?: string;
@@ -261,10 +263,10 @@ export default function PrintableAssetTemplatesRoute() {
     );
     const canUseUserTemplates = canLoadUserTemplates && canCustomizeSelectedAsset;
     const platformBusinessCategory = useMemo(
-        () => resolveBusinessCategoryOrFallback(
+        () => resolveBusinessCategory(
             storeBusinessType,
             storeBusinessCategory,
-        ),
+        ) || 'generic',
         [storeBusinessCategory, storeBusinessType],
     );
     const templateRegistryContext = useMemo<CreativeEditorTemplateContext>(() => ({
@@ -546,7 +548,7 @@ export default function PrintableAssetTemplatesRoute() {
             activePlanType: (storeDetails as any)?.activePlanType,
             assetTypeId: selectedAssetId,
             brandColor: storeBrandColor,
-            businessCategory: (storeDetails as any)?.businessCategory,
+            businessCategory: platformBusinessCategory,
             businessType: (storeDetails as any)?.businessType || data.businessType,
             feedbackUrl: data.feedbackQrLink,
             lastPublishedAt: parseTimestamp(data.menuModifiedOn),
@@ -573,7 +575,7 @@ export default function PrintableAssetTemplatesRoute() {
             printMenuOptions: {
                 activePlanType: (storeDetails as any)?.activePlanType,
                 brandColor: storeBrandColor,
-                businessCategory: (storeDetails as any)?.businessCategory,
+                businessCategory: platformBusinessCategory,
                 businessType: (storeDetails as any)?.businessType || data.businessType,
                 categories: exportData.categories,
                 currency: (storeDetails as any)?.currencySymbol || '',
@@ -678,8 +680,9 @@ export default function PrintableAssetTemplatesRoute() {
                 templateId: template.id,
                 templateType: 'platform',
             });
-            const documentValue = rehydratePrintableAssetEditorDocument(result.document, input);
+            const documentValue = stripPrintableAssetEditorAttributionLayers(rehydratePrintableAssetEditorDocument(result.document, input));
             const rendered = await renderPrintableAssetEditorDocument({
+                activePlanType: input.activePlanType,
                 assetTypeId: selectedAssetId,
                 document: documentValue,
                 outputFormat,
@@ -701,9 +704,10 @@ export default function PrintableAssetTemplatesRoute() {
         try {
             const input = await buildRenderInput(templateFamilyId);
             if (!input) return;
-            const documentValue = buildPrintableAssetEditorDocument(input);
+            const documentValue = stripPrintableAssetEditorAttributionLayers(buildPrintableAssetEditorDocument(input));
             editorDocumentRef.current = documentValue;
             setEditorState({
+                activePlanType: input.activePlanType,
                 assetTypeId: selectedAssetId,
                 initialDocument: documentValue,
                 templateFamilyId,
@@ -732,9 +736,10 @@ export default function PrintableAssetTemplatesRoute() {
                 templateId: template.id,
                 templateType: 'platform',
             });
-            const documentValue = rehydratePrintableAssetEditorDocument(result.document, input);
+            const documentValue = stripPrintableAssetEditorAttributionLayers(rehydratePrintableAssetEditorDocument(result.document, input));
             editorDocumentRef.current = documentValue;
             setEditorState({
+                activePlanType: input.activePlanType,
                 assetTypeId: selectedAssetId,
                 initialDocument: documentValue,
                 templateFamilyId,
@@ -763,9 +768,10 @@ export default function PrintableAssetTemplatesRoute() {
                 assetTypeId: template.assetTypeId || selectedAssetId,
                 templateId: template.id,
             });
-            const documentValue = rehydratePrintableAssetEditorDocument(result.document, input);
+            const documentValue = stripPrintableAssetEditorAttributionLayers(rehydratePrintableAssetEditorDocument(result.document, input));
             editorDocumentRef.current = documentValue;
             setEditorState({
+                activePlanType: input.activePlanType,
                 assetTypeId: selectedAssetId,
                 initialDocument: documentValue,
                 savedTemplateId: template.id,
@@ -800,20 +806,21 @@ export default function PrintableAssetTemplatesRoute() {
     };
 
     const handleEditorDocumentChange = useCallback((documentValue: CreativeEditorDocument) => {
-        editorDocumentRef.current = documentValue;
+        editorDocumentRef.current = stripPrintableAssetEditorAttributionLayers(documentValue);
     }, []);
 
     const handleSaveEditorTemplate = useCallback(async ({ document: documentValue }: CreativeEditorTemplateSaveRequest) => {
         if (!editorState || !canUseUserTemplates) {
             throw new Error('Template saving is not available for this asset');
         }
+        const cleanDocument = stripPrintableAssetEditorAttributionLayers(documentValue);
         const template = await saveCreativeEditorTemplate({
             ...templateRegistryContext,
             assetTypeId: editorState.assetTypeId,
-            document: documentValue,
+            document: cleanDocument,
             templateFamilyId: editorState.templateFamilyId,
             templateId: editorState.savedTemplateId,
-            title: editorState.title || documentValue.title,
+            title: editorState.title || cleanDocument.title,
         });
         setEditorState((current) => current ? { ...current, savedTemplateId: template.id, title: template.title } : current);
         setUserTemplates((current) => [template, ...current.filter((item) => item.id !== template.id)]);
@@ -823,11 +830,12 @@ export default function PrintableAssetTemplatesRoute() {
 
     const handleEditorDownload = async (outputFormat: Exclude<PrintableAssetOutputFormat, 'zip'>) => {
         if (!editorState) return;
-        const latestDocument = editorDocumentRef.current || editorState.initialDocument;
+        const latestDocument = stripPrintableAssetEditorAttributionLayers(editorDocumentRef.current || editorState.initialDocument);
         const busy = `editor-download:${outputFormat}`;
         setEditorBusyKey(busy);
         try {
             const result = await renderPrintableAssetEditorDocument({
+                activePlanType: editorState.activePlanType,
                 assetTypeId: editorState.assetTypeId,
                 document: latestDocument,
                 outputFormat,

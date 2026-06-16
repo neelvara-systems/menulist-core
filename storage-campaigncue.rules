@@ -24,6 +24,33 @@ service firebase.storage {
       allow write, delete: if false;
     }
 
+    match /campaigncue/templates/platform/shared/{templateId}/{fileName} {
+      allow read: if isPlatformAdmin() || hasCampaignCueWorkspaceClaims();
+      allow write: if isPlatformAdmin()
+        && isCampaignCueTemplateArtifactType()
+        && request.resource.size <= 750 * 1024;
+      allow delete: if isPlatformAdmin();
+    }
+
+    match /campaigncue/templates/platform/{categoryId}/{templateId}/{fileName} {
+      allow read: if (isPlatformAdmin() || hasCampaignCueWorkspaceClaims())
+        && isCampaignCuePackTemplateCategoryId(categoryId);
+      allow write: if isPlatformAdmin()
+        && isCampaignCuePackTemplateCategoryId(categoryId)
+        && isCampaignCueTemplateArtifactType()
+        && request.resource.size <= 750 * 1024;
+      allow delete: if isPlatformAdmin()
+        && isCampaignCuePackTemplateCategoryId(categoryId);
+    }
+
+    match /campaigncue/templates/workspaces/{workspaceId}/{templateId}/{fileName} {
+      allow read: if isCampaignCueWorkspaceMember(workspaceId);
+      allow write: if isCampaignCueWorkspaceMember(workspaceId)
+        && isCampaignCueTemplateArtifactType()
+        && request.resource.size <= 750 * 1024;
+      allow delete: if isCampaignCueWorkspaceMember(workspaceId);
+    }
+
     match /campaigncue/cue-layers/{workspaceId}/{designId}/{allPaths=**} {
       allow read: if isCampaignCueWorkspaceMember(workspaceId);
       allow write, delete: if false;
@@ -42,6 +69,12 @@ service firebase.storage {
       return 'cc_' + string(request.auth.token.tenantId) + '_' + string(request.auth.token.storeId);
     }
 
+    function hasCampaignCueWorkspaceClaims() {
+      return isAuthenticated()
+        && request.auth.token.tenantId != null
+        && request.auth.token.storeId != null;
+    }
+
     function isCampaignCueWorkspaceMember(workspaceId) {
       return isAuthenticated()
         && (
@@ -50,11 +83,20 @@ service firebase.storage {
         );
     }
 
+    function isCampaignCuePackTemplateCategoryId(categoryId) {
+      return categoryId.matches('^(service|retail|food|professional|creative|health|specialty)$');
+    }
+
     function isCampaignCueAssetType() {
       return request.resource.contentType.matches('image/(jpeg|png|webp|gif)')
         || request.resource.contentType.matches('video/(mp4|quicktime|webm)')
         || request.resource.contentType.matches('application/(pdf|json|zip)')
         || request.resource.contentType == 'text/plain';
+    }
+
+    function isCampaignCueTemplateArtifactType() {
+      return request.resource.contentType.matches('application/json')
+        || request.resource.contentType.matches('image/(jpeg|png|webp)');
     }
   }
 }

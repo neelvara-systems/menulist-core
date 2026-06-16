@@ -40,7 +40,8 @@ The screen must answer:
 | Multi-output pack | Existing campaign outputs now include owner use case, output formats, print formats, photo tasks, review checklist, and structured `handoffFields`. |
 | Manual delivery assistant | The desk, pack review, delivery tab, campaign cards, and pack export show owner-safe manual use steps and copyable handoff fields. CampaignCue does not send, post, connect, or spend. |
 | Local visibility cue | Visibility prompts check locality, destination, Google-ready output presence, and fresh-fact readiness without provider calls. |
-| Asset reuse | The desk routes to saved assets, the shared editor, and CueLayers upload when an existing or flat generated image needs safe reuse. |
+| Asset reuse | The desk routes to saved assets, the shared editor, and CueLayers upload when an existing poster, screenshot, or flat generated image needs safe reuse. |
+| Campaign Pack Editor Mode | Opening an output in the editor keeps the campaign context visible: safe tasks, protected facts, multi-output formats, trust checks, manual delivery, result memory, and mobile review guidance. |
 | Print pack | Pack download includes print/in-store use guidance. |
 | Owner photo task | Desk shows one or more practical photo tasks. |
 | Result memory | Desk prompts for a result when used count is ahead of recorded outcomes, writes a structured `resultSignalId`, and stores compact `campaign.resultMemory` for next recommendations. |
@@ -67,7 +68,7 @@ Use plain action language:
 - "Download campaign pack ZIP"
 - "Mark used"
 - "Record result"
-- "Turn image into layers"
+- "Reuse old image"
 - "Open checks"
 - "Check if ready to share"
 - "Add missing business details"

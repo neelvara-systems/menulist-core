@@ -83,6 +83,7 @@ export const FEATURE_FLAGS = {
     ENABLE_CAMPAIGNCUE_EDITOR_AI_TOOLS: true,
     ENABLE_CAMPAIGNCUE_DESIGN_CUE: true,
     ENABLE_CAMPAIGNCUE_DESIGN_CUE_MODEL_ASSIST: false,
+    ENABLE_CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY: true,
     ENABLE_CAMPAIGNCUE_RENDERED_ASSET_EXPORTS: true,
     ENABLE_CAMPAIGNCUE_CUE_LAYERS: true,
     ENABLE_CAMPAIGNCUE_CUE_LAYERS_UPLOAD: true,
@@ -1728,6 +1729,24 @@ export const FEATURE_FLAGS = {
     ENABLE_COST_PROTECTION: true,
 
     /**
+     * Platform Cost Posture — Internal cost visibility and billing-export readiness.
+     *
+     * When enabled:
+     * - Platform users can open /platform/cost-posture
+     * - The API reads bounded existing cost/ops signal collections
+     * - The screen links existing detailed monitors together
+     *
+     * When disabled:
+     * - The API returns 404
+     * - Platform settings hides the Cost Posture tab
+     *
+     * Firebase cost: platform-only manual refresh, no writes, no listeners, no scheduler.
+     *
+     * @see __docs__/platform-cost-posture/
+     */
+    ENABLE_PLATFORM_COST_POSTURE: true,
+
+    /**
      * Ops Alert Delivery — Telegram notifications for system alerts.
      *
      * When enabled:
@@ -1874,6 +1893,7 @@ export const FEATURE_FLAGS = {
     ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER: true,
     ENABLE_PRINTABLE_ASSET_EDITOR_CUSTOMIZE: true,
     ENABLE_PRINTABLE_ASSET_USER_TEMPLATES: true,
+    ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER: true,
     PRINTABLE_ASSET_TEMPLATE_PLAN_IDS: ['starter', 'pro', 'premium'] as string[],
     PRINTABLE_ASSET_TEMPLATE_FULL_CATALOG_PLAN_IDS: ['pro', 'premium'] as string[],
 

@@ -3,7 +3,8 @@
  * ═══════════════════════════════════════════════════════════════
  *
  * PRIMARY SOURCE — This file is the single source of truth.
- * It MUST be self-contained (no imports from other project files).
+ * It may import sibling shared data files only. Do not import app or
+ * Functions-only modules.
  *
  * COPY RULE: This exact file is copied as-is to:
  *   functions/src/sharedData/extractedBusinessProfile.ts
@@ -12,6 +13,8 @@
  * authority. Callers should apply suggestions only when confidence and
  * overwrite rules allow it.
  */
+
+import { normalizeBusinessCategory } from "./businessTypes";
 
 export type ExtractedBusinessProfileConfidence = "high" | "medium" | "low";
 export type ExtractedBusinessProfileSuggestionSource =
@@ -73,15 +76,6 @@ const CONFIDENCE_RANK: Record<ExtractedBusinessProfileConfidence, number> = {
   medium: 2,
   low: 1,
 };
-const BUSINESS_CATEGORY_VALUES = new Set([
-  "food",
-  "service",
-  "retail",
-  "professional",
-  "creative",
-  "health",
-  "specialty",
-]);
 const CURRENCY_ALIASES: Record<string, string> = {
   "$": "USD",
   "usd": "USD",
@@ -221,8 +215,7 @@ function normalizeBackgroundColor(value: unknown): string | null {
 }
 
 function normalizeBusinessCategoryValue(value: unknown): string | null {
-  const normalized = cleanText(value, 40)?.toLowerCase();
-  return normalized && BUSINESS_CATEGORY_VALUES.has(normalized) ? normalized : null;
+  return normalizeBusinessCategory(cleanText(value, 40) || undefined) || null;
 }
 
 function readRawSuggestionValue(raw: unknown): unknown {

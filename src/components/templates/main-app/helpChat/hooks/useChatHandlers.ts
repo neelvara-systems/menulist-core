@@ -1,4 +1,5 @@
 import { deleteChatSession, getUserChatSessions, saveChatSession, updateChatSession, uploadChatImage } from '@database/chatSessions';
+import { buildAnswerlatticeActorSnapshot } from '@lib/answerlattice/customerIdentity';
 import { ChatSession } from '@type/chatSession';
 import { UserUploadedFileType } from '@type/common';
 import { message as antMessage } from 'antd';
@@ -299,7 +300,7 @@ export function useChatHandlers({
                             title: content.slice(0, 150) + (content.length > 150 ? '...' : ''),
                             mode: effectiveMode,
                             messages: [newUserMessage, aiMessage],
-                            userName: loggedInSession?.user?.name // Save user's display name for admin UI
+                            ...buildAnswerlatticeActorSnapshot(loggedInSession)
                         };
 
                         try {

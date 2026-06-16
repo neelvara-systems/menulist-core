@@ -71,10 +71,14 @@
         "Ops Control Room": "Ops Control Room",
         "Scheduler Monitor": "Scheduler Monitor",
         "Extraction Monitor": "Extraction Monitor",
+        "Business Health Monitor": "Business Health Monitor",
+        "Cost Posture": "Cost Posture",
         "Entity Blocks": "Entity Blocks",
+        "Asset Templates": "Asset Templates",
         "Tenants": "Tenants",
         "Stores": "Stores",
         "Platform Users": "Platform Users",
+        "Pricing Plans": "Pricing Plans",
         "Support Tickets": "सहायता टिकट",
         "Feedback Admin": "Feedback Admin",
         "Knowledge Base": "ज्ञान आधार",
@@ -4548,6 +4552,72 @@
                 "support1Item0": "Action से पहले owner review",
                 "support1Item1": "Private feedback inbox",
                 "support1Item2": "Quiet attention signal"
+            }
+        },
+        "FeatureDetailScreenshots": {
+            "menuImport": {
+                "label": "Menu import product screenshot proof",
+                "eyebrow": "Real owner screen",
+                "title": "Original menu source setup के दौरान visible रहता है.",
+                "highlight": "source visible",
+                "subtitle": "यह screenshot current owner workflow दिखाता है: MenuList उस menu से start करता है जो business के पास already है, blank screen से सब कुछ दोबारा बनाने को नहीं कहता.",
+                "sourceMenu": {
+                    "kicker": "Imported source",
+                    "title": "Menu link working menu के साथ रहता है",
+                    "desc": "Owner side imported menu source को prepared menu से connected रखता है ताकि review work real business content से start हो.",
+                    "alt": "MenuList owner screen showing an imported menu link source connected to a menu setup flow"
+                }
+            },
+            "qrMenuLinks": {
+                "label": "QR menu and link product screenshot proof",
+                "eyebrow": "Share proof",
+                "title": "Same current menu QR, links और public sharing में जा सकता है.",
+                "highlight": "same current menu",
+                "subtitle": "ये captures real owner sharing surface और public link से खुलने वाला customer menu दिखाते हैं. Promise simple रहता है: customers current approved menu तक पहुंचें.",
+                "shareKit": {
+                    "kicker": "Owner share screen",
+                    "title": "Links, QR assets और placement tasks एक जगह",
+                    "desc": "Owners public menu link, screen link, QR code और placement checklist separate tools में ढूंढे बिना collect कर सकते हैं.",
+                    "alt": "MenuList owner sharing screen showing menu link, screen link, QR code, and placement checklist controls"
+                },
+                "publicMenu": {
+                    "kicker": "Customer menu",
+                    "title": "Shared link customer-facing menu खोलता है",
+                    "desc": "Public menu current published source से categories, item cards, descriptions, prices और customer actions दिखाता है.",
+                    "alt": "MenuList public customer menu showing categories, menu items, prices, and customer actions"
+                }
+            },
+            "customerFeedbackLoop": {
+                "label": "Customer feedback loop product screenshot proof",
+                "eyebrow": "Correction loop",
+                "title": "Customers issues report कर सकते हैं, owner control रखता है.",
+                "highlight": "owner control",
+                "subtitle": "Feedback तभी useful है जब वह approved source को correct करने में मदद करे. ये captures public report path और private owner review surface दिखाते हैं.",
+                "publicForm": {
+                    "kicker": "Public report",
+                    "title": "Customer public side से issue flag करता है",
+                    "desc": "Customer wrong prices, missing items, outdated details या other menu issues report कर सकता है, without making the report public.",
+                    "alt": "MenuList public feedback form allowing a customer to report a menu or business information issue"
+                },
+                "ownerInbox": {
+                    "kicker": "Owner review",
+                    "title": "Owner feedback privately review करता है",
+                    "desc": "Owner inbox public menu में कुछ बदलने से पहले report, status और source context साथ रखता है.",
+                    "alt": "MenuList owner feedback inbox showing private customer feedback status and review controls"
+                }
+            },
+            "publicDiscovery": {
+                "label": "Public discovery product screenshot proof",
+                "eyebrow": "Public source proof",
+                "title": "Discovery work source clarity के रूप में framed है, ranking promise नहीं.",
+                "highlight": "source clarity",
+                "subtitle": "Owner side discovery-related placement और public-source tasks को उसी boundary में रखता है जिसे MenuList truthfully support कर सकता है.",
+                "presenceChecklist": {
+                    "kicker": "Presence checklist",
+                    "title": "Manual public placement visible रहता है",
+                    "desc": "MenuList owners को official link कहां place करना है यह track करने में help कर सकता है, while avoiding automatic external-platform claims.",
+                    "alt": "MenuList owner screen showing a public presence checklist for placing the official menu link on external channels"
+                }
             }
         },
         "Stats": {

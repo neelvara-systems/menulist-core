@@ -3,7 +3,7 @@
 **Feature:** Owner Business Assistant / Business Health
 **Product:** MenuList
 **Status:** Enabled for owner testing behind separate safety flags
-**Validated:** June 11, 2026
+**Validated:** June 16, 2026
 
 ---
 
@@ -20,6 +20,16 @@ June 11 audit guardrails:
 - `/api/owner-business-assistant/action` now requires the parent Business Health flag as well as Action Support.
 - `/api/owner-business-assistant/locations` now requires the multi-location flag.
 - Action payloads are capped at 12,000 JSON characters before draft/action storage.
+
+## June 16 Image Gap Signal Pass
+
+- Business Health catalog intelligence now separates high-demand missing-photo items into `image_gap` action cards. High-demand items that already have a photo but lack a description remain `metadata_demand`, and the description card skips the item already selected for `image_gap`.
+- The signal is built from already-loaded project catalog data plus existing settled item views/taps in dashboard summary aggregation. It adds no collection, listener, index, Storage path, analytics event, runtime menu scan, or media write.
+- `npm run verify:catalog-analytics` passed, including the Functions TypeScript build and validation of 9 catalog-aware insight types.
+- `git diff --check` passed for the touched code, verifier, and docs files.
+- `npm --prefix functions run lint` passed with the existing Next pages-directory ESLint warning.
+- `npx tsc --noEmit --incremental false --pretty false` now passes after the adjacent Platform Cost Posture feature flag was added.
+- `firebase deploy --only functions:computeDecisionBlocksScores --project ecomsai` was retried after validation and reached the predeploy lint/build and package step, then stopped at Secret Manager validation because project `ecomsai` returned billing-required 403 responses for configured secrets. Retry after billing/project access is restored.
 
 ## June 10 Owner Signal Presentation Pass
 

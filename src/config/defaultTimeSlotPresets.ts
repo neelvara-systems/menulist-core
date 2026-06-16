@@ -8,7 +8,7 @@
  * Owners can modify or delete these presets later.
  */
 
-import { resolveBusinessCategory } from '@constant/common';
+import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { antdTagsColorCodes } from '@data/common';
 import { generateOwnCustomUid } from '@lib/utils/generateOwnCustomUid';
 import { TimeSlotPreset } from '@type/platform/store';

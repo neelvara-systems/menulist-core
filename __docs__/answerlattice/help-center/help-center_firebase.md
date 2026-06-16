@@ -77,6 +77,30 @@
 | Update article + job counter | 0 | 2 | — |
 | **Total** | **1** | **2** | **1 Gemini** |
 
+### 2.2a Multi-language Article Translation
+
+**Governance Languages tab load:**
+
+| Operation | Reads | Writes | External API |
+|-----------|-------|--------|-------------|
+| Load scoped KB category index through shared cache | 0 hot / 1 cold | 0 | — |
+| Fetch article docs by ID in chunks of 30, capped at 500 IDs | N article reads | 0 | — |
+| **Total** | **0 hot or 1 + N cold** | **0** | **0** |
+
+**Translate one article locale:**
+
+| Operation | Reads | Writes | External API |
+|-----------|-------|--------|-------------|
+| Rate limit + safe mode checks | 0 | 0 | 1 Upstash when enabled |
+| Read target article and verify `tId+sId` | 1 | 0 | — |
+| Gemini translation call, capped at 8,000 source characters | 0 | 0 | 1 Gemini |
+| Bump KB cache/context version | 0 | 2 | — |
+| Write `kb_articles/{articleId}.translations.{locale}` | 0 | 1 | — |
+| UI refreshes only the translated article | 1 | 0 | — |
+| **Total** | **2** | **3** | **1 Upstash + 1 Gemini** |
+
+The Languages tab is feature-flagged and does not create a realtime listener. It defaults to the supported Answerlattice locale list when no tenant-level locale setting exists.
+
 ### 2.3 Support Ticket Operations
 
 **Create ticket:**
@@ -345,6 +369,7 @@ Chat images are capped at 5 MB by `storage-answerlattice.rules` and app-side val
 | **Hybrid dashboard** | Fresh data + low reads | Today's live + historical aggregate |
 | **Pagination** | Bounded reads | `limit(pageSize+1)` on all list queries |
 | **Bounded realtime tickets** | Prevents unbounded owner live snapshots | `subscribeStoreTickets(limit 100)` |
+| **Chunked article status reads** | Avoids Firestore `in` query failures and caps translation-tab load | `getArticlesByIds()` chunks IDs in groups of 30 and caps at 500 |
 | **Client-side filtering** | No extra queries | Search/feedback filters on fetched data |
 | **Single-doc categories** | 1 read for all KB nav | All categories in one Firestore doc |
 | **Batch operations** | Fewer writes | `writeBatch` for multi-article deletes |

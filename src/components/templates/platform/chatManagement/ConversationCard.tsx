@@ -1,6 +1,7 @@
 'use client';
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { ADMIN_PRIORITY_OPTIONS, ADMIN_STATUS_OPTIONS, ChatSession } from '@type/chatSession';
 import { Card, Flex, Tag, Tooltip, Typography, theme } from 'antd';
 import { memo } from 'react';
@@ -29,6 +30,7 @@ const ConversationCard = memo(({ session, isActive, onClick }: ConversationCardP
         ? lastMessage.content
         : lastMessage?.craftedAnswer;
     const previewText = preview ? preview.substring(0, 60) + (preview.length > 60 ? '...' : '') : '';
+    const requester = getAnswerlatticeCustomerIdentity(session);
 
     return (
         <Card
@@ -112,7 +114,8 @@ const ConversationCard = memo(({ session, isActive, onClick }: ConversationCardP
                         ellipsis
                         style={{ fontSize: 12, lineHeight: '18px' }}
                     >
-                        {session.userName || `User ${session.uId}`}
+                        {requester.displayName}
+                        {requester.email ? ` - ${requester.email}` : ''}
                     </Text>
 
                     {/* Preview Text */}

@@ -57,7 +57,7 @@ CueLayers currently supports the conservative production path:
 | Storage write boundary | Client writes are denied; server/Admin writes immutable artifacts. |
 | Durable asset references | Saved editor snapshots persist `cue-asset://assetId`, not signed URLs or base64 payloads. |
 | Image asset ownership | Autosave rejects image references that are not in the current design layer index. |
-| Export safety | CueLayers export is revision-pinned; stale saved state is rejected. SVG export from layered image flow is blocked in the owner UI, and export registration requires rendered output bytes before an Asset Library record is created. |
+| Export safety | CueLayers export is revision-pinned; stale saved state is rejected. SVG export from reused-image flow is blocked in the owner UI, and export registration requires rendered output bytes before an Asset Library record is created. |
 | Download safety | Asset Library download uses workspace-scoped asset lookup and runtime-only signed URLs. |
 
 ## Firebase Cost Result
@@ -75,7 +75,7 @@ CueLayers currently supports the conservative production path:
 
 | Owner flow | Result |
 | --- | --- |
-| Entry point | Owner can start CueLayers from Editor or Asset Library with "Turn image into layers". |
+| Entry point | Owner can start CueLayers from Editor or Asset Library with "Reuse old image". |
 | First render | The original image opens unchanged as a locked reference. |
 | Editing | Owner can use the existing shared editor to add text, shapes, QR, and drawing layers. New image imports and browser SVG/JSON exports are disabled while a CueLayers design is active because added images and hydrated runtime URLs do not yet have a product-owned handoff contract. |
 | Recent work | Recent CueLayers designs appear in the editor tab with status and revision. |

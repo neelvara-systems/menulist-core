@@ -42,7 +42,8 @@ Dashboard /assets
   -> optional Saved designs registry for explicitly saved editor documents
   -> editor-backed output engine for non-menu print assets
       - CreativeEditorDocument template
-      - locked QR/link/attribution layers
+      - locked QR/link source layers
+      - runtime-only MenuList attribution on export when policy requires it
       - PNG/PDF browser render
   -> existing specialized output engines
       - Print Menu PDF + image

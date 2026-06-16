@@ -55,6 +55,17 @@ export interface CoreSearchInput {
     /** Validated product context (page, feature, workflow, etc.) */
     productContext?: ValidatedContextPayload;
 
+    /** Optional requester metadata from public surfaces such as the widget. */
+    requestMetadata?: {
+        visitorId?: string | null;
+        visitorName?: string | null;
+        visitorEmail?: string | null;
+        widgetSessionId?: string | null;
+        requestOrigin?: string | null;
+        requestPath?: string | null;
+        userAgentFamily?: string | null;
+    };
+
     /** Number of previous low-confidence results in this chat session (for S3 repeated failure trigger) */
     sessionFailureCount?: number;
 }

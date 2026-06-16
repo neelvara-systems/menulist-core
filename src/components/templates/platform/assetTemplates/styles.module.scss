@@ -1,0 +1,86 @@
+.managerWrap {
+  width: 100%;
+  min-height: calc(100vh - var(--header-Height, 64px) - 40px);
+}
+
+.toolbarCard {
+  position: sticky;
+  top: calc(var(--header-Height, 64px) + 12px);
+  z-index: 4;
+}
+
+.templateGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.templateCard {
+  height: 100%;
+
+  :global(.ant-card-body) {
+    height: 100%;
+  }
+}
+
+.templatePreview {
+  display: grid;
+  place-items: center;
+  height: 150px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background:
+    linear-gradient(45deg, rgba(148, 163, 184, 0.14) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148, 163, 184, 0.14) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.14) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.14) 75%);
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+  overflow: hidden;
+}
+
+.templatePreviewInner {
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--ant-color-bg-container);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  overflow: hidden;
+}
+
+.templatePreviewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.editorOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: var(--ant-color-bg-layout);
+}
+
+.editorShell {
+  height: 100%;
+}
+
+.mutedMetric {
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .toolbarCard {
+    position: static;
+  }
+
+  .templateGrid {
+    grid-template-columns: 1fr;
+  }
+}

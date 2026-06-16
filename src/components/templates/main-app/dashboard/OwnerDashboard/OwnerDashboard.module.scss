@@ -322,6 +322,14 @@ $spacing-xl: 32px;
   white-space: nowrap;
 }
 
+.simpleMetric {
+  display: flex;
+  flex-direction: column;
+  min-height: 63px;
+  justify-content: center;
+  gap: 2px;
+}
+
 .todayCardNotes {
   margin-top: $spacing-md;
   padding-top: $spacing-md;

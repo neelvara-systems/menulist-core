@@ -148,6 +148,7 @@ export type PublicApiKeyValidationOptions = {
 };
 
 const MAX_VALIDATION_CACHE_TTL_MS = 30_000;
+const MAX_VALIDATION_CACHE_ENTRIES = 1_000;
 const validationCache = new Map<string, {
     expiresAt: number;
     result: PublicApiKeyValidationResult | null;
@@ -173,6 +174,22 @@ const getValidationCacheTtl = (ttlMs: number | undefined): number => {
     const ttl = Number(ttlMs || 0);
     if (!Number.isFinite(ttl) || ttl <= 0) return 0;
     return Math.min(ttl, MAX_VALIDATION_CACHE_TTL_MS);
+};
+
+const rememberValidationCache = (
+    cacheKey: string,
+    ttlMs: number,
+    result: PublicApiKeyValidationResult | null,
+): void => {
+    if (!cacheKey || ttlMs <= 0) return;
+    if (validationCache.size >= MAX_VALIDATION_CACHE_ENTRIES && !validationCache.has(cacheKey)) {
+        const oldestKey = validationCache.keys().next().value;
+        if (oldestKey) validationCache.delete(oldestKey);
+    }
+    validationCache.set(cacheKey, {
+        expiresAt: Date.now() + ttlMs,
+        result,
+    });
 };
 
 export async function validatePublicApiKey(
@@ -217,12 +234,7 @@ export async function validatePublicApiKey(
 
     if (shouldUseAnswerlatticeDb && !dedicatedAnswerlatticeDb) {
         secureLog('[Public API] Answerlattice API key validation failed closed because Answerlattice Firestore Admin is not configured');
-        if (cacheKey && cacheTtl) {
-            validationCache.set(cacheKey, {
-                expiresAt: Date.now() + cacheTtl,
-                result: null,
-            });
-        }
+        rememberValidationCache(cacheKey, cacheTtl, null);
         return null;
     }
 
@@ -259,12 +271,7 @@ export async function validatePublicApiKey(
                 storeData,
                 storeId: doc.id,
             };
-            if (cacheKey && cacheTtl) {
-                validationCache.set(cacheKey, {
-                    expiresAt: Date.now() + cacheTtl,
-                    result,
-                });
-            }
+            rememberValidationCache(cacheKey, cacheTtl, result);
             return result;
         }
     }
@@ -301,12 +308,7 @@ export async function validatePublicApiKey(
 
     if (!snapshot || snapshot.empty) {
         secureLog('[Public API] Invalid API key attempt');
-        if (cacheKey && cacheTtl) {
-            validationCache.set(cacheKey, {
-                expiresAt: Date.now() + cacheTtl,
-                result: null,
-            });
-        }
+        rememberValidationCache(cacheKey, cacheTtl, null);
         return null;
     }
 
@@ -324,12 +326,7 @@ export async function validatePublicApiKey(
         storeId: doc.id,
     };
 
-    if (cacheKey && cacheTtl) {
-        validationCache.set(cacheKey, {
-            expiresAt: Date.now() + cacheTtl,
-            result,
-        });
-    }
+    rememberValidationCache(cacheKey, cacheTtl, result);
 
     return result;
 }

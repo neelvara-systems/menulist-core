@@ -1,6 +1,6 @@
 import DrawerElement from "@antdComponent/drawerElement";
 import ImageRenderer from "@atoms/imageRenderer";
-import { BUSINESS_TYPES } from "@constant/common";
+import { BUSINESS_TYPES } from "@data/shared/businessTypes";
 import { addAssetsCategory, addAssetsItem, addAssetsSubCategory, deleteAssetsCategory, deleteAssetsItem, deleteAssetsSubCategory, updateAssetsCategory, updateAssetsItem, updateAssetsSubCategory } from "@database/static/static";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
@@ -422,4 +422,3 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
 }
 
 export default DetailsModal
-

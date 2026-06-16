@@ -829,12 +829,13 @@ export async function loadDocumentIntoFabricCanvas(params: {
     fabricApi: FabricStatic;
     productLabel: string;
     selectedId?: string;
+    showCanvasWatermark?: boolean;
     viewportSize?: {
         height: number;
         width: number;
     };
 }) {
-    const { canvas, documentValue, fabricApi, productLabel, selectedId, viewportSize } = params;
+    const { canvas, documentValue, fabricApi, productLabel, selectedId, showCanvasWatermark = true, viewportSize } = params;
     const viewportWidth = Math.max(1, Math.round(viewportSize?.width || canvas.getWidth() || documentValue.canvas.width));
     const viewportHeight = Math.max(1, Math.round(viewportSize?.height || canvas.getHeight() || documentValue.canvas.height));
     canvas.clear();
@@ -850,7 +851,7 @@ export async function loadDocumentIntoFabricCanvas(params: {
         canvas.add(object);
     }
     buildVisibleWatermarkObjects(fabricApi, documentValue).forEach((object) => canvas.add(object));
-    canvas.add(buildWatermarkObject(fabricApi, documentValue, productLabel));
+    if (showCanvasWatermark) canvas.add(buildWatermarkObject(fabricApi, documentValue, productLabel));
     keepWorkspaceAtBack(canvas);
     const selectedObject = selectedId
         ? canvas.getObjects().find((object) => (object as CreativeFabricObject).id === selectedId && isEditableFabricObject(object))

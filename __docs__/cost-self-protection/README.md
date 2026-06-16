@@ -71,6 +71,7 @@ Before production, verify:
 | Rate limiting (15+ configs)     | ✅ BUILT            | `src/lib/rateLimit/configs.ts` |
 | Feature flags (instant disable) | ✅ BUILT            | `src/config/features.ts`       |
 | App Check (bot protection)      | ✅ Ready (flag OFF) | `ENABLE_APP_CHECK`             |
+| Platform Cost Posture | ✅ BUILT | `/platform/cost-posture`, `__docs__/platform-cost-posture/` |
 | Cloud Billing export to BigQuery | ☐ PRE-PROD MANUAL | `__docs__/production-readiness/launch-prerequisites.md` Step 2B |
 | Versioned Storage cache metadata | ✅ BUILT | Public immutable for versioned public assets; private immutable for internal/source uploads |
 | **Global circuit breaker**      | ✅ CORE BUILT / ☐ PRE-PROD VERIFY | `src/lib/ops/safeMode.ts`, `/api/ops/safe-mode`, `functions/src/triggers/operations.ts` |

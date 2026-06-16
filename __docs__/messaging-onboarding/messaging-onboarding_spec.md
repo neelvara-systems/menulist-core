@@ -502,7 +502,7 @@ Extracted aggressively but treated as **editable suggestions only**.
 - `address` — Pre-fills preview, editable before publish
 - `logo_present` — Boolean flag for future use
 - `cuisine_hint` — Used for `businessType` mapping
-- `detected_business_type` — AI-detected from menu content (e.g., "Restaurant", "Salon", "Cafe"). Uses existing `BUSINESS_TYPES` from `src/constants/common.ts` (60+ types plus canonical `Other`, 7 categories). Pre-fills editable dropdown on preview page. Drives: schema.org mapping, OBP structure, time slot defaults, UI labels, menu filters. Confidence-based: HIGH/MEDIUM → use directly, LOW/missing → fallback to `Other` with the best known business category, or `specialty` if category is unknown.
+- `detected_business_type` — AI-detected from menu content (e.g., "Restaurant", "Salon", "Cafe"). Uses existing `BUSINESS_TYPES` from `src/data/shared/businessTypes.ts` (60+ types plus canonical `Other`, 7 categories). Pre-fills editable dropdown on preview page. Drives: schema.org mapping, OBP structure, time slot defaults, UI labels, menu filters. Confidence-based: HIGH/MEDIUM → use directly, LOW/missing → fallback to `Other` with the best known business category, or `specialty` if category is unknown.
 
 ---
 

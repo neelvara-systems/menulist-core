@@ -28,7 +28,9 @@ The Feedback System is a **client-side DAL feature** with no API routes. Three s
 | `src/components/templates/main-app/helpCenter/FeatureRequests.tsx` | — | Step 3 — Feature request text (`TextArea`, 4 rows) and/or popular support-improvement voting (5 hardcoded items, thumbs up/down toggle per item). Votes synced to hidden form field via `useEffect`. |
 | `src/app/(answerlattice)/answerlattice/feedback/page.tsx` | — | Authenticated Answerlattice owner route for feedback review |
 | `src/components/templates/answerlattice/feedback/AnswerlatticeFeedbackReview.tsx` | — | Workspace-scoped wrapper around the reusable feedback review template |
-| `src/components/templates/platform/feedbackAdmin/index.tsx` | — | Reusable feedback review template for platform-wide and workspace-scoped review; workspace mode loads Product Surfaces, filters feedback by surface, assigns/clears surface links, and carries surface context into Support Board cards |
+| `src/components/templates/platform/feedbackAdmin/index.tsx` | — | Reusable feedback review template for platform-wide and workspace-scoped review; workspace mode loads Product Surfaces, filters feedback by surface, assigns/clears surface links, shows submitted-by name/email/user ID from `sourceContext`, and carries submitter + surface context into Support Board cards |
+| `src/database/contentFeedback/index.ts` | — | Capped article/changelog reaction activity log. Stores actor snapshots for like/dislike added/removed events and exposes a one-document owner read per opened entry. |
+| `src/components/templates/platform/changelog/ChangelogPreview.tsx` | — | Owner preview modal can show recent identified changelog reaction activity without loading reaction logs during normal public/help browsing. |
 
 ### 2.2 Database Layer
 
@@ -50,6 +52,8 @@ The Feedback System is a **client-side DAL feature** with no API routes. Three s
 | `updateArticleFeedbackGeneric(...)` | Helper for articles | `updateContentFeedback({ contentType: 'article' })` |
 | `updateChangelogFeedbackGeneric(...)` | Helper for changelog | `updateContentFeedback({ contentType: 'changelog' })` |
 | `updateFaqFeedbackGeneric(...)` | Stub — throws "not implemented" | — |
+
+Content reaction tracking now keeps the existing aggregate counters and also writes a capped `list` activity log under `changelog_feedback/{tId}/{sId}/doc1_{entryId}` or `article_feedback/{tId}/{sId}/doc1_{entryId}`. Each event stores `sentiment`, `action`, sanitized comment text when present, `uId`, `userName`, `userEmail`, `userPhone`, and `sourceContext`. Existing records without actor snapshots remain readable and fall back to `uId`.
 | `updateWorkflowFeedbackGeneric(...)` | Stub — throws "not implemented" | — |
 
 **Content Feedback DAL:** `src/database/contentFeedback/index.ts` (68 lines)

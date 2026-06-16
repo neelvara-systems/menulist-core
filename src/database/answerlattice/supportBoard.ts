@@ -46,6 +46,13 @@ export type CreateAnswerlatticeSupportBoardCardInput = Pick<
     | 'priority'
     | 'sourceType'
     | 'sourceId'
+    | 'sourceCustomerName'
+    | 'sourceCustomerEmail'
+    | 'sourceCustomerPhone'
+    | 'sourceCustomerUserId'
+    | 'sourceOrigin'
+    | 'sourcePath'
+    | 'sourceSessionId'
     | 'assigneeId'
     | 'assigneeName'
     | 'dueDate'
@@ -73,6 +80,13 @@ export type UpdateAnswerlatticeSupportBoardCardInput = Partial<Pick<
     | 'description'
     | 'status'
     | 'priority'
+    | 'sourceCustomerName'
+    | 'sourceCustomerEmail'
+    | 'sourceCustomerPhone'
+    | 'sourceCustomerUserId'
+    | 'sourceOrigin'
+    | 'sourcePath'
+    | 'sourceSessionId'
     | 'assigneeId'
     | 'assigneeName'
     | 'dueDate'
@@ -207,6 +221,13 @@ const normalizeCardInput = (data: CreateAnswerlatticeSupportBoardCardInput) => {
         priority: normalizePriority(cardData.priority),
         sourceType: normalizeSourceType(cardData.sourceType),
         sourceId: cardData.sourceId || null,
+        sourceCustomerName: cleanNullableText(cardData.sourceCustomerName, 160),
+        sourceCustomerEmail: cleanNullableText(cardData.sourceCustomerEmail, 180),
+        sourceCustomerPhone: cleanNullableText(cardData.sourceCustomerPhone, 80),
+        sourceCustomerUserId: cleanNullableText(cardData.sourceCustomerUserId, 120),
+        sourceOrigin: cleanNullableText(cardData.sourceOrigin, 180),
+        sourcePath: cleanNullableText(cardData.sourcePath, 180),
+        sourceSessionId: cleanNullableText(cardData.sourceSessionId, 120),
         dueDate: cardData.dueDate || null,
         assigneeId: cleanNullableText(cardData.assigneeId, 100),
         assigneeName: cleanNullableText(cardData.assigneeName, 100),
@@ -240,6 +261,13 @@ const normalizeUpdatePatch = (patch: UpdateAnswerlatticeSupportBoardCardInput) =
             ...(cardPatch.description !== undefined ? { description: cleanText(cardPatch.description, ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_DESCRIPTION_LENGTH) } : {}),
             ...(cardPatch.status ? { status: normalizeStatus(cardPatch.status) } : {}),
             ...(cardPatch.priority ? { priority: normalizePriority(cardPatch.priority) } : {}),
+            ...(cardPatch.sourceCustomerName !== undefined ? { sourceCustomerName: cleanNullableText(cardPatch.sourceCustomerName, 160) } : {}),
+            ...(cardPatch.sourceCustomerEmail !== undefined ? { sourceCustomerEmail: cleanNullableText(cardPatch.sourceCustomerEmail, 180) } : {}),
+            ...(cardPatch.sourceCustomerPhone !== undefined ? { sourceCustomerPhone: cleanNullableText(cardPatch.sourceCustomerPhone, 80) } : {}),
+            ...(cardPatch.sourceCustomerUserId !== undefined ? { sourceCustomerUserId: cleanNullableText(cardPatch.sourceCustomerUserId, 120) } : {}),
+            ...(cardPatch.sourceOrigin !== undefined ? { sourceOrigin: cleanNullableText(cardPatch.sourceOrigin, 180) } : {}),
+            ...(cardPatch.sourcePath !== undefined ? { sourcePath: cleanNullableText(cardPatch.sourcePath, 180) } : {}),
+            ...(cardPatch.sourceSessionId !== undefined ? { sourceSessionId: cleanNullableText(cardPatch.sourceSessionId, 120) } : {}),
             ...(cardPatch.assigneeId !== undefined ? { assigneeId: cleanNullableText(cardPatch.assigneeId, 100) } : {}),
             ...(cardPatch.assigneeName !== undefined ? { assigneeName: cleanNullableText(cardPatch.assigneeName, 100) } : {}),
             ...(cardPatch.dueDate !== undefined ? { dueDate: cardPatch.dueDate || null } : {}),

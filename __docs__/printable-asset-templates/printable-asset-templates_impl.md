@@ -164,9 +164,10 @@ Single printable assets support PDF and image downloads from the same selected t
 Document rules:
 
 - QR layers are locked and carry source refs for menu/feedback URL.
-- Short-link and MenuList attribution layers are locked.
+- Short-link layers are locked and carry source refs for the current project URL.
+- MenuList attribution layers are stripped from editor documents and saved templates.
 - Business name, headline, instruction, and CTA copy remain editable.
-- Premium attribution follows `resolveMenuListAttributionPolicy()`.
+- PNG/PDF export applies MenuList attribution at runtime through `resolveMenuListAttributionPolicy()`, so non-premium output is branded and eligible higher plans can remove it without placing branding inside the editor canvas.
 - The editor document is the source for preview, default download, and customized download.
 
 Full Print Menu uses the existing Menu Card Export renderer, which currently has three real layout families (`classic`, `premium`, `compact`). Therefore `print_menu` exposes only `classic-luxe`, `modern-calm`, and `qr-first` in Assets so owners do not see nine choices that collapse into the same PDF output. QR/display assets keep the full 9-family catalog because their renderers own family-specific header, logo, decoration, and color treatments.

@@ -3,6 +3,7 @@
 import DrawerElement from '@antdComponent/drawerElement';
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { updateSessionInternalNote } from '@database/chatSessions';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { ChatMessage, ChatSession } from '@type/chatSession';
 import { Avatar, Button, Card, Descriptions, Divider, Flex, Input, message, Statistic, Tag, theme, Typography } from 'antd';
 import { useEffect, useState } from 'react';
@@ -64,9 +65,14 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
 
     const generateTranscript = (session: ChatSession): string => {
         const lines: string[] = [];
+        const requester = getAnswerlatticeCustomerIdentity(session);
         lines.push(`# Chat Transcript - ${new Date().toLocaleDateString()}`);
         lines.push(`**Conversation ID:** ${session.id || 'N/A'}`);
-        lines.push(`**User:** ${session.userName || `User ${session.uId}` || 'Unknown'}`);
+        lines.push(`**User:** ${requester.displayName}`);
+        if (requester.email) lines.push(`**Email:** ${requester.email}`);
+        if (requester.phone) lines.push(`**Phone:** ${requester.phone}`);
+        if (requester.origin || requester.path) lines.push(`**Location:** ${[requester.origin, requester.path].filter(Boolean).join(' · ')}`);
+        if (requester.sessionId) lines.push(`**Widget Session:** ${requester.sessionId}`);
         lines.push(`**Mode:** ${session.mode === 'qna' ? 'QnA' : 'Assistant'}`);
         lines.push(`**Created:** ${session.createdOn?.toDate().toLocaleString() || 'N/A'}`);
 
@@ -299,6 +305,11 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
         return null;
     }
 
+    const requester = getAnswerlatticeCustomerIdentity(session);
+    const messages = session.messages || [];
+    const contact = [requester.email, requester.phone].filter(Boolean).join(' · ') || 'No contact saved';
+    const location = [requester.origin, requester.path].filter(Boolean).join(' · ');
+
     return (
         <DrawerElement
             open={open}
@@ -325,8 +336,9 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
                                     {session.mode === 'qna' ? 'QnA Mode' : 'Assistant Mode'}
                                 </Tag>
                                 <Tag icon={<LuUser size={12} />}>
-                                    {session.userName || `User ${session.uId}`}
+                                    {requester.displayName}
                                 </Tag>
+                                {requester.email ? <Tag>{requester.email}</Tag> : null}
                             </Flex>
                         </div>
                         <Button
@@ -338,8 +350,24 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
                     </Flex>
 
                     <Descriptions column={2} size="small" bordered>
+                        <Descriptions.Item label="Customer">
+                            {requester.displayName}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Contact">
+                            {contact}
+                        </Descriptions.Item>
+                        {location ? (
+                            <Descriptions.Item label="Where it happened" span={2}>
+                                {location}
+                            </Descriptions.Item>
+                        ) : null}
+                        {requester.sessionId ? (
+                            <Descriptions.Item label="Widget Session" span={2}>
+                                <Text code style={{ fontSize: 11 }}>{requester.sessionId}</Text>
+                            </Descriptions.Item>
+                        ) : null}
                         <Descriptions.Item label="Total Messages">
-                            {session.messages.length}
+                            {messages.length}
                         </Descriptions.Item>
                         <Descriptions.Item label="Created">
                             <DateTimeDisplay value={session.createdOn} mode="fromnow" />
@@ -354,8 +382,8 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
 
                     {/* Feedback Summary */}
                     {(() => {
-                        const positive = session.messages.filter(m => m.feedback?.isGood === true).length;
-                        const negative = session.messages.filter(m => m.feedback?.isGood === false).length;
+                        const positive = messages.filter(m => m.feedback?.isGood === true).length;
+                        const negative = messages.filter(m => m.feedback?.isGood === false).length;
                         const total = positive + negative;
                         if (total > 0) {
                             const satisfaction = Math.round((positive / total) * 100);
@@ -402,7 +430,7 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
                     title={
                         <Flex justify="space-between" align="center">
                             <Text strong style={{ fontSize: 15 }}>
-                                Conversation ({session.messages.length} messages)
+                                Conversation ({messages.length} messages)
                             </Text>
                         </Flex>
                     }
@@ -410,7 +438,7 @@ function ConversationDrawer({ open, session, onClose }: ConversationDrawerProps)
                     styles={{ body: { flex: 1, overflowY: 'auto', padding: 16 } }}
                 >
                     <Flex vertical gap={0}>
-                        {session.messages.map((msg, idx) => renderMessage(msg, idx, session.messages))}
+                        {messages.map((msg, idx) => renderMessage(msg, idx, messages))}
                     </Flex>
                 </Card>
 

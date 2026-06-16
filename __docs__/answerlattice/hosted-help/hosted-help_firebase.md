@@ -67,6 +67,7 @@ Registry docs store only compact status fields:
 ## Bot and Abuse Controls
 
 - Hosted page requests use `ANSWERLATTICE_HOSTED_HELP` rate limiting.
+- When rate limiting is enabled but the limiter provider returns the shared unavailable sentinel, hosted pages render the public shell without KB/FAQ/changelog content reads. Hosted Help settings saves and manual DNS refreshes return `503` with `Cache-Control: no-store`.
 - Search is client-side over already-loaded published content; it does not call AI.
 - Public pages do not expose tickets, chat history, feedback writes, or user/session data.
 - `robots.txt` returns `Disallow: /` when the site is disabled or `noIndex` is enabled.

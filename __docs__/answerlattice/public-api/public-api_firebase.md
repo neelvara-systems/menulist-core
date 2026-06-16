@@ -1,7 +1,7 @@
 # Answerlattice Public API — Firebase & Cost Notes
 
 > **Status:** Implemented
-> **Last Updated:** 2026-05-19
+> **Last Updated:** 2026-06-16
 
 ---
 
@@ -14,7 +14,7 @@
 | `answerlattice_releases` | Read | Answers | Latest active release when request does not include `currentVersion` |
 | `answerlattice_canonicalAnswers` | Read | Answers | Active answers for matched entities |
 | `answerlattice_entities` | Read | Entities | Capped registry read by tenant/store |
-| `answerlattice_signalEvents` | Write | Signals | One append-only signal event |
+| `answerlattice_signalEvents` | Write | Signals | One append-only signal event; explicit external/request IDs use deterministic document IDs to avoid duplicate rows on retries |
 
 ---
 
@@ -24,9 +24,11 @@
 | --- | ---: | ---: | --- |
 | Answers | 2-5 reads | 0 | Hash-only key lookup + entity index + optional latest release + answer queries |
 | Entities | 2 reads to capped page | 0 | Hash-only key lookup + capped entity registry query |
-| Signals | 1 read | 1 write | Hash-only key lookup + explicit `signals:write` scope + append-only signal event |
+| Signals | 1 read | 1 write | Hash-only key lookup + explicit `signals:write` scope + append-only signal event; duplicate explicit external/request IDs do not create extra signal documents |
 
 All endpoints are rate-limited per API key before expensive work starts.
+
+Production answer responses do not return internal entity-resolution debug payloads, keeping public response size and internal retrieval traces bounded to owner-controlled diagnostics.
 
 Widget-only credentials live under `stores.answerlatticeWidgetApi` and are not used by these public API endpoints. This avoids broader API authorization from embeddable widget keys while preserving a single store-document lookup pattern.
 

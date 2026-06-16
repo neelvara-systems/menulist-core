@@ -4,7 +4,7 @@
 
 Printable Asset Templates turns MenuList print/download files into a dedicated owner workspace called **Assets**. The owner chooses what they need - table tent, single table card, counter sticker, entrance poster, feedback QR, full print menu, or complete Menu Kit - then chooses a finished template family and downloads the result. QR/display assets expose the 9-family catalog; full Print Menu exposes only its real unique PDF layouts until the full-menu PDF renderer owns all 9 families.
 
-The default path is still not a blank design tool. Owners choose a finished template and download it. For non-menu printable assets, desktop also offers a governed **Customize in editor** path backed by the shared Creative Editor document model. Owners can adjust copy and layout when needed, while QR destination, scan-safe QR rendering, and MenuList attribution policy stay protected by locked layers.
+The default path is still not a blank design tool. Owners choose a finished template and download it. For non-menu printable assets, desktop also offers a governed **Customize in editor** path backed by the shared Creative Editor document model. Owners can adjust copy and layout when needed, while QR destination, scan-safe QR rendering, and MenuList attribution policy stay protected. QR/link source layers remain locked in the editor document. MenuList attribution is not stored as an editable canvas layer; it is applied at export time when the existing plan policy requires it.
 
 ## Why This Matters
 
@@ -43,7 +43,7 @@ The current Print Assets screen proves the workflow. The next system must make t
 5. Owner clicks one template family.
 6. Desktop opens a modal and mobile opens a bottom sheet with the generated output preview already visible. Non-menu printable assets preview from the Creative Editor document renderer; Print Menu uses the generated menu PDF first-page image preview.
 7. Owner downloads the selected template as PDF or image. Complete Menu Kit remains a ZIP bundle.
-8. On desktop, owner can click **Customize in editor** for Table Tent, Single Card, Counter Sticker, Entrance Poster, or Feedback QR. The template opens fullscreen with editable copy/layout and locked QR/link/attribution layers.
+8. On desktop, owner can click **Customize in editor** for Table Tent, Single Card, Counter Sticker, Entrance Poster, or Feedback QR. The template opens fullscreen with editable copy/layout and locked QR/link source layers. MenuList attribution is added only to the downloaded output when the existing plan policy requires it.
 9. MenuList creates the file locally and downloads it.
 
 ## Route and Navigation
@@ -97,7 +97,7 @@ Each family is a finished layout system that can adapt to different business typ
 | Premium branding policy | Premium hides visible MenuList branding when the existing flag permits it; all other plans show attribution. |
 | Output parity | Desktop and mobile downloads must use the same template ID and renderer. |
 | No duplicate choices | If an asset renderer maps multiple families to the same output, the UI exposes only the unique supported family choices for that asset. |
-| Governed customization | Desktop customization must start from an approved template document and keep QR/link/attribution source layers locked. |
+| Governed customization | Desktop customization must start from an approved template document and keep QR/link source layers locked. MenuList attribution must stay out of saved editor documents and be applied only at export time when policy requires it. |
 
 ## Plan and Access
 

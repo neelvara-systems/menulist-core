@@ -1,7 +1,7 @@
 # Creative Editor Template Registry Implementation
 
 **Status:** Implemented
-**Last Updated:** June 15, 2026
+**Last Updated:** June 16, 2026
 
 ## Files
 
@@ -12,6 +12,9 @@
 | Shared editor callback UI | `src/modules/creative-editor/CreativeEditor.tsx` |
 | DAL schemas | `src/lib/validation/creativeEditorTemplateSchemas.ts` |
 | Client registry DAL | `src/lib/creative-editor/templateRegistryDal.ts` |
+| Platform manager route | `src/app/(main)/platform/asset-templates/page.tsx` |
+| Platform manager UI | `src/components/templates/platform/assetTemplates/index.tsx` |
+| Platform settings navigation | `src/components/templates/platform/settings/index.tsx` |
 | Firestore rules | `firestore.rules` |
 | Storage rules | `storage.rules` |
 | Print asset rehydration | `src/lib/printable-asset-templates/editorDocumentAdapter.ts` |
@@ -23,6 +26,7 @@
 ENABLE_CREATIVE_EDITOR_TEMPLATE_REGISTRY: true
 ENABLE_CREATIVE_EDITOR_USER_TEMPLATES: true
 ENABLE_PRINTABLE_ASSET_USER_TEMPLATES: true
+ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER: true
 ```
 
 Flags live in `src/config/features.ts`. This intentionally avoids env-var bloat.
@@ -102,6 +106,33 @@ Returns bounded metadata summaries. It does not return full documents. `platform
 
 Registry calls are intentionally route/editor-managed client DAL operations. The `/assets` route owns inline loading and fallback states, so an unavailable optional registry catalog does not trigger a global app error while generated templates remain usable. Save, open, and delete operations preserve feature-specific errors for the editor or route UI instead of returning global composer fallback arrays.
 
+### `listCreativeEditorPlatformTemplateCatalog`
+
+Platform manager helper for `/platform/asset-templates`.
+
+- reads one `platformAssetTemplates/{businessCategory}` document,
+- returns up to 200 summaries,
+- can include archived templates for platform users,
+- filters product/source/asset metadata in UI.
+
+### `saveCreativeEditorPlatformTemplate`
+
+Platform manager helper that creates or replaces a platform template document.
+
+- validates the neutral editor document,
+- uploads `document.json` to `creative-editor/templates/platform/{businessCategory}/{templateId}/`,
+- uploads an optional bounded preview to the same Storage folder,
+- updates the selected category catalog document,
+- preserves existing `sortIndex` and increments `version`.
+
+### `updateCreativeEditorPlatformTemplateMetadata`
+
+Updates title, description, template family, and status without uploading the full editor document. This is the low-cost path for draft/publish/archive changes.
+
+### `deleteCreativeEditorPlatformTemplate`
+
+Removes the template summary from the category catalog, then best-effort deletes its Storage document and preview. Platform delete is not exposed through owner Assets.
+
 ### `saveCreativeEditorTemplate`
 
 Body:
@@ -119,7 +150,7 @@ Creates or replaces a user template. The DAL writes the full document JSON to St
 
 ### `getCreativeEditorTemplate`
 
-Returns metadata summary and full `CreativeEditorDocument`. `templateType=platform` searches the resolved category catalog before loading Storage; `templateType=user` loads from the store `default` index and store-scoped Storage document. Both paths match the template id plus `productId`, `sourceSurface`, and optional `assetTypeId` before loading the Storage payload.
+Returns metadata summary and full `CreativeEditorDocument`. `templateType=platform` searches the resolved category catalog before loading Storage; owner-facing opens require published platform templates, while the platform manager passes `includeUnpublished` so drafts and archived templates can be edited. `templateType=user` loads from the store `default` index and store-scoped Storage document. Both paths match the template id plus `productId`, `sourceSurface`, and optional `assetTypeId` before loading the Storage payload.
 
 ### `deleteCreativeEditorTemplate`
 
@@ -134,6 +165,7 @@ Deletes the current store's matching index entry, then cleans up Storage documen
 - Inputs are validated with Zod before Firestore/Storage access.
 - Template IDs and path parts are sanitized.
 - Owner can only list/read/delete templates in their own `{tenant, store}` scope.
+- Platform manager route checks `platformRole` before rendering management actions.
 - Raw file paths are not accepted from the client.
 
 ## Print Asset Integration
@@ -153,7 +185,7 @@ Saved documents are rehydrated before use:
 
 ## Rollout
 
-The flow is enabled by feature flags. Turning off `ENABLE_PRINTABLE_ASSET_USER_TEMPLATES` hides Saved designs and disables Save as template while leaving existing generated templates intact.
+The flow is enabled by feature flags. Turning off `ENABLE_PRINTABLE_ASSET_USER_TEMPLATES` hides Saved designs and disables Save as template while leaving existing generated templates intact. Turning off `ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER` hides the platform manager navigation and direct route content.
 
 ## Failure Behavior
 

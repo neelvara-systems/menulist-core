@@ -640,6 +640,13 @@ function itemSignal(data: Record<string, any>, itemId: string) {
     return { views, taps, recommendationTaps, unavailableTaps, score };
 }
 
+function formatItemAttentionReason(signal: { views: number; taps: number; recommendationTaps: number; score: number }): string {
+    const totalTaps = signal.taps + signal.recommendationTaps;
+    if (totalTaps > 0) return `${signal.views} views and ${totalTaps} taps`;
+    if (signal.views > 0) return `${signal.views} views`;
+    return `${signal.score} interest signals`;
+}
+
 function categorySignal(data: Record<string, any>, categoryId: string) {
     const views = data.viewsByCategory?.[categoryId] || 0;
     const taps = data.clicksByCategory?.[categoryId] || 0;
@@ -805,19 +812,36 @@ function buildCatalogActionCandidates(
         });
     }
 
-    const missingContentItem = items
+    const missingImageItem = items
         .map((item) => ({ item, signal: itemSignal(data, item.id) }))
-        .filter(({ item, signal }) => item.active && signal.score >= 6 && (!item.hasImage || !item.hasDescription))
+        .filter(({ item, signal }) => item.active && item.available && !item.hasImage && signal.score >= 6)
         .sort((a, b) => b.signal.score - a.signal.score)[0];
-    if (missingContentItem) {
+    if (missingImageItem) {
         candidates.push({
-            id: `catalog-metadata-content-${missingContentItem.item.id}`,
+            id: `catalog-image-gap-${missingImageItem.item.id}`,
+            type: 'image_gap',
+            title: 'Add a photo to this item',
+            description: `${missingImageItem.item.name} is getting customer attention but has no item photo.`,
+            reason: formatItemAttentionReason(missingImageItem.signal),
+            actionLabel: 'Add photo',
+            metricLabel: `${missingImageItem.signal.score} signals`,
+            priority: 'medium',
+        });
+    }
+
+    const missingDescriptionItem = items
+        .map((item) => ({ item, signal: itemSignal(data, item.id) }))
+        .filter(({ item, signal }) => item.active && item.available && !item.hasDescription && item.id !== missingImageItem?.item.id && signal.score >= 6)
+        .sort((a, b) => b.signal.score - a.signal.score)[0];
+    if (missingDescriptionItem) {
+        candidates.push({
+            id: `catalog-metadata-content-${missingDescriptionItem.item.id}`,
             type: 'metadata_demand',
             title: 'Add detail to a high-interest item',
-            description: `${missingContentItem.item.name} has demand but is missing ${!missingContentItem.item.hasImage ? 'a photo' : 'a description'}.`,
-            reason: `${missingContentItem.signal.score} interest signals`,
-            actionLabel: !missingContentItem.item.hasImage ? 'Add photo' : 'Add description',
-            metricLabel: `${missingContentItem.signal.score} signals`,
+            description: `${missingDescriptionItem.item.name} has demand but is missing a description.`,
+            reason: formatItemAttentionReason(missingDescriptionItem.signal),
+            actionLabel: 'Add description',
+            metricLabel: `${missingDescriptionItem.signal.score} signals`,
             priority: 'medium',
         });
     } else {
@@ -1557,6 +1581,7 @@ async function writeMenuDashboardSummary(
         'category_reorder',
         'hidden_demand',
         'variant_clarity',
+        'image_gap',
         'metadata_demand',
         'timed_category',
         'price_signal',

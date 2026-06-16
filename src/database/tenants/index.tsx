@@ -46,17 +46,18 @@ export const getTenantByEmail = (email: string) => {
     })
 }
 
+export const readTenantById = async (id: number) => {
+    const collectionDocRef = await getDocRef(id);
+    const docSnap = await getDoc(collectionDocRef);
+    if (docSnap.exists()) {
+        return docSnap.data();
+    }
+    return null;
+}
+
 export const getTenantById = async (id: number) => {
     return await apiCallComposer(
-        async () => {
-            const collectionDocRef = await getDocRef(id);
-            const docSnap = await getDoc(collectionDocRef);
-            if (docSnap.exists()) {
-                return docSnap.data();
-            } else {
-                return null
-            }
-        },
+        () => readTenantById(id),
         id,
         "getTenantById"
     );

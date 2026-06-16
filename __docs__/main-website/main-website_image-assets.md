@@ -1,7 +1,7 @@
 # Website Image & Asset Requirements
 
-**Status:** ✅ CURRENT — P0 fictional demo visuals generated and mounted where the current homepage uses visual proof
-**Last Updated:** May 21, 2026
+**Status:** ✅ CURRENT — Homepage demo visuals plus selected clean feature screenshot proof assets
+**Last Updated:** June 16, 2026
 **Primary Stage Output:** `website-prep-codex-prompts/stage-06-output-screenshot-asset-production-system.md`
 **Latest Asset Output:** `asset-production/stage-06-3/stage-06-3-p0-fictional-demo-asset-pack.md`
 
@@ -60,6 +60,22 @@ Approved public screenshot exception (June 15, 2026):
 - `/public/images/website/print-ready-kit/print-assets-dashboard.jpg` is a cropped Assets template-list capture with account-header details removed.
 - `/public/images/website/print-ready-kit/print-assets-editor.jpg` is the print asset editor capture for the dedicated Print-ready Kit page.
 - These assets are mounted only on `/features/print-ready-kit` through `PrintReadyKitProofGallery.tsx`.
+
+Approved public feature screenshot proof assets (June 16, 2026):
+
+- `/public/images/website/features/menu-import/source-menu-link.webp` is a cropped owner import/source proof for `/features/menu-import`.
+- `/public/images/website/features/qr-menu-links/share-kit.webp` is a cropped owner share/QR/presence proof for `/features/qr-menu-links`.
+- `/public/images/website/features/qr-menu-links/public-menu.webp` is a public customer menu proof for `/features/qr-menu-links`.
+- `/public/images/website/features/customer-feedback-loop/public-feedback-form.webp` is the public feedback report form proof for `/features/customer-feedback-loop`.
+- `/public/images/website/features/customer-feedback-loop/owner-feedback-inbox.webp` is a cropped owner feedback inbox/status proof for `/features/customer-feedback-loop`.
+- `/public/images/website/features/public-discovery/presence-checklist.webp` is a public placement/source checklist proof for `/features/public-discovery`.
+- These assets are mounted through `FeatureScreenshotProofGallery.tsx` and use localized captions from `Website.FeatureDetailScreenshots`.
+
+Held-back source captures (June 16, 2026):
+
+- Raw Chrome captures live under `__docs__/main-website/asset-production/feature-screenshots/raw/`.
+- Do not move rough captures into `public/` if they show broken media, private owner details, unready Business Health states, missing descriptions, or non-launch demo quality.
+- Current held-back slots: Official Business Page needs a clean public page without broken media/install-banner distraction; Featured Choices needs a public menu state that visibly proves Featured/Quick/Value choices; Owner PWA Dashboard needs real mobile/PWA screenshots; Business Health needs a ready/stable status state; Menu Content Prep and Menu Quality Validation need cleaner prepared demo data before public mounting.
 
 Compatibility copy:
 

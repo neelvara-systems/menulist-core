@@ -1,5 +1,5 @@
 import { FEATURE_FLAGS } from "@config/features";
-import { resolveStoreBusinessCategory } from "@constant/common";
+import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { DB_COLLECTIONS } from "@constant/database";
 import { isReservedProjectSlug } from "@constant/reservedSlugs";
 import {

@@ -19,6 +19,14 @@ export const ticketCSVColumns: CSVColumn<SupportTicketType>[] = [
         accessor: (ticket) => ticket.clientDetails?.tenantName || 'N/A',
     },
     {
+        header: 'Client Email',
+        accessor: (ticket) => ticket.clientDetails?.email || 'N/A',
+    },
+    {
+        header: 'Client Phone',
+        accessor: (ticket) => ticket.clientDetails?.phone || 'N/A',
+    },
+    {
         header: 'Status',
         accessor: (ticket) => ticket.status,
     },
@@ -97,6 +105,10 @@ export const ticketCSVColumnsMinimal: CSVColumn<SupportTicketType>[] = [
     {
         header: 'Client',
         accessor: (ticket) => `${ticket.clientDetails?.storeName || 'N/A'} (${ticket.clientDetails?.tenantName || 'N/A'})`,
+    },
+    {
+        header: 'Client Email',
+        accessor: (ticket) => ticket.clientDetails?.email || 'N/A',
     },
     {
         header: 'Status',

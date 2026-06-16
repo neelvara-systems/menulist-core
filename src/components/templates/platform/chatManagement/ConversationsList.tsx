@@ -5,6 +5,7 @@ import { getConversationsPaginated } from '@database/chatAnalytics';
 import { batchUpdateSessionMetadata } from '@database/chatSessions';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { useDebounceValue } from '@hook/useDebounce';
+import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { ChatSession, ConversationFilters } from '@type/chatSession';
 import { calculateQualityFlags } from '@util/qualityMetrics';
 import { Button, Card, Checkbox, Dropdown, Flex, Input, message, Popover, Skeleton, Splitter, Tooltip, Typography } from 'antd';
@@ -218,10 +219,11 @@ function ConversationsList() {
         const csvRows: string[] = [];
 
         // Header
-        csvRows.push('ID,Conversation Title,Customer Name,Type,Messages,Helpful,Not Helpful,Satisfaction %,Started,Last Activity');
+        csvRows.push('ID,Conversation Title,Customer Name,Customer Email,Type,Messages,Helpful,Not Helpful,Satisfaction %,Started,Last Activity');
 
         // Data rows (with null safety)
         filteredSessions.forEach(session => {
+            const requester = getAnswerlatticeCustomerIdentity(session);
             const messages = session.messages || [];
             const positiveFeedback = messages.filter(msg => msg.feedback?.isGood === true).length;
             const negativeFeedback = messages.filter(msg => msg.feedback?.isGood === false).length;
@@ -234,7 +236,8 @@ function ConversationsList() {
             const row = [
                 session.id || 'N/A',
                 escapeCSV(session.title || 'Untitled Chat'),
-                escapeCSV(session.userName || `User ${session.uId}` || 'N/A'),
+                escapeCSV(requester.displayName),
+                escapeCSV(requester.email || 'N/A'),
                 session.mode === 'qna' ? 'Quick Answer' : 'Chat',
                 messages.length,
                 positiveFeedback,
@@ -270,7 +273,11 @@ function ConversationsList() {
             const searchLower = debouncedSearchQuery.toLowerCase();
 
             // Server-side already filtered by title and userName
-            // Here we only search in message content (nested data that can't be efficiently queried in Firestore)
+            // Here we only search in requester metadata and message content (nested data that can't be efficiently queried in Firestore)
+            const requester = getAnswerlatticeCustomerIdentity(session);
+            if (requester.email?.toLowerCase().includes(searchLower)) return true;
+            if (requester.displayName.toLowerCase().includes(searchLower)) return true;
+            if (requester.userId?.toLowerCase().includes(searchLower)) return true;
             return session.messages.some(msg => {
                 const content = msg.content || msg.craftedAnswer || '';
                 return content.toLowerCase().includes(searchLower);

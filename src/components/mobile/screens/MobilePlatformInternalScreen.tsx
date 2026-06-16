@@ -19,6 +19,9 @@ export type MobilePlatformInternalScreenKey =
     | 'platformTenants'
     | 'platformStores'
     | 'platformUsers'
+    | 'costPosture'
+    | 'assetTemplates'
+    | 'pricingPlans'
     | 'supportTickets'
     | 'feedbackAdmin'
     | 'knowledgeBase'
@@ -29,6 +32,7 @@ export type MobilePlatformInternalScreenKey =
     | 'chatBackfill'
     | 'chatWeeklyDigest'
     | 'chatRoiCalculator'
+    | 'answerlatticeIntake'
     | 'answerlatticeWidget';
 
 type MobilePlatformInternalScreenProps = {
@@ -63,6 +67,9 @@ const StoresDashboard = dynamic<TenantAdminDashboardProps>(() => import('@templa
 const EntityBlockSettings = dynamic(() => import('@template/platform/settings/EntityBlockSettings'), { loading: RouteLoading, ssr: false });
 const PlatformUsers = dynamic(() => import('@template/platform/users'), { loading: RouteLoading, ssr: false });
 const OwnerBusinessAssistantMonitor = dynamic(() => import('@template/main-app/platform/ownerBusinessAssistantMonitor'), { loading: RouteLoading, ssr: false });
+const PlatformCostPosture = dynamic(() => import('@template/main-app/platform/costPosture'), { loading: RouteLoading, ssr: false });
+const PlatformAssetTemplates = dynamic(() => import('@template/platform/assetTemplates'), { loading: RouteLoading, ssr: false });
+const PricingPlans = dynamic(() => import('@template/platform/pricingPlans'), { loading: RouteLoading, ssr: false });
 const SupportTickets = dynamic(() => import('@template/platform/supportTickets'), { loading: RouteLoading, ssr: false });
 const FeedbackAdmin = dynamic(() => import('@template/platform/feedbackAdmin'), { loading: RouteLoading, ssr: false });
 const KnowledgeBase = dynamic(() => import('@template/platform/knowledgeBase'), { loading: RouteLoading, ssr: false });
@@ -73,6 +80,7 @@ const ChatInsights = dynamic(() => import('@template/platform/chatManagement/Cha
 const ChatBackfill = dynamic(() => import('@template/platform/admin/AnalyticsBackfill'), { loading: RouteLoading, ssr: false });
 const ChatWeeklyDigest = dynamic(() => import('@template/platform/chatManagement/WeeklyDigest'), { loading: RouteLoading, ssr: false });
 const ChatRoiCalculator = dynamic(() => import('@template/platform/chatManagement/ROICalculator'), { loading: RouteLoading, ssr: false });
+const AnswerlatticeIntakeMonitor = dynamic(() => import('@template/main-app/platform/answerlatticeIntakeMonitor'), { loading: RouteLoading, ssr: false });
 const AnswerlatticeWidgetManagement = dynamic(() => import('@template/answerlattice/widgetManagement/AnswerlatticeWidgetManagement'), { loading: RouteLoading, ssr: false });
 
 function PlatformTenantsRoute() {
@@ -125,6 +133,30 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         minWidth: 0,
         surface: 'Users',
         title: 'Users',
+    },
+    costPosture: {
+        Component: PlatformCostPosture,
+        desktopPath: '/platform/cost-posture',
+        description: 'Review platform cost posture, guardrails, and expensive-operation signals.',
+        minWidth: 720,
+        surface: 'Cost Posture',
+        title: 'Cost Posture',
+    },
+    assetTemplates: {
+        Component: PlatformAssetTemplates,
+        desktopPath: '/platform/asset-templates',
+        description: 'Manage platform print asset templates and business-category template coverage.',
+        minWidth: 900,
+        surface: 'Asset Templates',
+        title: 'Asset Templates',
+    },
+    pricingPlans: {
+        Component: PricingPlans,
+        desktopPath: '/platform/pricing-plans',
+        description: 'Manage pricing plans shown to MenuList owners.',
+        minWidth: 760,
+        surface: 'Pricing Plans',
+        title: 'Pricing Plans',
     },
     supportTickets: {
         Component: SupportTickets,
@@ -213,6 +245,14 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         requiresAnswerlattice: true,
         surface: 'Chat ROI Calculator',
         title: 'Chat ROI Calculator',
+    },
+    answerlatticeIntake: {
+        Component: AnswerlatticeIntakeMonitor,
+        desktopPath: '/platform/answerlattice-intake',
+        description: 'Answerlattice intake jobs, support-credit ledger, media extraction, and summary health.',
+        minWidth: 760,
+        surface: 'Answerlattice Intake',
+        title: 'Answerlattice Intake',
     },
     answerlatticeWidget: {
         Component: AnswerlatticeWidgetRoute,

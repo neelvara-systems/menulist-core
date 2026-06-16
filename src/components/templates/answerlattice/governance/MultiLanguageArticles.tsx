@@ -13,11 +13,16 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getArticlesByIds } from '@database/knowledgeBase/articles';
+import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import {
     AnswerlatticeArticleTranslation,
-    AnswerlatticeSupportedLocale
+    AnswerlatticeSupportedLocale,
+    ANSWERLATTICE_SUPPORTED_LOCALES,
 } from '@type/answerlattice';
+import type { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import {
+    Alert,
     Badge,
     Button,
     Card,
@@ -32,9 +37,10 @@ import {
     Tag,
     Typography,
     theme,
-    message
+    message,
+    Skeleton,
 } from 'antd';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     LuEye,
     LuFileCheck,
@@ -77,6 +83,9 @@ const LOCALE_LABELS: Record<string, string> = {
     'tr-TR': 'Turkish',
 };
 
+const DEFAULT_ENABLED_LOCALES = [...ANSWERLATTICE_SUPPORTED_LOCALES] as AnswerlatticeSupportedLocale[];
+const MAX_LANGUAGE_ARTICLE_LOAD = 500;
+
 function getLocaleLabel(locale: string): string {
     return LOCALE_LABELS[locale] ?? locale;
 }
@@ -89,18 +98,105 @@ function formatTimestamp(ts: any): string {
     });
 }
 
+function extractArticleIds(categoriesData: KnowledgeBaseCategoriesType | null): string[] {
+    const categories = categoriesData?.categories || {};
+    const ids: string[] = [];
+
+    Object.values(categories).forEach((category: any) => {
+        (category.articles || []).forEach((article: any) => {
+            if (article?.id) ids.push(String(article.id));
+        });
+        (category.sections || []).forEach((section: any) => {
+            (section.articles || []).forEach((article: any) => {
+                if (article?.id) ids.push(String(article.id));
+            });
+        });
+    });
+
+    return Array.from(new Set(ids)).slice(0, MAX_LANGUAGE_ARTICLE_LOAD);
+}
+
+function toArticleSummary(article: KnowledgeBaseArticleType): ArticleSummary {
+    return {
+        id: article.id,
+        title: article.title || 'Untitled article',
+        translations: article.translations || {},
+    };
+}
+
 export default function MultiLanguageArticles({
     tId,
     sId,
-    articles = [],
-    enabledLocales = ['en-US'],
+    articles: providedArticles = [],
+    enabledLocales = DEFAULT_ENABLED_LOCALES,
     onTranslate,
 }: Props) {
     const { token } = theme.useToken();
+    const { getCategoriesCached } = useKBCategoriesCache();
+    const [loadedArticles, setLoadedArticles] = useState<ArticleSummary[]>([]);
+    const [articlesLoading, setArticlesLoading] = useState(false);
+    const [articlesError, setArticlesError] = useState<string | null>(null);
     const [selectedArticle, setSelectedArticle] = useState<ArticleSummary | null>(null);
-    const [translating, setTranslating] = useState(false);
+    const [translatingKey, setTranslatingKey] = useState<string | null>(null);
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
+
+    const effectiveEnabledLocales = useMemo(() => {
+        const requested = enabledLocales.length ? enabledLocales : DEFAULT_ENABLED_LOCALES;
+        const supported = new Set<string>(ANSWERLATTICE_SUPPORTED_LOCALES);
+        const normalized = requested.filter(locale => supported.has(locale));
+        return Array.from(new Set(normalized.length ? normalized : DEFAULT_ENABLED_LOCALES)) as AnswerlatticeSupportedLocale[];
+    }, [enabledLocales]);
+
+    const articles = providedArticles.length ? providedArticles : loadedArticles;
+
+    useEffect(() => {
+        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_MULTI_LANGUAGE || providedArticles.length > 0) return;
+        let mounted = true;
+
+        const loadArticles = async () => {
+            if (!tId || !sId) {
+                setLoadedArticles([]);
+                return;
+            }
+
+            setArticlesLoading(true);
+            setArticlesError(null);
+            try {
+                const categories = await getCategoriesCached();
+                const articleIds = extractArticleIds(categories);
+                if (!articleIds.length) {
+                    if (mounted) setLoadedArticles([]);
+                    return;
+                }
+
+                const fullArticles = await getArticlesByIds(articleIds);
+                const articleOrder = new Map(articleIds.map((id, index) => [id, index]));
+                const summaries = (fullArticles || [])
+                    .map(toArticleSummary)
+                    .sort((a, b) => (articleOrder.get(a.id) ?? 0) - (articleOrder.get(b.id) ?? 0));
+                if (mounted) setLoadedArticles(summaries);
+            } catch {
+                if (mounted) {
+                    setArticlesError('Could not load KB articles for translation coverage.');
+                    setLoadedArticles([]);
+                }
+            } finally {
+                if (mounted) setArticlesLoading(false);
+            }
+        };
+
+        void loadArticles();
+        return () => { mounted = false; };
+    }, [getCategoriesCached, providedArticles.length, sId, tId]);
+
+    useEffect(() => {
+        if (!selectedArticle) return;
+        const refreshed = articles.find(article => article.id === selectedArticle.id);
+        if (refreshed && refreshed !== selectedArticle) {
+            setSelectedArticle(refreshed);
+        }
+    }, [articles, selectedArticle]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_MULTI_LANGUAGE) {
         return <Empty description="Multi-language articles is not enabled" />;
@@ -108,7 +204,7 @@ export default function MultiLanguageArticles({
 
     // Compute coverage stats
     const totalArticles = articles.length;
-    const targetLocales = enabledLocales.filter(l => l !== 'en-US');
+    const targetLocales = effectiveEnabledLocales.filter(l => l !== 'en-US');
     const totalTranslationsNeeded = totalArticles * targetLocales.length;
     let totalTranslationsExisting = 0;
     for (const article of articles) {
@@ -126,14 +222,25 @@ export default function MultiLanguageArticles({
 
     const handleTranslate = async (articleId: string, locale: string) => {
         if (!onTranslate) return;
-        setTranslating(true);
+        const nextTranslatingKey = `${articleId}:${locale}`;
+        setTranslatingKey(nextTranslatingKey);
         try {
             await onTranslate(articleId, locale);
-            message.success(`Translation for ${getLocaleLabel(locale)} initiated`);
-        } catch (err) {
-            message.error('Failed to initiate translation');
+            if (!providedArticles.length) {
+                const [freshArticle] = await getArticlesByIds([articleId]);
+                if (freshArticle) {
+                    const freshSummary = toArticleSummary(freshArticle);
+                    setLoadedArticles(prev => prev.map(article => (
+                        article.id === articleId ? freshSummary : article
+                    )));
+                    setSelectedArticle(prev => prev?.id === articleId ? freshSummary : prev);
+                }
+            }
+            message.success(`Translation for ${getLocaleLabel(locale)} saved`);
+        } catch (err: any) {
+            message.error(err?.message || 'Failed to translate article');
         } finally {
-            setTranslating(false);
+            setTranslatingKey(null);
         }
     };
 
@@ -141,7 +248,7 @@ export default function MultiLanguageArticles({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Coverage Stats */}
             <Row gutter={16}>
-                <Col span={6}>
+                <Col xs={12} md={6}>
                     <Card size="small">
                         <Statistic
                             title="Articles"
@@ -150,7 +257,7 @@ export default function MultiLanguageArticles({
                         />
                     </Card>
                 </Col>
-                <Col span={6}>
+                <Col xs={12} md={6}>
                     <Card size="small">
                         <Statistic
                             title="Target Locales"
@@ -159,7 +266,7 @@ export default function MultiLanguageArticles({
                         />
                     </Card>
                 </Col>
-                <Col span={6}>
+                <Col xs={12} md={6}>
                     <Card size="small">
                         <Statistic
                             title="Translations"
@@ -169,7 +276,7 @@ export default function MultiLanguageArticles({
                         />
                     </Card>
                 </Col>
-                <Col span={6}>
+                <Col xs={12} md={6}>
                     <Card size="small">
                         <Statistic
                             title="Coverage"
@@ -199,8 +306,14 @@ export default function MultiLanguageArticles({
                 </Space>
             </Card>
 
+            {articlesError ? (
+                <Alert type="warning" showIcon message={articlesError} />
+            ) : null}
+
             {/* Article Translation Status */}
-            {articles.length === 0 ? (
+            {articlesLoading ? (
+                <Skeleton active paragraph={{ rows: 5 }} />
+            ) : articles.length === 0 ? (
                 <Empty description="No KB articles found" />
             ) : (
                 <List
@@ -299,7 +412,8 @@ export default function MultiLanguageArticles({
                                                 size="small"
                                                 type="primary"
                                                 icon={<LuFilePlus size={12} />}
-                                                loading={translating}
+                                                loading={translatingKey === `${selectedArticle.id}:${locale}`}
+                                                disabled={Boolean(translatingKey)}
                                                 onClick={() => handleTranslate(selectedArticle.id, locale)}
                                             >
                                                 Translate

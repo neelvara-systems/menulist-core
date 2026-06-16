@@ -326,6 +326,69 @@ export const buildCampaignCueDesignCueExportChecklistPatch = (
     title: "Export checklist",
 });
 
+export const buildCampaignCueDesignCueChannelReadyPatch = (
+    actionId: CampaignCueDesignCueActionId,
+    context: CampaignCueDesignCueContext,
+    target: CreativeEditorDesignCueTarget,
+) => {
+    const baseFindings = [
+        context.hasBusinessName && includesLoose(context.documentText, context.businessName)
+            ? finding("business-name-visible", "ready", `Business name is visible: ${context.businessName}.`)
+            : finding("business-name-review", "review", `Add ${context.businessName} if customers will see this asset outside CampaignCue.`),
+        context.hasContactLine
+            ? finding("contact-confirmed", "ready", `Contact is confirmed: ${contactTextFor(context)}.`)
+            : finding("contact-missing", "review", "Confirm WhatsApp, phone, booking link, menu link, or website before public use."),
+    ];
+
+    if (actionId === CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_WHATSAPP_READY) {
+        return findingPatchSet({
+            actionId,
+            findings: [
+                ...baseFindings,
+                finding("whatsapp-manual", "note", "Download the image and copy the WhatsApp message from the delivery card. CampaignCue will not send it."),
+                context.documentText.length > 220
+                    ? finding("whatsapp-text-density", "review", "The visible text may be too long for a quick WhatsApp image.")
+                    : finding("whatsapp-text-density", "ready", "Text length looks usable for a WhatsApp image."),
+            ],
+            summary: "Design Cue will check WhatsApp readiness without changing the design.",
+            target,
+            title: "WhatsApp readiness",
+        });
+    }
+
+    if (actionId === CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.MAKE_GOOGLE_READY) {
+        return findingPatchSet({
+            actionId,
+            findings: [
+                ...baseFindings,
+                context.hasLocality
+                    ? finding("google-locality", "ready", `Locality is confirmed: ${context.locality}.`)
+                    : finding("google-locality", "review", "Confirm the business location or service area before Google handoff."),
+                context.destination
+                    ? finding("google-destination", "ready", `Destination is available: ${context.destination}.`)
+                    : finding("google-destination", "review", "Confirm a booking, order, menu, website, or contact destination before Google handoff."),
+                finding("google-manual", "note", "Use the Google delivery card for update, offer, or event fields. CampaignCue will not post to Google."),
+            ],
+            summary: "Design Cue will check Google Business Profile handoff readiness without changing the design.",
+            target,
+            title: "Google readiness",
+        });
+    }
+
+    return findingPatchSet({
+        actionId,
+        findings: [
+            ...baseFindings,
+            finding("print-format", "note", "Export a flattened PNG/PDF from the saved editor state before printing."),
+            finding("print-legibility", "review", "Check small text, price, date, and QR/contact readability on the final size."),
+            finding("print-rights", "review", "Confirm rights for photos, people, logos, and watermarked images before printing."),
+        ],
+        summary: "Design Cue will check print readiness without changing the design.",
+        target,
+        title: "Print readiness",
+    });
+};
+
 export const buildCampaignCueDesignCueSimplePatch = (
     context: CampaignCueDesignCueContext,
     target: CreativeEditorDesignCueTarget,

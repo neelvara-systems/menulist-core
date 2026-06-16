@@ -112,9 +112,10 @@ const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; s
 
     const now = new Date();
     const traceId = createTraceId();
+    const persistentDedupKey = getPersistentDeduplicationKey(params);
     const createdBy = cleanSignalText(params.metadata?.source || 'system:answerlattice_signal', 140) || 'system:answerlattice_signal';
     const uId = cleanSignalText(params.metadata?.userId || 'system', 140) || 'system';
-    await answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS).add(sanitizeForFirestore({
+    const payload = sanitizeForFirestore({
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: params.tId,
         sId: params.sId,
@@ -128,8 +129,23 @@ const emitServerSignalEvent = async (params: EmitSignalParams & { tId: number; s
         modifiedBy: createdBy,
         uId,
         traceId,
-        requestId: traceId,
-    }));
+        requestId: persistentDedupKey || traceId,
+        ...(persistentDedupKey ? { dedupKey: cleanSignalText(persistentDedupKey, 260) } : {}),
+    });
+
+    const collectionRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_SIGNAL_EVENTS);
+    if (persistentDedupKey) {
+        const docId = `sig_${hashSignalDocumentId(`${params.tId}:${params.sId}:${persistentDedupKey}`)}`;
+        try {
+            await collectionRef.doc(docId).create(payload);
+        } catch (error) {
+            if (isAlreadyExistsError(error)) return;
+            throw error;
+        }
+        return;
+    }
+
+    await collectionRef.add(payload);
 };
 
 function getDeduplicationKey(params: EmitSignalParams): string | null {
@@ -153,6 +169,33 @@ function getDeduplicationKey(params: EmitSignalParams): string | null {
     }
     return null;
 }
+
+function getPersistentDeduplicationKey(params: EmitSignalParams): string | null {
+    const sessionKey = getDeduplicationKey(params);
+    if (sessionKey) return `${params.type}:${sessionKey}`;
+
+    const metadata = params.metadata || {};
+    const explicitKey = cleanSignalText(metadata.requestId || metadata.externalId || metadata.idempotencyKey, 180);
+    return explicitKey ? `${params.type}:external:${explicitKey}` : null;
+}
+
+function hashSignalDocumentId(value: string): string {
+    let hashA = 0x811c9dc5;
+    let hashB = 0x01000193;
+    for (let index = 0; index < value.length; index += 1) {
+        const code = value.charCodeAt(index);
+        hashA ^= code;
+        hashA = Math.imul(hashA, 0x01000193);
+        hashB = Math.imul(hashB ^ code, 0x85ebca6b);
+    }
+    return `${(hashA >>> 0).toString(36)}${(hashB >>> 0).toString(36)}`;
+}
+
+const isAlreadyExistsError = (error: any): boolean => (
+    error?.code === 6
+    || error?.code === 'already-exists'
+    || String(error?.message || '').toUpperCase().includes('ALREADY_EXISTS')
+);
 
 /**
  * Emit an enriched ticket resolution signal (fire-and-forget)

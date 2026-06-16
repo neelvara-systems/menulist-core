@@ -1,11 +1,11 @@
 # Creative Editor Template Registry - Firebase Cost
 
 **Status:** Implemented
-**Last Updated:** June 15, 2026
+**Last Updated:** June 16, 2026
 
 ## Summary
 
-The registry adds Firebase cost when an owner explicitly saves, opens, lists, or deletes their own saved templates. Platform template catalogs are Firebase-managed metadata so they can be updated without a code deploy, but they remain read-only to owners and do not create user documents until the owner saves a copy.
+The registry adds Firebase cost when an owner explicitly saves, opens, lists, or deletes their own saved templates. Platform template catalogs are Firebase-managed metadata so they can be updated without a code deploy, but they remain read-only to owners and do not create user documents until the owner saves a copy. Platform users manage those catalogs through a platform-only client DAL surface.
 
 There are no new Cloud Functions and no new Firestore indexes. Access is through the client-side MenuList DAL, with Firestore and Storage rules enforcing platform/admin and tenant/store scope. Acting-user details are stored as document metadata through the shared `requestBodyComposer` flow.
 
@@ -13,6 +13,10 @@ There are no new Cloud Functions and no new Firestore indexes. Access is through
 
 | Operation | Firestore Reads | Firestore Writes | Storage | Functions | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
+| Open `/platform/asset-templates` | 1 | 0 | 0 | 0 | One selected `platformAssetTemplates/{businessCategory}` catalog read. Switching asset type filters local `data`. |
+| Create/update platform template design | 1 | 1 | 1 document upload + optional preview upload | 0 | Reads current category catalog, writes updated bounded `data`, and stores the neutral editor document in Storage. |
+| Save platform template metadata/status | 1 | 1 | 0 | 0 | Reads current category catalog and rewrites only the bounded metadata array; use this for draft/publish/archive changes. |
+| Delete platform template | 1 | 1 | Up to 2 deletes | 0 | Removes the summary from the category catalog, then best-effort deletes document and preview objects. |
 | Open `/assets` with registry templates | 2 | 0 | 0 | 0 | One platform business-category catalog plus one store-level `default` user template doc. Generated fallback remains non-blocking if either read is empty/blocked. |
 | Select generated template | 0 | 0 | 0 | 0 | Local state. |
 | Customize generated template | 0 | 0 | 0 | 0 | Document generated in browser memory. |
@@ -51,6 +55,7 @@ The payload stores the size-limited neutral `CreativeEditorDocument`. List calls
 - Full document JSON and thumbnail previews go to Storage when available.
 - Firestore and Storage rules cap user template metadata/files and enforce tenant/store scope.
 - User indexes are capped at 100 summaries per store-level `default` document to avoid Firestore document growth.
+- Platform category catalogs are capped at 200 summaries per document to keep each category doc bounded.
 - No per-preview write.
 - No per-download write.
 - No platform template clones until the owner explicitly saves.
@@ -61,6 +66,9 @@ The payload stores the size-limited neutral `CreativeEditorDocument`. List calls
 
 | Scenario | Incremental Firebase Cost |
 | --- | --- |
+| Platform user loads a category manager page 100 times | 100 platform category catalog reads. |
+| Platform user publishes 50 edited platform templates | 50 catalog reads + 50 catalog writes + 50 Storage document uploads, plus optional preview uploads. |
+| Platform user changes status for 50 templates | 50 catalog reads + 50 catalog writes, no Storage uploads. |
 | 1,000 owners browse Assets with registry templates | 1,000 platform catalog reads + 1,000 store `default` doc reads; generated fallback still works if catalogs are empty or blocked. |
 | 1,000 owners save one template | 1,000 store-index reads + 1,000 store-index writes + 1,000 Storage document uploads; optional preview uploads only when enabled. |
 | 1,000 owners reopen one saved template | 1,000 store-index reads + 1,000 Storage document downloads. |

@@ -189,6 +189,22 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
+     * Answerlattice Public Context Bundles - anonymous Storage-backed JSON reads.
+     * Used by: GET /api/answerlattice/bundles/public/[...path]
+     *
+     * Why 180/min:
+     * - A normal widget boot reads a small fixed set of JSON bundle files.
+     * - In-memory proxy caching absorbs hot paths.
+     * - Cache misses still need a bot-cost brake before repeated random paths
+     *   can force Storage existence checks/download attempts.
+     */
+    ANSWERLATTICE_PUBLIC_BUNDLE: {
+        limit: 180,
+        window: 60,
+        description: 'Answerlattice public context bundles - 180 cache-miss reads per minute per IP'
+    },
+
+    /**
      * Public Analytics - Anonymous customer analytics flushes
      * Used by: POST /api/public/analytics/track
      *

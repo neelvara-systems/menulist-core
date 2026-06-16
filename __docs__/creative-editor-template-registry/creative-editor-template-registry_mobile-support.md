@@ -1,11 +1,13 @@
 # Creative Editor Template Registry Mobile Support
 
 **Status:** Supported as browsing/download fallback; editor save remains desktop-first  
-**Last Updated:** June 15, 2026
+**Last Updated:** June 16, 2026
 
 ## Decision
 
 Mobile owners can continue using generated printable asset templates through the existing mobile Share/Assets flow. The full shared editor and saved-template authoring remain desktop-first because precise drag, resize, layer order, QR positioning, and print-safe layout edits are not good touch-first work for most SMB owners.
+
+The platform template manager is also desktop-first. It is a platform operations surface under `/platform/asset-templates`, not an SMB owner mobile task.
 
 ## Mobile Scope
 

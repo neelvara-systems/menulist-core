@@ -18,7 +18,7 @@
  * - Editor-configurable filters
  */
 
-import { FILTER_ALLOWLIST, resolveBusinessCategory, SystemFilter } from '@constant/common';
+import { FILTER_ALLOWLIST, resolveBusinessCategory, SystemFilter } from '@data/shared/businessTypes';
 import { useMemo } from 'react';
 import { LuLeaf, LuStar } from 'react-icons/lu';
 import { MenuMoodConfig } from '../designSystem';

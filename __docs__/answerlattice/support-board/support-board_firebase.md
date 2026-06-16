@@ -10,6 +10,18 @@ Each document is tenant/store scoped:
 - `tId`
 - `sId`
 
+Source cards may also store compact requester/source metadata copied from the source record:
+
+- `sourceCustomerName`
+- `sourceCustomerEmail`
+- `sourceCustomerPhone`
+- `sourceCustomerUserId`
+- `sourceOrigin`
+- `sourcePath`
+- `sourceSessionId`
+
+These fields are internal owner/staff review metadata only. They avoid a second read against tickets, conversations, feedback, or signal events when rendering the board.
+
 ## Rules
 
 Firestore rules allow:
@@ -56,6 +68,7 @@ Required indexes:
 
 - No realtime board listener.
 - Board load is capped at 120 cards.
+- Source customer display uses fields already present on the loaded board card; it adds no Firestore reads, listeners, joins, or indexes.
 - Source sync is hidden unless `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SOURCE_SYNC` is enabled.
 - Source sync creates at most 20 cards per action when enabled.
 - Nightly sync is disabled by default through `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SYNC`.

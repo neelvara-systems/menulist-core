@@ -1,5 +1,6 @@
 import { Timestamp } from "firebase/firestore";
 import { LuBan, LuFile, LuFileCheck2, LuFileClock, LuFileCog, LuFileQuestion, LuFileX } from "react-icons/lu";
+import type { AnswerlatticeArticleTranslation } from "@type/answerlattice";
 
 export const INGESTION_JOB_STATUS: Record<string, string> = {
     PENDING: "pending",//This is when batch job is scheduled and added to google task queue
@@ -213,6 +214,7 @@ export interface KnowledgeBaseArticleType {
     contextKeys?: string[]; // Answerlattice product surface keys linked to this article
     faqIds?: string[]; // Answerlattice FAQ IDs linked to this article
     generatedFaqs?: KnowledgeBaseGeneratedFaq[]; // Review-only FAQ suggestions, removed after publish
+    translations?: Record<string, AnswerlatticeArticleTranslation>; // Locale-specific Answerlattice KB translations
     tId?: number; // Tenant ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc. Required by ANSWERLATTICE_RULES Rule 6.
     sId?: number; // Store ID — multi-tenant isolation. Inherited from parent kb_generation_jobs doc.
 }

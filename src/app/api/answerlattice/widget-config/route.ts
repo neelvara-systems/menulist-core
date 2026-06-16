@@ -133,8 +133,22 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             limit: 20,
             window: 60,
         });
+        if (
+            rateLimitResult.allowed
+            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
+            && rateLimitResult.current === 0
+            && rateLimitResult.remaining === 20
+        ) {
+            return NextResponse.json({ error: 'Widget settings are temporarily unavailable' }, {
+                status: 503,
+                headers: { 'Cache-Control': 'no-store' },
+            });
+        }
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+            return NextResponse.json({ error: 'Too many requests' }, {
+                status: 429,
+                headers: { 'Cache-Control': 'no-store' },
+            });
         }
 
         const body = await request.json().catch(() => null);

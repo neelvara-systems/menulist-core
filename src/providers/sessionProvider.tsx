@@ -5,9 +5,9 @@ import {
 } from '@constant/deploymentDebug';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import RolesPermissionInitialData from '@data/rolesPermissionsInitialData';
-import { getStoreById } from '@database/stores';
+import { getStoreById, readStoreById } from '@database/stores';
 import { getActiveSubscriptionForStore } from '@database/subscriptions';
-import { getTenantById } from '@database/tenants';
+import { readTenantById } from '@database/tenants';
 import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
 import {
     getAnswerlatticeScopedSession,
@@ -44,6 +44,12 @@ type Props = {
     children: React.ReactNode;
     session: Session | null;
 }
+
+const FIREBASE_AUTH_BOOTSTRAP_SETTLE_MS = 250;
+
+const waitForFirebaseAuthPropagation = () => new Promise((resolve) => {
+    window.setTimeout(resolve, FIREBASE_AUTH_BOOTSTRAP_SETTLE_MS);
+});
 
 const maskDebugEmail = (email: unknown) => {
     if (typeof email !== 'string') return email;
@@ -262,16 +268,52 @@ export default function SessionProvider({ children, session }: Props) {
         }
         prevSessionKeyRef.current = currentSessionKey;
 
+        let cancelled = false;
+
         // Check if the session exists and store details have not been fetched yet
         if (session && (session.user?.platformRole == ECOMSAI_PLATFORM_USER_ROLE ? true : Boolean(session.user?.storeId)) && !Boolean(storeDetails?.storeId)) {
             setActiveSubscriptionLoading(Boolean(session.user?.storeId));
 
-            // Fetch tenant details by tenant ID
-            getTenantById(session.user.tenantId).then((fetchedTenant: TenantDataType) => {
-                // Fetch store details by store ID
-                // console.log("fetchedTenant fetched inside SessionProvider", fetchedTenant)
-                getStoreById(session.user.storeId).then(async (fetchedStore: StoreDataType) => {
-                    // Update the tenant details state with the fetched fetchedTenant
+            const bootstrapStoreContext = async () => {
+                try {
+                    const canRefreshFirebaseAuth = Boolean(effectiveSession?.user?.tenantId && effectiveSession?.user?.storeId);
+                    const refreshFirebaseAuthForBootstrap = async () => {
+                        if (!canRefreshFirebaseAuth) return;
+                        await ensureFirebaseAuthForSession(effectiveSession);
+                        await waitForFirebaseAuthPropagation();
+                    };
+                    const readTenantForBootstrap = async () => {
+                        try {
+                            return await readTenantById(Number(session.user.tenantId)) as TenantDataType | null;
+                        } catch (error) {
+                            await refreshFirebaseAuthForBootstrap();
+                            if (cancelled) return null;
+                            return await readTenantById(Number(session.user.tenantId)) as TenantDataType | null;
+                        }
+                    };
+                    const readStoreForBootstrap = async () => {
+                        try {
+                            return await readStoreById(Number(session.user.storeId)) as StoreDataType | null;
+                        } catch (error) {
+                            await refreshFirebaseAuthForBootstrap();
+                            if (cancelled) return null;
+                            return await readStoreById(Number(session.user.storeId)) as StoreDataType | null;
+                        }
+                    };
+
+                    await refreshFirebaseAuthForBootstrap();
+
+                    if (cancelled) return;
+
+                    const fetchedTenant = await readTenantForBootstrap();
+                    const fetchedStore = await readStoreForBootstrap();
+                    if (cancelled) return;
+
+                    if (!fetchedStore) {
+                        throw new Error(`Store bootstrap returned no data for store ${session.user.storeId}`);
+                    }
+
+                    // Update the tenant details state with the fetched tenant
                     const fetchedStoresList = Array.isArray(fetchedTenant?.storesList) ? fetchedTenant.storesList : [];
                     const storeIndex = fetchedStoresList.findIndex((s) => s.storeId == session.user.storeId);
                     if (fetchedTenant && storeIndex >= 0) {
@@ -312,14 +354,14 @@ export default function SessionProvider({ children, session }: Props) {
                         subscriptionPlan: subscriptionData?.planId || 'free',
                         subscriptionStatus: subscriptionData?.status || 'none',
                     });
-                }).catch((e) => {
+                } catch (e) {
+                    if (cancelled) return;
                     setActiveSubscriptionLoading(false)
                     logger.error('[MenuList] Store bootstrap failed', e);
-                })
-            }).catch((e) => {
-                setActiveSubscriptionLoading(false)
-                logger.error('[MenuList] Tenant bootstrap failed', e);
-            })
+                }
+            };
+
+            bootstrapStoreContext();
 
         } else if (!session) {
             // Clear Sentry context on logout
@@ -329,6 +371,10 @@ export default function SessionProvider({ children, session }: Props) {
             setActiveSubscriptionLoading(false);
             clearUserContext();
         }
+
+        return () => {
+            cancelled = true;
+        };
     }, [
         effectiveSession?.user?.storeId,
         effectiveSession?.user?.tenantId,

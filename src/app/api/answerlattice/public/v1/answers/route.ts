@@ -25,6 +25,11 @@ const PublicAnswerRequestSchema = z.object({
     includeDebug: z.boolean().optional().default(false),
 });
 
+const isPublicApiDebugResponseAllowed = () => (
+    process.env.ANSWERLATTICE_PUBLIC_API_DEBUG === 'true'
+    && process.env.NODE_ENV !== 'production'
+);
+
 function serializeAnswer(answer: any) {
     if (!answer) return null;
 
@@ -61,6 +66,22 @@ function serializeAnswer(answer: any) {
     };
 }
 
+function serializeFallbackReason(reason?: string | null): string | null {
+    if (!reason) return null;
+    if (reason.startsWith('retrieval_error')) return 'retrieval_error';
+    if (reason.startsWith('entity_match_below_threshold')) return 'low_confidence_entity_match';
+
+    const allowedReasons = new Set([
+        'canonical_answers_disabled',
+        'no_entity_index',
+        'no_entity_match',
+        'no_canonical_answers_for_entities',
+        'no_version_match',
+    ]);
+
+    return allowedReasons.has(reason) ? reason : 'fallback_required';
+}
+
 export async function POST(request: NextRequest) {
     const auth = await authenticateAnswerlatticePublicApi(request, 'POST /api/answerlattice/public/v1/answers');
     if (auth.ok === false) return auth.response;
@@ -95,7 +116,7 @@ export async function POST(request: NextRequest) {
             canonical: Boolean(result.found && result.canonical),
             confidence: result.confidence,
             matchedEntityIds: result.matchedEntityIds,
-            fallbackReason: result.fallbackReason || null,
+            fallbackReason: serializeFallbackReason(result.fallbackReason),
             answer: serializeAnswer(result.answer),
         };
 
@@ -107,7 +128,7 @@ export async function POST(request: NextRequest) {
             };
         }
 
-        if (body.includeDebug) {
+        if (body.includeDebug && isPublicApiDebugResponseAllowed()) {
             response.entityDebug = result.entityDebug || null;
         }
 

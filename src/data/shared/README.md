@@ -21,19 +21,23 @@ These files are the **single source of truth** for data shared between the Next.
 - Keeping files identical avoids data drift, mismatched constants, and subtle bugs
 - Full file copy is simpler and safer than cross-checking individual values
 
-### Self-Contained Rule
+### Shared-Only Dependency Rule
 
-Every file in this folder **MUST** be self-contained:
-- No imports from other project files (no `@constant/`, `@data/`, `@type/` etc.)
+Every file in this folder **MUST** stay portable across frontend and Functions:
+- Sibling imports inside `src/data/shared/` are allowed when they prevent duplicated source-of-truth data.
+- No imports from app-specific project files (no `@constant/`, `@type/`, React, Next.js, DAL, Firebase, or UI modules).
 - Only standard TypeScript — no React, Next.js, or framework-specific code
-- All types must be defined inline within the file
+- Shared types should be defined in the same file or imported from a sibling shared-data file that is also mirrored to Functions.
 
 ### Files
 
 | File | Contents | Used By |
 |------|----------|---------|
 | `businessTypes.ts` | BUSINESS_TYPES, BUSINESS_CATEGORIES, category-level schema/catalog/offering defaults, type-level overrides, business-category helpers, FILTER_ALLOWLIST | Publish pipeline, approve route, AI prompts, public schema |
+| `businessAttributeInference.ts` | Business attribute suggestion allowlist and category-to-kind helper | Extraction, publish pipeline, health signals |
+| `categoryIconSuggestions.ts` | Category icon suggestions by canonical business category | Menu category editor and repair flows |
 | `defaultRoles.ts` | Role permissions, DEFAULT_ROLE_METADATA, createDefaultRoles | Store creation (onboarding, publish) |
+| `extractedBusinessProfile.ts` | Extracted profile suggestion contract and normalization helpers | Menu extraction and messaging onboarding |
 | `ownerBusinessHealthQuestionSuggestions.ts` | Business Health starter/follow-up question catalog and ranking helper | Owner Business Assistant app APIs and Cloud Functions health builder |
 
 ### Country Data

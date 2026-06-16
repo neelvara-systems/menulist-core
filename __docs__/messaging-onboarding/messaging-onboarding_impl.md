@@ -447,7 +447,7 @@ interface MessagingOnboardingSession {
   } | null;
 
   // Detected Business Type (from Asset Intelligence — §8.4)
-  // Uses existing BUSINESS_TYPES from src/constants/common.ts (60+ types, 7 categories)
+  // Uses existing BUSINESS_TYPES from src/data/shared/businessTypes.ts (60+ types, 7 categories)
   detectedBusinessType: string | null; // e.g., "Restaurant", "Salon", "Cafe" — from BUSINESS_TYPES[].value
   detectedBusinessCategory: string | null; // e.g., "food", "service", "health" — from BUSINESS_CATEGORIES[].value
   typeConfidence: "high" | "medium" | "low" | null;
@@ -938,7 +938,7 @@ Key functions reused:
 
 - `createDefaultRoles(storeId, email)` from `src/data/defaultRoles.ts`
 - `getDefaultTimeSlotPresets(businessType, tId, sId)` from `src/config/defaultTimeSlotPresets.ts`
-- `resolveStoreBusinessCategory(businessType, businessCategory)` from `src/constants/common.ts`
+- `resolveStoreBusinessCategory(businessType, businessCategory)` from `src/data/shared/businessTypes.ts`
 - `getOwnerRoleId()` from `src/data/defaultRoles.ts`
 - platformSummary counter update pattern
 - storesSummary sync pattern
@@ -2059,11 +2059,11 @@ if (type_confidence === "high" || type_confidence === "medium") {
 | Function                                  | File                                   | What It Does                    |
 | ----------------------------------------- | -------------------------------------- | ------------------------------- |
 | `getDefaultTimeSlotPresets(businessType, tId, sId, businessCategory)` | `src/config/defaultTimeSlotPresets.ts` | Time slot defaults per category |
-| `getBusinessCategory(businessType)`       | `src/constants/common.ts:297`          | Category lookup from type       |
+| `getBusinessCategory(businessType)`       | `src/data/shared/businessTypes.ts`     | Category lookup from type       |
 | `getSchemaType(businessType)`             | `src/lib/schema/index.ts:149`          | schema.org @type mapping        |
 | `getAvailabilityLabels(businessType, businessCategory)` | `src/config/businessLabels.ts:74`      | UI labels per category          |
 | `getDecisionConfig(businessType, businessCategory)`     | `src/config/decisionBlocks.ts:246`     | Decision block config           |
-| `FILTER_ALLOWLIST[category]`              | `src/constants/common.ts:284`          | Menu filters per category       |
+| `FILTER_ALLOWLIST[category]`              | `src/data/shared/businessTypes.ts`     | Menu filters per category       |
 
 **On publish:** `store.businessType = session.detectedBusinessType` (or owner-corrected value from preview page).
 
@@ -2177,7 +2177,7 @@ The extraction data handoff has two fields by design: `session.extractedMenuData
 | `createDefaultRoles(storeId, email)`        | `src/data/defaultRoles.ts:193`                     | ✅ Correctly documented                              |
 | `getOwnerRoleId()`                          | `src/data/defaultRoles.ts:211` — returns `'owner'` | ✅ Correctly used in user.stores[].role              |
 | `getDefaultTimeSlotPresets(type, tId, sId)` | `src/config/defaultTimeSlotPresets.ts:96`          | ✅ Correctly documented                              |
-| `getBusinessCategory(type)`                 | `src/constants/common.ts:297`                      | ✅ Correctly documented                              |
+| `getBusinessCategory(type)`                 | `src/data/shared/businessTypes.ts`                 | ✅ Correctly documented                              |
 | platformSummary counters                    | `create-subscription/route.ts:218-221`             | ✅ Correctly documented                              |
 | storesSummary sync                          | `create-subscription/route.ts:192-202`             | ✅ Correctly documented                              |
 | User `stores` array format                  | `create-subscription/route.ts:209-213`             | ✅ `{ storeId, name, role }`                         |
