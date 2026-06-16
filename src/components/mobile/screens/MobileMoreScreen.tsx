@@ -31,9 +31,11 @@ import {
     LuClock,
     LuClock3,
     LuCreditCard,
+    LuDollarSign,
     LuGlobe,
     LuHelpCircle,
     LuKeyRound,
+    LuLayoutTemplate,
     LuLogOut,
     LuMail,
     LuMapPin,
@@ -145,8 +147,13 @@ const answerlatticeInternalScreens: MobilePlatformInternalScreenKey[] = [
     'chatRoiCalculator',
 ];
 
+const allPlatformWrappedScreens: MobilePlatformInternalScreenKey[] = [
+    ...platformInternalScreens,
+    ...answerlatticeInternalScreens,
+];
+
 const isPlatformInternalScreen = (screen: MoreSubScreen): screen is MobilePlatformInternalScreenKey => (
-    platformInternalScreens.includes(screen as MobilePlatformInternalScreenKey)
+    allPlatformWrappedScreens.includes(screen as MobilePlatformInternalScreenKey)
 );
 
 export type MoreSubScreen =
