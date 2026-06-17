@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** June 11, 2026
+**Last Updated:** June 17, 2026
 
 ---
 
@@ -341,7 +341,7 @@ Rules:
 
 ### 5.2.2 Business Health Homepage Panel
 
-Use `src/components/website/home/BusinessHealthSection.tsx` as the homepage owner-dashboard USP proof. The section should feel like a MenuList dashboard check, not a chatbot demo or decorative illustration.
+Use `src/components/website/home/BusinessHealthSection.tsx` as the homepage owner-dashboard USP proof. The section should feel like a MenuList AI health check, not a chatbot demo or decorative illustration.
 
 Rules:
 
@@ -350,7 +350,7 @@ Rules:
 - Proof cards use the shared compact `WebsiteFeatureCard` pattern so the section stays visually connected to the rest of the homepage.
 - Green is used only for stable status and No action needed. Brand blue remains the action/context color.
 - Mobile layout collapses to one column, keeps the status badge readable, and avoids showing chat UI as the main promise.
-- Copy must not say AI assistant, chatbot, realtime sales, revenue optimization, prediction, competitor tracking, or autonomous menu editing.
+- Copy may say AI health check or AI diagnostic. It must not say AI assistant, chatbot, realtime sales, revenue optimization, prediction, competitor tracking, or autonomous menu editing.
 
 ### 5.2.3 Business Health Campaign Page
 
@@ -359,13 +359,27 @@ Use `src/components/website/features/BusinessHealthFeaturePage.tsx` for the dedi
 Rules:
 
 - Keep the page visually connected to the homepage Business Health panel through the same status, metric, and No action needed product-preview language.
+- Copy may position Business Health as the AI diagnostic layer, while fixes hand off to AI Menu Manager or existing owner screens.
 - Hero copy must stay outside a card; the dashboard preview is the visual proof, not a generic illustration.
 - Use a sticky stacked story section after the hero. It should follow the Answerlattice "From inputs to support surfaces" interaction pattern but use MenuList tokens, fonts, borders, and color behavior.
 - The sticky story left rail has three tabs only: What it checks, Owner outcome, and Why owners can trust it.
 - The right side uses three stacked sticky cards with compact product-proof panels. Do not turn the section into a generic tabbed content component or a carousel.
+
+### 5.2.4 AI Menu Manager Launch Surfaces
+
+Use `src/components/website/home/AiMenuManagerSection.tsx` and `src/components/website/ai-menu-manager/AiMenuManagerPage.tsx` for the public AI Menu Manager launch hook.
+
+Rules:
+
+- The homepage section belongs after the source-to-public workflow, not before the official-source promise.
+- The visual must show a message, a prepared operation card, approval controls, and a receipt. Avoid generic chatbot screenshots or abstract AI decoration.
+- Copy may use `AI Menu Manager` and `AI-powered. Owner-approved.` for this feature only.
+- Keep the safety loop visible: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt.
+- Unsupported external posting must appear as manual task/export/handoff language, not a completed external update.
+- Mobile layout must keep cards readable with 44px approval-style controls and no horizontal overflow.
 - On mobile, convert the left rail into a sticky horizontal tab row and collapse cards to one column.
 - The public page must not use `/business-health` as its URL. That route belongs to the owner app.
-- Copy must not say AI assistant, chatbot, realtime sales, revenue optimization, prediction, competitor tracking, or autonomous menu editing.
+- Copy may say AI health check or AI diagnostic. It must not say AI assistant, chatbot, realtime sales, revenue optimization, prediction, competitor tracking, or autonomous menu editing.
 
 ### 5.2.4 Shared Feature Campaign Pages
 
@@ -496,6 +510,9 @@ Rules:
 - Left stack shows source inputs: photo, PDF, existing menu link, typed text.
 - Center keeps the owner-review gate visible.
 - Right stack shows public outputs: official page, menu link, QR code, print/PDF.
+- Desktop may wrap the source map in a guided story rail when it improves pacing. The rail should be sticky, token-backed, and limited to the four source/review/publish/share moments; it must not become a second feature checklist.
+- Guided rail progress can respond to section scroll position, but it must not require global smooth scrolling, scroll hijacking, or Lenis-style page control.
+- On mobile, guided rails must stay in document flow. Do not use sticky/fixed transformed rail controls for the homepage workflow on phones.
 - On mobile/tablet, use three rows: inputs spread horizontally, owner review centered, and outputs below. Keep separate mobile dotted paths aligned to those rows and anchored to card edges instead of reusing desktop path geometry. On narrow phones, collapse input/output cards to two columns and hide decorative path lines so labels remain readable.
 - Theme behavior: light mode uses light surface/card/path tokens; dark mode uses dark surface/card/path tokens.
 - Keep static dotted paths as the base layer. A subtle pulse overlay may travel from inputs into MenuList, pause while the existing center rings keep a light always-on pulse, and then move from MenuList toward outputs. Destination cards may briefly highlight only their existing border on pulse arrival. Motion must stay calm and must be disabled under `prefers-reduced-motion`.

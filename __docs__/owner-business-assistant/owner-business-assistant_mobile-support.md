@@ -1,214 +1,55 @@
 # Owner Business Assistant Mobile Support
 
 **Owner-Facing Name:** Business Health
-**Internal Slug:** owner-business-assistant
-**Product:** MenuList
-**Status:** Implemented behind feature flags
-**Last Updated:** June 10, 2026
+**Status:** MobileShell read-only screen
+**Last Updated:** June 17, 2026
 
----
+## Mobile Boundary
 
-## Mobile Admission Decision
+Mobile Business Health is a `MobileShell` sub-screen. It shows health state, analytics, checks, questions, and grounded answers. It does not perform actions.
 
-Business Health is admitted to owner mobile.
+Owner operations from mobile belong to Menu Manager and must use Menu Manager cards, approvals, and existing operation paths.
 
-Reason: the highest-value use case is a non-technical owner checking from a phone whether anything needs attention. A desktop-only assistant would violate the owner workflow and would make the feature less useful than the existing mobile dashboard.
+## Required Mobile Behavior
 
-## Existing Mobile Contract
+- Entry remains inside `MobileShell`.
+- Back navigation returns to the previous shell screen.
+- `/business-health` deep links map into shell state where supported.
+- Composer remains usable with the keyboard open.
+- Cards and checks do not hide behind the composer.
+- Touch targets are at least 44px where controls exist.
+- Project selector keeps selected-menu context.
+- Store context follows the current mobile shell store.
 
-Business Health must stay inside `MobileShell`.
+## Removed Mobile Behavior
 
-Evidence:
+Business Health mobile must not include:
 
-- `src/components/mobile/MobileShell.tsx:34-55` maps owner routes to mobile tab/sub-screen state.
-- `src/components/mobile/MobileShell.tsx:217-260` manages mobile hash state and selected-project eager loading.
-- `src/components/mobile/MobileShell.tsx:448-520` renders Today, Share, More, and Menu screens inside shared providers.
-- `src/components/mobile/screens/MobileMoreScreen.tsx:146-182` defines allowed More sub-screens.
-- `src/components/mobile/screens/MobileMoreScreen.tsx:786-812` shows the More screen list/card pattern.
+- operation bottom sheet
+- Open/Reviewed/Dismiss operation controls
+- generated-image action controls
+- direct publish/external handoff controls
+- desktop route bypass through `window.location` for Business Health actions
 
-## Route Strategy
+## Supported Mobile Content
 
-Desktop route:
+- current health card
+- analytics strip
+- source/freshness notes
+- priority checks as read-only cards
+- suggested questions
+- typed owner question input
+- read-only answers and artifacts
+- unsupported-domain explanations
 
-```text
-/business-health
-```
+## Mobile QA
 
-Current mobile mapping:
+Verify:
 
-```ts
-'/business-health': { tab: 'more', todayScreen: 'main', moreScreen: 'businessHealth' }
-```
-
-Business Health is currently kept as a More workspace, and dashboard entry points open the same `businessHealth` sub-screen through `MobileShell` state. Do not navigate mobile owners into a desktop route reload from Today, More, Share, or Menu.
-
-Historical mapping option A:
-
-```ts
-'/business-health': { tab: 'today', todayScreen: 'dashboard', moreScreen: 'main' }
-```
-
-Use this if Business Health is placed as a Today/Dashboard experience.
-
-Historical mapping option B:
-
-```ts
-'/business-health': { tab: 'more', todayScreen: 'main', moreScreen: 'businessHealth' }
-```
-
-This is the implemented mapping.
-
-## Required Mobile Files
-
-```text
-src/components/mobile/screens/MobileBusinessHealthScreen.tsx
-src/components/mobile/sheets/MobileBusinessHealthActionSheet.tsx
-src/components/mobile/sheets/MobileBusinessHealthSourceSheet.tsx
-src/components/mobile/components/MobileBusinessHealthCard.tsx
-```
-
-Add to existing mobile registry:
-
-- `MobileShell.tsx`
-- `MobileMoreScreen.tsx` if using More sub-screen
-- `MobileTodayScreen`/`MobileHoursScreen` path if using Today entry
-
-## Layout Contract
-
-Mobile order:
-
-1. Mobile dashboard summary card: cached Business Health status, freshness, and selected-menu compact analytics before the detailed analytics tabs.
-2. Header on full Business Health screen: Business Health, branch selector if needed, local Business Health scope selector with `All menus`, status, last checked.
-3. Summary card.
-4. Compact activity signals: Menu views, Top demand, Best source.
-5. Compact location summary for multi-store tenants only.
-6. Needs attention, max 4 visible, labeled as Promote, Fix, Restock, or Update.
-7. Suggested questions, 4-6 chips max only when source-backed health is ready.
-8. Answer panel.
-9. Actions as bottom sheet.
-10. Source/freshness disclosure.
-
-Mobile data should use the same scheduler-day cache behavior as desktop. Opening Business Health from `MobileShell` or opening the mobile analytics dashboard should render cached store-level current Health first and fetch only when missing, stale, or after an explicit refresh. Compact analytics must load through the scoped analytics-index hook so selected-menu analytics do not reuse store-wide Health teaser facts. The mobile dashboard and full mobile Business Health screen translate those already-loaded facts through `src/lib/ownerBusinessAssistant/businessSignals.ts`; this adds no mobile-specific DAL and no extra Firestore read path. The full mobile Business Health screen owns a local `All menus` / selected-menu scope that does not call the global mobile `selectProject()` handler. It resets to the active mobile project only until the owner touches the Business Health scope, and clears back to `All menus` if the scoped project disappears after store/project changes. The mobile dashboard guards both hooks until a selected project and store scope exist, preventing first-load API calls for empty project states.
-
-Bounded chat history uses the same shared thread hook as desktop, but only when `ENABLE_OWNER_BUSINESS_HEALTH_THREADS` is enabled. When the flag is off, mobile shows only the latest answer and writes no thread. When the flag is on, messages are embedded in the single thread doc, not stored as separate message docs.
-
-The first mobile ask must create or reuse the local thread ID before calling `/answer`. Mobile then renders the pending owner question and latest answer immediately from hook state while the one-doc thread history refreshes. Once the thread doc returns, duplicate pending/answer bubbles are suppressed by question text and answer ID.
-
-When Business Health is not source-backed yet, the mobile screen hides the Ask input, suggested questions, analytics strips, and fallback shortcut sections. The owner can still use the normal mobile tabs for Dashboard, Menu, Share, and More.
-
-Multi-location mobile summary reads `/api/owner-business-assistant/locations`, which returns one compact tenant summary doc normalized for legacy row shape, filtered by `storesSummary` active state, and filtered by mapped store access. It must not load every outlet's detailed Business Health packet.
-
-Do not use:
-
-- Floating chat bubble.
-- Split desktop columns.
-- Tiny side panel.
-- Multi-tab route stack for the owner-facing launch surface.
-- Long chat-first screen.
-
-## Touch and Readability
-
-Requirements:
-
-- Every action target at least 44px high.
-- Primary action visible without horizontal scrolling.
-- Bottom sheet buttons have explicit labels.
-- Chips wrap instead of shrinking text.
-- Status labels include visible text, not color only.
-- Freshness text is visible, not tooltip-only.
-- Error/refusal text is short and retry-safe.
-- Owner and Business Health messages use distinct bubbles, labels, and alignment.
-- Follow-up question buttons stay inside the latest Business Health response area and keep 44px touch targets.
-- Pending owner question and latest answer appear immediately after send, even before the Firestore thread read catches up.
-
-Preferred loading copy:
-
-> Checking latest MenuList facts...
-
-Avoid:
-
-> AI is thinking...
-
-## Mobile Action Rules
-
-Action Support is part of the day-one mobile contract. If `ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` is off, the mobile screen remains read-only and hides draft/confirm controls while keeping Business Health available.
-
-Navigate:
-
-- Can switch tabs/sub-screens inside `MobileShell`.
-- Should not use `window.location`.
-
-Prepare draft:
-
-- Use bottom sheet to show what will be prepared.
-- Confirm preparation if it creates a stored draft.
-- For price, description, and image changes, show the target item/business surface and the proposed value before any save.
-- Store image drafts as media references only, not base64 or chat attachments.
-
-Confirm write:
-
-- Use a high-clarity bottom sheet.
-- Show affected public surface when applicable.
-- Require explicit tap.
-- Disable while saving.
-- Show result and next screen.
-- If the server detects that the target changed since the draft was prepared, require the owner to review again.
-
-Public-truth publish:
-
-- Prefer opening existing publish screen until public-truth publish-in-assistant has full QA.
-- If in-assistant publish is enabled, require owner/admin permission and explicit affected-surface copy.
-
-## Multi-Location Mobile
-
-The selector must support:
-
-- Single store: no noisy selector.
-- Multi-location owner: branch selector sheet.
-- Manager: assigned stores only.
-- Staff: assigned scope only.
-- Reseller/internal: setup/support context only.
-
-Do not fetch every outlet on open if a compact location summary is already available.
-
-## Offline and Stale States
-
-Mobile should render:
-
-| State | Copy |
-| --- | --- |
-| No current doc | Latest check is not ready yet. |
-| Stale doc | Latest check is delayed. Showing the last available check. |
-| Offline | Showing the last loaded check on this device. |
-| Unsupported question | MenuList does not have enough data for that yet. |
-
-When there is no current source-backed doc, mobile must not show the green "No action needed" tag, suggested questions must be disabled, and the free-text Ask control must stay disabled until a generated check with `sourceRefs` is available.
-
-When a source-backed doc exists, mobile must show a plain freshness line such as `Uses data through 7 Jun 2026. Today may not be complete yet.` so owners do not assume the answers are realtime.
-
-## Mobile QA Checklist
-
-- `/business-health` opens inside `MobileShell`.
-- Cached Business Health packet renders before any new network read when still valid.
-- Back returns to previous mobile tab/sub-screen.
-- Branch selector respects permissions.
-- Stable state shows "No action needed".
-- Not-ready state does not show "No action needed" and does not allow Ask submission.
-- Not-ready state uses neutral/info treatment and hides fallback shortcut sections instead of showing a disabled Ask panel.
-- Multi-store tenants see a compact location summary with outlet status/top reason; single-store tenants do not see the section.
-- Data coverage note is visible near the Business Health summary.
-- Priority checks are tappable with 44px targets, and review/dismiss hides the check locally for the current business date after the server audit write succeeds.
-- Suggested questions wrap cleanly at 320px width.
-- First ask from a fresh install supplies a thread ID in the same `/answer` request when thread history is enabled.
-- Latest answer renders immediately and does not duplicate after thread history catches up.
-- Action bottom sheet traps focus and closes with cancel/back.
-- Action bottom sheet is not reachable when Action Support is disabled.
-- Public-truth action cannot be confirmed with one accidental tap.
-- Freshness/source text is visible on narrow screens.
-- Platform admins can open `Business Health Monitor` from Mobile More -> Platform Monitoring, and it renders inside `MobilePlatformInternalScreen` instead of forcing a desktop route.
-- `/platform/owner-business-assistant` maps into the same mobile platform monitor wrapper on mobile devices.
-- Public `/client/*` routes are unaffected.
-
-## Implementation Verdict
-
-Mobile support is required by the implementation contract. A desktop-only Business Health card/page is not acceptable.
+1. Mobile More opens Business Health inside `MobileShell`.
+2. The screen keeps selected project/store context.
+3. Suggested questions and typed answers work.
+4. Priority checks render without action buttons.
+5. Asking for a mutation does not mutate truth and does not open an action sheet.
+6. The screen stays usable with keyboard open.
+7. Account, billing, reseller, platform, and Answerlattice surfaces are not directly mutable from Business Health.

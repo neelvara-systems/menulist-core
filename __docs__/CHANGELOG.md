@@ -6,6 +6,86 @@
 
 ---
 
+## June 17, 2026 - Business Health AI Diagnostic Positioning
+
+### Changed
+
+- **Business Health website positioning updated** - Public website copy now presents Business Health as the AI health check for the owner's menu and public presence.
+- **Diagnostic/action boundary clarified** - Business Health checks cached MenuList facts, shows what needs attention, says No action needed when stable, and hands fixes to AI Menu Manager or existing owner screens. It does not perform menu operations.
+- **Business Health discovery updated** - `/features/business-health` metadata, feature-card copy, homepage copy, LLM discovery wording, and website docs now match the diagnostic positioning.
+
+### Cost
+
+- **No new Firebase cost path added** - These changes are static website locale, metadata, discovery, and documentation updates only. They add no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, indexes, AMM execution paths, or Business Health action routes.
+
+## June 17, 2026 - Visual Profile Completion Website Placement
+
+### Changed
+
+- **Official Business Page website copy updated** - The main website now mentions key profile photo checks as a supporting Official Business Page proof point instead of creating a separate feature page or navigation item.
+- **Website discovery copy aligned** - Official Business Page route metadata, discovery policy, LLM context, and website docs now describe key photo checks without claiming AI photo placement, social posting, gallery management, or ranking lift.
+
+### Cost
+
+- **No runtime cost added** - These are static website locale, metadata, discovery, and documentation updates only. They add no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, indexes, or Vercel deploy.
+
+## June 17, 2026 - AI Menu Manager Website Launch Hook
+
+### Added
+
+- **AI Menu Manager website page added** - The public website now has `/ai-menu-manager` for the feature launch, with the core promise: tell MenuList what changed, review the prepared card, and approve before important work goes live.
+- **AI Menu Manager homepage hook added** - The homepage now introduces AI Menu Manager after the official-source workflow and includes a demo-style prepared update card.
+- **AI Menu Manager discovery added** - Header, footer, feature navigation, feature cards, sitemap, and LLM discovery files now include AI Menu Manager.
+
+### Changed
+
+- **Public naming locked** - Public launch and website copy use AI Menu Manager. Daily in-app owner navigation can continue to use Menu Manager with an AI badge where useful.
+
+### Cost
+
+- **No new Firebase cost path added** - These changes are website, copy, route, and discovery updates only. They add no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, or indexes.
+
+## June 17, 2026 - Visual Profile Completion
+
+### Added
+
+- **Visual Profile Completion added** - Official Page settings now show whether the public business profile has a main photo, enough business photos, and menu/service image coverage when project summaries are already loaded.
+- **Visual Profile Completion docs added** - The docs lock the feature to OBP/media readiness and explicitly exclude AI image classification, social posting, campaign generation, gallery editing, and new image storage.
+
+### Cost
+
+- **No new write path added** - The completion card uses already-loaded OBP media state and mobile project summaries. It adds no Firestore writes, Storage paths, Cloud Functions, provider calls, schedulers, rules, or indexes.
+
+## June 17, 2026 - Business Health Operation Boundary
+
+### Changed
+
+- **Business Health is read-only** - Owner action handling, operation sheets, drafts, and action records were removed from Business Health. Menu operations now belong to Menu Manager, where owner intent becomes a prepared card, approval when needed, the existing MenuList operation, and a receipt.
+
+### Cost
+
+- **Business Health workflow writes removed** - Business Health no longer creates operation draft or action records. The remaining read and answer paths stay on compact health, analytics, thread, feedback, and monitoring documents.
+
+## June 17, 2026 - AI Menu Manager Documentation
+
+### Added
+
+- **AI Menu Manager docs added** - MenuList now has a docs-first contract for a standalone menu operations layer where owners tell MenuList what changed, review prepared cards, and approve registered actions that reuse existing MenuList save, extraction, image, publishing, cache, and mobile shell paths.
+- **AI Menu Manager action checklist added** - The docs now include a production checklist that maps AMM action types to current manual MenuList flows, approval levels, execution modes, Firebase cost classes, mobile handling, and readiness state.
+- **AI Menu Manager mobile PWA action sweep added** - The action checklist now covers mobile store settings, domain, customer app, digital screens, feedback, POS, integration status, share/export, and unsupported account/billing/internal surfaces.
+- **AI Menu Manager feature-action audit added** - The docs now include a feature-by-feature audit ledger for checking `__docs__` feature folders against related source files before adding AMM action types.
+- **Additional AMM action families mapped** - Compliance pages, communication templates, item share cards, physical/print surface exports, menu presence monitor, review/reputation guard, POS support helpers, new item metadata, image editing, and OBP review fields are now classified in the AMM checklist.
+- **AI Menu Manager selector context locked** - AMM docs now require visible store and project selectors so project-level commands run against the selected project in the selected store, with all-project or all-store scope requiring explicit approval.
+- **AI Menu Manager implementation feedback applied** - AMM docs now normalize product approval weights to checklist approval levels, move direct price changes to `high_confirm`, define today-special command resolution, require client execution directive integrity with patch hashes, keep rollback adapter-specific, and separate public launch naming from in-app owner navigation.
+- **AI Menu Manager item/category field coverage added** - AMM now maps every extracted item, category, and item-variation key to a supported action type, manual task, read-only card, or protected system-owned fallback. Category deactivate commands use the same proposal, approval, project patch, and receipt path as item visibility updates.
+
+### Cost
+
+- **Compact session storage planned** - The docs require daily/session summary docs, proposal docs only for actionable cards, Storage-backed heavy artifacts, cached menu context packets, and no per-token or per-message Firestore write pattern.
+- **AMM cost guardrails tightened** - The docs now require compact-array caps, deterministic/idempotent session and proposal creation, active-inbox loading without historical session scans, safe batch mutation merging, Storage lifecycle preference for drafts/debug artifacts, and bounded job-card polling.
+- **Mobile local action cost protected** - Mobile QR, menu kit, print asset, customer app link, feedback link, digital screen link, POS setup copy, and native share/download actions must stay browser-local unless a durable AMM proposal or receipt is explicitly required.
+- **Feature-sweep local actions kept local** - Communication templates, item share cards, menu kit asset share, print previews, physical surface exports, POS technical summary copy, and sample payload downloads are documented as local/browser-native actions by default.
+
 ## June 17, 2026 - CampaignCue Output Picker
 
 ### Added

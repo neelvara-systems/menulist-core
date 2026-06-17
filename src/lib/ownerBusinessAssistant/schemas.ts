@@ -12,7 +12,6 @@ export const OwnerBusinessAssistantScopeSchema = z.object({
     'health_card',
     'analytics_periods',
     'owner_question_basic',
-    'owner_question_actionable',
     'multi_location_summary',
     'dashboard',
     'page',
@@ -35,41 +34,6 @@ export const OwnerBusinessAssistantClientContextSchema = z.object({
 }).strict();
 
 const OwnerBusinessAssistantThreadIdSchema = z.string().min(1).max(160).regex(/^[A-Za-z0-9_-]+$/);
-const OwnerBusinessAssistantActionTargetKindSchema = z.enum([
-  'project',
-  'menu_item',
-  'category',
-  'store',
-  'media',
-  'feedback',
-  'review',
-  'outlet',
-  'billing',
-  'domain',
-  'screen',
-  'customer_app',
-  'qr',
-  'pos',
-  'team',
-  'compliance',
-]);
-const MAX_ACTION_PAYLOAD_CHARS = 12_000;
-const OwnerBusinessAssistantActionPayloadSchema = z.record(z.unknown()).superRefine((value, ctx) => {
-  try {
-    if (JSON.stringify(value).length <= MAX_ACTION_PAYLOAD_CHARS) return;
-  } catch {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Action payload must be JSON serializable.',
-    });
-    return;
-  }
-
-  ctx.addIssue({
-    code: z.ZodIssueCode.custom,
-    message: 'Action payload is too large.',
-  });
-});
 
 export const OwnerBusinessAssistantAnswerRequestSchema = z.object({
   question: z.string().min(1).max(800),
@@ -79,19 +43,6 @@ export const OwnerBusinessAssistantAnswerRequestSchema = z.object({
   clientContext: OwnerBusinessAssistantClientContextSchema.optional(),
   suggestedQuestionId: z.string().max(120).optional(),
   threadId: OwnerBusinessAssistantThreadIdSchema.optional(),
-}).strict();
-
-export const OwnerBusinessAssistantActionRequestSchema = z.object({
-  operation: z.enum(['navigate', 'prepare', 'confirm', 'cancel', 'mark_reviewed', 'dismiss', 'assign']),
-  actionType: z.string().min(1).max(120),
-  projectId: z.string().min(1).max(160).optional(),
-  storeId: OwnerBusinessAssistantStoreIdSchema,
-  targetKind: OwnerBusinessAssistantActionTargetKindSchema.optional(),
-  targetId: z.string().max(180).optional(),
-  draftId: z.string().max(180).optional(),
-  actionId: z.string().max(180).optional(),
-  payload: OwnerBusinessAssistantActionPayloadSchema.optional(),
-  clientContext: OwnerBusinessAssistantClientContextSchema.optional(),
 }).strict();
 
 export const OwnerBusinessAssistantFeedbackRequestSchema = z.object({
@@ -107,5 +58,4 @@ export const OwnerBusinessAssistantThreadParamsSchema = z.object({
 });
 
 export type OwnerBusinessAssistantAnswerRequest = z.infer<typeof OwnerBusinessAssistantAnswerRequestSchema>;
-export type OwnerBusinessAssistantActionRequest = z.infer<typeof OwnerBusinessAssistantActionRequestSchema>;
 export type OwnerBusinessAssistantFeedbackRequest = z.infer<typeof OwnerBusinessAssistantFeedbackRequestSchema>;

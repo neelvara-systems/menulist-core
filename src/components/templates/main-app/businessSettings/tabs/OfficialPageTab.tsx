@@ -7,15 +7,16 @@ import { generateBusinessCoverCandidate } from '@lib/image/projectImageGeneratio
 import { getStoreLanguageLabel, getStoreManagedLanguages, getStorePreferredLanguage, getLocalizedStoreValue } from '@lib/localization/storeContent';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
+import { buildVisualProfileCompletion } from '@lib/visualProfile/visualProfileCompletion';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { Button, Card, Col, ColorPicker, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Typography, message, theme } from 'antd';
+import { Button, Card, Col, ColorPicker, Divider, Flex, Form, Input, InputNumber, Row, Select, Switch, Tag, Typography, message, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import React, { forwardRef, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import ShareLinkCard from '../../ShareLinkCard';
-import { LuArrowLeft, LuArrowRight, LuCalendar, LuExternalLink, LuMapPin, LuMessageSquare, LuMessageSquarePlus, LuPhone, LuShoppingBag, LuSmile, LuSparkles, LuStar } from 'react-icons/lu';
+import { LuAlertCircle, LuArrowLeft, LuArrowRight, LuCalendar, LuCheckCircle, LuExternalLink, LuMapPin, LuMessageSquare, LuMessageSquarePlus, LuPhone, LuShoppingBag, LuSmile, LuSparkles, LuStar } from 'react-icons/lu';
 import CompliancePagesSection from './CompliancePagesSection';
 import GoogleListingGuide from './GoogleListingGuide';
 
@@ -28,6 +29,8 @@ function normalizePhotoList(photos: unknown): string[] {
 }
 
 interface OfficialPageTabProps {
+    businessCategory?: string | null;
+    businessType?: string | null;
     scrollRef?: React.RefObject<HTMLDivElement>;
     compact?: boolean;
     showDistributionTools?: boolean;
@@ -81,6 +84,8 @@ type ObpMediaDraft = {
 const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
     ({
         scrollRef,
+        businessCategory,
+        businessType,
         compact = false,
         showDistributionTools = true,
         publicPresence = {},
@@ -95,6 +100,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const t = useTranslations('BusinessSettings');
         const form = Form.useFormInstance();
         const session = useClientAuthSession();
+        const { token } = theme.useToken();
         const [photoUploading, setPhotoUploading] = useState<number | null>(null);
         const [coverUploading, setCoverUploading] = useState(false);
         const [coverGenerating, setCoverGenerating] = useState(false);
@@ -121,6 +127,12 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
         const watchedBusinessCover = watchedBusinessCoverValue !== undefined
             ? watchedBusinessCoverValue
             : publicPresence?.businessCover || '';
+        const visualProfileCompletion = useMemo(() => buildVisualProfileCompletion({
+            businessCategory,
+            businessCover: watchedBusinessCover,
+            businessType,
+            photos,
+        }), [businessCategory, businessType, photos, watchedBusinessCover]);
         const watchedIconVariant = Form.useWatch(['publicPresence', 'iconVariant']) || publicPresence?.iconVariant || 'icons';
         const managedLanguages = Array.from(new Set([defaultLanguage, ...(activeLanguages || []), 'en'].filter(Boolean)));
         const currentLanguage = storeContentLanguage || getStorePreferredLanguage({ activeLanguages: managedLanguages, defaultLanguage });
@@ -511,6 +523,49 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                     <Form.Item hidden name={['publicPresence', 'businessCover']}>
                         <Input />
                     </Form.Item>
+                    {FEATURE_FLAGS.ENABLE_VISUAL_PROFILE_COMPLETION ? (
+                        <Card
+                            size="small"
+                            style={{
+                                background: token.colorFillQuaternary,
+                                borderColor: visualProfileCompletion.status === 'complete'
+                                    ? token.colorSuccessBorder
+                                    : token.colorWarningBorder,
+                                marginBottom: 16,
+                            }}
+                        >
+                            <Flex gap={12} vertical>
+                                <Flex align="flex-start" justify="space-between" gap={12}>
+                                    <Flex gap={4} style={{ minWidth: 0 }} vertical>
+                                        <Text strong>Visual profile</Text>
+                                        <Text>{visualProfileCompletion.headline}</Text>
+                                        <Text type="secondary">{visualProfileCompletion.helperText}</Text>
+                                    </Flex>
+                                    <Tag color={visualProfileCompletion.status === 'complete' ? 'success' : 'warning'}>
+                                        {visualProfileCompletion.statusLabel}
+                                    </Tag>
+                                </Flex>
+                                <Flex gap={8} vertical>
+                                    {visualProfileCompletion.tasks.map((task) => {
+                                        const isComplete = task.status === 'complete';
+                                        return (
+                                            <Flex align="flex-start" gap={8} key={task.id}>
+                                                {isComplete ? (
+                                                    <LuCheckCircle color={token.colorSuccess} size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                                ) : (
+                                                    <LuAlertCircle color={token.colorWarning} size={16} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                                )}
+                                                <Flex gap={1} style={{ minWidth: 0 }} vertical>
+                                                    <Text>{task.label}</Text>
+                                                    <Text type="secondary" style={{ fontSize: 12 }}>{task.detail}</Text>
+                                                </Flex>
+                                            </Flex>
+                                        );
+                                    })}
+                                </Flex>
+                            </Flex>
+                        </Card>
+                    ) : null}
                     <Divider orientation="left" orientationMargin={0}>
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             {t('businessCover')}

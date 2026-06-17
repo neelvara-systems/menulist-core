@@ -55,6 +55,13 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 0.9,
     },
     {
+        label: 'AI Menu Manager',
+        path: '/ai-menu-manager',
+        description: 'Approval-based AI menu operations for prices, sold-out items, specials, images, imports, design, and publishing',
+        changeFrequency: 'monthly',
+        priority: 0.92,
+    },
+    {
         label: 'Menu Import',
         path: '/features/menu-import',
         description: 'Upload a menu photo, PDF, typed menu, or permission-confirmed public menu link for owner review before publishing',
@@ -78,7 +85,7 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
     {
         label: 'Official Business Page',
         path: '/features/official-business-page',
-        description: 'One official customer-facing page for menu, hours, photos, contact details, actions, QR options, and business information',
+        description: 'One official customer-facing page for menu, hours, photos, key photo checks, contact details, actions, QR options, and business information',
         changeFrequency: 'monthly',
         priority: 0.86,
     },

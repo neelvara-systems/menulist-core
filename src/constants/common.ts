@@ -190,7 +190,6 @@ export const AI_ACTIONS_TYPES: any = {
     PUBLIC_MENU_EXTRACTION: "public_menu_extraction",
     REVIEW_REPLY_SUGGESTION: "review_reply_suggestion",
     OWNER_BUSINESS_ASSISTANT_ANSWER: "owner_business_assistant_answer",
-    OWNER_BUSINESS_ASSISTANT_ACTION_TEXT: "owner_business_assistant_action_text",
     WEEKLY_NARRATIVE: "weekly_narrative",
     HELP_CENTER_SEARCH: "help_center_search",
     HELP_CENTER_EMBEDDING: "help_center_embedding",

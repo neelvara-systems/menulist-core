@@ -120,6 +120,8 @@ export default function OfficialPageSettings({
             onValuesChange={() => emitDraft()}
         >
             <OfficialPageTab
+                businessCategory={storeDetails?.businessCategory}
+                businessType={storeDetails?.businessType}
                 compact
                 showDistributionTools={false}
                 publicPresence={initialValues.publicPresence}

@@ -19,6 +19,7 @@ import { getMenuSpecialNoteSuggestions } from '@lib/menu/specialNoteSuggestions'
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { buildVisualProfileCompletion } from '@lib/visualProfile/visualProfileCompletion';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { closestCenter, DndContext, type DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -31,6 +32,8 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import {
     LuArrowRight,
     LuCalendar,
+    LuAlertCircle,
+    LuCheckCircle,
     LuCrop,
     LuExternalLink,
     LuEye,
@@ -496,6 +499,13 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
         || photoDeleteQueue.length > 0;
 
     const photoList = useMemo(() => formData.photos.filter(Boolean), [formData.photos]);
+    const visualProfileCompletion = useMemo(() => buildVisualProfileCompletion({
+        businessCategory: storeDetails?.businessCategory,
+        businessCover: formData.businessCover,
+        businessType: storeDetails?.businessType,
+        photos: photoList,
+        projects: projectsList,
+    }), [formData.businessCover, photoList, projectsList, storeDetails?.businessCategory, storeDetails?.businessType]);
     const sortablePhotoItems = useMemo(() => (
         photoList.map((photo, index) => ({
             id: `photo-${index}`,
@@ -978,6 +988,48 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                         onShowQr={() => setIsQrSheetOpen(true)}
                         value={officialPageUrl}
                     />
+                ) : null}
+
+                {FEATURE_FLAGS.ENABLE_VISUAL_PROFILE_COMPLETION ? (
+                    <Card
+                        style={{
+                            backgroundColor: token.colorFillQuaternary,
+                            borderColor: visualProfileCompletion.status === 'complete'
+                                ? token.colorSuccessBorder
+                                : token.colorWarningBorder,
+                        }}
+                    >
+                        <Flex gap={12} vertical>
+                            <Flex align="flex-start" gap={10} justify="space-between">
+                                <Flex gap={2} style={{ minWidth: 0 }} vertical>
+                                    <Text strong>Visual profile</Text>
+                                    <Text>{visualProfileCompletion.headline}</Text>
+                                    <Text type="secondary">{visualProfileCompletion.helperText}</Text>
+                                </Flex>
+                                <Tag color={visualProfileCompletion.status === 'complete' ? 'success' : 'warning'}>
+                                    {visualProfileCompletion.statusLabel}
+                                </Tag>
+                            </Flex>
+                            <Flex gap={10} vertical>
+                                {visualProfileCompletion.tasks.map((task) => {
+                                    const isComplete = task.status === 'complete';
+                                    return (
+                                        <Flex align="flex-start" gap={8} key={task.id}>
+                                            {isComplete ? (
+                                                <LuCheckCircle color={token.colorSuccess} size={18} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                            ) : (
+                                                <LuAlertCircle color={token.colorWarning} size={18} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                                            )}
+                                            <Flex gap={1} style={{ minWidth: 0 }} vertical>
+                                                <Text>{task.label}</Text>
+                                                <Text type="secondary">{task.detail}</Text>
+                                            </Flex>
+                                        </Flex>
+                                    );
+                                })}
+                            </Flex>
+                        </Flex>
+                    </Card>
                 ) : null}
 
                 <Card>

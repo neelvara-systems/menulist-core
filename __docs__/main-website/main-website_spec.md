@@ -14,13 +14,13 @@
 
 > June 1, 2026 resource localization update: `/resources` is now an evergreen content layer with reviewed English, Hindi, Tamil, Telugu, Marathi, Bengali, Arabic, and Spanish resource coverage. Locale-prefixed resource URLs are discovery surfaces only after full source-versioned packs pass verifier coverage; they must stay separate from owner app, customer menu runtime, Firebase, Answerlattice, Canonica, GrowthOS, KitStamp, and other same-repo product surfaces.
 
-> June 8, 2026 Business Health update: the homepage now carries one focused Business Health section because the owner dashboard, mobile screen, APIs, scheduler read models, cache hardening, action guards, and monitoring surface are implemented. Public strategy must frame it as the owner-dashboard check that shows what needs attention, not as an AI assistant, chatbot, revenue optimizer, prediction product, or autonomous public-truth writer.
+> June 17, 2026 Business Health update: the homepage now carries one focused Business Health section because the owner dashboard, mobile screen, APIs, scheduler read models, cache hardening, action guards, and monitoring surface are implemented. Public strategy may frame it as the AI health check that shows what needs attention, but not as an AI assistant, chatbot, revenue optimizer, prediction product, or autonomous public-truth writer.
 
 > June 9, 2026 Featured Choices update: the Decision Intelligence capability is now represented publicly as `/features/featured-choices`. Buyer-facing copy must use Featured Choices, Featured choice, Quick choice, and Value choice, and must avoid internal Decision Blocks naming, algorithm language, exact decision-time claims, or guaranteed sales-lift claims.
 
-> June 8, 2026 Business Health Features update: the `/features` Operations group now also carries one compact Business Health card so the feature inventory matches the homepage USP. It must stay a calm owner-dashboard check claim: latest MenuList check, last checked date, customer attention, whether anything needs action, and No action needed when stable.
+> June 17, 2026 Business Health Features update: the `/features` Operations group now also carries one compact Business Health card so the feature inventory matches the homepage USP. It must stay a calm diagnostic claim: AI health checks, latest MenuList check, last checked date, customer attention, whether anything needs action, No action needed when stable, and safe handoff to AI Menu Manager or existing owner screens.
 
-> June 8, 2026 Business Health campaign update: `/features/business-health` is now the public marketing page for Business Health campaigns. `/business-health` remains the protected owner app route. The campaign page can explain the feature in more depth, but the claim boundary is unchanged: Business Health is an owner-dashboard check, not an AI assistant, chatbot, realtime sales monitor, revenue optimizer, prediction engine, competitor tracker, or autonomous public-truth editor.
+> June 17, 2026 Business Health campaign update: `/features/business-health` is now the public marketing page for Business Health campaigns. `/business-health` remains the protected owner app route. The campaign page can explain the feature in more depth, but the claim boundary is unchanged: Business Health is an AI diagnostic health check, not an AI assistant, chatbot, realtime sales monitor, revenue optimizer, prediction engine, competitor tracker, or autonomous public-truth editor.
 
 ---
 
@@ -90,7 +90,7 @@ ChatGPT had zero awareness of these built features:
 16. **Menu Quality Signals** — Missing descriptions/images/prices flagged with one-tap fix
 17. **Menu Presence Monitor** — Checklist showing where menu is visible across surfaces
 18. **Customer Communication Kit** — Pre-written messages with menu link, address, hours
-19. **Business Health** — Owner-dashboard check that combines latest menu/public-surface state, cached customer attention, freshness, multi-location status, safe action routing, and No action needed state. It appears on the homepage, as the first `/features` Operations card, and as the dedicated public campaign page at `/features/business-health`.
+19. **Business Health** — AI health check that combines latest menu/public-surface state, cached customer attention, freshness, multi-location status, safe handoff to AI Menu Manager or existing owner screens, and No action needed state. It appears on the homepage, as a `/features` Operations card, and as the dedicated public campaign page at `/features/business-health`.
 20. **Header-level feature campaigns** — Menu Import, Official Business Page, QR Menu and Links, Owner PWA Dashboard, Business Health, and Public Discovery are the current header dropdown feature set because they map directly to SMB owner purchase confidence: start from the current menu, publish one public source, share it, manage core owner workflows from phone or PWA, know what needs attention, and provide a clearer public source.
 
 **Rule:** Do not forget these capabilities in the website ecosystem. They are competitive advantages, but they do not all need to sit on the homepage at once.

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { LuActivity, LuArrowRight, LuBadgeCheck, LuBarChart3, LuBriefcase, LuCamera, LuCheck, LuEye, LuFileText, LuImage, LuLanguages, LuLayoutGrid, LuLink, LuList, LuMessageSquare, LuMonitor, LuPackage, LuPalette, LuPrinter, LuQrCode, LuRefreshCw, LuShield, LuSmartphone, LuSparkles, LuTrendingUp, LuUsers, LuZap } from 'react-icons/lu';
+import { LuActivity, LuArrowRight, LuBadgeCheck, LuBarChart3, LuBot, LuBriefcase, LuCamera, LuCheck, LuEye, LuFileText, LuImage, LuLanguages, LuLayoutGrid, LuLink, LuList, LuMessageSquare, LuMonitor, LuPackage, LuPalette, LuPrinter, LuQrCode, LuRefreshCw, LuShield, LuSmartphone, LuSparkles, LuTrendingUp, LuUsers, LuZap } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import LogoMark from '../shared/LogoMark';
 import SectionHeading from '../shared/SectionHeading';
@@ -17,7 +17,7 @@ const groupIcons = [
   [LuQrCode, LuLayoutGrid, LuMonitor, LuLink, LuFileText, LuList],
   [LuPalette, LuPackage, LuPrinter],
   [LuSparkles, LuUsers, LuBarChart3, LuTrendingUp],
-  [LuActivity, LuRefreshCw, LuZap, LuBriefcase, LuEye, LuMessageSquare, LuList, LuLink, LuSmartphone, LuUsers, LuMessageSquare, LuLanguages],
+  [LuBot, LuActivity, LuRefreshCw, LuZap, LuBriefcase, LuEye, LuMessageSquare, LuList, LuLink, LuSmartphone, LuUsers, LuMessageSquare, LuLanguages],
   [LuShield, LuCheck, LuBadgeCheck],
 ];
 
@@ -33,9 +33,10 @@ const featurePageHrefByCard = new Map<string, string>([
   ['2-2', '/features/print-ready-kit'],
   ['3-0', '/features/featured-choices'],
   ['3-3', '/features/menu-quality-validation'],
-  ['4-0', '/features/business-health'],
-  ['4-8', '/features/owner-phone-dashboard'],
-  ['4-10', '/features/customer-feedback-loop'],
+  ['4-0', '/ai-menu-manager'],
+  ['4-1', '/features/business-health'],
+  ['4-9', '/features/owner-phone-dashboard'],
+  ['4-11', '/features/customer-feedback-loop'],
   ['5-0', '/features/menu-quality-validation'],
   ['5-1', '/features/menu-quality-validation'],
   ['5-2', '/features/menu-quality-validation'],

@@ -838,25 +838,17 @@ async function runSchedulerRunLogRetentionCleanup(): Promise<MaintenanceTaskResu
 
 async function runOwnerBusinessAssistantCleanup(): Promise<MaintenanceTaskResult> {
     const healthEnabled = isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_HEALTH');
-    const actionEnabled = isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_ACTION_SUPPORT');
-    const actionDraftsEnabled = actionEnabled && isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_ACTION_DRAFTS');
     const usageLoggingEnabled = healthEnabled && isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING');
     const threadsEnabled = healthEnabled && isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_HEALTH_THREADS');
-    if (!healthEnabled && !actionEnabled && !usageLoggingEnabled && !threadsEnabled) {
+    if (!healthEnabled && !usageLoggingEnabled && !threadsEnabled) {
         return { activity: false, details: { enabled: false } };
     }
 
     const now = Timestamp.now();
     const skippedCleanup = { scanned: 0, deleted: 0, skipped: true };
-    const [snapshots, actions, drafts, answerEvents, feedback, threads] = await Promise.all([
+    const [snapshots, answerEvents, feedback, threads] = await Promise.all([
         healthEnabled
             ? deleteExpiredDocs({ collection: DB_COLLECTIONS.PLATFORM_SUMMARY, now, limit: 50, kind: 'ownerBusinessHealthSnapshot' })
-            : Promise.resolve(skippedCleanup),
-        actionEnabled
-            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ACTIONS, now, limit: 50 })
-            : Promise.resolve(skippedCleanup),
-        actionDraftsEnabled
-            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_DRAFTS, now, limit: 50 })
             : Promise.resolve(skippedCleanup),
         usageLoggingEnabled
             ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS, now, limit: 50 })
@@ -868,7 +860,7 @@ async function runOwnerBusinessAssistantCleanup(): Promise<MaintenanceTaskResult
             ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS, now, limit: 50 })
             : Promise.resolve(skippedCleanup),
     ]);
-    const deleted = snapshots.deleted + actions.deleted + drafts.deleted + answerEvents.deleted + feedback.deleted + threads.deleted;
+    const deleted = snapshots.deleted + answerEvents.deleted + feedback.deleted + threads.deleted;
 
     return {
         activity: deleted > 0,
@@ -876,8 +868,6 @@ async function runOwnerBusinessAssistantCleanup(): Promise<MaintenanceTaskResult
             enabled: true,
             deleted,
             snapshots,
-            actions,
-            drafts,
             answerEvents,
             feedback,
             threads,

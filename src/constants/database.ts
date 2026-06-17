@@ -84,10 +84,17 @@ export const DB_COLLECTIONS = {
     // Owner Business Assistant / Business Health workflow docs
     // Core health and analytics read models live in PLATFORM_SUMMARY.
     OWNER_BUSINESS_ASSISTANT_THREADS: "ownerBusinessAssistantThreads",
-    OWNER_BUSINESS_ASSISTANT_ACTIONS: "ownerBusinessAssistantActions",
-    OWNER_BUSINESS_ASSISTANT_DRAFTS: "ownerBusinessAssistantDrafts",
     OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS: "ownerBusinessAssistantAnswerEvents",
     OWNER_BUSINESS_ASSISTANT_FEEDBACK: "ownerBusinessAssistantFeedback",
+
+    // AI Menu Manager / Menu Manager
+    // Compact proposal-driven owner operation layer.
+    // Path: aiMenuManagerSessions/{sessionId}
+    // Path: aiMenuManagerProposals/{proposalId}
+    // Path: aiMenuManagerRules/{ruleId}
+    AI_MENU_MANAGER_SESSIONS: "aiMenuManagerSessions",
+    AI_MENU_MANAGER_PROPOSALS: "aiMenuManagerProposals",
+    AI_MENU_MANAGER_RULES: "aiMenuManagerRules",
 
     // Menu Observation Layer (MOL v0) - Silent infrastructure
     // @see __docs__/MOL-V0-IMPLEMENTATION-PLAN.md

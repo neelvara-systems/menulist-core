@@ -20,6 +20,7 @@ const getPlanBullets = (planId: string) => {
         case 'pro':
             return [
                 'Better customer-facing presentation',
+                'AI Menu Manager for message-based updates',
                 'AI enhancement credits for content and images',
                 'Multi-language menu support',
                 'Action summaries from menu activity',
@@ -29,6 +30,7 @@ const getPlanBullets = (planId: string) => {
         case 'premium':
             return [
                 'Run multiple locations from one place',
+                'AI Menu Manager with outlet scope',
                 'Keep menus consistent across locations',
                 'Central menu with outlet-level overrides',
                 'Location governance controls',

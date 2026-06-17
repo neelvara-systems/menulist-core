@@ -13,7 +13,6 @@ import { buildOwnerBusinessAssistantContextPacket } from './buildOwnerBusinessAs
 import { generateAiOwnerBusinessAssistantAnswer } from './aiAnswerClient';
 import { classifyOwnerBusinessAssistantIntent } from './intentClassifier';
 import {
-  buildActionOptionsForIntent,
   buildAnalyticsAnswer,
   buildBusinessStatusAnswer,
   buildFeedbackPatternAnswer,
@@ -40,7 +39,6 @@ const INTENT_DOMAIN: Partial<Record<OwnerBusinessAssistantIntent, OwnerBusinessA
   share_asset_status: 'public_links',
   integration_status: 'pos_integrations',
   permission_status: 'users_permissions',
-  review_reply_prepare: 'feedback_reviews',
 };
 
 const OWNER_DOMAIN_LABELS: Partial<Record<OwnerBusinessAssistantDomain, string>> = {
@@ -119,7 +117,7 @@ export async function resolveOwnerBusinessAssistantAnswer(params: {
     tId: params.tId,
     sId: params.sId,
     projectId: params.request.projectId || params.request.clientContext?.selectedProjectId,
-    packetProfile: 'owner_question_actionable',
+    packetProfile: 'owner_question_basic',
     clientContext: params.request.clientContext as OwnerBusinessAssistantClientContext | undefined,
   });
 
@@ -155,7 +153,6 @@ export async function resolveOwnerBusinessAssistantAnswer(params: {
         freshnessLabel: period.freshnessLabel,
         sourceFactIds: analyticsAnswer.sourceFactIds,
         artifacts: analyticsAnswer.artifacts,
-        actions: buildActionOptionsForIntent(packet, intent),
         confidence: analyticsAnswer.confidence as OwnerBusinessAssistantAnswer['confidence'],
         cache: {
           source: packet.cacheSource,
@@ -173,7 +170,6 @@ export async function resolveOwnerBusinessAssistantAnswer(params: {
         alternative: buildUnsupportedAlternative(unsupportedDomain),
         sourceFactIds: packet.health.sourceRefs.map((ref) => ref.id),
       });
-      fallback.actions = buildActionOptionsForIntent(packet, intent);
       fallback.cache = {
         source: packet.cacheSource,
         cacheKey: packet.cacheKey,
@@ -188,7 +184,6 @@ export async function resolveOwnerBusinessAssistantAnswer(params: {
         freshnessLabel: describeHealthStatus(packet),
         sourceFactIds: feedbackAnswer.sourceFactIds,
         artifacts: feedbackAnswer.artifacts,
-        actions: buildActionOptionsForIntent(packet, intent),
         confidence: feedbackAnswer.confidence as OwnerBusinessAssistantAnswer['confidence'],
         cache: {
           source: packet.cacheSource,
@@ -206,7 +201,6 @@ export async function resolveOwnerBusinessAssistantAnswer(params: {
         alternative: buildUnsupportedAlternative(unsupportedDomain),
         sourceFactIds: packet.health.sourceRefs.map((ref) => ref.id),
       });
-      fallback.actions = buildActionOptionsForIntent(packet, intent);
       fallback.cache = {
         source: packet.cacheSource,
         cacheKey: packet.cacheKey,
@@ -221,7 +215,6 @@ export async function resolveOwnerBusinessAssistantAnswer(params: {
         freshnessLabel: describeHealthStatus(packet),
         sourceFactIds: statusAnswer.sourceFactIds,
         artifacts: statusAnswer.artifacts,
-        actions: buildActionOptionsForIntent(packet, intent),
         confidence: statusAnswer.confidence as OwnerBusinessAssistantAnswer['confidence'],
         cache: {
           source: packet.cacheSource,

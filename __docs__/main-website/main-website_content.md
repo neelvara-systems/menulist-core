@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** June 15, 2026
+**Last Updated:** June 17, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -15,6 +15,8 @@
 4. **Tone:** Premium calm + practical. Not fancy, not salesy, not startup-y.
 5. **Language:** Operational words only. No AI-hype, no jargon, no marketing buzzwords.
 
+> AI Menu Manager launch note (June 17, 2026): `AI Menu Manager` is the public feature name by founder decision. This is a narrow exception for this feature only. The website may use `AI-powered. Owner-approved.` and `approval-based AI menu operations` for AI Menu Manager, while the overall MenuList product remains positioned as one official menu source customers can trust.
+
 > Resources planning note (June 1, 2026): The next content expansion should be an evergreen `/resources` layer, not a chronological blog. Planned resources must keep the same official-source discipline as the homepage: owner-useful quick answers, checklists, worksheets, comparison tables, and practical next steps without ranking guarantees, AI citation promises, or generic restaurant-tech hype. Use `__docs__/main-website/main-website_resources-plan.md` as the tracker before writing or implementing resource copy.
 
 > Resources hardening note (June 2, 2026): The current release scope is not phased. The implemented website has the `/resources` hub, 15 article routes, four industry landing pages, a desktop Resources dropdown, mobile nested resource links, footer resource links, and a compact eight-card homepage bridge titled "Learn how to keep your public menu current." The homepage remains product-led; resource links support discovery and owner education without becoming a blog index.
@@ -25,13 +27,15 @@
 
 > Privacy and analytics note (June 5, 2026): Main MenuList website analytics are consent-gated. Google Analytics and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Upload your menu` or `See customer preview` actions. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
 
-> Business Health website note (June 8, 2026): Business Health is now visible on the main homepage after implementation proof. Public copy must describe it as an owner-dashboard check for latest menu state, public surfaces, customer attention, locations, freshness, and safe action paths. Do not call it an AI assistant, chatbot, autonomous business agent, revenue optimizer, or prediction system. Keep the owner promise narrow: MenuList shows what needs attention, and says No action needed when the latest check is stable.
+> Business Health website note (June 17, 2026): Business Health may now be promoted as MenuList's AI health check for the menu and public presence. This is a diagnostic-only AI positioning: Business Health checks cached MenuList facts, shows what needs attention, says No action needed when stable, and hands fixes to AI Menu Manager or existing owner screens. Do not call it a chatbot, autonomous business agent, revenue optimizer, prediction system, competitor tracker, or direct public-truth editor.
 
 > Featured Choices website note (June 9, 2026): Decision Intelligence is publicly exposed as Featured Choices at `/features/featured-choices`. Public copy should say Featured, Quick, and Value choices help customers choose from the current approved menu. Do not use internal names, algorithm language, exact decision-time claims, or guaranteed sales-lift claims.
 
 > Final readiness QA note (June 10, 2026): Public brand wording in the website locale payload must stay `MenuList`, not `MenuList AI`, unless a legal/account context explicitly requires otherwise. Support-feedback labels bundled into the public website locale pack now follow this rule too.
 
 > Print-ready Kit editor proof note (June 15, 2026): `/features/print-ready-kit` now needs to sell the template-to-editor workflow, not only static print-file export. Keep print off the homepage as a full section, but use the dedicated feature page to show owners the practical path: choose an asset/template, preview the generated output, open supported assets in the editor when needed, keep QR/required links protected, then download image/PDF/printer files.
+
+> Visual Profile Completion website note (June 17, 2026): Visual Profile Completion is mentioned only as a supporting Official Business Page proof point. Public copy may say MenuList shows when key profile photos are missing. Do not create a standalone page, nav item, homepage section, AI photo-placement claim, gallery-manager claim, social-posting claim, or ranking promise.
 
 ---
 
@@ -48,15 +52,16 @@ Supporting pages now share the same official-source discipline through shared he
 1. `HeroSection`
 2. `ProblemSection`
 3. `InteractiveWorkflowSection`
-4. `SetupReliefSection`
-5. `SurfacesSection`
-6. `CustomerBrowseSection`
-7. `PreparedForYouSection`
-8. `BusinessHealthSection`
-9. `ResourcesSection`
-10. `FaqSection`
-11. `FinalCtaSection`
-12. `StickyCta`
+4. `AiMenuManagerSection`
+5. `SetupReliefSection`
+6. `SurfacesSection`
+7. `CustomerBrowseSection`
+8. `PreparedForYouSection`
+9. `BusinessHealthSection`
+10. `ResourcesSection`
+11. `FaqSection`
+12. `FinalCtaSection`
+13. `StickyCta`
 
 **Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `BusinessHealthSection` is mounted as the single owner-dashboard USP proof after the prepared capability grid and before the education/discovery bridge. `ResourcesSection` remains a compact lower-page education/discovery bridge before FAQ; it must not turn the homepage into a blog index. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
 
@@ -64,11 +69,13 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Print files placement policy (June 5, 2026):** do not add a separate Menu Card Export or Print Assets homepage section. The homepage may show `Print files` as one compact output of the approved menu source, while the Features page can explain the practical owner outcome: paper menu PDFs, table cards, counter cards, and printer handoff files generated from the same current approved menu. `/resources/digital-menu-vs-pdf-menu` continues to carry the broader PDF-vs-digital explanation. The Pro/Premium layout suggestion must not be promoted on the homepage; if public pricing copy later needs it, describe it plainly as `layout suggestion on Pro and Premium`, not as an AI PDF feature.
 
-**Business Health placement policy (June 8, 2026):** keep the homepage Business Health section compact and direct, with the deeper public campaign story on `/features/business-health`. Both surfaces must show the owner-dashboard value directly: latest check, No action needed state, freshness, cached analytics periods, multi-location awareness, phone support, and safe action routing. Do not imply realtime sales, POS revenue, external competitor tracking, unsupported date ranges, provider-backed AI reasoning by default, or direct assistant-owned public-truth mutation.
+**Business Health placement policy (June 17, 2026):** keep the homepage Business Health section compact and direct, with the deeper public campaign story on `/features/business-health`. Both surfaces may use AI health-check language, but only for diagnostics: latest check, No action needed state, freshness, cached analytics periods, multi-location awareness, phone support, and safe handoff to AI Menu Manager or existing owner screens. Do not imply realtime sales, POS revenue, external competitor tracking, unsupported date ranges, autonomous reasoning, or direct Business Health-owned public-truth mutation.
 
-**Business Health Features-page policy (June 8, 2026):** the Features page should also list Business Health as one compact Operations card because the homepage now treats it as a MenuList USP. It must remain a feature-inventory proof, not a second full section, not a standalone landing page, and not part of the analytics cross-map. Approved copy can mention latest MenuList check, last checked date, customer attention, whether anything needs action, and No action needed stable state.
+**Business Health Features-page policy (June 17, 2026):** the Features page should also list Business Health as one compact Operations card because the homepage now treats it as a MenuList USP. It must remain a feature-inventory proof, not a second full section and not part of the analytics cross-map. Approved copy can mention AI health checks, latest MenuList check, last checked date, customer attention, whether anything needs action, No action needed stable state, and fix handoff to AI Menu Manager or existing owner screens.
 
-**Business Health campaign page policy (June 8, 2026):** `/features/business-health` is the public campaign URL for Business Health. Do not use `/business-health` for public marketing because that route belongs to the logged-in owner app. The campaign page may go deeper than the homepage section, but must stay inside the shipped contract: latest MenuList check, public surface status, customer attention, standard cached periods, location state, last checked date, safe next actions, No action needed when stable, and existing owner-screen routing. It must not imply AI assistant, generic chatbot, ask-anything behavior, realtime sales, POS revenue, competitor tracking, predictions, automatic external-platform updates, or direct assistant-owned public-truth mutation.
+**Business Health campaign page policy (June 17, 2026):** `/features/business-health` is the public campaign URL for Business Health. Do not use `/business-health` for public marketing because that route belongs to the logged-in owner app. The campaign page may go deeper than the homepage section and may describe Business Health as an AI health check, but must stay inside the shipped contract: latest MenuList check, public surface status, customer attention, standard cached periods, location state, last checked date, No action needed when stable, and safe handoff to AI Menu Manager or existing owner-screen routing. It must not imply generic chatbot, ask-anything behavior, realtime sales, POS revenue, competitor tracking, predictions, automatic external-platform updates, or direct Business Health-owned public-truth mutation.
+
+**AI Menu Manager placement policy (June 17, 2026):** AI Menu Manager is now the website growth hook after the source-to-public workflow. The homepage should first establish one approved MenuList source, then show how AI Menu Manager keeps that source current by message. The dedicated public route is `/ai-menu-manager`. Copy must keep the loop explicit: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Unsupported external posting must be described as a manual task/export/handoff, not direct completion.
 
 **CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination explains the flow publicly, then requires sign-in before accepting a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
 
@@ -139,7 +146,7 @@ Industry pages explain how the same official-source layer applies to common food
 > Start with a photo, PDF, existing menu link, or typed menu. MenuList prepares the official customer-facing version from one owner-approved source.
 
 **Primary CTA:** Upload your menu →
-**Secondary CTA:** See customer preview (`#customer-demo`)
+**Secondary CTA:** See AI Menu Manager (`/ai-menu-manager`)
 **Micro-trust line:** Start with a 7-day setup. Review the public menu before choosing a paid plan.
 
 **Proof strip:** Review before publishing · Current menu accepted · No desktop required
@@ -154,6 +161,10 @@ Industry pages explain how the same official-source layer applies to common food
 - Avoid "digital menu maker", "AI menu generator", and generic dashboard visuals.
 - Existing menu link copy is allowed as a source-intake proof only. Do not call it scraping, marketplace import, automatic cloning, or automatic publishing.
 - Avoid using "no account needed" as a hero or upload-page proof point. Keep the funnel promise aligned to the current setup model: "Start with a 7-day setup. Review before choosing a paid plan."
+
+**AI Menu Manager teaser:** Show a compact hero teaser:
+
+> New: AI Menu Manager — Update your menu by message
 
 ---
 
@@ -273,6 +284,8 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 - Left side: current menu inputs (`Photo`, `PDF`, `Existing link`, `Text`).
 - Center: official MenuList logo plus `Owner review`.
 - Right side: public customer outputs (`Official page`, `Menu link`, `QR code`, `Print files`).
+- Desktop wraps the source map in a guided rail that keeps one story moment in focus and shows section progress as the visitor scrolls. This is a native website enhancement, not a global smooth-scroll dependency.
+- Mobile keeps the guided story in normal flow so phone scrolling remains native and stable.
 - Mobile uses three rows so inputs spread horizontally, owner review stays centered, outputs sit below, and the dotted connector paths stay edge-anchored without using the desktop geometry.
 - Diagram colors must stay theme-aware: light mode uses light surfaces, dark mode uses dark surfaces.
 - Static dotted paths remain visible. A subtle pulse layer travels from inputs into MenuList, pauses while the center rings keep a light always-on pulse, and then moves from MenuList toward outputs; each destination card briefly highlights only its existing border when the pulse arrives. Reduced-motion users only see the static paths.
@@ -286,6 +299,11 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 | 2 | Review the prepared source | Items, categories, prices, language, images, and business details become structured before they go public. |
 | 3 | Publish the official version | The official page and live menu become the customer-facing source for your menu and business information. |
 | 4 | Deploy it where customers look | QR, links, screens, and print send customers to the same current menu. |
+
+**Step presentation:**
+
+- The four steps are presented in the guided rail beside the source map, not as a second card grid below it.
+- The active rail state may change with scroll progress, but the full step text remains readable without animation or JavaScript-driven visibility gates.
 
 **Micro-copy below steps:**
 
@@ -688,29 +706,29 @@ Key FAQ topics:
 
 **Heading:**
 
-> Business Health shows what needs attention.
+> Business Health is your AI health check.
 
 **Body:**
 
-> After publishing, MenuList checks the latest menu state, public surfaces, customer attention, and locations. When everything is stable, the owner dashboard says No action needed.
+> After publishing, MenuList checks the latest menu state, public surfaces, customer attention, and locations. It shows what needs attention, and stable checks say No action needed.
 
 **Homepage proof cards:**
 
 1. **Latest check first** — The dashboard opens with status, freshness, and whether anything needs attention.
 2. **Analytics without raw tables** — Standard periods such as today, this week, last month, and overall come from cached summaries.
-3. **Safe action paths** — Menu changes open existing owner screens. Public changes stay inside the normal publish flow.
+3. **Fixes hand off safely** — When a change is needed, Business Health points to AI Menu Manager or the existing owner screen instead of changing public truth by itself.
 4. **Works on phone** — The same Business Health view appears inside the mobile owner app.
 
 **Preview content:**
 
-- Latest check
+- AI health check
 - Business looks stable
 - No action needed
 - Uses data through the last settled business day
-- Owner question: Which item was on top this week?
-- Business Health answer: Answers come from cached MenuList data with source freshness
+- Owner question: What should I check today?
+- Business Health answer: Answers stay grounded in cached MenuList data with source freshness
 
-**Copy boundary:** Business Health is a MenuList check inside the owner dashboard. Do not call it a chatbot, AI assistant, realtime sales monitor, revenue optimizer, prediction tool, or autonomous action system.
+**Copy boundary:** Business Health is MenuList's AI diagnostic layer. It checks and explains; AI Menu Manager is the approved action layer. Do not call Business Health a chatbot, realtime sales monitor, revenue optimizer, prediction tool, competitor tracker, autonomous action system, or direct public-truth editor.
 
 **Source:** `owner-business-assistant_website.md`, runtime Business Health implementation and dashboard/mobile QA records.
 
@@ -750,7 +768,7 @@ Key FAQ topics:
 **Surfaces (detailed):**
 
 1. **QR Menu** — Customers scan and see your current published menu on any phone or browser. No app download needed.
-2. **Official Business Page** — One official link with your menu, hours, location, photos, social links, and customer actions. Share it on WhatsApp, Instagram, packaging, Google profile, or QR.
+2. **Official Business Page** — One official link with your menu, hours, location, photos, profile photo checks, social links, and customer actions. Share it on WhatsApp, Instagram, packaging, Google profile, or QR.
 3. **Google Presence** — Your Google Business Profile can point customers toward the current MenuList public menu where configured.
 4. **Digital Screens** — Your full menu on your shop TV. Categories, items, prices, and visibility can follow the published MenuList source.
 5. **Print Files** — A PDF or printer handoff packet generated from the current approved menu. For print, WhatsApp, packaging, or internal use.
@@ -858,6 +876,7 @@ The desktop `Features` label is a menu trigger, not a direct route. The `/featur
 - v3.6.56 strengthens `/features/print-ready-kit` around the editor-backed print-assets flow. The hero visual should communicate template choice plus editor/export proof, and the dedicated proof section should show the supported asset types, an Assets template-list view, and a customization/editor view. Use an always-visible rail for asset types rather than a carousel because SMB owners should not need to advance slides to understand what files are available. The proof gallery now uses current product screenshots from `public/images/website/print-ready-kit/`; keep the dashboard capture cropped away from account-header details and do not replace it with decorative artwork.
 - Use the sticky journey to show the end-to-end owner/customer logic for each feature page. Do not add one-off tab systems or carousels unless a future feature genuinely needs different interaction.
 - v3.6.45 keeps the shared desktop sticky journey as a left tab rail plus right story panel, but the right panel is one parent story card with a top narrative row and bottom full-width proof-card row. v3.6.46 keeps desktop panel height responsive with a tighter `32rem -> 72vh -> 39rem` clamp so taller screens do not create excessive empty card space. Do not return to a nested side-by-side copy/proof layout or internal copy/proof divider because it compresses copy-heavy proof cards and makes the panel feel split.
+- v3.6.60 folds Visual Profile Completion into `/features/official-business-page` as a supporting proof point. It may mention key profile photo checks, but it must not become a separate website feature, gallery manager, AI photo-placement claim, social scheduler, or ranking promise.
 - v3.6.42 completed the feature-detail parity pass after the Print-ready Kit page update. Menu Import now includes permission-confirmed public link intake; Menu Content Prep now owns descriptions, item images, and languages as one setup-relief story; Featured Choices now emphasizes owner pinning and availability-safe customer guidance; Official Business Page now includes QR options, photos, actions, and structured public facts; QR Menu and Links now focuses on stable access and customer shortcuts while leaving print depth to Print-ready Kit; Owner Phone Dashboard originally named the mobile/PWA daily operations path; Public Discovery now includes sitemap, crawler, and LLM context without placement promises; Menu Quality Validation now has full key parity and no internal process language.
 - v3.6.55 renames the public feature surface to Owner PWA Dashboard and strengthens the page around core owner workflows on phone: menu edits, publishing, QR/link sharing, Business Health, feedback, screens, status, hours, and key settings. Keep the claim practical: core owner dashboard work is available from phone browser or installed PWA; desktop remains useful for heavier review or precision setup.
 
@@ -1069,11 +1088,11 @@ Description:
 
 **Headline:**
 
-> Know what needs attention.
+> AI health checks for your menu.
 
 **Subline:**
 
-> Business Health brings the latest MenuList check, customer attention, locations, freshness, and safe next actions into one owner dashboard view.
+> Business Health checks the latest MenuList facts: menu state, public surfaces, customer attention, locations, and freshness. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows.
 
 **Primary CTA:** Upload your menu →
 
@@ -1083,7 +1102,7 @@ Description:
 
 The preview must show:
 
-- Latest check
+- AI health check
 - Last checked date shown
 - Business looks stable
 - No action needed
@@ -1094,11 +1113,11 @@ The preview must show:
 
 **Eyebrow:**
 
-> From check to next action
+> From AI check to approved fix
 
 **Heading:**
 
-> One Business Health view across the owner dashboard.
+> Business Health finds issues. AI Menu Manager prepares fixes.
 
 **Layout rule:** Use the same stacked sticky section structure as Answerlattice's "From inputs to support surfaces" section, translated into MenuList website tokens. The left side is a sticky tab rail. The right side is a stacked set of sticky story cards.
 
@@ -1111,12 +1130,12 @@ Left-side tabs:
 Right-side sticky cards:
 
 1. **What it checks** — Latest MenuList check, public surface status, customer attention, and location view.
-2. **Owner outcome** — Stable means quiet, freshness stays visible, and actions open the right place.
-3. **Why owners can trust it** — No uncontrolled public changes, cached checks control cost, and the same view works on desktop and phone.
+2. **Owner outcome** — Stable means quiet, freshness stays visible, and fixes hand off safely.
+3. **Why owners can trust it** — No hidden menu changes, cached checks control cost, and the same view works on desktop and phone.
 
 **Mobile rule:** The left rail becomes a sticky horizontal tab row. Story cards collapse to one column without losing the tab labels or source-fresh copy.
 
-**Copy boundary:** This page can be used for paid campaigns and founder-led sales, but it must stay a Business Health explanation, not an AI product page. Do not add generic assistant, chatbot, revenue, prediction, competitor, or realtime sales claims.
+**Copy boundary:** This page can be used for paid campaigns and founder-led sales, but it must stay a Business Health diagnostic page, not a second action-agent page. AI health-check language is allowed; generic assistant, chatbot, revenue, prediction, competitor, realtime sales, automatic external update, or Business Health-owned mutation claims are not.
 
 ---
 

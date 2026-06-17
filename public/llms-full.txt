@@ -169,6 +169,7 @@ Contact: support@menulist.ai
 
 Feature pages:
 
+- https://menulist.ai/ai-menu-manager
 - https://menulist.ai/features/menu-import
 - https://menulist.ai/features/menu-content-prep
 - https://menulist.ai/features/featured-choices

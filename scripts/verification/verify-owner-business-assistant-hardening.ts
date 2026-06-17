@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   OWNER_BUSINESS_ASSISTANT_CACHE,
   OWNER_BUSINESS_ASSISTANT_ENDPOINTS,
 } from '@lib/ownerBusinessAssistant/constants';
-import { canRunOwnerBusinessAssistantPublicTruthAction } from '@lib/ownerBusinessAssistant/actions/publicTruthActionGuard';
 import { buildOwnerBusinessAssistantPacketCacheKey } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { buildOwnerBusinessDomainCapabilities } from '@lib/ownerBusinessAssistant/server/domainCapabilityMatrix';
 import { buildOwnerBusinessAssistantRefusal } from '@lib/ownerBusinessAssistant/server/refusals';
@@ -17,25 +16,12 @@ import {
   getOwnerBusinessPrimaryAnalyticsPeriod,
 } from '@lib/ownerBusinessAssistant/businessSignals';
 import type {
-  OwnerBusinessActionDefinition,
   OwnerBusinessAnalyticsPeriod,
   OwnerBusinessHealthCheck,
   OwnerBusinessHealthCurrentDoc,
 } from '@lib/ownerBusinessAssistant/types';
 
 const repoRoot = process.cwd();
-
-const fakePublicTruthAction: OwnerBusinessActionDefinition = {
-  actionType: 'fake_public_truth_action',
-  ownerLabel: 'Fake public action',
-  riskLevel: 'public_truth',
-  requiredPermissions: [],
-  requiredFlags: [],
-  targetKinds: ['store'],
-  resolver: 'existing_api',
-  executor: 'server_adapter',
-  cacheImpact: 'store_public',
-};
 
 const health: OwnerBusinessHealthCurrentDoc = {
   version: 1,
@@ -106,7 +92,7 @@ const answerKey = buildOwnerBusinessAssistantPacketCacheKey({
   sId: 2,
   projectId: 'project-a',
   includeProjectInCacheKey: true,
-  packetProfile: 'owner_question_actionable',
+  packetProfile: 'owner_question_basic',
 });
 const healthKey = buildOwnerBusinessAssistantPacketCacheKey({
   tId: 1,
@@ -117,18 +103,17 @@ const healthKey = buildOwnerBusinessAssistantPacketCacheKey({
 });
 
 assert.equal(OWNER_BUSINESS_ASSISTANT_ENDPOINTS.locations, '/api/owner-business-assistant/locations');
+assert.equal(
+  'action' in OWNER_BUSINESS_ASSISTANT_ENDPOINTS,
+  false,
+  'Business Health must not expose an action endpoint; Menu Manager owns operations',
+);
 assert.equal(OWNER_BUSINESS_ASSISTANT_CACHE.browserLocationsPrefix, 'ownerBusinessAssistant-locations');
 assert.equal(OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs, 10 * 60 * 1000);
 assert.equal(OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketIndexPrefix, 'owner-business-assistant:packet-index:v1');
-assert.match(answerKey, new RegExp(`${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix}:1:2:p:project-a:profile:owner_question_actionable`));
+assert.match(answerKey, new RegExp(`${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix}:1:2:p:project-a:profile:owner_question_basic`));
 assert.match(healthKey, new RegExp(`${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix}:1:2:p:_:profile:health_card`));
 assert.notEqual(answerKey, healthKey, 'packet profiles must create separate cache keys');
-
-assert.equal(
-  canRunOwnerBusinessAssistantPublicTruthAction(fakePublicTruthAction),
-  false,
-  'public-truth actions must remain blocked until verified adapters are enabled',
-);
 
 const refusal = buildOwnerBusinessAssistantRefusal({
   answerId: 'answer-test',
@@ -192,18 +177,28 @@ assert.match(threadStore, /messages: nextMessages/);
 assert.match(threadStore, /params\.request\.projectId \|\| params\.request\.clientContext\?\.selectedProjectId/);
 assert.doesNotMatch(threadStore, /OWNER_BUSINESS_ASSISTANT_MESSAGES/);
 
-const actionAuditLogger = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/actions/actionAuditLogger.ts'), 'utf8');
-assert.match(actionAuditLogger, /operation !== 'navigate'/);
-assert.match(actionAuditLogger, /return undefined/);
-assert.match(actionAuditLogger, /firestoreWriteCount: \(params\.result\.metrics\?\.firestoreWriteCount \?\? 0\) \+ 1/);
-const actionHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAction.ts'), 'utf8');
-assert.match(actionHook, /OwnerBusinessAssistantActionTargetKind/);
-const actionExecutor = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/actions/actionExecutor.ts'), 'utf8');
-assert.match(actionExecutor, /definition\.targetKinds\.includes/);
-assert.match(actionExecutor, /That target is not supported for this action/);
-const actionTargetResolver = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/actions/actionTargetResolver.ts'), 'utf8');
-assert.match(actionTargetResolver, /withProjectQuery/);
-assert.match(actionTargetResolver, /\?projectId=/);
+const removedActionSupportPaths = [
+  'src/app/api/owner-business-assistant/action/route.ts',
+  'src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAction.ts',
+  'src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantActionSheet.tsx',
+  'src/components/mobile/sheets/MobileBusinessHealthActionSheet.tsx',
+  'src/lib/ownerBusinessAssistant/actions/actionAccess.ts',
+  'src/lib/ownerBusinessAssistant/actions/actionAuditLogger.ts',
+  'src/lib/ownerBusinessAssistant/actions/actionDraftBuilder.ts',
+  'src/lib/ownerBusinessAssistant/actions/actionExecutor.ts',
+  'src/lib/ownerBusinessAssistant/actions/actionRegistry.ts',
+  'src/lib/ownerBusinessAssistant/actions/actionSchemas.ts',
+  'src/lib/ownerBusinessAssistant/actions/actionTargetResolver.ts',
+  'src/lib/ownerBusinessAssistant/actions/checkWorkflowService.ts',
+  'src/lib/ownerBusinessAssistant/actions/publicTruthActionGuard.ts',
+];
+for (const relativePath of removedActionSupportPaths) {
+  assert.equal(
+    existsSync(join(repoRoot, relativePath)),
+    false,
+    `${relativePath} must stay removed; Menu Manager owns owner-initiated operations`,
+  );
+}
 
 const functionsWriter = readFileSync(join(repoRoot, 'functions/src/ownerBusinessAssistant/ownerBusinessHealthWriters.ts'), 'utf8');
 assert.match(functionsWriter, /getMultiLocation/);
@@ -213,6 +208,9 @@ const contextPacketBuilder = readFileSync(join(repoRoot, 'src/lib/ownerBusinessA
 assert.match(contextPacketBuilder, /packetProfile !== 'health_card'/);
 assert.match(contextPacketBuilder, /packetProfile !== 'analytics_periods'/);
 assert.match(contextPacketBuilder, /numberFormatter/);
+assert.doesNotMatch(contextPacketBuilder, /getOwnerBusinessAssistantAllowedActions/);
+assert.doesNotMatch(contextPacketBuilder, /allowedActions/);
+assert.doesNotMatch(contextPacketBuilder, /actionCatalog/);
 assert.doesNotMatch(contextPacketBuilder, /GUEST_FEEDBACK/);
 
 const feedbackSummaryBuilder = readFileSync(join(repoRoot, 'functions/src/ownerBusinessAssistant/buildOwnerBusinessFeedbackSummary.ts'), 'utf8');
@@ -307,6 +305,7 @@ assert.match(businessHealthPage, /styles\.summaryGridSingle/);
 assert.match(businessHealthPage, /<BusinessHealthAnalyticsStrip\s+enabled=\{isHealthReady\}/);
 assert.match(businessHealthPage, /key=\{`\$\{storeDetails\?\.storeId \|\| 'store'\}:\$\{scopedProjectId \|\| 'all'\}`\}/);
 const desktopAssistantPanel = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/OwnerAssistantPanel.tsx'), 'utf8');
+assert.doesNotMatch(desktopAssistantPanel, /OwnerAssistantActionSheet/);
 assert.doesNotMatch(desktopAssistantPanel, /Open dashboard/);
 assert.doesNotMatch(desktopAssistantPanel, /Open menu/);
 assert.doesNotMatch(desktopAssistantPanel, /Open share/);
@@ -324,7 +323,11 @@ assert.match(mobileHealthScreen, /useOwnerBusinessHealthCurrent\(undefined, stor
 assert.match(mobileHealthScreen, /useOwnerBusinessAssistantThread\(threadId, storeDetails\?\.storeId\)/);
 assert.match(mobileHealthScreen, /ALL_MENUS_SCOPE/);
 assert.match(mobileHealthScreen, /businessHealthProjectId/);
-assert.match(mobileHealthScreen, /useOwnerBusinessAssistantAction\(scopedProjectId, storeDetails\?\.storeId\)/);
+assert.doesNotMatch(mobileHealthScreen, /useOwnerBusinessAssistantAction/);
+assert.doesNotMatch(mobileHealthScreen, /MobileBusinessHealthActionSheet/);
+assert.doesNotMatch(mobileHealthScreen, /Open action/);
+assert.doesNotMatch(mobileHealthScreen, /Reviewed/);
+assert.doesNotMatch(mobileHealthScreen, /Dismiss/);
 assert.match(mobileHealthScreen, /ProjectSelectorList/);
 assert.match(mobileHealthScreen, /ProjectSelectorTrigger/);
 assert.match(mobileHealthScreen, /isLoading: isProjectsLoading/);
@@ -339,15 +342,25 @@ assert.match(businessHealthRoute, /normalizeProjectId/);
 assert.match(businessHealthRoute, /trimmed\.length <= 160/);
 
 const requestSchemas = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/schemas.ts'), 'utf8');
-assert.match(requestSchemas, /owner_question_actionable/);
+assert.doesNotMatch(requestSchemas, /owner_question_actionable/);
 assert.match(requestSchemas, /multi_location_summary/);
 assert.match(requestSchemas, /projectId: z\.string\(\)\.min\(1\)\.max\(160\)\.optional\(\)/);
 assert.match(requestSchemas, /OwnerBusinessAssistantStoreIdSchema/);
 assert.match(requestSchemas, /storeId: OwnerBusinessAssistantStoreIdSchema/);
-assert.match(requestSchemas, /OwnerBusinessAssistantActionTargetKindSchema/);
-assert.match(requestSchemas, /targetKind: OwnerBusinessAssistantActionTargetKindSchema\.optional\(\)/);
+assert.doesNotMatch(requestSchemas, /OwnerBusinessAssistantAction/);
+assert.doesNotMatch(requestSchemas, /targetKind/);
 const featureFlags = readFileSync(join(repoRoot, 'src/config/features.ts'), 'utf8');
-assert.match(featureFlags, /ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: false/);
+assert.doesNotMatch(featureFlags, /ENABLE_OWNER_BUSINESS_ACTION/);
+
+const ownerBusinessAssistantTypes = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/types.ts'), 'utf8');
+assert.doesNotMatch(ownerBusinessAssistantTypes, /OwnerBusinessAssistantAction/);
+assert.doesNotMatch(ownerBusinessAssistantTypes, /action_options/);
+assert.doesNotMatch(ownerBusinessAssistantTypes, /allowedActions/);
+
+const platformMonitorRoute = readFileSync(join(repoRoot, 'src/app/api/platform/owner-business-assistant/monitor/route.ts'), 'utf8');
+assert.doesNotMatch(platformMonitorRoute, /OWNER_BUSINESS_ASSISTANT_ACTIONS/);
+assert.doesNotMatch(platformMonitorRoute, /recentActions/);
+assert.doesNotMatch(platformMonitorRoute, /actionOptionCount/);
 
 const currentRoute = readFileSync(join(repoRoot, 'src/app/api/owner-business-assistant/current/route.ts'), 'utf8');
 assert.match(currentRoute, /OwnerBusinessAssistantScopeSchema/);

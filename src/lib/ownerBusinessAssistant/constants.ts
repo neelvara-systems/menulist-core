@@ -5,7 +5,6 @@ export const OWNER_BUSINESS_ASSISTANT_ENDPOINTS = {
   analytics: '/api/owner-business-assistant/analytics',
   locations: '/api/owner-business-assistant/locations',
   answer: '/api/owner-business-assistant/answer',
-  action: '/api/owner-business-assistant/action',
   feedback: '/api/owner-business-assistant/feedback',
   thread: (threadId: string) => `/api/owner-business-assistant/thread/${encodeURIComponent(threadId)}`,
 } as const;
@@ -56,8 +55,6 @@ export const OWNER_BUSINESS_ASSISTANT_DOCS = {
 
 export const OWNER_BUSINESS_ASSISTANT_COLLECTIONS = {
   threads: 'ownerBusinessAssistantThreads',
-  actions: 'ownerBusinessAssistantActions',
-  drafts: 'ownerBusinessAssistantDrafts',
   answerEvents: 'ownerBusinessAssistantAnswerEvents',
   feedback: 'ownerBusinessAssistantFeedback',
 } as const;
@@ -91,7 +88,6 @@ export const OWNER_BUSINESS_ASSISTANT_INTENTS = [
   'share_asset_status',
   'integration_status',
   'permission_status',
-  'review_reply_prepare',
 ] as const;
 
 export const OWNER_BUSINESS_ASSISTANT_DOMAINS = [

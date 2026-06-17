@@ -3,8 +3,8 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Runtime implemented behind flags; main website homepage section, Features card, and campaign page published
-**Last Updated:** June 8, 2026
+**Status:** Read-only runtime implemented; main website homepage section, Features card, and campaign page published
+**Last Updated:** June 17, 2026
 
 ---
 
@@ -12,7 +12,7 @@
 
 Update the public website after implementation proof, but keep the placement narrow and product-truth based.
 
-Reason: the owner dashboard card, `/business-health` route, mobile shell screen, protected APIs, scheduler-built read models, cache-first answer flow, multi-location summary, monitoring surface, and cost hardening have now been implemented and validated. Public copy can mention Business Health as an owner-dashboard check, but must not reposition MenuList as a generic AI assistant or autonomous restaurant agent.
+Reason: the owner dashboard card, `/business-health` route, mobile shell screen, protected APIs, scheduler-built read models, cache-first answer flow, multi-location summary, monitoring surface, and cost hardening have now been implemented and validated. Public copy can mention Business Health as an AI health check, but must not reposition MenuList as a generic AI assistant or autonomous restaurant agent.
 
 ## Website Placement
 
@@ -31,25 +31,26 @@ Rationale:
 - It fits the main website buyer journey after MenuList explains what it prepares for the owner.
 - It belongs in the Features page Operations group because buyers who inspect the feature inventory should see the same owner-dashboard capability.
 - It deserves a dedicated campaign page because Business Health is now a primary MenuList USP and paid/founder-led campaigns need a public URL.
-- The campaign page must remain a Business Health explanation, not a generic assistant, chatbot, AI, or autonomous action page.
+- The campaign page may use AI diagnostic language, but it must remain a Business Health explanation, not a generic assistant, chatbot, or autonomous action page.
 
 ## Approved Public Copy Draft
 
 Live homepage framing:
 
-> Business Health shows what needs attention.
+> Business Health is your AI health check.
 
-> After publishing, MenuList checks the latest menu state, public surfaces, customer attention, and locations. When everything is stable, the owner dashboard says No action needed.
+> After publishing, MenuList checks the latest menu state, public surfaces, customer attention, and locations. It shows what needs attention, and stable checks say No action needed.
 
 ## Short Website Bullets
 
 - Latest MenuList check in the owner dashboard
+- AI health check for menu and public presence
 - Source freshness shown with answers and cards
 - Recent customer attention in plain language
 - Standard cached analytics periods without raw tables
 - Clear "No action needed" state when things are stable
 - Priority checks when something needs review
-- Public changes stay inside existing owner/publish flows
+- Fixes hand off to AI Menu Manager or existing owner/publish flows
 - Works on desktop and mobile
 
 ## Do Not Publish
@@ -66,7 +67,7 @@ Live homepage framing:
 
 If website copy is indexed after implementation:
 
-- Mention "business health" as a dashboard check, not a standalone AI product.
+- Mention "business health" as an AI health check, not a standalone action agent.
 - Keep MenuList as public business truth infrastructure.
 - Do not target broad chatbot keywords that invite unsupported expectations.
 - Do not cite Stanford/IBM/Meta market stats in customer copy.

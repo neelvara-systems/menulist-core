@@ -39,8 +39,6 @@ export const DB_COLLECTIONS = {
     MENU_INTELLIGENCE: 'menuIntelligence',      // Continuous Menu Intelligence state (per-project)
     OWNER_CONTROL_USAGE: 'ownerControlUsage',   // Authority Maturation tracking (owner control usage)
     OWNER_BUSINESS_ASSISTANT_THREADS: 'ownerBusinessAssistantThreads',
-    OWNER_BUSINESS_ASSISTANT_ACTIONS: 'ownerBusinessAssistantActions',
-    OWNER_BUSINESS_ASSISTANT_DRAFTS: 'ownerBusinessAssistantDrafts',
     OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS: 'ownerBusinessAssistantAnswerEvents',
     OWNER_BUSINESS_ASSISTANT_FEEDBACK: 'ownerBusinessAssistantFeedback',
     MENU_IMAGE_PROCESSING_JOBS: 'menuImageProcessingJobs',

@@ -39,7 +39,8 @@
     "verify:ai-accounting": "node scripts/verification/verify-ai-accounting-hardening.js",
     "verify:menu-card-export": "node scripts/verification/verify-menu-card-export.js",
     "verify:growthos": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/verify-growthos-flow.ts",
-    "verify:owner-business-assistant": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/verify-owner-business-assistant-hardening.ts"
+    "verify:owner-business-assistant": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/verify-owner-business-assistant-hardening.ts",
+    "verify:ai-menu-manager": "node scripts/verification/verify-ai-menu-manager.js"
   },
   "overrides": {
     "zod": "^3.25.0"

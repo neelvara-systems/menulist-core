@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { LuFileText, LuGlobe, LuLayoutGrid, LuMonitor, LuQrCode, LuShieldCheck, LuSmartphone } from 'react-icons/lu';
+import Link from 'next/link';
+import { LuArrowRight, LuBot, LuFileText, LuGlobe, LuLayoutGrid, LuMonitor, LuQrCode, LuShieldCheck, LuSmartphone } from 'react-icons/lu';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
@@ -31,6 +32,12 @@ export default function HeroSection() {
         <div className="ws-hero-official__grid">
           <AnimateOnScroll preset="hero" className="ws-hero-official__copy">
             <p className="ws-hero-eyebrow">{t('Hero.eyebrow')}</p>
+            <Link href="/ai-menu-manager" className="ws-hero-amm-teaser">
+              <LuBot size={16} aria-hidden="true" />
+              <span>{t('Hero.aiTeaserLabel')}</span>
+              <strong>{t('Hero.aiTeaserText')}</strong>
+              <LuArrowRight size={15} aria-hidden="true" />
+            </Link>
             <WebsiteHeadline as="h1" className="ws-hero-official__headline">
               <span className="ws-hero-official__phrase">{t('Hero.titlePart1')}</span>
               <br className="ws-hero-title-break" />
@@ -47,7 +54,7 @@ export default function HeroSection() {
               <WebsiteButton href="/create-menu" ariaLabel={t('Hero.ctaAria')}>
                 {t('Hero.cta')}
               </WebsiteButton>
-              <WebsiteButton href="#customer-demo" variant="ghost" ariaLabel={t('Hero.secondaryCtaAria')}>
+              <WebsiteButton href="/ai-menu-manager" variant="ghost" ariaLabel={t('Hero.secondaryCtaAria')}>
                 {t('Hero.secondaryCta')}
               </WebsiteButton>
             </div>

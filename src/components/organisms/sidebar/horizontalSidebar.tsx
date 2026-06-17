@@ -67,6 +67,9 @@ const HorizontalSidebarComponent = () => {
             if (nav.route === NAVIGARIONS_ROUTINGS.PLATFORM_COST_POSTURE) {
                 return FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE;
             }
+            if (nav.route === NAVIGARIONS_ROUTINGS.AI_MENU_MANAGER) {
+                return FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER;
+            }
             return true;
         };
 

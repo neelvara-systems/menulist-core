@@ -184,7 +184,12 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
 
     } catch (error) {
         rateLimitProviderBypassUntil = Date.now() + RATE_LIMIT_PROVIDER_BYPASS_MS;
-        console.error('[Rate Limit] Upstash error:', error);
+        const message = error instanceof Error ? error.message : 'Unknown provider error';
+        if (message === 'Rate limit provider timeout') {
+            console.warn('[Rate Limit] Upstash provider timed out; temporarily allowing requests with local bypass.');
+        } else {
+            console.error('[Rate Limit] Upstash error:', message);
+        }
         
         // FALLBACK: Allow request on Upstash error
         // This prevents rate limiting from breaking your entire app

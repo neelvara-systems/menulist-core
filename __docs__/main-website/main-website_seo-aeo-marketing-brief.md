@@ -158,7 +158,7 @@ Do not claim:
 | `/features/official-business-page` | Official Business Page - MenuList \| One Current Customer Link | Official public business page campaign |
 | `/features/qr-menu-links` | QR Menu and Share Links - MenuList \| One Current Menu Everywhere | QR/share campaign page |
 | `/features/owner-phone-dashboard` | Owner PWA Dashboard - MenuList \| Manage MenuList From Your Phone | Owner phone/PWA workflow campaign |
-| `/features/business-health` | Business Health - MenuList \| Know What Needs Attention | Business Health campaign page |
+| `/features/business-health` | Business Health - MenuList \| AI Health Check for Your Menu | Business Health campaign page |
 | `/features/public-discovery` | Public Discovery - MenuList \| Clear Business Information for Search and AI | Search/answer-system source clarity campaign |
 | `/how-it-works` | How MenuList Works - From Current Menu to Official Public Source | Explains upload, review, publish, and public surfaces |
 | `/multi-location` | Multi-Location Menu Management - MenuList \| One Menu, Every Outlet | Multi-location product proof |

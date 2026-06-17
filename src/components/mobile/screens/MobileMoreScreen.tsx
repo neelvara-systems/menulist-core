@@ -92,6 +92,7 @@ const MobileLocationsScreen = dynamic(() => import('./MobileLocationsScreen'), {
 const MobileUsersScreen = dynamic(() => import('./MobileUsersScreen'), { ssr: false });
 const MobileDashboardScreen = dynamic(() => import('./MobileDashboardScreen'), { ssr: false });
 const MobileBusinessHealthScreen = dynamic(() => import('./MobileBusinessHealthScreen'), { ssr: false });
+const MobileAiMenuManagerScreen = dynamic(() => import('../ai-menu-manager/MobileAiMenuManagerScreen'), { ssr: false });
 const MobileMenuCardExportScreen = dynamic(() => import('../menu-card-export/MobileMenuCardExportScreen'), { ssr: false });
 const MobilePrintAssetsScreen = dynamic(() => import('./MobilePrintAssetsScreen'), { ssr: false });
 const MobileTransactionsScreen = dynamic(() => import('./MobileTransactionsScreen'), { ssr: false });
@@ -175,6 +176,7 @@ export type MoreSubScreen =
     | 'users'
     | 'dashboard'
     | 'businessHealth'
+    | 'aiMenuManager'
     | 'printAssets'
     | 'printMenu'
     | 'feedback'
@@ -478,6 +480,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const moduleItems: MoreListItem[] = [
         ...(canViewAnalytics ? [{ key: 'dashboard', icon: <LuBarChart3 color={token.colorPrimary} size={20} />, keywords: ['analytics', 'stats', 'performance', 'insights'], label: t('dashboard'), description: t('dashboardDesc'), onClick: () => openSubScreen('dashboard') }] : []),
         ...(FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && canViewAnalytics ? [{ key: 'businessHealth', icon: <LuActivity color={token.colorSuccess} size={20} />, keywords: ['business health', 'assistant', 'status', 'checks', 'stats'], label: 'Business Health', description: 'Ask about today, this week, and checks that need attention.', onClick: () => openSubScreen('businessHealth') }] : []),
+        ...(FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER && FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER_MOBILE && canManageMenu ? [{ key: 'aiMenuManager', icon: <LuMessageCircle color={token.colorPrimary} size={20} />, keywords: ['menu manager', 'ai menu manager', 'agent', 'price', 'availability', 'menu update'], label: 'Menu Manager', description: 'Tell MenuList what changed and approve the prepared menu card.', onClick: () => openSubScreen('aiMenuManager') }] : []),
         ...((FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES || FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE) && canManageDailyActions ? [{ key: 'printAssets', icon: <LuPrinter color={token.colorPrimary} size={20} />, keywords: ['assets', 'print assets', 'templates', 'table tent', 'counter sticker', 'qr print', 'printables'], label: 'Assets', description: 'Download branded table, counter, entrance, feedback, and menu files.', onClick: openPrintAssets }] : []),
         ...(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT && canManageDailyActions ? [{ key: 'printMenu', icon: <LuPrinter color={token.colorSuccess} size={20} />, keywords: ['print menu', 'menu pdf', 'download menu', 'export menu', 'print shop'], label: 'Print Menu', description: 'Preview and create a PDF or print-shop packet.', onClick: openMenuCardExport }] : []),
         ...(canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY ? [{ key: 'todayHistory', icon: <LuClock3 color={token.colorInfo} size={20} />, keywords: ['history', 'past', 'activity', 'completed', 'skipped', 'today'], label: 'Past Activity', description: 'Review today actions completed or skipped in the last 7 days.', onClick: () => openSubScreen('todayHistory') }] : []),
@@ -614,6 +617,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (screen === 'locations') return canManageLocations;
         if (screen === 'dashboard') return canViewAnalytics;
         if (screen === 'businessHealth') return canViewAnalytics && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH;
+        if (screen === 'aiMenuManager') return canManageMenu && FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER && FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER_MOBILE;
         if (screen === 'printAssets') return canManageDailyActions && (FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_TEMPLATES || FEATURE_FLAGS.ENABLE_PRINT_ASSETS_ROUTE);
         if (screen === 'analyticsSettings') return canManageStore;
         if (screen === 'feedback' || screen === 'feedbackSettings') return canManageFeedback;
@@ -745,6 +749,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     else if (subScreen === 'users') subScreenContent = <MobileUsersScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'dashboard') subScreenContent = <MobileDashboardScreen onBack={() => setSubScreen('main')} onOpenBusinessHealth={() => setSubScreen('businessHealth')} onOpenDesignEditor={() => setSubScreen('designEditor')} />;
     else if (subScreen === 'businessHealth') subScreenContent = <MobileBusinessHealthScreen onBack={() => setSubScreen('main')} />;
+    else if (subScreen === 'aiMenuManager') subScreenContent = <MobileAiMenuManagerScreen onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'printAssets') subScreenContent = <MobilePrintAssetsScreen onBack={() => setSubScreen('main')} onOpenDesignEditor={() => setSubScreen('designEditor')} onOpenPrintMenu={() => setSubScreen('printMenu')} />;
     else if (subScreen === 'printMenu') subScreenContent = <MobileMenuCardExportScreen initialProjectId={selectedProjectId} onBack={() => setSubScreen('main')} />;
     else if (subScreen === 'feedback') subScreenContent = <MobileFeedbackScreen onBack={() => setSubScreen('main')} />;

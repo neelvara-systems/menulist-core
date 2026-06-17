@@ -1,5 +1,4 @@
 import type {
-  OwnerBusinessAssistantActionOption,
   OwnerBusinessAssistantAnswer,
   OwnerBusinessAssistantContextPacket,
 } from '../types';
@@ -11,13 +10,6 @@ const addSourceFactIds = (target: Set<string>, ids?: Array<string | undefined>) 
   });
 };
 
-const addActionSourceFactIds = (
-  target: Set<string>,
-  actions?: OwnerBusinessAssistantActionOption[],
-) => {
-  actions?.forEach((action) => addSourceFactIds(target, action.sourceFactIds));
-};
-
 const normalizeSourceFactIds = (
   ids?: string[],
   allowedSourceFactIds?: Set<string>,
@@ -26,14 +18,6 @@ const normalizeSourceFactIds = (
     .map((id) => (typeof id === 'string' ? id.trim() : ''))
     .filter((id) => id && (!allowedSourceFactIds || allowedSourceFactIds.has(id))),
 ));
-
-const normalizeActionSourceFactIds = (
-  actions?: OwnerBusinessAssistantActionOption[],
-  allowedSourceFactIds?: Set<string>,
-) => actions?.map((action) => ({
-  ...action,
-  sourceFactIds: normalizeSourceFactIds(action.sourceFactIds, allowedSourceFactIds),
-}));
 
 export function collectOwnerBusinessAssistantSourceFactIds(
   packet: OwnerBusinessAssistantContextPacket,
@@ -54,9 +38,6 @@ export function collectOwnerBusinessAssistantSourceFactIds(
     addSourceFactIds(allowedSourceFactIds, period?.sourceFactIds);
   });
   addSourceFactIds(allowedSourceFactIds, packet.todayOverlay?.sourceFactIds);
-  addActionSourceFactIds(allowedSourceFactIds, packet.health.answerArtifacts?.flatMap((artifact) => (
-    artifact.type === 'action_options' ? artifact.actions : []
-  )));
 
   return allowedSourceFactIds;
 }
@@ -69,21 +50,10 @@ export function validateGroundedOwnerBusinessAssistantAnswer(params: {
     params.answer.sourceFactIds,
     params.allowedSourceFactIds,
   );
-  const normalizedActions = normalizeActionSourceFactIds(params.answer.actions, params.allowedSourceFactIds);
-  const normalizedArtifacts = params.answer.artifacts?.map((artifact) => (
-    artifact.type === 'action_options'
-      ? {
-        ...artifact,
-        actions: normalizeActionSourceFactIds(artifact.actions, params.allowedSourceFactIds) || [],
-      }
-      : artifact
-  ));
 
   if (params.answer.status === 'answered' && normalizedSourceFactIds.length === 0) {
     return {
       ...params.answer,
-      actions: normalizedActions,
-      artifacts: normalizedArtifacts,
       status: 'needs_more_data',
       text: 'MenuList does not have enough verified data to answer that yet.',
       confidence: 'low',
@@ -94,7 +64,5 @@ export function validateGroundedOwnerBusinessAssistantAnswer(params: {
   return {
     ...params.answer,
     sourceFactIds: normalizedSourceFactIds,
-    actions: normalizedActions,
-    artifacts: normalizedArtifacts,
   };
 }

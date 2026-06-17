@@ -4,7 +4,6 @@ import type { OwnerBusinessHealthCurrentDoc, OwnerBusinessHealthQuestion } from 
 import { useOwnerBusinessAssistantAnswer } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer';
 import { useOwnerBusinessAssistantThread } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantThread';
 import { BusinessHealthSuggestedQuestions } from './BusinessHealthSuggestedQuestions';
-import { OwnerAssistantActionSheet } from './OwnerAssistantActionSheet';
 import { OwnerAssistantInput } from './OwnerAssistantInput';
 import { OwnerAssistantMessageList } from './OwnerAssistantMessageList';
 import styles from './OwnerBusinessAssistant.module.scss';
@@ -65,7 +64,6 @@ export function OwnerAssistantPanel({ current, projectId, questions, storeScopeK
           onSuggestedQuestion={askSuggested}
           pendingQuestion={lastQuestion?.question}
         />
-        <OwnerAssistantActionSheet actions={answer?.actions} projectId={projectId} storeScopeKey={storeScopeKey} />
         {showStarterQuestions ? (
           <BusinessHealthSuggestedQuestions
             disabled={!canAskSuggested}

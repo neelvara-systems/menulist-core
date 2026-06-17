@@ -26,6 +26,7 @@ const MobileHoursScreen = dynamic(() => import('./screens/MobileHoursScreen'), {
 const MobileDashboardScreen = dynamic(() => import('./screens/MobileDashboardScreen'), { ssr: false });
 const MobileTodayHistoryScreen = dynamic(() => import('./screens/MobileTodayHistoryScreen'), { ssr: false });
 const MobileShareScreen = dynamic(() => import('./screens/MobileShareScreen'), { ssr: false });
+const MobileAiMenuManagerScreen = dynamic(() => import('./ai-menu-manager/MobileAiMenuManagerScreen'), { ssr: false });
 const MobileMoreScreen = dynamic(() => import('./screens/MobileMoreScreen'), { ssr: false });
 const StarterActivationBanner = dynamic(() => import('../onboarding/StarterActivationBanner'), { ssr: false });
 
@@ -39,6 +40,7 @@ const OWNER_PATH_TO_MOBILE_ROUTE: Record<string, MobileRouteState> = {
     '/today': MOBILE_ROUTE_DEFAULT,
     '/today/history': { tab: 'today', todayScreen: 'history', moreScreen: 'main' },
     '/projects': { tab: 'menu', todayScreen: 'main', moreScreen: 'main' },
+    '/menu-manager': { tab: 'aiMenuManager', todayScreen: 'main', moreScreen: 'main' },
     '/use-menulist': { tab: 'share', todayScreen: 'main', moreScreen: 'main' },
     '/assets': { tab: 'more', todayScreen: 'main', moreScreen: 'printAssets' },
     '/use-menulist/print-assets': { tab: 'more', todayScreen: 'main', moreScreen: 'printAssets' },
@@ -134,6 +136,7 @@ const RESELLER_MORE_SCREENS: MoreSubScreen[] = [
 const SELECTED_PROJECT_DATA_MORE_SCREENS: MoreSubScreen[] = [
     'dashboard',
     'businessHealth',
+    'aiMenuManager',
     'designEditor',
     'printAssets',
     'printMenu',
@@ -160,7 +163,7 @@ function parseMobileRouteHash(hash: string): MobileRouteState {
     const parts = hash.slice(MOBILE_ROUTE_HASH_PREFIX.length).split('/').filter(Boolean);
     const tab = parts[0] as MobileTab | undefined;
 
-    if (!tab || !['today', 'menu', 'share', 'more'].includes(tab)) {
+    if (!tab || !['today', 'menu', 'aiMenuManager', 'share', 'more'].includes(tab)) {
         return fallback;
     }
 
@@ -291,6 +294,7 @@ export default function MobileShell() {
     const isResellerMobileScreen = activeTab === 'more' && RESELLER_MORE_SCREENS.includes(moreScreen);
     const shouldEagerLoadSelectedProject = activeTab === 'today'
         || activeTab === 'menu'
+        || activeTab === 'aiMenuManager'
         || (activeTab === 'more' && SELECTED_PROJECT_DATA_MORE_SCREENS.includes(moreScreen));
     const shouldBypassSubscriptionGate = (isPlatformAdmin && (isPlatformMobileScreen || isResellerMobileScreen)) || (isResellerAccount && isResellerMobileScreen);
     const canUseTodayTab = hasAnyPermission(userPermissions, [
@@ -309,11 +313,15 @@ export default function MobileShell() {
         PERMISSIONS.MANAGE_MENU_SHARING,
         PERMISSIONS.PUBLISH_MENU,
     ]);
+    const canUseAiMenuManagerTab = FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER
+        && FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER_MOBILE
+        && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_MENU]);
     const canViewAnalytics = hasAnyPermission(userPermissions, [PERMISSIONS.VIEW_ANALYTICS]);
     const visibleTabs: MobileTab[] = useMemo(() => {
         if (hasStarterAccess) {
             return [
                 ...(canUseMenuTab ? ['menu' as MobileTab] : []),
+                ...(canUseAiMenuManagerTab ? ['aiMenuManager' as MobileTab] : []),
                 ...(canUseShareTab ? ['share' as MobileTab] : []),
                 'more',
             ];
@@ -322,10 +330,11 @@ export default function MobileShell() {
         return [
             ...(canUseTodayTab ? ['today' as MobileTab] : []),
             ...(canUseMenuTab ? ['menu' as MobileTab] : []),
+            ...(canUseAiMenuManagerTab ? ['aiMenuManager' as MobileTab] : []),
             ...(canUseShareTab ? ['share' as MobileTab] : []),
             'more',
         ];
-    }, [canUseMenuTab, canUseShareTab, canUseTodayTab, hasStarterAccess]);
+    }, [canUseAiMenuManagerTab, canUseMenuTab, canUseShareTab, canUseTodayTab, hasStarterAccess]);
 
     useEffect(() => {
         const handleOnline = () => setIsOffline(false);
@@ -513,6 +522,8 @@ export default function MobileShell() {
         )
         : activeTab === 'share'
             ? <MobileShareScreen onOpenDigitalScreens={handleOpenDigitalScreens} onOpenDesignEditor={handleOpenDesignEditor} onOpenPosSync={handleOpenPosSync} onOpenPrintAssets={handleOpenPrintAssets} onOpenPrintMenu={handleOpenPrintMenu} />
+        : activeTab === 'aiMenuManager'
+            ? <MobileAiMenuManagerScreen />
         : activeTab === 'more'
             ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} onOpenPrintMenu={handleOpenPrintMenu} />;

@@ -399,6 +399,8 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                         setSocialMedia={setSocialMedia}
                     />
                     <OfficialPageTab
+                        businessCategory={storeDetails?.businessCategory}
+                        businessType={storeDetails?.businessType}
                         publicPresence={storeDetails?.publicPresence}
                         subdomain={storeDetails?.subdomain}
                         customDomain={storeDetails?.customDomain}

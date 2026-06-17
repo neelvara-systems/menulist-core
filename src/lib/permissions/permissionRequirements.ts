@@ -57,6 +57,13 @@ const routeRequirements: Array<{
         },
     },
     {
+        matcher: (pathname) => pathname === "/menu-manager",
+        requirement: {
+            anyOf: [PERMISSIONS.MANAGE_MENU],
+            label: "Menu Manager",
+        },
+    },
+    {
         matcher: (pathname) => pathname === "/feedback",
         requirement: { anyOf: [PERMISSIONS.MANAGE_FEEDBACK], label: "Feedback" },
     },

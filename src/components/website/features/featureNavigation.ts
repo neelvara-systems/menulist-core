@@ -1,6 +1,7 @@
 import type { IconType } from 'react-icons';
 import {
   LuActivity,
+  LuBot,
   LuBuilding2,
   LuCamera,
   LuFileText,
@@ -24,6 +25,7 @@ export type WebsiteFeatureNavGroup = {
 };
 
 export const websiteFeatureNavLinks: WebsiteFeatureNavLink[] = [
+  { href: '/ai-menu-manager', key: 'featureAiMenuManager', icon: LuBot },
   { href: '/features/menu-import', key: 'featureMenuImport', icon: LuCamera },
   { href: '/features/menu-content-prep', key: 'featureMenuContentPrep', icon: LuFileText },
   { href: '/features/featured-choices', key: 'featureFeaturedChoices', icon: LuSparkles },
@@ -67,6 +69,7 @@ export const websiteFeatureNavGroups: WebsiteFeatureNavGroup[] = [
   {
     key: 'featureGroupOperate',
     links: [
+      getFeatureLink('/ai-menu-manager'),
       getFeatureLink('/features/owner-phone-dashboard'),
       getFeatureLink('/features/business-health'),
       getFeatureLink('/features/customer-feedback-loop'),

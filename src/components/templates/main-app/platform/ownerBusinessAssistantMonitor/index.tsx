@@ -25,7 +25,6 @@ type MonitorEvent = {
   firestoreWriteCount?: number | null;
   threadWritten?: boolean;
   unsupportedReason?: string | null;
-  actionOptionCount: number;
   providerUsed: boolean;
   unitsConsumed: number;
   realCostPaise: number;
@@ -39,14 +38,12 @@ type MonitorData = {
     answered: number;
     needsMoreData: number;
     unsupported: number;
-    needsConfirmation: number;
     providerCalls: number;
     serverCacheHits: number;
     freshFirestorePackets: number;
     avgFirestoreReads: number;
     maxFirestoreReads: number;
     threadWrites: number;
-    actionOptionsShown: number;
     unitsConsumed: number;
     realCostPaise: number;
     ownerChargePaise: number;
@@ -63,7 +60,6 @@ type MonitorData = {
     }>;
   };
   events: MonitorEvent[];
-  recentActions: Array<Record<string, any>>;
   recentFeedback: Array<Record<string, any>>;
   generatedAt: string;
 };
@@ -72,7 +68,6 @@ const statusColor = (status: string) => {
   if (status === 'answered') return 'green';
   if (status === 'unsupported') return 'orange';
   if (status === 'needs_more_data') return 'red';
-  if (status === 'needs_confirmation') return 'blue';
   return 'default';
 };
 
@@ -203,7 +198,7 @@ export default function OwnerBusinessAssistantMonitor() {
         <div style={{ alignItems: 'center', display: 'flex', gap: 12, justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <div>
             <Title level={3} style={{ margin: 0 }}>Business Health Monitor</Title>
-            <Text type="secondary">Internal answer quality, support gaps, action usage, and cost view.</Text>
+            <Text type="secondary">Internal answer quality, support gaps, feedback, and cost view.</Text>
           </div>
           <Space wrap>
             <Button href="/transactions">Owner Transactions</Button>
@@ -281,19 +276,6 @@ export default function OwnerBusinessAssistantMonitor() {
         </Card>
 
         <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
-          <Card title="Recent Actions" size="small">
-            {data.recentActions.length ? (
-              <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                {data.recentActions.slice(0, 8).map((action) => (
-                  <div key={action.id} style={{ borderBottom: '1px solid var(--ant-color-border)', paddingBottom: 8 }}>
-                    <Text strong>{action.actionType || action.operation || action.id}</Text><br />
-                    <Text type="secondary">{action.status || action.workflowStatus || 'unknown'} · {formatTimestamp(action.createdAt)}</Text>
-                  </div>
-                ))}
-              </Space>
-            ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No actions yet" />}
-          </Card>
-
           <Card title="Recent Feedback" size="small">
             {data.recentFeedback.length ? (
               <Space direction="vertical" size={8} style={{ width: '100%' }}>

@@ -1,4 +1,5 @@
 import StickyCta from '../shared/StickyCta';
+import AiMenuManagerSection from './AiMenuManagerSection';
 import BusinessHealthSection from './BusinessHealthSection';
 import CustomerBrowseSection from './CustomerBrowseSection';
 import FaqSection from './FaqSection';
@@ -18,6 +19,7 @@ export default function HomePage() {
       <HeroSection />
       <ProblemSection />
       <InteractiveWorkflowSection />
+      <AiMenuManagerSection />
       <SetupReliefSection />
       <SurfacesSection />
       <CustomerBrowseSection />

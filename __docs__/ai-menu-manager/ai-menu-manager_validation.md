@@ -1,0 +1,109 @@
+# AI Menu Manager - Implementation Validation
+
+**Status:** Initial implementation validated; production audit hardening applied
+**Audience:** Engineering / QA
+**Last Updated:** June 17, 2026
+
+---
+
+## Implemented Scope
+
+This implementation establishes the AMM foundation as a standalone MenuList feature:
+
+- feature flags and database collection constants.
+- protected AMM API routes for command intake, inbox/session load, proposal approval, and proposal completion.
+- action type registry with approval policy and readiness metadata.
+- deterministic resolver for price, availability, visibility, special note, design mood, today-special, image-task, and unsupported external commands.
+- compact Firestore session/proposal repository.
+- desktop Menu Manager owner route under `/menu-manager`; public marketing remains `/ai-menu-manager`; legacy `/use-menulist/ai-menu-manager` redirects to `/menu-manager`.
+- mobile Menu Manager screen inside `MobileShell` under the More tab.
+- client project patch execution through existing `updateProjectWithoutLoader()` and completion verification.
+- production hardening for adapter metadata, selected project/action scope verification, stale-card conflict checks, idempotent retry no-ops, generic validation errors, and manual-task receipts.
+- static verifier script: `npm run verify:ai-menu-manager`.
+
+Owner-facing UI name is **Menu Manager**. Internal files and docs keep `ai-menu-manager` / AMM.
+
+---
+
+## Evidence
+
+| Area | Evidence |
+| --- | --- |
+| Feature flags | `src/config/features.ts` |
+| Collections | `src/constants/database.ts` |
+| Shared types | `src/types/aiMenuManager.ts` |
+| Action registry | `src/lib/ai-menu-manager/actionTypes.ts`, `src/lib/ai-menu-manager/actionRegistry.ts` |
+| Approval policy | `src/lib/ai-menu-manager/approvalPolicy.ts` |
+| Command resolver | `src/lib/ai-menu-manager/commandResolver.ts` |
+| Context packet | `src/lib/ai-menu-manager/contextPacket.ts` |
+| Patch apply/verify | `src/lib/ai-menu-manager/actions/projectPatches.ts` |
+| Firestore repository | `src/database/aiMenuManager/server.ts` |
+| Client DAL | `src/database/aiMenuManager/index.ts` |
+| API routes | `src/app/api/ai-menu-manager/**/route.ts` |
+| Desktop screen | `src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx` |
+| Desktop route | `src/app/(main)/menu-manager/page.tsx` |
+| Legacy redirect | `src/app/(main)/use-menulist/ai-menu-manager/page.tsx` |
+| Mobile screen | `src/components/mobile/ai-menu-manager/MobileAiMenuManagerScreen.tsx` |
+| Mobile shell mapping | `src/components/mobile/MobileShell.tsx`, `src/components/mobile/screens/MobileMoreScreen.tsx` |
+| Navigation | `src/constants/navigations.ts`, `src/components/organisms/sidebar/index.tsx`, `src/components/organisms/sidebar/horizontalSidebar.tsx` |
+| Permissions | `src/lib/permissions/permissionRequirements.ts` |
+| Verifier | `scripts/verification/verify-ai-menu-manager.js` |
+
+---
+
+## Validation Commands
+
+```bash
+npm run verify:ai-menu-manager
+npx tsc --noEmit --incremental false --pretty false
+git diff --check
+```
+
+Result on June 17, 2026:
+
+- `npm run verify:ai-menu-manager` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `git diff --check` passed.
+
+---
+
+## Cost Check
+
+Firestore cost posture remains aligned with the AMM Firebase doc:
+
+- No per-token or provider-chunk writes.
+- Session doc is one compact daily/project doc with capped arrays.
+- Proposal docs are written only for actionable cards.
+- Inbox loads one session doc and bounded proposal details from pending summaries.
+- Approved project mutations reuse `updateProjectWithoutLoader()` so existing cache invalidation, MCE/MOL hooks, and outlet save behavior remain in the current project mutation path.
+- Completion does one proposal verification read of the target project only after an approved mutation.
+- Idempotent retries return existing cards/receipts and do not duplicate compact messages, counters, pending summaries, or execution receipts.
+- Approval revalidates the current selected-project base hash before issuing a directive.
+
+No Firestore rules, indexes, Storage rules, or Cloud Functions were changed in this implementation.
+
+---
+
+## Current Execution Boundary
+
+Executable client project mutation cards:
+
+- `item_price_update`
+- `item_availability_update`
+- `item_visibility_update`
+- `menu_special_note_update`
+- `menu_design_mood_update`
+
+Execution is additionally gated by `ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES`. With this flag off, AMM can prepare cards but cannot apply approved writes.
+
+Registry/manual/existing-flow cards are present for broader day-one product positioning, but they do not silently mutate menu truth until their adapters are connected.
+
+---
+
+## Open Implementation Follow-Ups
+
+- Connect image generation cards to the existing image generation job flow behind `ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS`.
+- Connect menu import/upload/link cards to existing extraction/import review APIs.
+- Connect publish cards to the existing publish/share flow.
+- Add merged bulk patch execution for bulk price and availability cards.
+- Add durable adapter-specific undo only where before/after state supports reversal.

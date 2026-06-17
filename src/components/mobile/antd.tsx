@@ -1084,8 +1084,12 @@ export function Input({
     type?: string;
     value?: string
 }) {
+    const { token } = theme.useToken();
     const isTemporalInput = type === 'time' || type === 'date' || type === 'datetime-local' || type === 'month' || type === 'week';
     const mergedStyle = sanitizeStyle({
+        backgroundColor: disabled ? token.colorBgContainerDisabled : token.colorBgContainer,
+        borderColor: token.colorBorder,
+        color: disabled ? token.colorTextDisabled : token.colorText,
         ...(isTemporalInput ? { minHeight: 44 } : {}),
         ...(style || {}),
     });
@@ -1151,6 +1155,8 @@ export function Input({
 }
 
 export function TextArea({ autoSize, disabled, maxLength, onChange, placeholder, rows, showCount, style, value }: { autoSize?: { minRows?: number; maxRows?: number }; disabled?: boolean; maxLength?: number; onChange?: (value: string) => void; placeholder?: string; rows?: number; showCount?: boolean; style?: AnyStyle; value?: string }) {
+    const { token } = theme.useToken();
+
     return (
         <AntInput.TextArea
             autoSize={autoSize}
@@ -1160,7 +1166,12 @@ export function TextArea({ autoSize, disabled, maxLength, onChange, placeholder,
             placeholder={placeholder}
             rows={rows}
             showCount={showCount}
-            style={sanitizeStyle(style)}
+            style={sanitizeStyle({
+                backgroundColor: disabled ? token.colorBgContainerDisabled : token.colorBgContainer,
+                borderColor: token.colorBorder,
+                color: disabled ? token.colorTextDisabled : token.colorText,
+                ...style,
+            })}
             value={value}
         />
     );

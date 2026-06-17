@@ -1,702 +1,139 @@
-# Owner Business Assistant Architecture Cross-Check
+# Owner Business Assistant Architecture
 
 **Owner-Facing Name:** Business Health
-**Internal Slug:** owner-business-assistant
-**Product:** MenuList
-**Status:** Implemented alignment record
-**Last Updated:** June 8, 2026
+**Status:** Current read-only architecture
+**Last Updated:** June 17, 2026
 
----
+## Architecture Summary
 
-## 1. Audit Verdict
+Business Health is a bounded read model and answer layer over existing MenuList data. It is not an action layer and does not own public-truth writes.
 
-The end-to-end architecture is valid only as a summary-first Business Health system.
-
-The final contract is not a chatbot rollout sequence. It is one permanent architecture with two separately flag-gated tracks:
-
-- **Business Health:** card, page, current read model, analytics index, approved question intents, grounded free-text mapping, dashboard analytics, desktop, mobile, usage feedback, and cleanup.
-- **Action Support:** action registry, navigation, compact draft preparation, existing-screen handoff for public-truth saves, provider/draft flags, check workflow, audit, public-truth guard, desktop, mobile, and cleanup.
-
-Feature flags control environment availability, cost exposure, and emergency shutdown. They are not delivery tracks and must not be documented as promises outside the day-one build.
-
-## 2. End-to-End System
-
-```text
-Existing owner/customer facts
-  -> existing store-local scheduler settlement
-  -> Business Health source adapters
-  -> platformSummary current + analytics index + daily snapshot docs
-  -> cache-first OwnerBusinessAssistantContextPacket
-  -> protected owner APIs + AI answer resolver
-  -> desktop dashboard/page + MobileShell screen
-  -> registry-gated Action Support
-  -> existing domain services for confirmed actions
-  -> existing public cache invalidation for public-truth writes
+```mermaid
+flowchart LR
+  A["Existing MenuList source data"] --> B["Scheduled summaries"]
+  B --> C["Business Health current doc"]
+  B --> D["Analytics period index"]
+  B --> E["Multi-location summary"]
+  C --> F["Context packet cache"]
+  D --> F
+  E --> F
+  F --> G["Dashboard / Business Health page / MobileShell screen"]
+  F --> H["Answer route"]
+  H --> I["Grounded read-only answer"]
 ```
 
-The hot path is a cached context packet. A cache hit must not read Firestore. In the current implementation, a cache miss reads one current document and one deterministic analytics index document. Additional domains are answerable only when compact projection facts are already present in the packet; today overlay facts are folded into the analytics index by scheduled/build-time code, not read per owner message.
+Owner actions are intentionally outside this graph:
 
-Cache freshness is enforced in three layers: client write helpers clear Business Health browser prefixes after owner saves, browser read-model entries expire after a short 10-minute stale guard, and server packet keys are indexed under `owner-business-assistant:packet-index:v1:{tId}:{sId}` for exact invalidation with a bounded legacy cleanup sweep.
+```mermaid
+flowchart LR
+  O["Owner wants to change something"] --> M["Menu Manager"]
+  M --> P["Proposal card"]
+  P --> A["Approval when needed"]
+  A --> E["Existing MenuList operation"]
+  E --> R["Receipt"]
+```
 
-### Universal Read Policy
+## Data Ownership
 
-Analytics is only one read domain. The permanent rule is broader: read-only owner questions must answer from a cached packet, cached projection, or scheduler-built summary. Direct Firebase reads are allowed only to build or refresh that packet on cache miss, and only from compact sources. Confirmed mutation flows may perform live Firebase reads inside the existing write/domain service path to verify the current target before writing.
+Business Health may read from:
 
-For non-analytics questions:
+- scheduler-built platform summary docs
+- owner dashboard analytics summaries
+- bounded Business Health current docs
+- bounded analytics index docs
+- bounded multi-location summary docs
+- optional compact thread docs
+- internal answer event docs for monitoring
 
-| Owner asks about | Read strategy | Firebase at question time |
-| --- | --- | --- |
-| Public menu/project facts such as item names, prices, categories, publish state, menu URL | Answer only from compact packet facts. Current implementation has project-summary facts, not full item/price facts. | 0 on packet/cache hit; no full project scan |
-| Store/business profile such as name, hours, timezone, address, contact, business type | Answer only when compact store-profile facts are present in the packet; otherwise offer existing settings navigation. | 0 on packet/cache hit; unsupported when source facts are missing |
-| Business Health and platform checks | Reuse `ownerBusinessHealthCurrent` and compact source facts | 0 on packet/cache hit |
-| Analytics and customer attention | Reuse `ownerBusinessAnalyticsIndex`; today overlay is folded into the index at build time | 0 on packet/cache hit |
-| Feedback, reviews, recent changes, POS, screens, operations | Use only prebuilt/capped summary facts in the packet | Unsupported until a compact cached summary exists |
-| Owner-private billing, credits, team, permissions | Use a compact protected summary if present; otherwise open the existing screen or return unsupported | No broad live reads for ordinary answers |
+Business Health must not own:
 
-The assistant should never fetch the public route HTML to answer a question. It should reuse the same cached data contracts underneath those routes, especially the `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data` invalidation model.
+- menu/project truth
+- store truth
+- outlet truth
+- staff truth
+- billing truth
+- public publish state
+- generated media assets
+- external platform state
+- action proposals, action drafts, or action audit records
 
-### Comparable Product Pattern Check
+## Runtime Pieces
 
-The market pattern validates the dashboard-first, action-reviewed direction, but not an unrestricted chatbot.
-
-| Product pattern | What it means for MenuList |
+| Layer | Current Role |
 | --- | --- |
-| Square AI is embedded in Square Dashboard for natural-language business questions, charts/tables, conversation context, owner/admin access, feedback, and explicit accuracy cautions. | Business Health belongs in the owner dashboard and should support structured answer artifacts, feedback, and source/freshness labels. |
-| Shopify Sidekick works from admin context on desktop/mobile, can analyze data and edit products, but presents changes for owner review before applying. | MenuList should carry current page/target context into the packet and require confirmation for all public-truth actions. |
-| Lightspeed AI is positioned as a retail/restaurant intelligence layer for plain-language questions, menu performance, and faster decisions. | MenuList should prioritize quick operator answers over a novelty chat surface. |
-| Meta Business Agent focuses on customer-message automation, product recommendations, bookings, human handoff, and morning briefings. | MenuList Business Health should stay owner-facing. Customer-facing automation belongs to a separate product/surface decision, not this assistant. |
-| Wix's dashboard assistant recommends concrete traffic actions from site analytics. | MenuList should show next actions only when grounded in packet facts and existing action registry entries. |
+| Scheduler | Builds compact current health, snapshots, analytics index, and multi-location summary. |
+| Context packet builder | Combines bounded read-model facts into an answer/dashboard packet. |
+| Context packet cache | Keeps server packets keyed by tenant, store, project context, and packet profile. |
+| API routes | Serve current health, analytics, locations, answers, threads, feedback, and platform monitor data. |
+| Desktop UI | Shows dashboard card, analytics strip, full Business Health route, questions, answers, and checks. |
+| Mobile UI | Shows read-only Business Health inside `MobileShell`. |
+| Platform monitor | Reviews answer quality, unsupported gaps, feedback, source coverage, and cost. |
 
-### Owner Domain Coverage Matrix
+Removed action pieces:
 
-Owners will ask about the whole business, not only analytics. Every domain gets an explicit answer stance:
+- action API route
+- action registry/executor
+- action schemas/types
+- action hook
+- desktop action sheet
+- mobile action sheet
+- action/draft collections
 
-| Domain | Common owner question | Answer source | Action stance |
-| --- | --- | --- | --- |
-| Business Health | "Is everything okay?" | `ownerBusinessHealthCurrent` | Show checks, navigate, mark reviewed/dismiss under check flag |
-| Customer/menu analytics | "How was today / this week / last week?" | `ownerBusinessAnalyticsIndex` + optional today overlay | Show metric cards/tables; no raw range scans |
-| Menu/project/catalog | "What is the price of this item?" / "Which menu is live?" | Cached public project/store projection + `platformSummary/projects_{sId}` | Navigate or prepare compact draft; public save stays in existing editor |
-| Store profile and public info | "What phone number/hours/address are shown?" | Store summary/public projection | Navigate to settings; no direct assistant public write |
-| Temporary status | "Mark us closed today" | Store public projection + existing temp-status API target | Prepare compact draft; existing temp-status path performs public save |
-| Official Business Page / public links | "What is my public page link?" | Public store projection and route helpers | Navigate/share/copy link; no content mutation unless registered |
-| Customer App / PWA | "Is the app install link working?" | Public store/PWA projection | Navigate to Customer App settings/share surface |
-| QR/share/print assets | "Where is my QR code?" | Existing share/QR surface state | Navigate/open; generation stays in existing screen |
-| Digital screens | "Is my screen running?" | Screen summary/status projection | Navigate/open screen settings; screen writes stay in existing screen service |
-| Feedback/reviews | "Any bad feedback?" / "Help reply to this review" | Compact feedback/review state; pasted owner review text | Navigate to feedback/reviews; prepare reply suggestion if owner supplies text or compact source exists |
-| Domains/subdomain | "Is my domain verified?" | Compact domain status/public lookup | Navigate to domain settings; do not add/remove domains inside assistant by default |
-| Locations/outlets | "Which outlet needs attention?" | Compact store/outlet health comparison | Navigate/switch only within verified permission scope |
-| Billing/credits/account | "Do I have credits?" / "Why is billing blocked?" | Existing account/access summary only | Navigate to billing; no payment/subscription mutation |
-| Users/team/permissions | "Can my manager publish?" | Compact role/permission summary only | Navigate to users/roles; no staff mutation by assistant |
-| POS/integrations | "Is POS connected?" | POS status summary only | Navigate/test only through existing integration screen; no forced delivery/settings mutation |
-| Compliance/legal pages | "Are policy links shown?" | Public store/compliance projection | Navigate to compliance editor; no legal text generation without registered action |
-| External web/local events/competitors | "What is happening nearby?" | No MenuList-owned source by default | Unsupported unless a cached connector summary is explicitly added |
+## API Boundary
 
-### Page Context and Target Resolution
+Business Health APIs are protected and read-oriented:
 
-The assistant should understand "this item", "this menu", or "this screen" only through explicit UI context, not guessing.
+- `/api/owner-business-assistant/current`
+- `/api/owner-business-assistant/analytics`
+- `/api/owner-business-assistant/answer`
+- `/api/owner-business-assistant/locations`
+- `/api/owner-business-assistant/sessions/[sessionId]`
+- `/api/platform/owner-business-assistant/monitor`
 
-`OwnerBusinessAssistantContextPacket` should include a small `clientContext` block:
+There is no active Business Health operation execution route.
 
-```ts
-type OwnerBusinessAssistantClientContext = {
-  currentRoute?: string;
-  mobileTab?: 'today' | 'menu' | 'share' | 'more';
-  selectedProjectId?: string;
-  selectedItemId?: string;
-  selectedCategoryId?: string;
-  selectedOutletId?: string;
-  visibleEntityRefs?: Array<{
-    kind: 'project' | 'menu_item' | 'category' | 'store' | 'screen' | 'feedback' | 'review';
-    id: string;
-    label: string;
-  }>;
-};
-```
+All APIs must keep:
 
-Client context is advisory. The server still resolves and verifies every target from tenant/store scope before answering or preparing an action. If the target is ambiguous, the assistant must ask the owner to pick from packet-backed candidates instead of running a broad search.
+- auth/session guard
+- tenant/store/project scope validation
+- Zod or equivalent runtime validation
+- bounded payloads
+- generic owner-safe errors
+- rate limits before provider-backed answer calls
+- no raw sensitive prompt, staff/customer/payment, secret, or stack-trace logging
 
-Shared server cache entries must store business facts, not page-selection state. Request-time `clientContext` is merged into the packet after the cache lookup and omitted from durable/shared cache keys. Browser memory may carry page context for the active view, but it must not become the source of authority for target writes.
+## Packet Profiles
 
-### Answer Artifacts
+Active packet profiles:
 
-Answers should be structured for owner scanning, not only free text:
+- `health_card`
+- `analytics_periods`
+- `owner_question_basic`
+- `multi_location_summary`
 
-```ts
-type OwnerAssistantAnswerArtifact =
-  | { type: 'text'; body: string }
-  | { type: 'metric_row'; metrics: Array<{ label: string; value: string; deltaLabel?: string }> }
-  | { type: 'compact_table'; columns: string[]; rows: string[][]; maxRows: number }
-  | { type: 'trend_series'; label: string; points: Array<{ label: string; value: number }> }
-  | { type: 'action_options'; actions: OwnerAssistantActionOption[] };
-```
+No packet profile includes an operation catalog. Cached packets do not carry operation kill-switch state because operations are no longer part of Business Health.
 
-Artifacts must be generated from packet facts only. No CSV/export/raw-row download belongs in this feature unless the data already exists in a compact cached report and the export path is explicitly registered.
+## Firestore Cost Shape
 
-## 3. Permanent Data Ownership
+Business Health follows the compact-doc model:
 
-| Data | Current owner | Current storage | Business Health use | Modification needed |
-| --- | --- | --- | --- | --- |
-| Store metadata, plan, timezone, scheduler hour | Store/platform summary | `platformSummary/storesSummary` | Scope, freshness, branch selector, entitlement hints | Reuse; add only minimal summary fields if missing |
-| Active project/public menu state | Project summary sync | `platformSummary/projects_{sId}` | Active/default menu, publish state, project labels | Reuse; do not read all project docs on answer |
-| Live today analytics | Customer analytics DAL | `analytics/{tId}_{sId}_{projectId}_daily_{today}` | "Today so far" partial stats | Single-doc overlay only; never range scan |
-| Settled menu analytics | Owner dashboard aggregation | `analytics/{tId}_{sId}_{projectId}_dashboard_summary` | Customer attention, top items/categories, recent settled trends | Reuse summary docs; no raw range scans in answer API |
-| Weekly/monthly analytics docs | Existing analytics aggregation | `analytics/{tId}_{sId}_{projectId}_weekly_*`, `analytics/{tId}_{sId}_{projectId}_monthly_*` | Last week and last month answers when dashboard summary is insufficient | Scheduler/index builder may read deterministic docs; answer API should not query ranges |
-| Customer App analytics | Dashboard aggregation | `analytics/{tId}_{sId}_customerApp_dashboard_summary` | Customer App presence/shortcut signals | Reuse only compact fields |
-| OBP analytics | OBP aggregation | `analytics/{tId}_{sId}_obp_dashboard_summary` when enabled | Public presence attention | Reuse when available; mark unsupported when disabled |
-| Menu intelligence | Continuous menu intelligence | `menuIntelligence` | Possible item/menu issue hints | Reuse existing state; do not duplicate scoring |
-| Menu public health | Menu Health Monitor | `stores/{sId}.health` | Public menu availability block | Reuse field; do not trigger live public fetch in answer API |
-| Trust/loyalty/risk health | Health signal computation | `stores/{sId}.healthSignals` | High-level health status, only when visible | Reuse as source; Business Health should not run weekly computation |
-| Guest feedback | Feedback DAL/API | `guestFeedback` | Feedback pattern/checks | Scheduler may read capped/summary data; answer API must not scan |
-| Review state | Reviews reputation APIs | `reviewsState` | Review block/escalation pattern | Prefer existing boolean/capped state; avoid raw review text in answer packet |
-| Menu changes | MOL | `menuChangeLog/{tId}/{sId}` | What changed recently | Scheduler reads capped recent changes or a dedicated summary; no answer-time scan |
-| Owner control usage | Authority maturation | `ownerControlUsage/{tId}_{sId}` | Value events and trust signal | Extend deliberately or create server aggregate; current union is insufficient |
-| POS delivery | POS sync | `posDeliveryQueue`, `posDeliveryLogs` | POS sync status only | Reuse only status/log summaries; never infer revenue/profit from POS delivery logs |
-| Operations | Ops/health/alerts | `systemAlerts`, `systemHealth`, scheduler logs | Latest operational issue/freshness | Scheduler compacts state; owner API returns only owner-safe labels |
-| AI accounting | AI system layer | `menulistAiOperations`, subscription/top-up docs | Provider-backed free text only | Add a distinct AI action/unit-cost entry before provider-backed answers ship |
-| Business Health current | New read model | `platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}` | Dashboard/page/answer hot path | Required |
-| Business analytics index | New read model in existing collection | `platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}` | Standard period answers and dashboard analytics strip | Required; no new top-level analytics collection |
-| Business Health daily proof | New read model | `platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}` | Debugging, replay, support | Required with retention/cap |
-| Multi-location Business Health summary | New read model in existing collection | `platformSummary/ownerBusinessHealthMultiLocation_{tId}` | Compact outlet comparison for chain owners/managers | One tenant doc with capped store entries; do not load every detailed packet |
-| Assistant threads/messages | Business Health APIs | `ownerBusinessAssistantThreads.messages[]` | Conversation continuity under the thread flag | One doc per chat, bounded message array, not required for read-only Health |
-| Assistant answer events | Platform monitoring APIs | `ownerBusinessAssistantAnswerEvents` | Internal answer quality, unsupported-gap, action-usage, and cost review | Compact, server-only, usage-logging flag, not owner chat history |
-| Action drafts/actions | Action Support APIs | `ownerBusinessAssistantDrafts`, `ownerBusinessAssistantActions` | Prepare/confirm/cancel/review flows | Day-one Action Support storage; server-only writes under action flags |
-| Answer feedback | Business Health APIs | `ownerBusinessAssistantFeedback` or aggregate doc | Quality signal | Compact writes under feedback/usage flags |
+- no Firestore write per token
+- no document per streamed word
+- no document per card render
+- bounded thread messages
+- bounded answer events
+- bounded platform monitor queries
+- no generated media/base64 payloads
+- no action/draft workflow collections
 
-## 4. Source Adapter Contract
+## Mobile Architecture
 
-Business Health should not let the snapshot builder become a pile of direct Firestore reads scattered through the scheduler.
+Mobile Business Health is a `MobileShell` sub-screen. It must not route to desktop as the primary path, and it must not open action sheets. Owner operations from mobile belong to Menu Manager inside the mobile shell.
 
-Create source adapters:
+## Public Truth and Cache Boundary
 
-```text
-functions/src/ownerBusinessAssistant/sources/loadStoreContext.ts
-functions/src/ownerBusinessAssistant/sources/loadProjectSummaryContext.ts
-functions/src/ownerBusinessAssistant/sources/loadDashboardSummaryContext.ts
-functions/src/ownerBusinessAssistant/sources/loadAnalyticsPeriodContext.ts
-functions/src/ownerBusinessAssistant/sources/loadMenuIntelligenceContext.ts
-functions/src/ownerBusinessAssistant/sources/loadPublicHealthContext.ts
-functions/src/ownerBusinessAssistant/sources/loadFeedbackReviewContext.ts
-functions/src/ownerBusinessAssistant/sources/loadRecentChangeContext.ts
-functions/src/ownerBusinessAssistant/sources/loadOperationsContext.ts
-functions/src/ownerBusinessAssistant/sources/loadPosContext.ts
-```
+Business Health does not write public truth. Existing project/store/outlet/publish flows remain responsible for public cache invalidation. Menu Manager must use existing MenuList mutation paths when it performs approved work.
 
-Each adapter returns:
+## Business Health and Menu Manager
 
-```ts
-type OwnerBusinessHealthSourceResult<T> = {
-  status: 'available' | 'missing' | 'disabled' | 'stale' | 'error';
-  facts: T | null;
-  sourceRefs: OwnerBusinessHealthSourceRef[];
-  readCount: number;
-  warnings?: string[];
-};
-```
-
-The builder composes adapters into one current doc and records unsupported data instead of guessing.
-
-## 5. Owner Analytics Architecture
-
-Owner analytics needs two surfaces:
-
-- A small dashboard signal that tells the owner what happened recently.
-- Grounded answers for questions such as "today", "this week", "last week", "this month", and "last month".
-
-The long-term cost decision is: **do not add a new analytics collection for Business Health**. Reuse the existing `analytics` collection and write one assistant-ready period index into `platformSummary`.
-
-### Analytics Read Models
-
-```text
-platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}
-platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}
-```
-
-`ownerBusinessHealthCurrent` stays small and dashboard-card friendly. It may include 2-3 teaser facts such as today visits, top item, and last checked time.
-
-`ownerBusinessAnalyticsIndex` stores compact period packets for analytics Q&A and richer dashboard analytics modules. The document is store-scoped, but it also contains bounded per-project summaries so a selected menu can be answered without a separate collection or chat-time project scan.
-
-Multi-project rule:
-
-- The active store remains the outer scope. Tenant-wide or cross-store questions need a separate compact outlet/store comparison source; `/answer` must not scan every store in a tenant.
-- The builder indexes active projects from `platformSummary/projects_{sId}` and the scheduler-loaded project docs, default project first.
-- The implemented cap is 10 indexed projects per store. Overflow is recorded in `projectScope.overflowProjectCount`; the answer layer must not pretend non-indexed projects are included.
-- Store-level period packets aggregate indexed project period packets. Selected-project period packets come from `projectSummaries[projectId]`.
-- Store aggregate top items/categories carry `projectId` and `projectName` so answers can say which menu produced the signal.
-
-```ts
-type OwnerBusinessAnalyticsIndexDoc = {
-  version: 1;
-  tId: string;
-  sId: string;
-  localDate: string;
-  generatedAt: FirebaseFirestore.Timestamp;
-  lastSettledLocalDate?: string;
-  projectScope?: {
-    totalActiveProjects: number;
-    indexedProjectCount: number;
-    indexedProjectIds: string[];
-    overflowProjectCount?: number;
-    defaultProjectId?: string;
-  };
-  periods: {
-    today?: OwnerBusinessAnalyticsPeriod;
-    yesterday?: OwnerBusinessAnalyticsPeriod;
-    thisWeek?: OwnerBusinessAnalyticsPeriod;
-    lastWeek?: OwnerBusinessAnalyticsPeriod;
-    thisMonth?: OwnerBusinessAnalyticsPeriod;
-    lastMonth?: OwnerBusinessAnalyticsPeriod;
-    last7Days?: OwnerBusinessAnalyticsPeriod;
-    last30Days?: OwnerBusinessAnalyticsPeriod;
-    overall?: OwnerBusinessAnalyticsPeriod;
-  };
-  projectSummaries?: Record<string, {
-    projectId: string;
-    projectName?: string;
-    isDefault?: boolean;
-    active?: boolean;
-    periods: Partial<Record<OwnerBusinessAnalyticsPeriodKey, OwnerBusinessAnalyticsPeriod>>;
-    unsupportedPeriods: Record<string, 'not_available' | 'not_enabled' | 'insufficient_data'>;
-    sourceRefs: OwnerBusinessHealthSourceRef[];
-  }>;
-  unsupportedPeriods: Record<string, 'not_available' | 'not_enabled' | 'insufficient_data'>;
-  sourceRefs: OwnerBusinessHealthSourceRef[];
-  cost: {
-    builderReadCount: number;
-    hotPathReadCount: number;
-  };
-};
-
-type OwnerBusinessAnalyticsPeriod = {
-  key: OwnerBusinessAnalyticsPeriodKey;
-  label: string;
-  rangeLabel: string;
-  scope?: 'store' | 'project';
-  projectId?: string;
-  projectName?: string;
-  indexedProjectCount?: number;
-  status: 'available' | 'partial' | 'not_available';
-  metrics: {
-    menuVisits?: number;
-    itemClicks?: number;
-    menuSessions?: number;
-    engagedSessions?: number;
-    actionSessions?: number;
-    searches?: number;
-    unavailableItemTaps?: number;
-  };
-  topItems?: Array<{ itemId: string; name?: string; projectId?: string; projectName?: string; value: number; signal: 'views' | 'clicks' | 'attention' }>;
-  topCategories?: Array<{ categoryId: string; name?: string; projectId?: string; projectName?: string; value: number }>;
-  topSearches?: Array<{ term: string; count: number }>;
-  sourceQuality?: Array<{ source: string; visits: number; actionRate?: number }>;
-  freshnessLabel: string;
-  sourceFactIds: string[];
-};
-```
-
-### Period Rules
-
-| Owner asks | Source strategy | Answer behavior |
-| --- | --- | --- |
-| Today / today's stats | One current daily analytics doc per indexed active project, folded into the analytics index | Mark as partial and show freshness |
-| Yesterday | Dashboard summary `daily`/`overview.yesterday` | Settled answer |
-| This week | Dashboard summary `wtd`/`weekly`, plus optional today overlay | Say whether today is included |
-| Last week | Existing weekly doc, or scheduler/index builder derives from `daily30d` when enough rows exist | Settled answer if available |
-| This month | Dashboard summary `mtd`/`monthly`, plus optional today overlay | Say whether today is included |
-| Last month | Existing monthly doc, or scheduler/index builder marks unavailable when not enough rows exist | Settled answer if available |
-| Last 7 / 30 days | Dashboard summary `daily30d` compact rows | Scheduler/index builder only |
-| Custom arbitrary dates | Not supported by answer API by default | Refuse or offer supported periods |
-
-On a context-packet cache miss, the answer API may read:
-
-- `ownerBusinessHealthCurrent` for health context.
-- `ownerBusinessAnalyticsIndex` for analytics intents.
-- Cached public project/store projection for public menu or business-profile facts.
-- One live daily doc for the current local date when `today` freshness is required and the flag allows the overlay.
-
-It must not read N daily docs for a message. If a new custom period becomes important, the scheduler/index builder must add that period to the index first. Cache hits should serve answers with zero Firestore reads.
-
-### Cache-First Context Packet
-
-The answer API should not read Firestore first. It should ask for an owner-safe packet first:
-
-```text
-question + scope
-  -> context packet cache lookup
-  -> cache hit: AI/resolver receives packet with 0 Firestore reads
-  -> cache miss: read compact docs, build packet, write cache, answer
-```
-
-The packet is the only data shape the AI answer layer receives.
-
-```ts
-type OwnerBusinessAssistantContextPacket = {
-  version: 1;
-  packetId: string;
-  cacheKey: string;
-  cacheSource: 'browser' | 'server' | 'fresh_firestore';
-  tId: string;
-  sId: string;
-  projectId?: string;
-  localBusinessDate: string;
-  validUntil: string;
-  generatedAt: string;
-  sourceSignatures: {
-    healthCurrent?: string;
-    analyticsIndex?: string;
-    todayOverlay?: string;
-    publicProjection?: string;
-    domainFacts?: string;
-    actionCatalog?: string;
-  };
-  health: OwnerBusinessHealthCurrentDoc;
-  analytics?: Pick<OwnerBusinessAnalyticsIndexDoc, 'periods' | 'unsupportedPeriods' | 'sourceRefs' | 'projectScope'>;
-  todayOverlay?: OwnerBusinessAnalyticsPeriod;
-  domainFacts?: {
-    menu?: Record<string, unknown>;
-    store?: Record<string, unknown>;
-    publicLinks?: Record<string, unknown>;
-    screens?: Record<string, unknown>;
-    feedback?: Record<string, unknown>;
-    reviews?: Record<string, unknown>;
-    domains?: Record<string, unknown>;
-    outlets?: Record<string, unknown>;
-    billing?: Record<string, unknown>;
-    users?: Record<string, unknown>;
-    integrations?: Record<string, unknown>;
-    compliance?: Record<string, unknown>;
-  };
-  clientContext?: OwnerBusinessAssistantClientContext;
-  allowedActions: OwnerBusinessActionDefinition[];
-  answerRules: {
-    refuseUnsupported: true;
-    sourceFactIdsRequired: true;
-    noRevenueProfitWithoutSource: true;
-    noPublicMutationWithoutConfirmation: true;
-  };
-};
-```
-
-Server packet cache keys must stay stable enough to hit across typed questions without a Firestore pre-read. They include tenant, store, packet profile, and project only when a request asks for project-scoped facts. Page context, selected item, visible rows, and current screen are still merged after cache lookup and are not authority. The cached packet itself carries `localBusinessDate`, `validUntil`, and source signatures, and the server rejects expired packets before reuse:
-
-```text
-owner-business-assistant:packet:v1:{tId}:{sId}:p:_:profile:{packetProfile}
-owner-business-assistant:packet:v1:{tId}:{sId}:p:{projectId}:profile:{packetProfile}
-```
-
-`not_ready` fallback packets with no `sourceRefs` and missing analytics-index responses are not reusable business facts and must not be served from cache or written back to cache. This prevents first-run setup from pinning "Latest check is not ready yet" or hiding a newly built analytics index after the scheduler creates the real docs. The temporary extra cost is bounded to the current/index read while the store has no generated check/index.
-
-Implemented packet profiles are mandatory:
-
-| Profile | Runtime use | Action catalog included |
-| --- | --- | --- |
-| `health_card` | `/api/owner-business-assistant/current`, dashboard card, first health panel | No |
-| `analytics_periods` | `/api/owner-business-assistant/analytics`, dashboard/page analytics strip | No |
-| `owner_question_actionable` | `/api/owner-business-assistant/answer` | Yes |
-| `multi_location_summary` | `/api/owner-business-assistant/locations` | No |
-
-Any path that changes public menu/store truth or compact Business Health truth must invalidate Business Health packet cache as well as the existing public cache tags. Implemented invalidation surfaces include shared public-client cache helpers, `/api/revalidate/menu`, project/outlet saves, temporary status, outlet create/rename/deactivate/policy changes, domain changes, public menu claim/messaging publish, subscription entitlement sync, platform entity blocking, and the Functions Business Health writer after scheduler rebuilds.
-
-Invalidation rule:
-
-```text
-public-truth or Business Health summary write
-  -> existing menu-store/store/client-stores invalidation where relevant
-  -> owner-business-assistant:packet:v1:{tId}:{sId}:p:*:profile:* deletion
-  -> browser current/analytics/packet prefix removal on client-side public writes
-```
-
-Recommended cache layers:
-
-| Layer | Use | Expiry |
-| --- | --- | --- |
-| Browser SWR/localStorage | Dashboard card, analytics strip, full page first render | Store-local + selected-menu scheduler cache key, matching existing owner dashboard behavior |
-| Server cache/Upstash | Answer API context packet shared across typed questions/devices | Earliest of packet `validUntil` or 24 hours |
-| Today overlay cache | "Today so far" facts | 10 minutes |
-| Action target cache | Draft display only | Short-lived; never used for final confirm |
-
-Upstash is acceptable for the server context-packet cache because the dependency already exists. It must remain an optimization, not a correctness dependency: when cache is unavailable, the API falls back to compact Firestore reads and returns a cache miss metric.
-
-### AI Answer Layer
-
-Owner-typed questions should use AI over the context packet. The model does not receive raw Firebase collections.
-
-```text
-owner question
-  + OwnerBusinessAssistantContextPacket
-  + allowed intent/action schema
-  + answer rules
-  -> AI structured response
-  -> server validation
-  -> owner response
-```
-
-The AI must return structured JSON:
-
-```ts
-type OwnerBusinessAssistantAiResponse = {
-  status: 'answered' | 'needs_more_data' | 'unsupported' | 'needs_confirmation';
-  answer: string;
-  freshnessLabel: string;
-  sourceFactIds: string[];
-  artifacts?: OwnerAssistantAnswerArtifact[];
-  cards?: OwnerAssistantCard[];
-  actions?: OwnerAssistantActionOption[];
-  confidence: 'high' | 'medium' | 'low';
-};
-```
-
-The server must validate that source fact IDs exist in the packet, unsupported claims are not present, actions are registered, and permissions/public-truth guards still pass. Invalid model output becomes a refusal or a safe retry response.
-
-Deterministic/template answers remain allowed only as a fallback for feature-off, provider-unavailable, or fixed dashboard rendering. The product answering layer for typed owner questions is AI over the cached packet.
-
-### Dashboard Placement
-
-The owner dashboard should show Business Health near the existing dashboard analytics, not as a disconnected chat widget.
-
-Recommended desktop placement:
-
-1. Existing dashboard remains the detailed analytics surface.
-2. `BusinessHealthDashboardCard` appears near the top with store-level status, owner message, and freshness from the `health_card` packet.
-3. A compact `BusinessHealthAnalyticsStrip` can show selected-menu/store analytics from the analytics-index packet.
-4. The full `/business-health` page reads current Health independently; period cards read the analytics index through the separate scoped analytics hook.
-
-Recommended mobile placement:
-
-1. Business Health entry inside `MobileShell`.
-2. Compact analytics period cards below the health summary.
-3. Tapping a period opens a bottom sheet or full-screen detail, not a separate route reload.
-
-## 6. Function Logic Alignment
-
-### Snapshot Generation
-
-Business Health generation belongs in `functions/src/decisionBlocksScoring.ts`.
-
-Reason:
-
-- `computeDecisionBlocksScores` already runs hourly at `:30`, filters eligible stores, settles store-local analytics, and writes summary docs.
-- Store-local analytics docs are available after the existing settlement loop writes dashboard summaries.
-- Manual recovery exports already route through `triggerStoreNightlyScheduler`.
-
-Insertion rule:
-
-1. Load active projects through the existing scheduler helper.
-2. Settle pending store-local dates.
-3. After dashboard summaries are written and `platformSummary/nightlyState_*` is updated, call the Business Health builder for that store.
-4. Build or refresh `ownerBusinessAnalyticsIndex_{tId}_{sId}` from bounded active-project dashboard summaries and optional current-day docs for indexed projects.
-5. If no settlement date is pending but the current Business Health doc or analytics index is missing/stale, rebuild from the latest available summaries.
-6. Record builder success/failure in existing scheduler task results, not a new scheduler function.
-7. Manual store recovery must invoke the same builder path.
-
-Do not run Business Health from `masterScheduler` or a standalone scheduled function.
-
-### Cleanup
-
-Cleanup belongs in `functions/src/schedulers/menulistMaintenanceScheduler.ts`.
-
-Add static task definitions for separately flag-gated workflow storage:
-
-- `owner_business_health_thread_cleanup`
-- `owner_business_health_action_draft_cleanup`
-- `owner_business_health_snapshot_cleanup`
-
-Each task needs its own cadence, lease, cap, and cost note. It must not scan unbounded collections.
-
-### Provider-Backed Answering
-
-AI-backed answering is part of the complete architecture for typed owner questions. Deterministic responses are fallback paths, not the primary typed-question experience.
-
-Before any provider-backed route is enabled:
-
-1. Add an `AI_ACTIONS_TYPES` value for owner business assistant answers.
-2. Add real cost and unit cost entries.
-3. Use SAFE_MODE, AI rate limits, accounting, and `remainingBalance` propagation.
-4. Build the context packet cache first so provider calls do not also cause repeated Firestore reads.
-5. Return deterministic/template answers only when provider answering is disabled, unavailable, or not needed for static dashboard rendering.
-
-## 7. API Alignment
-
-The route set stays grouped:
-
-```text
-GET  /api/owner-business-assistant/current
-GET  /api/owner-business-assistant/analytics
-POST /api/owner-business-assistant/answer
-GET  /api/owner-business-assistant/thread/[threadId]
-POST /api/owner-business-assistant/action
-POST /api/owner-business-assistant/feedback
-```
-
-The `/action` route owns operation dispatch:
-
-```ts
-type Operation =
-  | 'navigate'
-  | 'prepare'
-  | 'confirm'
-  | 'cancel'
-  | 'mark_reviewed'
-  | 'dismiss'
-  | 'assign';
-```
-
-This reduces route sprawl without weakening security because every operation still uses the same server-side validation, target resolver, permission gate, and public-truth guard.
-
-## 8. Day-One Action Support Architecture
-
-The Action Support system must not be "the bot can do anything." It must be a registry of approved business actions.
-
-Owners can ask in natural language, but only registered actions can prepare or mutate anything. Everything else returns a safe answer, a navigation option, or an unsupported response.
-
-### Action Registry
-
-Each action definition must include:
-
-```ts
-type OwnerBusinessActionDefinition = {
-  actionType: string;
-  ownerLabel: string;
-  riskLevel: 'navigate' | 'draft' | 'confirmed_write' | 'public_truth' | 'blocked';
-  requiredPermissions: string[];
-  requiredFlags: string[];
-  targetKinds: Array<'project' | 'menu_item' | 'category' | 'store' | 'media' | 'feedback' | 'review' | 'outlet' | 'billing' | 'domain' | 'screen' | 'customer_app' | 'qr' | 'pos' | 'team' | 'compliance'>;
-  resolver: 'summary' | 'project_doc' | 'store_doc' | 'existing_api' | 'screen_route';
-  draftSchema?: string;
-  executor: string;
-  cacheImpact: 'none' | 'project_public' | 'store_public' | 'screen_public';
-  aiCostAction?: string;
-};
-```
-
-### Implemented Action Catalog Summary
-
-| Owner asks | Action type | Existing system to reuse | Storage needed | Write behavior |
-| --- | --- | --- | --- | --- |
-| Open the detailed health view | `open_business_health_detail` | `/business-health` route | None | Navigation only |
-| Show analytics | `open_dashboard_analytics` | Existing dashboard analytics | None | Navigation only |
-| Open this item | `open_menu_editor_target` | Existing editor route/context | None | Navigation only |
-| Show QR/app/screen/public link | `open_qr_share`, `open_customer_app_settings`, `open_digital_screen_settings` | Existing Share, Customer App, and Digital Screen surfaces | None | Navigation/copy only |
-| Check domain/POS/billing/users/locations/compliance | `open_domain_settings`, `open_pos_sync_settings`, `open_billing`, `open_users_permissions`, `open_locations`, `open_compliance_pages` | Existing settings, billing, users, locations, integrations, compliance surfaces | None | Navigation only |
-| Rewrite this description | `prepare_description_rewrite`, `menu_item_description_prepare` | Registered but disabled while provider-text generation is off | No day-one write | No direct public write |
-| Mark the store closed/opening late | `store_temp_status_set`, `store_temp_status_clear` | Compact draft storage; existing temp-status screen/API remains the save path | Draft + action audit | No direct public write |
-| Draft a review reply | `prepare_review_reply`, `review_reply_prepare` | Registered but disabled while provider-text generation is off | No day-one write | No public posting |
-| Make this menu live | `open_publish_screen` | Existing publish/editor screen | None | Navigation only |
-| Mark or dismiss a check | `mark_health_check_reviewed`, `dismiss_health_check` | Assistant action audit storage plus local day-scoped UI suppression | Compact action write; no extra read | Confirm state change |
-
-### Confirmed Write Rule
-
-The current project DAL has a hard invariant that customer-facing truth passes through `updateProject()`. A server-side assistant route must not bypass that by writing raw Firestore project documents.
-
-Confirmed writes have two acceptable strategies:
-
-1. **Prepare and navigate:** Business Health creates a draft and opens the existing editor/settings screen. The existing UI performs the save through the current path.
-2. **Server mutation adapter:** factor the shared validation, sanitization, MCE/change detection, multi-outlet handling, and public cache invalidation into a server-safe mutation service, then call that from the assistant action route.
-
-Raw `setDoc()` from assistant action code is not allowed for menu/store public truth.
-
-### Draft and Audit Storage
-
-Action storage is separate from analytics storage:
-
-```text
-ownerBusinessAssistantDrafts/{draftId}
-ownerBusinessAssistantActions/{actionId}
-```
-
-Drafts store compact patches, target IDs, old target fingerprints, proposed values, generated text/media references, and expiry. They do not store base64 images, raw project copies, or long chat transcripts.
-
-On confirm:
-
-1. Re-read target.
-2. Verify tenant/store/role/permission.
-3. Verify target fingerprint still matches or require owner review.
-4. Execute through existing domain path or approved server mutation adapter.
-5. Invalidate public cache when public output changes.
-6. Mark action confirmed with compact metadata.
-
-## 9. Reuse vs New Build
-
-Reuse:
-
-- Existing owner dashboard summaries.
-- Existing live daily analytics doc for today's partial stats.
-- Existing weekly/monthly/overall analytics docs.
-- Existing summary document pattern.
-- Existing store-local scheduler.
-- Existing maintenance scheduler.
-- Existing MobileShell state/callback contract.
-- Existing domain services for project/store/publish writes.
-- Existing public cache invalidation paths.
-- Existing SAFE_MODE/rate-limit/accounting/balance sync patterns.
-
-Modify:
-
-- Add Business Health source adapters to functions.
-- Add current, analytics-index, and daily `platformSummary` read model docs.
-- Add `platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}` for standard owner analytics periods.
-- Add cache-first context packet builder and cache adapter.
-- Add protected API service layer.
-- Add AI structured-answer resolver over the context packet.
-- Add MobileShell mapping and mobile screen.
-- Add action registry and target resolver contract.
-- Extend or replace owner usage logging for assistant value events; use compact answer-event logging for internal platform observation when the usage logging flag is enabled.
-- Add AI action/unit-cost metadata before provider-backed answers.
-
-Do not reuse directly:
-
-- Existing help chat domain logic as Business Health business logic.
-- Raw owner dashboard hooks for the assistant answer API.
-- Direct Firestore client writes for assistant actions.
-- Existing `ownerControlUsage` union without extending it.
-
-## 10. Data Size and Retention
-
-Current doc target:
-
-- Under 250 KB.
-- Hard warning at 850 KB.
-- Compact facts only, no long transcripts, no raw reviews, no raw menu documents.
-
-Analytics index target:
-
-- Under 350 KB.
-- Hard warning at 850 KB.
-- Store only standard periods and capped top lists.
-- No per-customer, per-session, raw event, or arbitrary-date payloads.
-
-Daily snapshot retention:
-
-- Keep 30-90 days depending on support/debug need.
-- Delete through maintenance scheduler with bounded batches.
-
-Threads/messages:
-
-- Max 20 messages per active thread doc.
-- Messages are embedded in `ownerBusinessAssistantThreads/{threadId}.messages[]`; do not create one Firestore document per message.
-- 30-day retention.
-- No token-by-token persistence.
-
-Answer events:
-
-- 180-day retention.
-- Store trimmed question/answer text and cost/status metadata only.
-- Internal monitor only; do not use as owner-facing long-term transcript storage.
-
-Drafts:
-
-- 7-day retention.
-- Cancelled/confirmed drafts can be compacted or removed.
-
-## 11. Final Strategy
-
-Business Health should be implemented as a durable owner operating layer over existing MenuList truth:
-
-- The scheduler prepares the truth packet.
-- The scheduler prepares a standard analytics period index.
-- APIs answer from the truth packet.
-- Analytics questions read the period index and at most one live today overlay.
-- UI presents health before chat.
-- Actions use an approved registry, drafts, confirmation, and existing services.
-- Cache invalidation remains centralized.
-- Mobile is first-class through `MobileShell`.
-- Provider-backed answering is a controlled runtime path inside the same architecture, not the architecture itself.
+Business Health may surface an observation such as "3 popular items are missing photos." It must not generate or apply photos. Menu Manager may later consume that observation through its own registered adapter and proposal-card flow.

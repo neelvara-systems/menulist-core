@@ -66,10 +66,9 @@ function serializeDoc(doc: FirebaseFirestore.QueryDocumentSnapshot) {
         domain: String(entry?.domain || 'unknown'),
         status: String(entry?.status || 'unsupported'),
         reason: entry?.reason ? String(entry.reason) : null,
-      })).slice(0, 20)
+    })).slice(0, 20)
       : [],
     sourceFactCount: safeNumber(data.sourceFactCount),
-    actionOptionCount: safeNumber(data.actionOptionCount),
     artifactCount: safeNumber(data.artifactCount),
     providerUsed: Boolean(data.providerUsed),
     aiAction: String(data.aiAction || ''),
@@ -133,7 +132,6 @@ function buildSummary(events: ReturnType<typeof serializeDoc>[]) {
     answered: byStatus.answered || 0,
     needsMoreData: byStatus.needs_more_data || 0,
     unsupported: byStatus.unsupported || 0,
-    needsConfirmation: byStatus.needs_confirmation || 0,
     providerCalls: events.filter((event) => event.providerUsed).length,
     serverCacheHits: events.filter((event) => event.cacheSource === 'server').length,
     freshFirestorePackets: events.filter((event) => event.cacheSource === 'fresh_firestore').length,
@@ -142,7 +140,6 @@ function buildSummary(events: ReturnType<typeof serializeDoc>[]) {
       : 0,
     maxFirestoreReads: events.reduce((max, event) => Math.max(max, event.firestoreReadCount || 0), 0),
     threadWrites: events.filter((event) => event.threadWritten).length,
-    actionOptionsShown: events.reduce((sum, event) => sum + event.actionOptionCount, 0),
     unitsConsumed: events.reduce((sum, event) => sum + event.unitsConsumed, 0),
     realCostPaise: events.reduce((sum, event) => sum + event.realCostPaise, 0),
     ownerChargePaise: events.reduce((sum, event) => sum + event.ownerChargePaise, 0),
@@ -159,16 +156,11 @@ export const GET = withPlatformAuth(async (request: NextRequest) => {
       return NextResponse.json({ error: 'Invalid query', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const [eventsSnap, actionsSnap, feedbackSnap] = await Promise.all([
+    const [eventsSnap, feedbackSnap] = await Promise.all([
       firestoreAdmin
         .collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS)
         .orderBy('createdAt', 'desc')
         .limit(parsed.data.limit)
-        .get(),
-      firestoreAdmin
-        .collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ACTIONS)
-        .orderBy('createdAt', 'desc')
-        .limit(30)
         .get(),
       firestoreAdmin
         .collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK)
@@ -182,7 +174,6 @@ export const GET = withPlatformAuth(async (request: NextRequest) => {
       data: {
         summary: buildSummary(events),
         events,
-        recentActions: actionsSnap.docs.map((doc) => serializeValue({ id: doc.id, ...doc.data() })),
         recentFeedback: feedbackSnap.docs.map((doc) => serializeValue({ id: doc.id, ...doc.data() })),
         generatedAt: new Date().toISOString(),
       },

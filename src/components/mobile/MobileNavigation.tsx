@@ -3,10 +3,10 @@
 import { theme } from 'antd';
 import { useEffect, useRef } from 'react';
 import { Button, Flex, Text } from './antd';
-import { LuCalendarCheck, LuMoreHorizontal, LuQrCode, LuUtensilsCrossed } from 'react-icons/lu';
+import { LuCalendarCheck, LuMessageCircle, LuMoreHorizontal, LuQrCode, LuUtensilsCrossed } from 'react-icons/lu';
 import useViewportInfo from '../../hooks/useViewportInfo';
 
-export type MobileTab = 'today' | 'menu' | 'share' | 'more';
+export type MobileTab = 'today' | 'menu' | 'aiMenuManager' | 'share' | 'more';
 
 interface MobileNavigationProps {
     activeTab: MobileTab;
@@ -19,6 +19,7 @@ interface MobileNavigationProps {
 const tabs = [
     { key: 'today' as MobileTab, title: 'Today', icon: <LuCalendarCheck size={20} /> },
     { key: 'menu' as MobileTab, title: 'Menu', icon: <LuUtensilsCrossed size={20} /> },
+    { key: 'aiMenuManager' as MobileTab, title: 'Manager', icon: <LuMessageCircle size={20} /> },
     { key: 'share' as MobileTab, title: 'Share', icon: <LuQrCode size={20} /> },
     { key: 'more' as MobileTab, title: 'More', icon: <LuMoreHorizontal size={20} /> },
 ];

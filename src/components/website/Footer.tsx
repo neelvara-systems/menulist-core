@@ -12,6 +12,7 @@ import WebsiteLanguageSwitcher from './shared/WebsiteLanguageSwitcher';
 import WebsiteThemeSwitcher from './shared/WebsiteThemeSwitcher';
 
 const productLinks = [
+  { href: '/ai-menu-manager', key: 'aiMenuManager' },
   { href: '/how-it-works', key: 'howItWorks' },
   { href: '/features', key: 'features' },
   { href: '/multi-location', key: 'multiLocation' },

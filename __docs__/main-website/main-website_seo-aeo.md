@@ -21,7 +21,7 @@
 
 > June 2, 2026 resource expansion and industry note: the public discovery layer now includes 15 resource articles, reviewed active-locale coverage for every resource article, and four industry pages under `/industries/`. Industry pages use WebPage/BreadcrumbList structured data and connect back to resources/product CTAs; they must describe fit and public-menu correctness only, without revenue, ranking, Google refresh, POS, delivery-marketplace, or AI-visibility guarantees.
 
-> June 8, 2026 Business Health campaign note: `/features/business-health` is the public campaign URL for Business Health. It is registered in `PLATFORM_DISCOVERY_PAGES`, static sitemap, `llms.txt`, and `llms-full.txt`. `/business-health` remains the protected owner app route and must stay out of public discovery.
+> June 17, 2026 Business Health campaign note: `/features/business-health` is the public campaign URL for Business Health. It is registered in `PLATFORM_DISCOVERY_PAGES`, static sitemap, `llms.txt`, and `llms-full.txt`. `/business-health` remains the protected owner app route and must stay out of public discovery. Public SEO copy may describe Business Health as an AI health check for the menu and public presence, but not as a chatbot, autonomous action agent, revenue optimizer, competitor tracker, or direct public-truth editor.
 
 > June 8, 2026 feature-campaign note: the main website now exposes a compact Features dropdown and five additional dedicated feature campaign pages: `/features/menu-import`, `/features/official-business-page`, `/features/qr-menu-links`, `/features/owner-phone-dashboard`, and `/features/public-discovery`. These join `/features/business-health` in `PLATFORM_DISCOVERY_PAGES`, static sitemap, `llms.txt`, and `llms-full.txt`.
 
@@ -47,7 +47,7 @@
 | Print-ready Kit  | Print-ready Kit - MenuList \| Templates, Editor, and Print Files | `(website)/features/print-ready-kit/page.tsx` |
 | Owner PWA Dashboard | Owner PWA Dashboard - MenuList \| Manage MenuList From Your Phone | `(website)/features/owner-phone-dashboard/page.tsx` |
 | Menu Quality Validation | Menu Quality Validation - MenuList \| Catch Menu Issues Before Customers See Them | `(website)/features/menu-quality-validation/page.tsx` |
-| Business Health  | Business Health - MenuList \| Know What Needs Attention               | `(website)/features/business-health/page.tsx` |
+| Business Health  | Business Health - MenuList \| AI Health Check for Your Menu            | `(website)/features/business-health/page.tsx` |
 | Customer Feedback Loop | Customer Feedback Loop - MenuList \| Private Guest Feedback        | `(website)/features/customer-feedback-loop/page.tsx` |
 | Public Discovery | Public Discovery - MenuList \| Clear Business Information for Search  | `(website)/features/public-discovery/page.tsx` |
 | How It Works     | How MenuList Works — From Current Menu to Official Public Source      | `(website)/how-it-works/page.tsx`     |
@@ -71,7 +71,7 @@
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Homepage       | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
 | Features       | Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place. |
-| Business Health | Business Health shows the latest MenuList check, customer attention, last checked date, and whether anything needs action in the owner dashboard. |
+| Business Health | Business Health is an AI health check for your menu and public presence. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows. |
 | Customer Feedback Loop | Let customers send private feedback from the menu, Official Business Page, QR, or direct link so owners can review issues and keep the public source correct. |
 | How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source behind the customer-facing menu and related public links.   |
 | Pricing        | Start with a 7-day MenuList setup, then choose the plan that keeps your official menu link live, updated, and ready for customers.                  |

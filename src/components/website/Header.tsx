@@ -29,6 +29,7 @@ import { websiteFeatureNavGroups } from "./features/featureNavigation";
 
 const navItemKeys = [
   { href: "/features", key: "features", icon: LuLayoutGrid },
+  { href: "/ai-menu-manager", key: "aiMenuManager", icon: LuBot },
   { href: "/how-it-works", key: "howItWorks", icon: LuZap },
   { href: "/multi-location", key: "multiLocation", icon: LuMapPin },
   { href: "/pricing", key: "pricing", icon: LuFileText },

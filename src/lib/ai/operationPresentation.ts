@@ -72,9 +72,6 @@ export const formatAiOperationActionLabel = (
     if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER) {
         return translate(translator, `actions.${action}`, "Business Health answer");
     }
-    if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT) {
-        return translate(translator, `actions.${action}`, "Business Health draft");
-    }
 
     return translate(translator, `actions.${action}`, formatActionFallback(action));
 };
@@ -117,7 +114,6 @@ export const getAiOperationTone = (action?: string | null): AiOperationTone => {
         || action === AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION
         || action === AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR
         || action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER
-        || action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT
     ) {
         return "content";
     }
@@ -278,10 +274,6 @@ export const getAiOperationOwnerSummary = (
 
     if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER) {
         return translate(translator, "summary.businessHealthQuestionAnswered", "Answered a Business Health question.");
-    }
-
-    if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ACTION_TEXT) {
-        return translate(translator, "summary.businessHealthDraftPrepared", "Prepared a Business Health draft.");
     }
 
     if (action === AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY) {

@@ -1031,8 +1031,8 @@ export const FEATURE_FLAGS = {
      * - platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}
      * - platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}
      *
-     * Action Support is separately gated so read-only Business Health can stay
-     * enabled if action preparation or confirmed writes need to be disabled.
+     * Business Health is read-only. Menu operations are handled by AI Menu
+     * Manager / Menu Manager.
      *
      * @see __docs__/owner-business-assistant/
      */
@@ -1050,15 +1050,27 @@ export const FEATURE_FLAGS = {
     ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING: true,
     ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION: true,
     ENABLE_OWNER_BUSINESS_HEALTH_POS_AWARE_ANSWERS: false,
-    ENABLE_OWNER_BUSINESS_ACTION_SUPPORT: true,
-    ENABLE_OWNER_BUSINESS_ACTION_NAVIGATION: true,
-    ENABLE_OWNER_BUSINESS_ACTION_DRAFTS: true,
-    ENABLE_OWNER_BUSINESS_ACTION_CONFIRMED_WRITES: false,
-    ENABLE_OWNER_BUSINESS_ACTION_PUBLIC_TRUTH: false,
-    ENABLE_OWNER_BUSINESS_ACTION_MEDIA: false,
-    ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_TEXT: false,
-    ENABLE_OWNER_BUSINESS_ACTION_PROVIDER_IMAGE: false,
-    ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW: true,
+
+    /**
+     * AI Menu Manager / Menu Manager
+     *
+     * Standalone owner menu operations layer. AMM prepares action cards from the
+     * selected store/project context and executes only through registered,
+     * approved MenuList operation adapters.
+     *
+     * Confirmed project/store writes are gated separately so the read/proposal
+     * surface can be tested without allowing live menu mutations.
+     *
+     * @see __docs__/ai-menu-manager/README.md
+     */
+    ENABLE_AI_MENU_MANAGER: true,
+    ENABLE_AI_MENU_MANAGER_MOBILE: true,
+    ENABLE_AI_MENU_MANAGER_VOICE_INPUT: true,
+    ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS: true,
+    ENABLE_AI_MENU_MANAGER_RULES: true,
+    ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES: true,
+    ENABLE_AI_MENU_MANAGER_DEBUG_ARTIFACTS: false,
+    AI_MENU_MANAGER_SESSION_STORAGE_MODE: "daily_compact" as "daily_compact" | "detailed",
 
     // ═══════════════════════════════════════════════════════════════
     // POS WEBHOOK SYNC (Menu Snapshot Broadcast)
@@ -2992,6 +3004,24 @@ export const FEATURE_FLAGS = {
      * @see __docs__/media-image-system/
      */
     ENABLE_MEDIA_IMAGE_SYSTEM: true,
+
+    /**
+     * Visual Profile Completion
+     *
+     * Shows owners whether the Official Business Page visual profile has the
+     * key photos customers expect: main photo, business gallery photos, and
+     * menu/service image coverage when project summaries are already loaded.
+     *
+     * true: Show the read-only completion card beside existing OBP photo
+     * controls on desktop and mobile.
+     * false: Hide the card. Existing OBP upload/save behavior is unchanged.
+     *
+     * Cost: Browser-local computation only. No new Firestore writes, required
+     * reads, Storage paths, provider calls, functions, schedulers, or indexes.
+     *
+     * @see __docs__/visual-profile-completion/
+     */
+    ENABLE_VISUAL_PROFILE_COMPLETION: true,
 
     /**
      * Sharable Item Card Generation

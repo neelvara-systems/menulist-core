@@ -58,7 +58,6 @@ export async function logOwnerBusinessAssistantAnswerEvent(params: {
     domainCoverage: (params.answer.metrics?.domainCoverage || []).slice(0, 20),
     sourceFactCount: params.answer.sourceFactIds.length,
     sourceFactIds: params.answer.sourceFactIds.slice(0, 20),
-    actionOptionCount: params.answer.actions?.length || 0,
     artifactCount: params.answer.artifacts?.length || 0,
     followUpQuestionCount: params.answer.suggestedQuestions?.length || 0,
     followUpQuestionIds: (params.answer.suggestedQuestions || []).map((question) => question.id).slice(0, 3),

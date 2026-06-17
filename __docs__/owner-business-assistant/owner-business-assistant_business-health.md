@@ -1,184 +1,68 @@
-# Owner Business Assistant Business Health Track
+# Business Health Track
 
-**Owner-Facing Name:** Business Health
-**Internal Slug:** owner-business-assistant
-**Product:** MenuList
-**Status:** Implemented behind feature flags
-**Last Updated:** June 16, 2026
+**Feature:** Owner Business Assistant / Business Health
+**Status:** Read-only AI diagnostic runtime
+**Last Updated:** June 17, 2026
 
----
+## Purpose
 
-## Decision
+Business Health gives the owner a compact AI health check for current store and selected-menu health. It can answer supported questions from existing summaries, but it does not perform actions.
 
-Business Health is the read-only intelligence track.
+Public positioning may call Business Health an AI health check or AI diagnostic layer. That wording does not change the runtime boundary: Business Health checks and explains; AI Menu Manager owns approved menu operations.
 
-It must ship as part of the day-one implementation, independently from Action Support. If Action Support is disabled, Business Health must still work.
+## Active Capability
 
-Business Health includes:
+- Current health summary
+- Priority checks
+- Analytics period summaries
+- Selected project/menu context
+- Multi-location summary
+- Source/freshness notes
+- Feedback summaries
+- Suggested questions
+- Grounded typed answers
+- Safe handoff wording to AI Menu Manager or existing owner screens
 
-- Dashboard card.
-- Dashboard analytics strip.
-- Full `/business-health` page.
-- MobileShell screen.
-- Cache-first context packet.
-- Current business status.
-- Standard analytics period answers.
-- AI answers to typed owner questions from compact facts.
-- Freshness/source disclosure.
-- Calm refusals when data is missing.
+## Explicit Non-Capability
 
-Business Health excludes:
+Business Health must not:
 
-- Draft creation.
-- Confirmed writes.
-- Public-truth publishing.
-- Media upload or generation.
-- Any assistant-owned mutation.
+- call an action route
+- build action options
+- store action drafts
+- render confirmation sheets
+- update menu/store/outlet/staff/public truth
+- publish to external platforms
+- generate or apply images
+- create rules or automation
 
-## Flags
+AI Menu Manager owns these workflows.
 
-Business Health has its own kill switch:
+## Read Path
 
-```ts
-ENABLE_OWNER_BUSINESS_HEALTH: true,
-ENABLE_OWNER_BUSINESS_HEALTH_DASHBOARD_CARD: true,
-ENABLE_OWNER_BUSINESS_HEALTH_PAGE: true,
-ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX: true,
-ENABLE_OWNER_BUSINESS_HEALTH_TODAY_OVERLAY: true,
-ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS: true,
-ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT: true,
-ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS: false,
-ENABLE_OWNER_BUSINESS_HEALTH_CONTEXT_PACKET_CACHE: true,
-ENABLE_OWNER_BUSINESS_HEALTH_UPSTASH_CONTEXT_CACHE: true,
-ENABLE_OWNER_BUSINESS_HEALTH_THREADS: true,
-```
+1. Scheduler builds compact summary docs.
+2. API routes load bounded docs for the selected store/project context.
+3. Context packet builder creates a compact packet.
+4. Browser/server cache returns valid packets before new Firebase reads.
+5. UI renders read-only health, analytics, checks, questions, and answers.
 
-`ENABLE_OWNER_BUSINESS_ACTION_SUPPORT` must not be required for any Business Health read path.
+## Answer Path
 
-## Read Models
+Typed answers use:
 
-Business Health uses existing `platformSummary`.
+- validated request schema
+- selected store/project context
+- domain capability matrix
+- compact context packet
+- deterministic fallback when provider answering is disabled or unavailable
+- source/freshness disclosure where available
 
-```text
-platformSummary/ownerBusinessHealthCurrent_{tId}_{sId}
-platformSummary/ownerBusinessAnalyticsIndex_{tId}_{sId}
-platformSummary/ownerBusinessHealthSnapshot_{tId}_{sId}_{localDate}
-```
-
-No dedicated analytics collection is allowed.
-
-## Analytics Period Contract
-
-Supported standard periods:
-
-- Today.
-- Yesterday.
-- This week.
-- Last week.
-- This month.
-- Last month.
-- Last 7 days.
-- Last 30 days.
-- Overall.
-
-Runtime answer code must read from the context-packet cache first. On cache miss it may read:
-
-- One current doc.
-- One analytics index doc.
-
-Runtime answer code must not aggregate daily date ranges.
-
-The Functions builder may fold current-day daily analytics docs into the analytics index for indexed active projects. Runtime answers read the index, not daily docs.
-
-For stores with multiple active projects, `periods` is the store aggregate across indexed menus and `projectSummaries[projectId].periods` is the selected-menu view. The selected-menu cache key includes `projectId`; the store aggregate cache key does not.
-
-If a specific requested period is not present in the analytics index, the answer must refuse that period instead of falling back to a different period. For example, a "today" question may not answer with this-week data when the today overlay is disabled or missing. Scheduler-generated suggested questions should hide "today" when the today period is unavailable.
-
-## Question Suggestion Contract
-
-Business Health uses two suggestion layers:
-
-1. Starter questions are generated by the scheduler from the current health/analytics packet. They are deterministic and must not call a provider.
-2. Follow-up questions are attached to the answer response. If provider answering is enabled, they may be returned by the same answer call; if provider answering is disabled or unavailable, they are deterministic and packet-ranked.
-
-There must not be a separate AI call or Firestore read just to generate suggestions.
-
-## AI Answer Contract
-
-Typed owner questions use AI over `OwnerBusinessAssistantContextPacket`.
-
-The model receives:
-
-- Owner question.
-- Cached health facts.
-- Cached analytics period facts.
-- Optional today overlay.
-- Allowed actions.
-- Answer rules.
-
-The model must not receive raw Firebase collections.
-
-Non-analytics questions follow the same packet rule. Store profile, public menu/project facts, public availability, screen status, feedback/review signals, and operational checks are answerable only when the context packet contains cached owner-safe facts. The read-only Health path must not perform live full-document reads or collection scans to satisfy those questions.
-
-Guest feedback is allowed through `health.feedbackSummary` only. The summary contains counts, deterministic themes, project breakdown, and capped sanitized snippets; it does not include guest name, phone, email, or full raw messages. Owners open the existing Guest Feedback inbox for contact details or resolution work.
-
-The answer route must validate structured model output before rendering it.
-
-## Dashboard Contract
-
-The owner dashboard should show:
-
-1. Business Health status card.
-2. Latest check time.
-3. No action needed / needs review state.
-4. Compact activity strip using owner language: Menu views, Top demand, Best source.
-5. Needs attention, mapped to owner actions: Promote, Fix, Restock, or Update.
-6. Clear data freshness note: `Uses data through {date}. Today may not be complete yet.`
-7. Entry to the full Business Health page.
-
-Raw analytics labels such as conversion funnel, bounce rate, session duration, device type, or attribution model must not be primary owner UI. If a metric cannot map to Promote, Fix, Restock, or Update, keep it internal or hide it from the owner surface.
-
-Catalog-backed owner action cards may include an `image_gap` card for an active, available item that has current customer attention but no item photo. Missing descriptions remain `metadata_demand`, and the same item should not appear in both cards during one action-plan build. Both cards are built from already-loaded catalog truth plus settled views/taps in the scheduler/dashboard-summary path; they must not add runtime menu scans, new analytics events, media writes, or provider calls.
-
-Desktop and mobile dashboards both follow this contract. Desktop renders `BusinessHealthDashboardCard` and `BusinessHealthAnalyticsStrip` near the top of the owner dashboard. Mobile renders `MobileBusinessHealthCard` before the detailed analytics tabs and feeds it from the same cached current Health and selected-menu analytics-index hooks.
-
-Business Health may show action suggestions only as labels when Action Support is disabled. It must not call `/action`, create drafts, or expose confirmation UI unless Action Support is enabled.
-
-## APIs
-
-```text
-GET  /api/owner-business-assistant/current
-GET  /api/owner-business-assistant/analytics
-POST /api/owner-business-assistant/answer
-GET  /api/owner-business-assistant/thread/[threadId]
-POST /api/owner-business-assistant/feedback
-```
-
-The answer route can return `actions: []` when Action Support is disabled.
-
-## Cost Contract
-
-| Flow | Reads | Writes |
-| --- | ---: | ---: |
-| Dashboard card | 0 on cache hit; 1 current read on miss | 0 |
-| Dashboard analytics strip | 0 on cache hit; 1 analytics-index read on miss | 0 |
-| Mobile dashboard Business Health summary | 0 on cache hit; 1 current read + 1 analytics-index read on miss only after selected project/store scope exists | 0 |
-| Business Health page | 0 on cache hit; 1 current read + 1 analytics-index read on miss | 0 |
-| Suggested/typed question | 0 Firestore reads on context-packet cache hit | 0 by default; optional answer-event write under usage logging flag |
-| AI answer cache miss | Current/index reads + provider accounting only if provider is used | Provider accounting/cache write only when provider is used; answer-event write only when usage logging flag is enabled |
-| Optional owner thread history | 1 thread doc read with embedded `messages[]` | 1 merged thread doc write per exchange only under thread flag |
-
-No listener is required for Business Health.
+Answers may return read-only artifacts only.
 
 ## Failure Behavior
 
-If Business Health fails:
+If the read model is stale or missing, Business Health should show a calm stale/not-ready state. It should not enable owner actions as a workaround.
 
-- Show "Latest check is not ready yet" or "Latest check is delayed."
-- Do not fall back to raw collection scans.
-- Do not enable Action Support as a workaround.
+If provider-backed answering is unavailable, deterministic answer/fallback copy should remain available for supported facts.
 
-If Action Support fails:
-
-- Business Health stays available.
-- Hide action buttons or show "Open the related screen manually."
+If the owner asks to change something, Business Health should direct them to AI Menu Manager or explain that the operation must be handled there.

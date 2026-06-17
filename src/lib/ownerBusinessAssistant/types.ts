@@ -19,7 +19,6 @@ export type OwnerBusinessAssistantPacketProfile =
   | 'health_card'
   | 'analytics_periods'
   | 'owner_question_basic'
-  | 'owner_question_actionable'
   | 'multi_location_summary'
   | 'dashboard'
   | 'page'
@@ -198,52 +197,7 @@ export type OwnerAssistantAnswerArtifact =
   | { type: 'text'; body: string }
   | { type: 'metric_row'; metrics: Array<{ label: string; value: string; deltaLabel?: string }> }
   | { type: 'compact_table'; columns: string[]; rows: string[][]; maxRows: number }
-  | { type: 'trend_series'; label: string; points: Array<{ label: string; value: number }> }
-  | { type: 'action_options'; actions: OwnerBusinessAssistantActionOption[] };
-
-export type OwnerBusinessAssistantActionRisk = 'navigate' | 'draft' | 'confirmed_write' | 'public_truth' | 'blocked';
-export type OwnerBusinessAssistantActionTargetKind =
-  | 'project'
-  | 'menu_item'
-  | 'category'
-  | 'store'
-  | 'media'
-  | 'feedback'
-  | 'review'
-  | 'outlet'
-  | 'billing'
-  | 'domain'
-  | 'screen'
-  | 'customer_app'
-  | 'qr'
-  | 'pos'
-  | 'team'
-  | 'compliance';
-
-export type OwnerBusinessActionDefinition = {
-  actionType: string;
-  ownerLabel: string;
-  riskLevel: OwnerBusinessAssistantActionRisk;
-  requiredPermissions: string[];
-  requiredFlags: string[];
-  targetKinds: OwnerBusinessAssistantActionTargetKind[];
-  resolver: 'summary' | 'project_doc' | 'store_doc' | 'existing_api' | 'screen_route';
-  draftSchema?: string;
-  executor: string;
-  cacheImpact: 'none' | 'project_public' | 'store_public' | 'screen_public';
-  aiCostAction?: string;
-};
-
-export type OwnerBusinessAssistantActionOption = {
-  actionType: string;
-  label: string;
-  riskLevel: OwnerBusinessAssistantActionRisk;
-  href?: string;
-  targetKind?: OwnerBusinessAssistantActionTargetKind;
-  targetId?: string;
-  requiresConfirmation?: boolean;
-  sourceFactIds?: string[];
-};
+  | { type: 'trend_series'; label: string; points: Array<{ label: string; value: number }> };
 
 export type OwnerBusinessDomainCapability = {
   domain: OwnerBusinessAssistantDomain;
@@ -362,24 +316,21 @@ export type OwnerBusinessAssistantContextPacket = {
     todayOverlay?: string;
     publicProjection?: string;
     domainFacts?: string;
-    actionCatalog?: string;
   };
   health: OwnerBusinessHealthCurrentDoc;
   analytics?: Pick<OwnerBusinessAnalyticsIndexDoc, 'periods' | 'unsupportedPeriods' | 'sourceRefs' | 'projectScope'>;
   todayOverlay?: OwnerBusinessAnalyticsPeriod;
   domainFacts?: Record<string, unknown>;
   clientContext?: OwnerBusinessAssistantClientContext;
-  allowedActions: OwnerBusinessActionDefinition[];
   metrics?: OwnerBusinessAssistantRouteMetrics;
   answerRules: {
     refuseUnsupported: true;
     sourceFactIdsRequired: true;
     noRevenueProfitWithoutSource: true;
-    noPublicMutationWithoutConfirmation: true;
   };
 };
 
-export type OwnerBusinessAssistantAnswerStatus = 'answered' | 'needs_more_data' | 'unsupported' | 'needs_confirmation';
+export type OwnerBusinessAssistantAnswerStatus = 'answered' | 'needs_more_data' | 'unsupported';
 
 export type OwnerBusinessAssistantAnswer = {
   answerId: string;
@@ -390,7 +341,6 @@ export type OwnerBusinessAssistantAnswer = {
   sourceFactIds: string[];
   artifacts?: OwnerAssistantAnswerArtifact[];
   cards?: Array<Record<string, unknown>>;
-  actions?: OwnerBusinessAssistantActionOption[];
   suggestedQuestions?: OwnerBusinessHealthQuestion[];
   confidence: 'high' | 'medium' | 'low';
   cache?: {
@@ -400,27 +350,6 @@ export type OwnerBusinessAssistantAnswer = {
   };
   metrics?: OwnerBusinessAssistantRouteMetrics;
   remainingBalance?: unknown;
-};
-
-export type OwnerBusinessAssistantActionOperation =
-  | 'navigate'
-  | 'prepare'
-  | 'confirm'
-  | 'cancel'
-  | 'mark_reviewed'
-  | 'dismiss'
-  | 'assign';
-
-export type OwnerBusinessAssistantActionResult = {
-  success: boolean;
-  status: 'navigated' | 'draft_prepared' | 'confirmed' | 'cancelled' | 'reviewed' | 'dismissed' | 'blocked';
-  message: string;
-  actionId?: string;
-  draftId?: string;
-  href?: string;
-  requiresConfirmation?: boolean;
-  affectedSurface?: string;
-  metrics?: OwnerBusinessAssistantRouteMetrics;
 };
 
 export type OwnerBusinessAssistantFeedbackPayload = {

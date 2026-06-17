@@ -15,7 +15,6 @@ import type {
   OwnerBusinessAnalyticsTeaser,
   OwnerBusinessHealthCurrentDoc,
 } from '../types';
-import { getOwnerBusinessAssistantAllowedActions } from '../actions/actionRegistry';
 import {
   buildOwnerBusinessAssistantPacketCacheKey,
   readOwnerBusinessAssistantPacketCache,
@@ -217,32 +216,6 @@ const mergeClientContext = (
   }),
 });
 
-const refreshActionCatalog = (
-  packet: Omit<OwnerBusinessAssistantContextPacket, 'clientContext' | 'cacheSource' | 'metrics'>,
-  packetProfile: OwnerBusinessAssistantPacketProfile,
-): Omit<OwnerBusinessAssistantContextPacket, 'clientContext' | 'cacheSource' | 'metrics'> => {
-  if (packetProfile !== 'answer' && packetProfile !== 'owner_question_actionable') {
-    return {
-      ...packet,
-      allowedActions: [],
-      sourceSignatures: {
-        ...packet.sourceSignatures,
-        actionCatalog: 'not_included',
-      },
-    };
-  }
-
-  const allowedActions = getOwnerBusinessAssistantAllowedActions();
-  return {
-    ...packet,
-    allowedActions,
-    sourceSignatures: {
-      ...packet.sourceSignatures,
-      actionCatalog: String(allowedActions.map((action) => action.actionType).sort().join('|')),
-    },
-  };
-};
-
 export async function buildOwnerBusinessAssistantContextPacket(params: {
   tId: string | number;
   sId: string | number;
@@ -264,7 +237,7 @@ export async function buildOwnerBusinessAssistantContextPacket(params: {
 
   const cached = await readOwnerBusinessAssistantPacketCache(cacheKey);
   if (cached) {
-    return mergeClientContext(refreshActionCatalog(cached, packetProfile), params.clientContext, 'server', params.projectId, packetProfile, 0, 0);
+    return mergeClientContext(cached, params.clientContext, 'server', params.projectId, packetProfile, 0, 0);
   }
 
   const currentRef = firestoreAdmin
@@ -300,8 +273,6 @@ export async function buildOwnerBusinessAssistantContextPacket(params: {
   const generatedAt = nowIso();
   const localBusinessDate = scopedHealth.localDate || generatedAt.slice(0, 10);
   const validUntil = scopedHealth.validThrough || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  const includeActions = packetProfile === 'answer' || packetProfile === 'owner_question_actionable';
-  const allowedActions = includeActions ? getOwnerBusinessAssistantAllowedActions() : [];
 
   const packetWithoutContext: Omit<OwnerBusinessAssistantContextPacket, 'clientContext' | 'cacheSource' | 'metrics'> = {
     version: 1,
@@ -316,9 +287,6 @@ export async function buildOwnerBusinessAssistantContextPacket(params: {
     sourceSignatures: {
       healthCurrent: getDocSignature(health),
       analyticsIndex: getDocSignature(analytics || undefined),
-      actionCatalog: includeActions
-        ? String(allowedActions.map((action) => action.actionType).sort().join('|'))
-        : 'not_included',
     },
     health: {
       ...scopedHealth,
@@ -329,12 +297,10 @@ export async function buildOwnerBusinessAssistantContextPacket(params: {
       },
     },
     analytics: scopedAnalytics,
-    allowedActions,
     answerRules: {
       refuseUnsupported: true,
       sourceFactIdsRequired: true,
       noRevenueProfitWithoutSource: true,
-      noPublicMutationWithoutConfirmation: true,
     },
   };
 

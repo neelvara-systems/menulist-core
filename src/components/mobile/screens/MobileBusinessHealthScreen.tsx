@@ -1,7 +1,6 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
-import { useOwnerBusinessAssistantAction } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAction';
 import { useOwnerBusinessAssistantAnswer } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer';
 import { useOwnerBusinessAssistantThread } from '@hook/ownerBusinessAssistant/useOwnerBusinessAssistantThread';
 import { useOwnerBusinessAnalyticsIndex } from '@hook/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex';
@@ -13,25 +12,20 @@ import {
     getOwnerBusinessCheckOwnerMessage,
     getOwnerBusinessPrimaryAnalyticsPeriod,
 } from '@lib/ownerBusinessAssistant/businessSignals';
-import { buildOwnerBusinessHealthCheckStateKey } from '@lib/ownerBusinessAssistant/checkStateStorage';
 import { OWNER_BUSINESS_HEALTH_STATUS_LABELS } from '@lib/ownerBusinessAssistant/constants';
 import { formatOwnerBusinessHealthDateKey, getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant/freshness';
 import type {
-    OwnerBusinessAssistantActionOption,
-    OwnerBusinessHealthCheck,
     OwnerBusinessHealthCurrentDoc,
     OwnerBusinessHealthQuestion,
 } from '@lib/ownerBusinessAssistant/types';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
-import { useRouter } from 'next/navigation';
 import { type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuActivity, LuCheckCheck, LuCheckCircle2, LuExternalLink, LuLayers, LuSend, LuSparkles, LuUser, LuX } from 'react-icons/lu';
+import { LuActivity, LuCheckCircle2, LuLayers, LuSend, LuSparkles, LuUser, LuX } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../shared/ProjectSelector';
 import { Button, Card, Flex, Input, Popup, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { useMobileProjects } from '../providers/MobileProjectsProvider';
-import MobileBusinessHealthActionSheet from '../sheets/MobileBusinessHealthActionSheet';
 
 interface MobileBusinessHealthScreenProps {
     onBack: () => void;
@@ -52,7 +46,6 @@ const getFeedbackSummaryLine = (current?: OwnerBusinessHealthCurrentDoc | null) 
 
 export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHealthScreenProps) {
     const { token } = theme.useToken();
-    const router = useRouter();
     const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext);
     const { isLoading: isProjectsLoading, projectsList, selectedProjectId } = useMobileProjects();
     const [businessHealthProjectId, setBusinessHealthProjectId] = useState<string | null>(selectedProjectId || null);
@@ -69,7 +62,6 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
         selectedProjectId: scopedProjectId,
     }, storeDetails?.storeId);
     const { messages, refresh: refreshThread } = useOwnerBusinessAssistantThread(threadId, storeDetails?.storeId);
-    const { runAction, isLoading: isActioning } = useOwnerBusinessAssistantAction(scopedProjectId, storeDetails?.storeId);
     const hasMultipleStores = Array.isArray(tenantDetails?.storesList)
         && tenantDetails.storesList.filter((store: any) => store?.active !== false && store?.storeDetails?.active !== false).length > 1;
     const { stores: locationStores, isLoading: isLocationsLoading } = useOwnerBusinessLocationsSummary(
@@ -78,8 +70,6 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
         storeDetails?.storeId,
     );
     const [question, setQuestion] = useState('');
-    const [actionSheetOpen, setActionSheetOpen] = useState(false);
-    const [suppressedCheckIds, setSuppressedCheckIds] = useState<Set<string>>(() => new Set());
     const scopeProjects = useMemo(
         () => (projectsList || []).filter((project: any) => project?.projectId && project?.deleted !== true),
         [projectsList],
@@ -117,10 +107,6 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
     ], [scopeProjects]);
     const isFreeTextAskEnabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_FREE_TEXT && isHealthReady;
     const isSuggestedAskEnabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_SUGGESTED_QUESTIONS && isHealthReady;
-    const canUpdateChecks = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT
-        && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_CHECK_WORKFLOW;
-    const canNavigateChecks = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT
-        && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_NAVIGATION;
     const canSendQuestion = isFreeTextAskEnabled && Boolean(question.trim()) && !isAnswering;
     const askPlaceholder = isHealthReady ? 'Ask about today or this week' : 'Available after the latest check';
     const freshnessNote = getOwnerBusinessHealthFreshnessNote(current);
@@ -170,10 +156,7 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
             : isHealthReady
                 ? token.colorSuccessBg
                 : token.colorInfoBg;
-    const visibleChecks = useMemo(
-        () => (current?.suggestedChecks || []).filter((check) => !suppressedCheckIds.has(check.id)),
-        [current?.suggestedChecks, suppressedCheckIds],
-    );
+    const visibleChecks = current?.suggestedChecks || [];
     const analyticsMetrics = useMemo(
         () => buildOwnerBusinessActivityMetrics(getOwnerBusinessPrimaryAnalyticsPeriod(analytics?.periods)),
         [analytics?.periods],
@@ -188,18 +171,6 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
         const formatted = formatOwnerBusinessHealthDateKey(localDate);
         return formatted ? `Checked ${formatted}` : null;
     };
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        setSuppressedCheckIds(new Set((current?.suggestedChecks || [])
-            .filter((check) => window.localStorage.getItem(buildOwnerBusinessHealthCheckStateKey({
-                checkId: check.id,
-                localDate: current?.localDate,
-                projectId: scopedProjectId,
-                storeId: storeDetails?.storeId,
-            })))
-            .map((check) => check.id)));
-    }, [current?.localDate, current?.suggestedChecks, scopedProjectId, storeDetails?.storeId]);
 
     useEffect(() => {
         const storeId = storeDetails?.storeId || null;
@@ -257,66 +228,6 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
 
     const handleSuggested = (suggested: OwnerBusinessHealthQuestion) => {
         void handleAsk(suggested.question, suggested.id);
-    };
-
-    const handleAction = async (action: OwnerBusinessAssistantActionOption) => {
-        try {
-            const result = await runAction({
-                operation: action.riskLevel === 'navigate' ? 'navigate' : 'prepare',
-                actionType: action.actionType,
-                targetKind: action.targetKind,
-                targetId: action.targetId,
-                payload: { source: 'mobile_business_health' },
-            });
-            setActionSheetOpen(false);
-            Toast.show({ content: result.message, duration: 1600 });
-            if (result.href) router.push(result.href);
-        } catch (error) {
-            Toast.show({ content: error instanceof Error ? error.message : 'Action could not be completed', duration: 2200 });
-        }
-    };
-
-    const handleCheckAction = async (
-        check: OwnerBusinessHealthCheck,
-        operation: 'mark_reviewed' | 'dismiss',
-    ) => {
-        try {
-            await runAction({
-                operation,
-                actionType: operation === 'dismiss' ? 'dismiss_health_check' : 'mark_health_check_reviewed',
-                targetKind: 'store',
-                targetId: check.id,
-                payload: { checkId: check.id, source: 'mobile_business_health' },
-            });
-            if (typeof window !== 'undefined') {
-                window.localStorage.setItem(buildOwnerBusinessHealthCheckStateKey({
-                    checkId: check.id,
-                    localDate: current?.localDate,
-                    projectId: scopedProjectId,
-                    storeId: storeDetails?.storeId,
-                }), operation);
-            }
-            setSuppressedCheckIds((previous) => new Set(previous).add(check.id));
-            Toast.show({ content: operation === 'dismiss' ? 'Dismissed' : 'Marked as reviewed', duration: 1600 });
-        } catch (error) {
-            Toast.show({ content: error instanceof Error ? error.message : 'Action could not be completed', duration: 2200 });
-        }
-    };
-
-    const handleCheckOpen = async (check: OwnerBusinessHealthCheck) => {
-        if (!check.actionType) return;
-        try {
-            const result = await runAction({
-                operation: 'navigate',
-                actionType: check.actionType,
-                targetKind: 'store',
-                targetId: check.id,
-                payload: { checkId: check.id, source: 'mobile_business_health' },
-            });
-            if (result.href) router.push(result.href);
-        } catch (error) {
-            Toast.show({ content: error instanceof Error ? error.message : 'Screen could not be opened', duration: 2200 });
-        }
     };
 
     const renderFollowUpQuestions = (questions?: OwnerBusinessHealthQuestion[]) => {
@@ -561,39 +472,6 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                                         </Tag>
                                     </Flex>
                                     <Text>{getOwnerBusinessCheckOwnerMessage(check)}</Text>
-                                    {check.actionType && canNavigateChecks ? (
-                                        <Button
-                                            block
-                                            fill="solid"
-                                            loading={isActioning}
-                                            onClick={() => void handleCheckOpen(check)}
-                                            style={{ minHeight: 44 }}
-                                        >
-                                            <LuExternalLink size={16} /> Open
-                                        </Button>
-                                    ) : null}
-                                    {canUpdateChecks ? (
-                                        <Flex gap={8}>
-                                            <Button
-                                                block
-                                                fill="outline"
-                                                loading={isActioning}
-                                                onClick={() => void handleCheckAction(check, 'mark_reviewed')}
-                                                style={{ minHeight: 44 }}
-                                            >
-                                                <LuCheckCheck size={16} /> Reviewed
-                                            </Button>
-                                            <Button
-                                                block
-                                                fill="outline"
-                                                loading={isActioning}
-                                                onClick={() => void handleCheckAction(check, 'dismiss')}
-                                                style={{ minHeight: 44 }}
-                                            >
-                                                <LuX size={16} /> Dismiss
-                                            </Button>
-                                        </Flex>
-                                    ) : null}
                                 </Flex>
                             ))}
                         </Flex>
@@ -650,7 +528,6 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                                 <Flex gap={8} vertical>
                                     {chatMessages.map((message: any, index: number) => {
                                         const isLatestAssistant = message.role !== 'user' && index === latestAssistantMessageIndex;
-                                        const isCurrentAnswer = Boolean(answer?.answerId && message.answerId === answer.answerId);
 
                                         return renderChatBubble({
                                             content: message.content,
@@ -660,17 +537,6 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                                                 <>
                                                     {message.freshnessLabel ? <Text type="secondary">{message.freshnessLabel}</Text> : null}
                                                     {renderFollowUpQuestions(message.suggestedQuestions)}
-                                                    {isCurrentAnswer && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_ACTION_SUPPORT && answer?.actions?.length ? (
-                                                        <Button
-                                                            block
-                                                            fill="outline"
-                                                            icon={<LuExternalLink />}
-                                                            loading={isActioning}
-                                                            onClick={() => setActionSheetOpen(true)}
-                                                        >
-                                                            Open action
-                                                        </Button>
-                                                    ) : null}
                                                 </>
                                             ) : null,
                                         });
@@ -681,12 +547,6 @@ export default function MobileBusinessHealthScreen({ onBack }: MobileBusinessHea
                     </Card>
                 ) : null}
             </Flex>
-            <MobileBusinessHealthActionSheet
-                actions={answer?.actions}
-                onClose={() => setActionSheetOpen(false)}
-                onSelect={(action) => void handleAction(action)}
-                open={actionSheetOpen}
-            />
             <Popup
                 bodyStyle={{ borderTopLeftRadius: 20, borderTopRightRadius: 20 }}
                 onMaskClick={() => setIsScopeSelectorOpen(false)}

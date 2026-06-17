@@ -1,4 +1,4 @@
-import { LuActivity, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDollarSign, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLayoutTemplate, LuMapPin, LuPrinter, LuQrCode, LuReceipt, LuShare2, LuShieldCheck, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
+import { LuActivity, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDollarSign, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLayoutTemplate, LuMapPin, LuMessageSquare, LuPrinter, LuQrCode, LuReceipt, LuShare2, LuShieldCheck, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
 import { MdOutlineManageHistory } from 'react-icons/md';
 import { TbSettingsHeart } from 'react-icons/tb';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from './user';
@@ -34,6 +34,7 @@ export const NAVIGARIONS_ROUTINGS = {
     FEEDBACK: `/feedback`,  // Guest Feedback Inbox
     LOCATIONS: `/locations`,  // Chain Control Panel (Feature #4C)
     USE_MENULIST: `/use-menulist`,  // Output Center — links, screens, print assets
+    AI_MENU_MANAGER: `/menu-manager`,
     ASSETS: `/assets`,  // Printable asset templates
 
     HELP: HELP_CENTER_ROUTING,
@@ -94,6 +95,7 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
         ],
     },
     { label: 'Use MenuList', route: NAVIGARIONS_ROUTINGS.USE_MENULIST, icon: LuShare2 },
+    { label: 'Menu Manager', route: NAVIGARIONS_ROUTINGS.AI_MENU_MANAGER, icon: LuMessageSquare },
     { label: 'Assets', route: NAVIGARIONS_ROUTINGS.ASSETS, icon: LuPrinter },
     { label: 'QR Code', route: NAVIGARIONS_ROUTINGS.QR_CODE, icon: LuQrCode },
     { label: 'Feedback', route: NAVIGARIONS_ROUTINGS.FEEDBACK, icon: LuTicket },

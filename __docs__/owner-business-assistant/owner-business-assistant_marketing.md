@@ -3,33 +3,35 @@
 **Owner-Facing Name:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Internal positioning; runtime implemented behind flags; homepage section live
-**Last Updated:** June 8, 2026
+**Status:** Internal positioning; read-only runtime implemented; homepage and campaign page live
+**Last Updated:** June 17, 2026
 
 ---
 
 ## Positioning
 
-Business Health is an owner dashboard capability that checks the latest MenuList facts and shows whether anything needs attention.
+Business Health is MenuList's AI health check for the owner's menu and public presence.
 
-It is not positioned as a chatbot, growth tool, or generic assistant.
+It is diagnostic only: it checks the latest MenuList facts, shows whether anything needs attention, answers supported grounded questions, and hands fixes to AI Menu Manager or existing owner screens. It is not positioned as a chatbot, growth tool, autonomous action agent, or generic assistant.
 
 ## Internal Pitch
 
-MenuList already watches menu state, public presence, analytics, feedback, and operational health. Business Health turns those facts into a calm owner-facing check: stable when nothing needs action, precise when something does.
+MenuList already watches menu state, public presence, analytics, feedback, and operational health. Business Health turns those facts into a calm AI-era owner-facing check: stable when nothing needs action, precise when something does, and clear about where the approved fix belongs.
 
 ## Buyer-Safe Value Props
 
 - Shows whether the menu and public presence need attention.
 - Shows recent customer attention without asking owners to read raw analytics.
 - Uses the latest MenuList check instead of asking owners to read dashboards.
-- Points owners to the right screen when something needs review.
+- Points owners to AI Menu Manager or the right owner screen when something needs review.
 - Keeps public changes behind clear confirmation.
 - Works on desktop and mobile.
 
 ## Allowed Language
 
 - Business Health
+- AI health check
+- AI diagnostic
 - Latest MenuList check
 - Needs review
 - May need checking
@@ -41,11 +43,14 @@ MenuList already watches menu state, public presence, analytics, feedback, and o
 - Public menu status
 - Latest check delayed
 - Not enough data yet
+- AI Menu Manager prepares the fix
+- Business Health checks; AI Menu Manager acts after approval
 
 ## Rejected Language
 
 - AI Chat
 - AI Assistant
+- Autonomous AI agent
 - Smart Insights
 - Growth Assistant
 - Ask me anything
@@ -63,7 +68,7 @@ Official market signals show conversational business tools and agent workflows a
 - IBM's 2025 CEO study emphasizes proprietary data and integrated architecture as important for AI value.
 - Meta announced Business Agent for businesses in June 2026.
 
-MenuList should not copy those products. The market signal only validates that owners may expect business software to answer operational questions. MenuList's correct strategy is narrower: summary-first Business Health from existing MenuList truth.
+MenuList should not copy those products. The market signal only validates that owners may expect business software to answer operational questions. MenuList's correct strategy is narrower: an AI health check grounded in existing MenuList truth.
 
 ## Differentiation
 
@@ -81,14 +86,16 @@ MenuList Business Health:
 - Grounds answers in compact facts.
 - Uses a cache-first business packet before answering typed questions.
 - Refuses unsupported claims.
-- Sends owner to existing workflows.
+- Sends owner to AI Menu Manager or existing workflows for approved fixes.
 
 ## Sales Talking Points
 
 Use after implementation proof:
 
+- "Business Health is the AI health check for your menu and public presence."
 - "MenuList checks the latest public/menu state and shows whether anything needs attention."
 - "Owners can ask simple questions like what changed this week, what happened today, or which item received more customer attention."
+- "If something needs a change, AI Menu Manager prepares the fix and approval flow."
 - "Public changes still require owner confirmation."
 - "The system is designed to read compact summaries instead of running expensive live scans."
 
@@ -100,11 +107,13 @@ The main MenuList homepage now includes Business Health as a dedicated owner-das
 
 Allowed public website framing:
 
-- "Business Health shows what needs attention."
+- "Business Health is your AI health check."
+- "AI health checks for your menu."
 - "Latest MenuList check."
 - "No action needed."
 - "Uses data through the last settled business day."
 - "Answers come from cached MenuList data with source freshness."
+- "Business Health checks. AI Menu Manager prepares approved fixes."
 
 Do not move broader sales talking points onto the public homepage unless the runtime and cost proof still support them.
 
