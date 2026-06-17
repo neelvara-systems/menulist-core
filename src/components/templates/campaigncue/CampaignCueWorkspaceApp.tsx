@@ -25,6 +25,7 @@ import {
     CAMPAIGNCUE_DEFAULT_TIMEZONE,
     CAMPAIGNCUE_SOURCE_TYPE_LABELS,
 } from "@constant/campaigncue/workspace";
+import type { CampaignCueOutputPickerItem } from "@constant/campaigncue/outputPicker";
 import { FEATURE_FLAGS } from "@config/features";
 import { runCampaignCueCreativeEditorAiTool } from "@lib/campaigncue/creativeEditorAiTools";
 import { buildCampaignCueDailyDesk } from "@lib/campaigncue/dailyDesk";
@@ -652,8 +653,10 @@ const dedupeDailyDeskTasks = (tasks: CampaignCueDailyDeskTask[]) => {
 const buildPackTemplateEditorContext = (
     overview: CampaignCueOverview,
     template: CampaignCuePackTemplateHydrated,
+    intent?: CampaignCueOutputPickerItem,
 ): CampaignCueEditorContext => {
     const requiredFactSlots = template.payload.factSlots.filter((slot) => slot.required);
+    const hasOutputIntent = Boolean(intent && intent.id !== "recommended_pack");
     const templateProtectedFacts = template.payload.factSlots
         .filter((slot) => slot.protected)
         .map((slot): CampaignCueEditorProtectedFact => ({
@@ -665,12 +668,29 @@ const buildPackTemplateEditorContext = (
     const outputFormats = Array.from(new Set([
         ...template.payload.outputPackShape.channels.map(displayLabel),
         ...template.summary.outputTypes.map(displayLabel),
+        ...(hasOutputIntent ? intent?.channels.map(displayLabel) || [] : []),
+        ...(hasOutputIntent ? intent?.outputTypes.map(displayLabel) || [] : []),
         ...(overview.dailyDesk.readyPack?.outputFormats || []),
     ].filter(Boolean))).slice(0, 8);
     const printFormats = Array.from(new Set([
         ...template.payload.outputPackShape.printFormats.map(displayLabel),
+        ...(hasOutputIntent ? intent?.outputTypes
+            .filter((outputType) => outputType.includes("pdf"))
+            .map(displayLabel) || [] : []),
         ...(overview.dailyDesk.readyPack?.printFormats || []),
     ].filter(Boolean))).slice(0, 6);
+    const outputIntentTask: CampaignCueDailyDeskTask | null = hasOutputIntent && intent
+        ? {
+            actionLabel: intent.actionLabel,
+            detail: intent.description,
+            id: `template:${template.summary.templateId}:intent:${intent.id}`,
+            kind: "campaign_pack",
+            label: `Output focus · ${intent.title}`,
+            severity: "info",
+            sourceReferences: [`template:${template.summary.templateId}`, `output-intent:${intent.id}`],
+            targetTab: "delivery",
+        }
+        : null;
     const templateTasks = template.payload.factSlots.map((slot): CampaignCueDailyDeskTask => ({
         actionLabel: slot.required ? "Confirm fact" : "Review fact",
         detail: slot.ownerQuestion,
@@ -697,7 +717,9 @@ const buildPackTemplateEditorContext = (
             id: `template:${template.summary.templateId}:delivery:${index}`,
             instructions: [
                 "Confirm protected facts before using this saved pack.",
-                "Generate or refresh the campaign pack, then download or copy the handoff items.",
+                hasOutputIntent && intent
+                    ? `Keep the pack focused on ${intent.title.toLowerCase()} while reviewing the saved layout.`
+                    : "Generate or refresh the campaign pack, then download or copy the handoff items.",
             ],
             ownerUseCase: "Reuse this saved campaign handoff without starting from a blank canvas.",
             status: requiredFactSlots.length ? "needs_review" : "ready",
@@ -732,14 +754,20 @@ const buildPackTemplateEditorContext = (
         ]).slice(0, 8),
         resultOptions: overview.dailyDesk.resultPrompt?.resultOptions || overview.dailyDesk.readyPack?.resultOptions,
         resultQuestion: template.payload.outputPackShape.resultQuestion || overview.dailyDesk.recipe.resultQuestion,
-        subtitle: `Saved pack base · ${displayLabel(template.summary.businessCategory)} · ${requiredFactSlots.length ? `${requiredFactSlots.length} inputs need review` : "ready for reuse"}`,
+        subtitle: [
+            "Saved pack base",
+            displayLabel(template.summary.businessCategory),
+            hasOutputIntent && intent ? `focus: ${intent.title}` : "",
+            requiredFactSlots.length ? `${requiredFactSlots.length} inputs need review` : "ready for reuse",
+        ].filter(Boolean).join(" · "),
         tasks: dedupeDailyDeskTasks([
+            outputIntentTask,
             ...templateTasks,
             ...overview.dailyDesk.manualDeliveryTasks,
             ...overview.dailyDesk.assetReuseTasks,
             overview.dailyDesk.resultPrompt,
         ].filter(Boolean) as CampaignCueDailyDeskTask[]).slice(0, 6),
-        title: template.summary.title,
+        title: hasOutputIntent && intent ? `${template.summary.title} · ${intent.title}` : template.summary.title,
         trustSummary,
     };
 };
@@ -1909,7 +1937,32 @@ export default function CampaignCueWorkspaceApp() {
         }
     };
 
-    const openCampaignCuePackTemplate = async (template: CampaignCuePackTemplateSummary) => {
+    const channelsForOutputIntent = (
+        intent: CampaignCueOutputPickerItem | undefined,
+        fallbackChannels: CampaignCueChannel[],
+    ) => {
+        if (!intent?.channels.length || intent.id === "recommended_pack") return fallbackChannels;
+        const matchingTemplateChannels = intent.channels.filter((channel) => fallbackChannels.includes(channel));
+        return matchingTemplateChannels.length ? matchingTemplateChannels : intent.channels;
+    };
+
+    const createCampaignFromOutputIntent = (intent: CampaignCueOutputPickerItem) => {
+        if (intent.id === "custom_size") {
+            openBlankCreativeEditor();
+            return;
+        }
+        void createCampaign(undefined, {
+            brief: `${intent.title}: ${intent.description}`,
+            channels: intent.channels.length ? intent.channels : data?.dailyDesk.recipe.recommendedChannels || ["creative"],
+            templateId: `output-intent-${intent.id}`,
+            title: intent.title,
+        });
+    };
+
+    const openCampaignCuePackTemplate = async (
+        template: CampaignCuePackTemplateSummary,
+        intent?: CampaignCueOutputPickerItem,
+    ) => {
         if (!data) return;
         setBusyKey(`pack-template-open:${template.templateId}`);
         setNotice("");
@@ -1922,7 +1975,7 @@ export default function CampaignCueWorkspaceApp() {
                 setEditorDraftDocument(null);
                 cueLayerLastSavedFingerprintRef.current = "";
                 setEditorDocument(hydrated.editorDocument);
-                setEditorContext(buildPackTemplateEditorContext(data, hydrated));
+                setEditorContext(buildPackTemplateEditorContext(data, hydrated, intent));
                 setEditorSourceLabel(`Template · ${template.title}`);
                 setTab("editor");
                 return;
@@ -1933,10 +1986,14 @@ export default function CampaignCueWorkspaceApp() {
                 return;
             }
             await createCampaign(undefined, {
-                brief: template.description,
-                channels: template.channels,
+                brief: intent && intent.id !== "recommended_pack"
+                    ? `${template.description} Focus this pack on ${intent.title.toLowerCase()}.`
+                    : template.description,
+                channels: channelsForOutputIntent(intent, template.channels),
                 templateId: template.templateId,
-                title: template.title,
+                title: intent && intent.id !== "recommended_pack"
+                    ? `${template.title} · ${intent.title}`
+                    : template.title,
             });
         } catch (error) {
             setNotice(error instanceof Error ? error.message : "Campaign pack template could not be opened.");
@@ -2762,10 +2819,12 @@ export default function CampaignCueWorkspaceApp() {
                                     canSaveCurrent={Boolean(latestCampaign)}
                                     error={packTemplateState.error}
                                     loading={packTemplateState.loading}
+                                    onCreateFromOutputIntent={createCampaignFromOutputIntent}
                                     onOpenTemplate={openCampaignCuePackTemplate}
                                     onRefresh={() => void loadPackTemplates(data)}
                                     onSaveCurrent={() => void saveCurrentCampaignPackTemplate()}
                                     saving={busyKey === "pack-template-save"}
+                                    showOutputPicker={FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_OUTPUT_PICKER}
                                     templates={[
                                         ...(packTemplateState.catalog?.workspaceTemplates || []),
                                         ...(packTemplateState.catalog?.platformTemplates || []),

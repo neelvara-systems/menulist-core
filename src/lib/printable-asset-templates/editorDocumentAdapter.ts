@@ -22,14 +22,28 @@ const EDITOR_RENDERABLE_ASSETS = new Set<PrintableAssetTypeId>([
     "counter_sticker",
     "entrance_poster",
     "feedback_qr",
+    "campaign_flyer",
+    "gift_certificate",
+    "business_card",
+    "event_invitation",
+    "postcard",
+    "product_tag",
+    "campaign_poster",
 ]);
 
 const PRINT_DIMENSIONS: Record<PrintableAssetTypeId, { height: number; heightMm: number; width: number; widthMm: number }> = {
+    business_card: { width: 1063, height: 650, widthMm: 90, heightMm: 55 },
+    campaign_flyer: { width: 1748, height: 2480, widthMm: 148, heightMm: 210 },
+    campaign_poster: { width: 2480, height: 3508, widthMm: 210, heightMm: 297 },
     complete_menu_kit: { width: 1080, height: 1080, widthMm: 100, heightMm: 100 },
     counter_sticker: { width: 945, height: 945, widthMm: 80, heightMm: 80 },
     entrance_poster: { width: 2480, height: 3508, widthMm: 210, heightMm: 297 },
+    event_invitation: { width: 1240, height: 1748, widthMm: 105, heightMm: 148 },
     feedback_qr: { width: 1181, height: 1772, widthMm: 100, heightMm: 150 },
+    gift_certificate: { width: 1748, height: 826, widthMm: 210, heightMm: 99 },
+    postcard: { width: 1748, height: 1240, widthMm: 148, heightMm: 105 },
     print_menu: { width: 2480, height: 3508, widthMm: 210, heightMm: 297 },
+    product_tag: { width: 1063, height: 591, widthMm: 90, heightMm: 50 },
     single_table_card: { width: 1240, height: 1748, widthMm: 105, heightMm: 148 },
     table_tent: { width: 2480, height: 1748, widthMm: 210, heightMm: 148 },
 };
@@ -56,9 +70,13 @@ function safeName(value: string): string {
     return value.replace(/[^a-zA-Z0-9\s]/g, "").trim().replace(/\s+/g, "_") || "Menu";
 }
 
-function truncateForLayer(value: string, max = 52): string {
-    const trimmed = value.trim();
+function truncateForLayer(value: string | null | undefined, max = 52): string {
+    const trimmed = (value || "").trim();
     return trimmed.length > max ? `${trimmed.slice(0, max - 3)}...` : trimmed;
+}
+
+function getDisplayShortLink(ctx: BuildContext): string {
+    return ctx.input.shortLink || ctx.input.menuUrl.replace(/^https?:\/\//, "");
 }
 
 function initials(value: string) {
@@ -66,6 +84,10 @@ function initials(value: string) {
     const first = parts[0]?.[0] || "M";
     const second = parts.length > 1 ? parts[parts.length - 1]?.[0] : "";
     return `${first}${second}`.toUpperCase();
+}
+
+function clamp(value: number, min: number, max: number): number {
+    return Math.min(Math.max(value, min), max);
 }
 
 function textElement(ctx: BuildContext, params: Partial<Extract<CreativeEditorElement, { type: "text" }>> & {
@@ -249,9 +271,15 @@ export function stripPrintableAssetEditorAttributionLayers(documentValue: Creati
 }
 
 function addQrPanel(ctx: BuildContext, x: number, y: number, size: number, rotation = 0) {
+    const panelSize = size + 88;
+    const panelX = clamp(x - 44, 2, Math.max(2, ctx.canvasWidth - panelSize - 2));
+    const panelY = clamp(y - 44, 2, Math.max(2, ctx.canvasHeight - panelSize - 2));
+    const qrX = panelX + 44;
+    const qrY = panelY + 44;
+
     ctx.elements.push(rectElement(ctx, {
         fill: "#ffffff",
-        height: size + 88,
+        height: panelSize,
         locked: true,
         name: "QR panel",
         radius: Math.round(size * 0.07),
@@ -259,16 +287,16 @@ function addQrPanel(ctx: BuildContext, x: number, y: number, size: number, rotat
         shadow: { blur: 30, color: "rgba(17,24,39,0.16)", offsetX: 0, offsetY: 14 },
         stroke: ctx.borderColor,
         strokeWidth: 2,
-        width: size + 88,
-        x: x - 44,
-        y: y - 44,
+        width: panelSize,
+        x: panelX,
+        y: panelY,
     }));
     ctx.elements.push(qrElement(ctx, {
         height: size,
         rotation,
         width: size,
-        x,
-        y,
+        x: qrX,
+        y: qrY,
     }));
 }
 
@@ -290,14 +318,16 @@ function addFrame(ctx: BuildContext, margin: number) {
 function addDecor(ctx: BuildContext) {
     const family = ctx.input.templateFamilyId;
     if (family === "soft-curve") {
+        const curveWidth = Math.round(ctx.canvasWidth * 0.60);
+        const curveHeight = Math.round(ctx.canvasWidth * 0.52);
         ctx.elements.push(ellipseElement(ctx, {
             fill: ctx.accent,
-            height: Math.round(ctx.canvasWidth * 0.58),
+            height: curveHeight,
             name: "Soft curve",
             opacity: 0.18,
-            width: Math.round(ctx.canvasWidth * 0.72),
-            x: Math.round(ctx.canvasWidth * 0.56),
-            y: Math.round(ctx.canvasHeight * 0.02),
+            width: curveWidth,
+            x: ctx.canvasWidth - curveWidth - Math.round(ctx.canvasWidth * 0.035),
+            y: Math.round(ctx.canvasHeight * 0.03),
         }));
         return;
     }
@@ -415,9 +445,9 @@ function addMainCardFace(ctx: BuildContext, params: {
             label: "Short link",
             locked: true,
             productId: "menulist",
-            value: ctx.input.shortLink,
+            value: getDisplayShortLink(ctx),
         }],
-        text: truncateForLayer(ctx.input.shortLink, 58),
+        text: truncateForLayer(getDisplayShortLink(ctx), 58),
         width: faceWidth - pad * 2,
         x: x + pad,
         y: y + Math.round(faceHeight * (params.shortLinkYRatio ?? 0.86)),
@@ -430,7 +460,7 @@ function buildTableTent(ctx: BuildContext) {
     const qrSize = Math.round(faceHeight * 0.31);
     addDecor(ctx);
     ctx.elements.push(lineElement(ctx, {
-        height: ctx.canvasHeight,
+        height: ctx.canvasHeight - 6,
         locked: true,
         name: "Fold line",
         stroke: ctx.borderColor,
@@ -438,7 +468,7 @@ function buildTableTent(ctx: BuildContext) {
         strokeWidth: 5,
         width: 0,
         x: faceWidth,
-        y: 0,
+        y: 3,
     }));
     addMainCardFace(ctx, {
         cta: `SCAN FOR ${ctx.labels.offeringUpper}`,
@@ -566,11 +596,491 @@ function buildEntrancePoster(ctx: BuildContext) {
         height: Math.round(ctx.canvasHeight * 0.04),
         locked: true,
         name: "Short link",
-        text: truncateForLayer(ctx.input.shortLink, 62),
+        text: truncateForLayer(getDisplayShortLink(ctx), 62),
         width: ctx.canvasWidth - margin * 2,
         x: margin,
         y: Math.round(ctx.canvasHeight * 0.86),
     }));
+}
+
+function addShortLink(ctx: BuildContext, params: {
+    align?: "left" | "center" | "right";
+    color?: string;
+    fontSize: number;
+    height: number;
+    width: number;
+    x: number;
+    y: number;
+}) {
+    ctx.elements.push(textElement(ctx, {
+        align: params.align || "center",
+        color: params.color || ctx.muted,
+        fontSize: params.fontSize,
+        fontWeight: "700",
+        height: params.height,
+        locked: true,
+        name: "Short link",
+        sourceRefs: [{
+            label: "Short link",
+            locked: true,
+            productId: "menulist",
+            sourceRef: "printable-asset-templates-short-link",
+            value: getDisplayShortLink(ctx),
+        }],
+        text: truncateForLayer(getDisplayShortLink(ctx), 62),
+        width: params.width,
+        x: params.x,
+        y: params.y,
+    }));
+}
+
+function buildCampaignFlyer(ctx: BuildContext) {
+    addDecor(ctx);
+    const margin = Math.round(ctx.canvasWidth * 0.09);
+    const isBanner = ctx.input.templateFamilyId === "brand-banner" || ctx.input.templateFamilyId === "local-bold";
+    const headlineColor = isBanner ? ctx.accentText : ctx.accent;
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: headlineColor,
+        fontSize: Math.round(ctx.canvasWidth * 0.095),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.16),
+        name: "Offer headline",
+        text: "WEEKEND OFFER",
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.12),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasWidth * 0.045),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.07),
+        name: "Business name",
+        text: truncateForLayer(ctx.input.storeName, 42),
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.30),
+    }));
+    ctx.elements.push(rectElement(ctx, {
+        fill: ctx.surface,
+        height: Math.round(ctx.canvasHeight * 0.22),
+        name: "Offer panel",
+        radius: Math.round(ctx.canvasWidth * 0.035),
+        shadow: { blur: 38, color: "rgba(17,24,39,0.10)", offsetX: 0, offsetY: 16 },
+        stroke: ctx.borderColor,
+        strokeWidth: 2,
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.40),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasWidth * 0.064),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Primary offer",
+        text: "Buy 1, get 1 today",
+        width: Math.round((ctx.canvasWidth - margin * 2) * 0.58),
+        x: margin + Math.round(ctx.canvasWidth * 0.055),
+        y: Math.round(ctx.canvasHeight * 0.45),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.muted,
+        fontSize: Math.round(ctx.canvasWidth * 0.034),
+        fontWeight: "700",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Offer details",
+        text: `Valid today only. Show this flyer or scan to view ${ctx.labels.yourLatest}.`,
+        width: Math.round((ctx.canvasWidth - margin * 2) * 0.56),
+        x: margin + Math.round(ctx.canvasWidth * 0.055),
+        y: Math.round(ctx.canvasHeight * 0.54),
+    }));
+    const qrSize = Math.round(ctx.canvasWidth * 0.24);
+    addQrPanel(ctx, ctx.canvasWidth - margin - qrSize - 72, Math.round(ctx.canvasHeight * 0.455), qrSize);
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.accent,
+        fontSize: Math.round(ctx.canvasWidth * 0.045),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.06),
+        name: "Call to action",
+        text: `SCAN FOR ${ctx.labels.offeringUpper}`,
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.71),
+    }));
+    addShortLink(ctx, {
+        fontSize: Math.round(ctx.canvasWidth * 0.026),
+        height: Math.round(ctx.canvasHeight * 0.04),
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.78),
+    });
+}
+
+function buildGiftCertificate(ctx: BuildContext) {
+    addDecor(ctx);
+    const margin = Math.round(ctx.canvasWidth * 0.055);
+    addIdentityBadge(ctx, margin, Math.round(ctx.canvasHeight * 0.12), Math.round(ctx.canvasHeight * 0.20));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.accent,
+        fontFamily: ctx.input.templateFamilyId === "classic-luxe" ? "Georgia, serif" : "Inter, Arial, sans-serif",
+        fontSize: Math.round(ctx.canvasHeight * 0.15),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.18),
+        name: "Voucher headline",
+        text: "GIFT CERTIFICATE",
+        width: Math.round(ctx.canvasWidth * 0.62),
+        x: Math.round(ctx.canvasWidth * 0.24),
+        y: Math.round(ctx.canvasHeight * 0.13),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasHeight * 0.06),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Business name",
+        text: truncateForLayer(ctx.input.storeName, 48),
+        width: Math.round(ctx.canvasWidth * 0.56),
+        x: Math.round(ctx.canvasWidth * 0.24),
+        y: Math.round(ctx.canvasHeight * 0.36),
+    }));
+    ctx.elements.push(lineElement(ctx, {
+        height: 0,
+        name: "Value line",
+        stroke: ctx.borderColor,
+        strokeWidth: 4,
+        width: Math.round(ctx.canvasWidth * 0.38),
+        x: Math.round(ctx.canvasWidth * 0.24),
+        y: Math.round(ctx.canvasHeight * 0.57),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.muted,
+        fontSize: Math.round(ctx.canvasHeight * 0.046),
+        fontWeight: "700",
+        height: Math.round(ctx.canvasHeight * 0.07),
+        name: "Voucher detail",
+        text: "Value / valid until",
+        width: Math.round(ctx.canvasWidth * 0.38),
+        x: Math.round(ctx.canvasWidth * 0.24),
+        y: Math.round(ctx.canvasHeight * 0.61),
+    }));
+    const qrSize = Math.round(ctx.canvasHeight * 0.36);
+    addQrPanel(ctx, Math.round(ctx.canvasWidth * 0.76), Math.round(ctx.canvasHeight * 0.39), qrSize);
+    addShortLink(ctx, {
+        align: "right",
+        fontSize: Math.round(ctx.canvasHeight * 0.038),
+        height: Math.round(ctx.canvasHeight * 0.06),
+        width: Math.round(ctx.canvasWidth * 0.44),
+        x: Math.round(ctx.canvasWidth * 0.50),
+        y: Math.round(ctx.canvasHeight * 0.82),
+    });
+}
+
+function buildBusinessCard(ctx: BuildContext) {
+    addDecor(ctx);
+    const margin = Math.round(ctx.canvasWidth * 0.07);
+    addIdentityBadge(ctx, margin, Math.round(ctx.canvasHeight * 0.13), Math.round(ctx.canvasHeight * 0.20));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasHeight * 0.098),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.18),
+        name: "Business name",
+        text: truncateForLayer(ctx.input.storeName, 34),
+        width: Math.round(ctx.canvasWidth * 0.56),
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.40),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.accent,
+        fontSize: Math.round(ctx.canvasHeight * 0.055),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.09),
+        name: "Card purpose",
+        text: `${ctx.labels.offeringTitle} & updates`,
+        width: Math.round(ctx.canvasWidth * 0.56),
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.60),
+    }));
+    const qrSize = Math.round(ctx.canvasHeight * 0.38);
+    addQrPanel(ctx, Math.round(ctx.canvasWidth * 0.70), Math.round(ctx.canvasHeight * 0.24), qrSize);
+    addShortLink(ctx, {
+        align: "left",
+        fontSize: Math.round(ctx.canvasHeight * 0.038),
+        height: Math.round(ctx.canvasHeight * 0.08),
+        width: Math.round(ctx.canvasWidth * 0.56),
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.78),
+    });
+}
+
+function buildEventInvitation(ctx: BuildContext) {
+    addDecor(ctx);
+    const margin = Math.round(ctx.canvasWidth * 0.10);
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.accent,
+        fontFamily: ctx.input.templateFamilyId === "classic-luxe" || ctx.input.templateFamilyId === "botanical-heritage" ? "Georgia, serif" : "Inter, Arial, sans-serif",
+        fontSize: Math.round(ctx.canvasWidth * 0.095),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.12),
+        name: "Invitation headline",
+        text: "YOU ARE INVITED",
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.16),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasWidth * 0.058),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Business name",
+        text: truncateForLayer(ctx.input.storeName, 42),
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.32),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.muted,
+        fontSize: Math.round(ctx.canvasWidth * 0.038),
+        fontWeight: "700",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Invitation details",
+        text: "Special evening, private event, or new launch. Edit this copy before printing.",
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.42),
+    }));
+    addQrPanel(ctx, Math.round(ctx.canvasWidth * 0.30), Math.round(ctx.canvasHeight * 0.56), Math.round(ctx.canvasWidth * 0.40));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.accent,
+        fontSize: Math.round(ctx.canvasWidth * 0.045),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.06),
+        name: "Call to action",
+        text: "SCAN FOR DETAILS",
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.82),
+    }));
+    addShortLink(ctx, {
+        fontSize: Math.round(ctx.canvasWidth * 0.026),
+        height: Math.round(ctx.canvasHeight * 0.04),
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.88),
+    });
+}
+
+function buildPostcard(ctx: BuildContext) {
+    addDecor(ctx);
+    const margin = Math.round(ctx.canvasWidth * 0.08);
+    const panelWidth = Math.round(ctx.canvasWidth * 0.46);
+    ctx.elements.push(rectElement(ctx, {
+        fill: ctx.accent,
+        height: Math.round(ctx.canvasHeight * 0.72),
+        name: "Postcard accent panel",
+        opacity: 0.16,
+        radius: Math.round(ctx.canvasHeight * 0.035),
+        width: panelWidth,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.14),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.accent,
+        fontFamily: ctx.input.templateFamilyId === "classic-luxe" || ctx.input.templateFamilyId === "botanical-heritage" ? "Georgia, serif" : "Inter, Arial, sans-serif",
+        fontSize: Math.round(ctx.canvasHeight * 0.13),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.18),
+        name: "Postcard headline",
+        text: "THANK YOU",
+        width: panelWidth - margin,
+        x: margin + Math.round(ctx.canvasWidth * 0.045),
+        y: Math.round(ctx.canvasHeight * 0.23),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasHeight * 0.052),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Business name",
+        text: truncateForLayer(ctx.input.storeName, 42),
+        width: panelWidth - margin,
+        x: margin + Math.round(ctx.canvasWidth * 0.045),
+        y: Math.round(ctx.canvasHeight * 0.43),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.muted,
+        fontSize: Math.round(ctx.canvasHeight * 0.038),
+        fontWeight: "700",
+        height: Math.round(ctx.canvasHeight * 0.13),
+        name: "Postcard note",
+        text: "A quick note, offer, reminder, or customer thank-you. Edit this before printing.",
+        width: panelWidth - margin,
+        x: margin + Math.round(ctx.canvasWidth * 0.045),
+        y: Math.round(ctx.canvasHeight * 0.54),
+    }));
+    const qrSize = Math.round(ctx.canvasHeight * 0.42);
+    addQrPanel(ctx, Math.round(ctx.canvasWidth * 0.68), Math.round(ctx.canvasHeight * 0.24), qrSize);
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.accent,
+        fontSize: Math.round(ctx.canvasHeight * 0.045),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.07),
+        name: "Postcard call to action",
+        text: "SCAN FOR LATEST",
+        width: Math.round(ctx.canvasWidth * 0.32),
+        x: Math.round(ctx.canvasWidth * 0.63),
+        y: Math.round(ctx.canvasHeight * 0.70),
+    }));
+    addShortLink(ctx, {
+        fontSize: Math.round(ctx.canvasHeight * 0.028),
+        height: Math.round(ctx.canvasHeight * 0.05),
+        width: Math.round(ctx.canvasWidth * 0.34),
+        x: Math.round(ctx.canvasWidth * 0.62),
+        y: Math.round(ctx.canvasHeight * 0.79),
+    });
+}
+
+function buildProductTag(ctx: BuildContext) {
+    addDecor(ctx);
+    const margin = Math.round(ctx.canvasWidth * 0.07);
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.accent,
+        fontSize: Math.round(ctx.canvasHeight * 0.18),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.22),
+        name: "Tag headline",
+        text: "NEW",
+        width: Math.round(ctx.canvasWidth * 0.44),
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.16),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasHeight * 0.07),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.10),
+        name: "Product detail",
+        text: "Customer favorite",
+        width: Math.round(ctx.canvasWidth * 0.48),
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.42),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.muted,
+        fontSize: Math.round(ctx.canvasHeight * 0.046),
+        fontWeight: "700",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Business name",
+        text: truncateForLayer(ctx.input.storeName, 32),
+        width: Math.round(ctx.canvasWidth * 0.48),
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.56),
+    }));
+    const qrSize = Math.round(ctx.canvasHeight * 0.42);
+    addQrPanel(ctx, Math.round(ctx.canvasWidth * 0.68), Math.round(ctx.canvasHeight * 0.24), qrSize);
+    addShortLink(ctx, {
+        align: "left",
+        fontSize: Math.round(ctx.canvasHeight * 0.034),
+        height: Math.round(ctx.canvasHeight * 0.07),
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.82),
+    });
+}
+
+function buildCampaignPoster(ctx: BuildContext) {
+    addDecor(ctx);
+    const margin = Math.round(ctx.canvasWidth * 0.09);
+    const isBanner = ctx.input.templateFamilyId === "brand-banner" || ctx.input.templateFamilyId === "local-bold";
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: isBanner ? ctx.accentText : ctx.accent,
+        fontSize: Math.round(ctx.canvasWidth * 0.105),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.13),
+        name: "Poster headline",
+        text: "TODAY'S SPECIAL",
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.12),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasWidth * 0.065),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Business name",
+        text: truncateForLayer(ctx.input.storeName, 42),
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.29),
+    }));
+    ctx.elements.push(rectElement(ctx, {
+        fill: ctx.accent,
+        height: Math.round(ctx.canvasHeight * 0.12),
+        name: "Offer strip",
+        opacity: 0.16,
+        radius: Math.round(ctx.canvasWidth * 0.04),
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.40),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasWidth * 0.052),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Offer copy",
+        text: "Fresh offer available now",
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.425),
+    }));
+    addQrPanel(ctx, Math.round(ctx.canvasWidth * 0.29), Math.round(ctx.canvasHeight * 0.58), Math.round(ctx.canvasWidth * 0.42));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.accent,
+        fontSize: Math.round(ctx.canvasWidth * 0.045),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.06),
+        name: "Call to action",
+        text: "SCAN FOR OFFER",
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.84),
+    }));
+    addShortLink(ctx, {
+        fontSize: Math.round(ctx.canvasWidth * 0.026),
+        height: Math.round(ctx.canvasHeight * 0.04),
+        width: ctx.canvasWidth - margin * 2,
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.90),
+    });
 }
 
 function buildContext(input: PrintableAssetRenderInput): BuildContext {
@@ -615,6 +1125,13 @@ export function buildPrintableAssetEditorDocument(input: PrintableAssetRenderInp
     if (input.assetTypeId === "table_tent") buildTableTent(ctx);
     else if (input.assetTypeId === "counter_sticker") buildSticker(ctx);
     else if (input.assetTypeId === "entrance_poster") buildEntrancePoster(ctx);
+    else if (input.assetTypeId === "campaign_flyer") buildCampaignFlyer(ctx);
+    else if (input.assetTypeId === "gift_certificate") buildGiftCertificate(ctx);
+    else if (input.assetTypeId === "business_card") buildBusinessCard(ctx);
+    else if (input.assetTypeId === "event_invitation") buildEventInvitation(ctx);
+    else if (input.assetTypeId === "postcard") buildPostcard(ctx);
+    else if (input.assetTypeId === "product_tag") buildProductTag(ctx);
+    else if (input.assetTypeId === "campaign_poster") buildCampaignPoster(ctx);
     else buildSingleCard(ctx);
 
     const now = new Date().toISOString();

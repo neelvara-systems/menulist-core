@@ -1,7 +1,7 @@
 # Print Assets Verification
 
 **Status:** Freeze-ready
-**Last Updated:** June 15, 2026
+**Last Updated:** June 17, 2026
 
 ## Freeze Decision
 
@@ -9,9 +9,9 @@ Print Assets, Print Menu, Menu Kit print outputs, and the related lightweight we
 
 Freeze means:
 
-- No new print asset types, blank design studio, print-ordering marketplace, or quantity estimator are part of this release.
+- The supported print asset catalog is frozen after adding the extended asset set: flyer, gift certificate, business card, invitation, postcard, product tag, and campaign poster. Blank design studio, print-ordering marketplace, and quantity estimator remain out of scope.
 - Future work should be limited to production bugs, scan/readability regressions, accessibility fixes, and copy corrections.
-- Any new printable product line must reopen scope with docs first.
+- Any additional printable product line beyond the expanded supported catalog must reopen scope with docs first.
 
 ## Verification Run
 
@@ -25,6 +25,7 @@ Freeze means:
 | `curl -I --max-time 60 http://localhost:3000/assets` | Passed | Dedicated Assets route returned `200 OK` from the local dev server. |
 | Feature-scoped `git status` | Reviewed | Current feature-scope changes are the intentional visual refinement, docs, and verifier updates; unrelated Answerlattice worktree changes are outside this feature scope. |
 | Rendered preview sample | Passed | Single table card, branded menu QR, branded feedback QR, and non-food service card were rendered from shared generator code after the visual refinement. |
+| Expanded editor-backed asset smoke | Passed | Flyer, gift certificate, business card, invitation, postcard, product tag, and campaign poster generated Creative Editor documents with correct dimensions and locked QR/link source layers. |
 | Dynamic output content guard | Passed | Print faces receive store name, logo, brand color, short URL, `printCardTitle`, and `scanToView` from caller/store context; the canvas renderer does not compose menu-only copy internally. |
 
 ## Cost Result
@@ -42,7 +43,7 @@ Included:
 - Shared desktop/mobile output generation
 - Governed desktop customization for editor-renderable single print assets
 - MenuList attribution with Premium removal policy
-- Table tent, single table/counter card, counter sticker, entrance poster, feedback QR, full Print Menu PDF, and complete Menu Kit bundle
+- Table tent, single table/counter card, counter sticker, entrance poster, feedback QR, flyer, gift certificate, business card, invitation, postcard, product tag, campaign poster, full Print Menu PDF, and complete Menu Kit bundle
 - Premium print hierarchy: brand top panel, logo/initials badge, purpose pill, neutral QR panel, short-link capsule, and scan-safe black QR
 - Lightweight website copy as `Print files`
 

@@ -11,6 +11,7 @@ import {
     uploadString,
 } from "firebase/storage";
 import { DB_COLLECTIONS } from "@constant/database";
+import { BUSINESS_CATEGORIES } from "@data/shared/businessTypes";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { firebaseClient, firebaseStorage } from "@lib/firebase/firebaseClient";
 import type { CreativeEditorDocument, CreativeEditorTemplateOrigin, CreativeEditorTemplateSummary } from "@/modules/creative-editor/types";
@@ -29,6 +30,10 @@ const MAX_DOCUMENT_BYTES = 750_000;
 const MAX_INDEX_TEMPLATES = 100;
 const MAX_PLATFORM_INDEX_TEMPLATES = 200;
 const PLATFORM_TEMPLATE_GENERIC_CATEGORY = "generic";
+const PLATFORM_TEMPLATE_CATALOG_KEYS = [
+    PLATFORM_TEMPLATE_GENERIC_CATEGORY,
+    ...BUSINESS_CATEGORIES.map((category) => category.value),
+];
 const STORE_TEMPLATE_DOC_ID = "default";
 
 export type CreativeEditorTemplateScope = {
@@ -144,6 +149,20 @@ type CreativeEditorPlatformCatalogRecord = {
     updatedAtMs?: number;
 };
 
+type PlatformCatalogMutationSnapshot = {
+    catalogKey: string;
+    exists: boolean;
+    records: CreativeEditorTemplateRecord[];
+};
+
+type PlatformTemplateMutationTarget = {
+    catalogKeys: string[];
+    sourceCatalogKey: string;
+    sourceRecord: CreativeEditorTemplateRecord;
+    sourceSnapshot: PlatformCatalogMutationSnapshot;
+    templateBusinessCategory: string;
+};
+
 export const resolveCreativeEditorTemplateScope = (input: {
     session?: any;
     storeDetails?: any;
@@ -168,6 +187,49 @@ const safePathPart = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, "_").sl
 const buildPlatformCategoryKey = (businessCategory?: string) => (
     safePathPart(businessCategory || PLATFORM_TEMPLATE_GENERIC_CATEGORY)
 );
+
+const getPlatformCatalogKeysForMutation = (businessCategory: string) => (
+    businessCategory === PLATFORM_TEMPLATE_GENERIC_CATEGORY
+        ? PLATFORM_TEMPLATE_CATALOG_KEYS
+        : [businessCategory]
+);
+
+const readPlatformCatalogMutationSnapshot = async (
+    catalogKey: string,
+    query: { productId: string; sourceSurface: string },
+): Promise<PlatformCatalogMutationSnapshot> => {
+    const catalogDoc = await getDoc(getPlatformCatalogRef(catalogKey));
+    return {
+        catalogKey,
+        exists: catalogDoc.exists(),
+        records: catalogDoc.exists() ? readIndexRecords(catalogDoc.data(), query) : [],
+    };
+};
+
+const findPlatformTemplateMutationTarget = async (params: {
+    businessCategory: string;
+    query: CreativeEditorTemplateGetQuery;
+    templateId: string;
+}): Promise<PlatformTemplateMutationTarget> => {
+    const sourceCatalogKey = buildPlatformCategoryKey(params.businessCategory);
+    const sourceSnapshot = await readPlatformCatalogMutationSnapshot(sourceCatalogKey, params.query);
+    const sourceRecord = sourceSnapshot.records.find((record) => (
+        record.id === params.templateId
+        && recordMatchesRequest(record, params.query)
+    ));
+    if (!sourceRecord) throw new Error("Template not found");
+
+    const templateBusinessCategory = buildPlatformCategoryKey(
+        sourceRecord.businessCategory || sourceCatalogKey,
+    );
+    return {
+        catalogKeys: getPlatformCatalogKeysForMutation(templateBusinessCategory),
+        sourceCatalogKey,
+        sourceRecord,
+        sourceSnapshot,
+        templateBusinessCategory,
+    };
+};
 
 const buildTemplateId = () => {
     const cryptoId = typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -702,13 +764,6 @@ async function saveCreativeEditorPlatformTemplateRaw(
         throw new Error("Template document is too large");
     }
 
-    const catalogRef = getPlatformCatalogRef(businessCategory);
-    const catalogDoc = await getDoc(catalogRef);
-    const existingCatalog = catalogDoc.exists() ? catalogDoc.data() as CreativeEditorPlatformCatalogRecord : null;
-    const existingRecords = readIndexRecords(existingCatalog, {
-        productId: input.productId,
-        sourceSurface: input.sourceSurface,
-    });
     const now = new Date();
     const nowIso = now.toISOString();
     const nowMs = now.getTime();
@@ -717,10 +772,6 @@ async function saveCreativeEditorPlatformTemplateRaw(
         productId: input.productId,
         sourceSurface: input.sourceSurface,
     };
-    const existingRecord = existingRecords.find((record) => (
-        record.id === templateId
-        && recordMatchesRequest(record, requestMatch)
-    ));
     const documentPath = buildPlatformDocumentPath({ businessCategory, templateId });
 
     await uploadString(ref(firebaseStorage, documentPath), documentJson, "raw", {
@@ -728,69 +779,90 @@ async function saveCreativeEditorPlatformTemplateRaw(
         contentType: "application/json",
     });
 
-    let previewPath = existingRecord?.previewPath || null;
-    let thumbnailUrl = existingRecord?.thumbnailUrl || null;
+    let uploadedPreviewPath: string | null = null;
+    let uploadedThumbnailUrl: string | null = null;
     const previewContentType = parseDataUrlContentType(input.thumbnailDataUrl);
     if (input.thumbnailDataUrl && previewContentType) {
-        previewPath = buildPlatformPreviewPath({ businessCategory, templateId, thumbnailDataUrl: input.thumbnailDataUrl });
-        const previewRef = ref(firebaseStorage, previewPath);
+        uploadedPreviewPath = buildPlatformPreviewPath({ businessCategory, templateId, thumbnailDataUrl: input.thumbnailDataUrl });
+        const previewRef = ref(firebaseStorage, uploadedPreviewPath);
         await uploadString(previewRef, input.thumbnailDataUrl, "data_url", {
             cacheControl: "private, max-age=31536000, immutable",
             contentType: previewContentType,
         });
-        thumbnailUrl = await getDownloadURL(previewRef);
+        uploadedThumbnailUrl = await getDownloadURL(previewRef);
     }
 
-    const sortIndex = typeof existingRecord?.sortIndex === "number"
-        ? existingRecord.sortIndex
-        : existingRecords.length;
-    const record = await requestBodyComposer({
-        assetTypeId: input.assetTypeId,
-        businessCategory,
-        createdBy: existingRecord?.createdBy,
-        createdAt: existingRecord?.createdAt || nowIso,
-        createdAtMs: existingRecord?.createdAtMs || nowMs,
-        createdOn: existingRecord?.createdOn,
-        description: input.description || existingRecord?.description,
-        documentBytes,
-        documentPath,
-        documentStorage: "storage",
-        elementCount: documentValue.elements.length,
-        height: documentValue.canvas.height,
-        id: templateId,
-        origin: "platform",
-        previewPath,
-        previewStorage: previewPath ? "storage" : undefined,
-        productId: input.productId,
-        schemaVersion: 2,
-        sortIndex,
-        sourceSurface: input.sourceSurface,
-        status: input.status || existingRecord?.status || "draft",
-        templateFamilyId: input.templateFamilyId,
-        templateType: "platform",
-        thumbnailUrl,
-        title: input.title,
-        updatedAt: nowIso,
-        updatedAtMs: nowMs,
-        version: (existingRecord?.version || 0) + 1,
-        width: documentValue.canvas.width,
-    }) as CreativeEditorTemplateRecord;
-    const templates = sortPlatformRecords([
-        record,
-        ...existingRecords.filter((item) => !(
-            item.id === templateId
-            && recordMatchesRequest(item, requestMatch)
-        )),
-    ]).slice(0, MAX_PLATFORM_INDEX_TEMPLATES);
+    let primaryRecord: CreativeEditorTemplateRecord | null = null;
+    await Promise.all(getPlatformCatalogKeysForMutation(businessCategory).map(async (catalogKey) => {
+        const catalogRef = getPlatformCatalogRef(catalogKey);
+        const catalogDoc = await getDoc(catalogRef);
+        const existingCatalog = catalogDoc.exists() ? catalogDoc.data() as CreativeEditorPlatformCatalogRecord : null;
+        const existingRecords = readIndexRecords(existingCatalog, {
+            productId: input.productId,
+            sourceSurface: input.sourceSurface,
+        });
+        const existingRecord = existingRecords.find((record) => (
+            record.id === templateId
+            && recordMatchesRequest(record, requestMatch)
+        ));
+        const previewPath = uploadedPreviewPath || existingRecord?.previewPath || null;
+        const thumbnailUrl = uploadedThumbnailUrl || existingRecord?.thumbnailUrl || null;
+        const sortIndex = typeof existingRecord?.sortIndex === "number"
+            ? existingRecord.sortIndex
+            : existingRecords.length;
+        const record = await requestBodyComposer({
+            assetTypeId: input.assetTypeId,
+            businessCategory,
+            createdBy: existingRecord?.createdBy,
+            createdAt: existingRecord?.createdAt || nowIso,
+            createdAtMs: existingRecord?.createdAtMs || nowMs,
+            createdOn: existingRecord?.createdOn,
+            description: input.description || existingRecord?.description,
+            documentBytes,
+            documentPath,
+            documentStorage: "storage",
+            elementCount: documentValue.elements.length,
+            height: documentValue.canvas.height,
+            id: templateId,
+            origin: "platform",
+            previewPath,
+            previewStorage: previewPath ? "storage" : undefined,
+            productId: input.productId,
+            schemaVersion: 2,
+            sortIndex,
+            sourceSurface: input.sourceSurface,
+            status: input.status || existingRecord?.status || "draft",
+            templateFamilyId: input.templateFamilyId,
+            templateType: "platform",
+            thumbnailUrl,
+            title: input.title,
+            updatedAt: nowIso,
+            updatedAtMs: nowMs,
+            version: (existingRecord?.version || 0) + 1,
+            width: documentValue.canvas.width,
+        }) as CreativeEditorTemplateRecord;
+        const templates = sortPlatformRecords([
+            record,
+            ...existingRecords.filter((item) => !(
+                item.id === templateId
+                && recordMatchesRequest(item, requestMatch)
+            )),
+        ]).slice(0, MAX_PLATFORM_INDEX_TEMPLATES);
 
-    await setDoc(catalogRef, {
-        businessCategory,
-        data: templates,
-        schemaVersion: 2,
-        updatedAt: nowIso,
-        updatedAtMs: nowMs,
-    } satisfies CreativeEditorPlatformCatalogRecord);
-    return toSummary(record);
+        await setDoc(catalogRef, {
+            businessCategory: catalogKey,
+            data: templates,
+            schemaVersion: 2,
+            updatedAt: nowIso,
+            updatedAtMs: nowMs,
+        } satisfies CreativeEditorPlatformCatalogRecord);
+        if (catalogKey === businessCategory) {
+            primaryRecord = record;
+        }
+    }));
+
+    if (!primaryRecord) throw new Error("Platform template could not be saved");
+    return toSummary(primaryRecord);
 }
 
 export async function saveCreativeEditorPlatformTemplate(
@@ -815,37 +887,64 @@ async function updateCreativeEditorPlatformTemplateMetadataRaw(
         templateType: "platform",
     }) as CreativeEditorTemplateGetQuery;
     const businessCategory = buildPlatformCategoryKey(params.businessCategory);
-    const catalogRef = getPlatformCatalogRef(businessCategory);
-    const catalogDoc = await getDoc(catalogRef);
-    if (!catalogDoc.exists()) throw new Error("Template not found");
-    const records = readIndexRecords(catalogDoc.data(), query);
     const now = new Date();
     const nowIso = now.toISOString();
     const nowMs = now.getTime();
-    let updatedRecord: CreativeEditorTemplateRecord | null = null;
-    const nextRecords = records.map((record) => {
-        if (record.id !== params.templateId || !recordMatchesRequest(record, query)) return record;
-        updatedRecord = {
-            ...record,
-            description: params.description ?? record.description,
-            status: params.status || record.status || "draft",
-            templateFamilyId: params.templateFamilyId ?? record.templateFamilyId,
-            title: params.title || record.title,
+    let primaryRecord: CreativeEditorTemplateRecord | null = null;
+    let anyUpdated = false;
+    const mutationTarget = await findPlatformTemplateMutationTarget({
+        businessCategory,
+        query,
+        templateId: params.templateId,
+    });
+
+    await Promise.all(mutationTarget.catalogKeys.map(async (catalogKey) => {
+        const catalogRef = getPlatformCatalogRef(catalogKey);
+        const snapshot = catalogKey === mutationTarget.sourceCatalogKey
+            ? mutationTarget.sourceSnapshot
+            : await readPlatformCatalogMutationSnapshot(catalogKey, query);
+        const matchingRecord = snapshot.records.find((record) => (
+            record.id === params.templateId
+            && recordMatchesRequest(record, query)
+        ));
+        const baseRecord = matchingRecord || (
+            mutationTarget.templateBusinessCategory === PLATFORM_TEMPLATE_GENERIC_CATEGORY
+                ? mutationTarget.sourceRecord
+                : null
+        );
+        if (!baseRecord) return;
+        const updatedRecord: CreativeEditorTemplateRecord = {
+            ...baseRecord,
+            description: params.description ?? baseRecord.description,
+            status: params.status || baseRecord.status || "draft",
+            templateFamilyId: params.templateFamilyId ?? baseRecord.templateFamilyId,
+            title: params.title || baseRecord.title,
             updatedAt: nowIso,
             updatedAtMs: nowMs,
-            version: (record.version || 0) + 1,
+            version: (baseRecord.version || 0) + 1,
         };
-        return updatedRecord;
-    });
-    if (!updatedRecord) throw new Error("Template not found");
-    await setDoc(catalogRef, {
-        businessCategory,
-        data: sortPlatformRecords(nextRecords).slice(0, MAX_PLATFORM_INDEX_TEMPLATES),
-        schemaVersion: 2,
-        updatedAt: nowIso,
-        updatedAtMs: nowMs,
-    } satisfies CreativeEditorPlatformCatalogRecord);
-    return toSummary(updatedRecord);
+        const nextRecords = [
+            updatedRecord,
+            ...snapshot.records.filter((record) => !(
+                record.id === params.templateId
+                && recordMatchesRequest(record, query)
+            )),
+        ];
+        anyUpdated = true;
+        await setDoc(catalogRef, {
+            businessCategory: catalogKey,
+            data: sortPlatformRecords(nextRecords).slice(0, MAX_PLATFORM_INDEX_TEMPLATES),
+            schemaVersion: 2,
+            updatedAt: nowIso,
+            updatedAtMs: nowMs,
+        } satisfies CreativeEditorPlatformCatalogRecord);
+        if (catalogKey === mutationTarget.sourceCatalogKey) {
+            primaryRecord = updatedRecord;
+        }
+    }));
+
+    if (!anyUpdated || !primaryRecord) throw new Error("Template not found");
+    return toSummary(primaryRecord);
 }
 
 export async function updateCreativeEditorPlatformTemplateMetadata(
@@ -909,26 +1008,42 @@ async function deleteCreativeEditorPlatformTemplateRaw(params: CreativeEditorTem
         templateType: "platform",
     }) as CreativeEditorTemplateGetQuery;
     const businessCategory = buildPlatformCategoryKey(params.businessCategory);
-    const catalogRef = getPlatformCatalogRef(businessCategory);
-    const catalogDoc = await getDoc(catalogRef);
-    if (!catalogDoc.exists()) throw new Error("Template not found");
-    const records = readIndexRecords(catalogDoc.data(), query);
-    const record = records.find((item) => item.id === params.templateId && recordMatchesRequest(item, query));
-    if (!record) throw new Error("Template not found");
-
     const now = new Date();
-    const remainingTemplates = records.filter((item) => item !== record);
-    await setDoc(catalogRef, {
+    let primaryRecord: CreativeEditorTemplateRecord | null = null;
+    let anyDeleted = false;
+    const mutationTarget = await findPlatformTemplateMutationTarget({
         businessCategory,
-        data: sortPlatformRecords(remainingTemplates).slice(0, MAX_PLATFORM_INDEX_TEMPLATES),
-        schemaVersion: 2,
-        updatedAt: now.toISOString(),
-        updatedAtMs: now.getTime(),
-    } satisfies CreativeEditorPlatformCatalogRecord);
+        query,
+        templateId: params.templateId,
+    });
+
+    await Promise.all(mutationTarget.catalogKeys.map(async (catalogKey) => {
+        const catalogRef = getPlatformCatalogRef(catalogKey);
+        const snapshot = catalogKey === mutationTarget.sourceCatalogKey
+            ? mutationTarget.sourceSnapshot
+            : await readPlatformCatalogMutationSnapshot(catalogKey, query);
+        if (!snapshot.exists) return;
+        const record = snapshot.records.find((item) => item.id === params.templateId && recordMatchesRequest(item, query));
+        if (!record) return;
+        anyDeleted = true;
+        if (catalogKey === mutationTarget.sourceCatalogKey) {
+            primaryRecord = record;
+        }
+        const remainingTemplates = snapshot.records.filter((item) => item !== record);
+        await setDoc(catalogRef, {
+            businessCategory: catalogKey,
+            data: sortPlatformRecords(remainingTemplates).slice(0, MAX_PLATFORM_INDEX_TEMPLATES),
+            schemaVersion: 2,
+            updatedAt: now.toISOString(),
+            updatedAtMs: now.getTime(),
+        } satisfies CreativeEditorPlatformCatalogRecord);
+    }));
+
+    if (!anyDeleted || !primaryRecord) throw new Error("Template not found");
 
     await Promise.all([
-        deleteStoragePath(record.documentPath),
-        deleteStoragePath(record.previewPath),
+        deleteStoragePath(primaryRecord.documentPath),
+        deleteStoragePath(primaryRecord.previewPath),
     ]).catch(() => undefined);
 }
 

@@ -124,14 +124,15 @@ Platform manager helper that creates or replaces a platform template document.
 - uploads an optional bounded preview to the same Storage folder,
 - updates the selected category catalog document,
 - preserves existing `sortIndex` and increments `version`.
+- when `businessCategory` is `generic`, stores one shared Storage payload under `platform/generic/{templateId}` and copies summary metadata into `generic` plus every shared business-category catalog. This keeps owner browsing to one category read.
 
 ### `updateCreativeEditorPlatformTemplateMetadata`
 
-Updates title, description, template family, and status without uploading the full editor document. This is the low-cost path for draft/publish/archive changes.
+Updates title, description, template family, and status without uploading the full editor document. This is the low-cost path for draft/publish/archive changes. The mutation target is derived from the stored template record, not only the currently selected catalog, so generic templates update every category copy even when the platform user edits the template from a category view.
 
 ### `deleteCreativeEditorPlatformTemplate`
 
-Removes the template summary from the category catalog, then best-effort deletes its Storage document and preview. Platform delete is not exposed through owner Assets.
+Removes the template summary from the category catalog, then best-effort deletes its Storage document and preview. Generic template deletes fan out across every category catalog where the copied summary exists and clean up the shared Storage payload once. Platform delete is not exposed through owner Assets.
 
 ### `saveCreativeEditorTemplate`
 

@@ -83,6 +83,9 @@ const OPS_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/ops': 'opsControlRoom',
     '/ops/extraction': 'extractionMonitor',
     '/ops/scheduler': 'schedulerMonitor',
+    '/ops/messaging-onboarding': 'messagingOnboardingMonitor',
+    '/ops/owner-notifications': 'ownerNotificationMonitor',
+    '/ops/platform-notifications': 'platformNotificationMonitor',
 };
 const RESELLER_PATH_TO_MORE_SCREEN: Record<string, MoreSubScreen> = {
     '/reseller': 'resellerHub',
@@ -115,6 +118,9 @@ const PLATFORM_MORE_SCREENS: MoreSubScreen[] = [
     'chatWeeklyDigest',
     'chatRoiCalculator',
     'answerlatticeIntake',
+    'messagingOnboardingMonitor',
+    'ownerNotificationMonitor',
+    'platformNotificationMonitor',
     'opsControlRoom',
     'extractionMonitor',
     'schedulerMonitor',

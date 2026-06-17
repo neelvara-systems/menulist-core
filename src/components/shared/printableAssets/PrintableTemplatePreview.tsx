@@ -32,7 +32,13 @@ function getInitials(value: string): string {
 
 function getSheetKind(assetTypeId: PrintableAssetTypeId): SheetKind {
     if (assetTypeId === 'counter_sticker') return 'square';
-    if (assetTypeId === 'table_tent') return 'landscape';
+    if (
+        assetTypeId === 'table_tent'
+        || assetTypeId === 'gift_certificate'
+        || assetTypeId === 'business_card'
+        || assetTypeId === 'postcard'
+        || assetTypeId === 'product_tag'
+    ) return 'landscape';
     if (assetTypeId === 'complete_menu_kit') return 'kit';
     return 'portrait';
 }
@@ -40,6 +46,13 @@ function getSheetKind(assetTypeId: PrintableAssetTypeId): SheetKind {
 function getPreviewTitle(assetTypeId: PrintableAssetTypeId, actionLabel: string): string {
     if (assetTypeId === 'feedback_qr') return 'Feedback QR';
     if (assetTypeId === 'counter_sticker') return actionLabel.replace(/^OUR\s+/i, 'Scan for ');
+    if (assetTypeId === 'campaign_flyer') return 'Flyer';
+    if (assetTypeId === 'gift_certificate') return 'Gift Certificate';
+    if (assetTypeId === 'business_card') return 'Business Card';
+    if (assetTypeId === 'event_invitation') return 'Invitation';
+    if (assetTypeId === 'postcard') return 'Postcard';
+    if (assetTypeId === 'product_tag') return 'Product Tag';
+    if (assetTypeId === 'campaign_poster') return 'Campaign Poster';
     if (assetTypeId === 'print_menu') return 'Print Menu';
     if (assetTypeId === 'complete_menu_kit') return 'Menu Kit';
     return actionLabel;

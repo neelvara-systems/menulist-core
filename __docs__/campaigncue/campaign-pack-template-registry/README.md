@@ -1,10 +1,10 @@
 # Campaign Pack Template Registry
 
-**Status:** Implemented in repo; Firebase rules require deployment.
+**Status:** Implemented in repo.
 **Product:** CampaignCue
 **Core decision:** Platform templates are stored by canonical business category, not as one global marketplace catalog.
 
-Campaign Pack Template Registry gives CampaignCue a small, curated library of reusable campaign pack starting points. It uses the shared business category source in `src/data/shared/businessTypes.ts` so every onboarded business sees templates for its resolved category, while searches, event tags, and channel tags are handled in memory after one platform catalog read.
+Campaign Pack Template Registry gives CampaignCue a small, curated library of reusable campaign pack starting points. It uses the shared business category source in `src/data/shared/businessTypes.ts` so every onboarded business sees templates for its resolved category, while searches, grouped campaign output choices, event tags, and channel tags are handled in memory after one platform catalog read.
 
 This is not a generic template marketplace. The registry exists to help a local business reuse proven campaign pack structures with current facts, trust checks, manual delivery fields, and result memory.
 
@@ -45,17 +45,19 @@ The owner path reads one resolved category catalog. Shared festival/event templa
 
 | File | Purpose |
 | --- | --- |
+| `src/constants/campaigncue/outputPicker.ts` | CampaignCue grouped output intent registry for recommended, sell today, bookings, local visibility, print, handoff, reuse, and advanced actions. |
 | `src/constants/campaigncue/packTemplates.ts` | CampaignCue-owned registry limits, Storage roots, category/event constants, and owner copy. |
 | `src/types/campaigncuePackTemplates.ts` | Summary, catalog, payload, hydrated template, and workspace save contracts. |
 | `src/lib/validation/campaigncuePackTemplateSchemas.ts` | Zod validation for catalogs, payloads, and workspace saves. |
 | `src/lib/campaigncue/pack-templates/*` | Category resolver, one-read catalog DAL, explicit workspace save/delete, and campaign-pack adapter. |
-| `src/components/templates/campaigncue/PackTemplatePicker.tsx` | Daily Desk template picker with local search and explicit save. |
+| `src/components/templates/campaigncue/PackTemplatePicker.tsx` | Daily Desk template picker with grouped owner-output choices, local search, and explicit save. |
 | `scripts/campaigncue/seed-platform-pack-templates.js` | Dry-run-first platform seed script. |
 | `scripts/verification/verify-campaigncue-pack-templates.js` | Static registry verifier. |
 
 ## Non-Goals
 
 - No Canva-style marketplace.
+- No Vista-style generic "Choose Format" grid as the primary owner path.
 - No thousands of platform templates.
 - No social posting or provider account connection.
 - No model-owned campaign decision.

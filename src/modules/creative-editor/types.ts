@@ -135,7 +135,7 @@ export interface CreativeEditorTextElement extends CreativeEditorElementBase {
     fontFamily?: string;
     fontSize: number;
     fontStyle?: "italic" | "normal";
-    fontWeight?: "400" | "600" | "700" | "800" | "bold" | "normal";
+    fontWeight?: "400" | "600" | "700" | "800" | "900" | "bold" | "normal";
     gradient?: CreativeEditorLinearGradient;
     lineHeight?: number;
     linethrough?: boolean;
@@ -152,7 +152,7 @@ export interface CreativeEditorPathTextElement extends CreativeEditorElementBase
     fontFamily?: string;
     fontSize: number;
     fontStyle?: "italic" | "normal";
-    fontWeight?: "400" | "600" | "700" | "800" | "bold" | "normal";
+    fontWeight?: "400" | "600" | "700" | "800" | "900" | "bold" | "normal";
     gradient?: CreativeEditorLinearGradient;
     lineHeight?: number;
     linethrough?: boolean;
@@ -463,7 +463,7 @@ export interface CreativeEditorDesignCueSafeLayerPatch {
     fill?: string;
     fontSize?: number;
     fontStyle?: "italic" | "normal";
-    fontWeight?: "400" | "600" | "700" | "800" | "bold" | "normal";
+    fontWeight?: "400" | "600" | "700" | "800" | "900" | "bold" | "normal";
     height?: number;
     lineHeight?: number;
     name?: string;

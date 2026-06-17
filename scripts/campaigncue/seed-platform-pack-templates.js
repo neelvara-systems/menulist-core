@@ -2,11 +2,12 @@
 
 const fs = require("fs");
 const path = require("path");
+const { readSharedBusinessCategories } = require("./read-shared-business-categories");
 
 const APPLY = process.argv.includes("--apply");
 const ROOT = path.resolve(__dirname, "..", "..");
 const SEED_PATH = path.join(__dirname, "platform-pack-template-seeds.json");
-const VALID_CATEGORIES = new Set(["service", "retail", "food", "professional", "creative", "health", "specialty"]);
+const VALID_CATEGORIES = new Set(readSharedBusinessCategories(ROOT));
 const COLLECTION = "campaigncuePlatformPackTemplates";
 const SCHEMA_VERSION = 1;
 const MAX_DOC_BYTES = 750_000;

@@ -58,9 +58,10 @@ campaigncue/templates/workspaces/{workspaceId}/{templateId}/preview.webp
 | Resolve owner category | 0 | 0 | 0 | 0 | Uses already-loaded business type/category from overview/session state. |
 | Load platform templates | 1 | 0 | 0 | 0 | Reads one `campaigncuePlatformPackTemplates/{businessCategory}` doc. |
 | Search/filter templates | 0 | 0 | 0 | 0 | In-memory filtering over loaded summary metadata. |
+| Choose campaign output intent | 0 | 0 | 0 | 0 | In-memory filter over loaded category and workspace summaries; the selected intent is passed into the local editor context or campaign creation request. |
 | Open platform template | 0 | 0 | 1-2 downloads | 0 | Downloads pack payload and optional editor document from Storage. |
 | Load saved workspace templates | 1 | 0 | 0 | 0 | Reads `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` only when saved templates are shown. |
-| Save workspace template | 1 | 1 | 1-3 uploads | 0 | Reads current index, writes bounded summary array, uploads payload/editor/optional preview. |
+| Save workspace template | 1 | 1 | 1-3 uploads | 0 | Reads current index, writes bounded summary array, uploads payload/editor/optional preview, and cleans up newly-created uploaded artifacts if the index write fails. |
 | Delete workspace template | 1 | 1 | Up to 3 deletes | 0 | Rewrites index without summary and deletes workspace payloads. |
 | Load overflow templates | 1 | 0 | 0 | 0 | Only after explicit owner action such as "More templates". |
 | Admin seed platform category | 1 | 1 | N uploads | 0 | Platform/admin tooling only; validates soft limits before write. |
@@ -84,6 +85,17 @@ If saved templates are visible in the same panel:
 0 writes
 0 Storage downloads until open
 ```
+
+Changing the selected output intent after the templates are loaded:
+
+```text
+0 additional Firestore reads
+0 writes
+0 Storage downloads
+0 provider calls
+```
+
+When a selected template opens a saved editor document, the output intent still stays local: CampaignCue adds the intent as editor context, task guidance, output/print format focus, and manual delivery instruction after the template payload is hydrated. It does not read a separate output catalog or persist a new document until the owner explicitly saves or creates a campaign pack.
 
 ## Why Category Docs Instead Of One Global Doc
 
@@ -126,6 +138,7 @@ Not allowed:
 - Cap active templates per category.
 - Move retired templates out of active docs.
 - Keep `default` category docs focused on active curated templates only.
+- Keep WhatsApp, Google, Instagram, print, staff, ads, reuse, and custom-size output choices as local filters over loaded summaries.
 
 ## Rules Expectations
 
@@ -147,4 +160,4 @@ Not allowed:
 | Clone platform template on open | Creates writes for exploratory browsing. |
 | Save workspace template automatically | Expensive and not owner-requested. |
 | Provider call for template recommendations | Decision Engine and tags can rank templates deterministically. |
-
+| Read a separate catalog for each output intent | Breaks the MenuList-style asset filtering cost pattern; filter already-loaded summaries instead. |

@@ -1,11 +1,11 @@
 # Assets Help
 
 **Status:** Owner Help
-**Last Updated:** June 15, 2026
+**Last Updated:** June 17, 2026
 
 ## What It Does
 
-Assets gives you the files customers scan inside your business.
+Assets gives you the files customers scan, read, or carry from your business.
 
 ## Open Assets
 
@@ -42,6 +42,13 @@ Use **Printer Message** when sending files to a local printer. It copies the fil
 | Counter Sticker | Billing or pickup counter. |
 | Entrance Poster | Door, window, or host stand. |
 | Feedback QR | Exit or counter when feedback is enabled. |
+| Flyer | Offer handout, delivery insert, or local campaign card. |
+| Gift Certificate | Gift, credit, or prepaid offer voucher. |
+| Business Card | Contact card with your latest link. |
+| Invitation | Event, opening, workshop, or special invite. |
+| Postcard | Small mailer-style card for thanks, reminders, or offers. |
+| Product Tag | Retail, bakery, pickup, or counter item tag. |
+| Campaign Poster | A4 offer poster for windows and counters. |
 | Print Menu | Full paper menu PDF. |
 | Complete Menu Kit | Everything together in one ZIP. |
 

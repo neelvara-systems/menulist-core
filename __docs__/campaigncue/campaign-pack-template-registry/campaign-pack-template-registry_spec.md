@@ -14,6 +14,8 @@ The registry should help an SMB owner start from a useful campaign structure:
 
 It must then rehydrate current business facts, run missing-input/trust checks, and keep manual delivery instructions inside the campaign pack.
 
+The owner may also choose what the pack should help with, but this is not a design-format browser. CampaignCue output choices are business-use intents such as WhatsApp sales pack, booking push pack, Google local update, poster/flyer, staff share pack, ad handoff, reuse old asset, or custom size.
+
 ## Product Role
 
 The registry supports the CampaignCue loop:
@@ -96,6 +98,25 @@ The platform category doc includes enough metadata for local search:
 
 No server-side full-text search is required for the curated catalog.
 
+## Campaign Output Picker
+
+CampaignCue uses a small grouped output-intent registry instead of a generic "Choose Format" screen. The groups are owner jobs: recommended, sell today, fill bookings, stay visible, print and in-store, handoff, reuse, and advanced.
+
+| Output intent | Owner meaning | Typical outputs |
+| --- | --- | --- |
+| Recommended pack | Use the Daily Desk recommendation. | Current campaign pack output mix. |
+| WhatsApp sales pack | Get replies, orders, or customer questions. | WhatsApp image/message, status text, reply script, social support. |
+| Booking push pack | Fill slots, appointments, classes, or service openings. | WhatsApp booking message, story, Google update, reception poster. |
+| Google local update | Keep local visibility fresh without inventing an offer. | Google update/offer fields, local caption, flyer if useful. |
+| Instagram post + story | Prepare social visuals from the same campaign. | Square post, story, reel brief when applicable. |
+| Poster or flyer | Use the campaign offline. | Poster PDF, flyer PDF, counter or reception use. |
+| Staff share pack | Give staff a clear message and script. | Staff WhatsApp text, counter script, customer reply prompt. |
+| Ad handoff pack | Prepare copy for a human ad-account owner or agency. | Headline, copy, destination, terms, approval notes. |
+| Reuse old poster/image | Start from an existing owner asset. | CueLayers-safe source preservation and manual export. |
+| Custom size | Advanced blank layout when the owner already knows the size. | Shared editor blank asset, desktop-preferred. |
+
+Selecting an output intent filters the already-loaded category template summaries in memory by output types, channels, template kind, required facts, and search tags. It must not trigger a new Firestore query.
+
 ## Owner Flows
 
 ### Use recommended template
@@ -104,11 +125,12 @@ No server-side full-text search is required for the curated catalog.
 2. CampaignCue resolves business category from existing business truth.
 3. CampaignCue reads one matching platform template catalog.
 4. Daily Desk suggests a relevant template only when it supports the current cue.
-5. Owner sees what the template will prepare and what facts are missing.
-6. Owner confirms missing details.
-7. Creative Studio creates or opens the pack.
-8. Trust Center checks facts.
-9. Owner exports/copies manually and records result.
+5. Owner can optionally choose a CampaignCue output intent such as WhatsApp, Google, print, staff, ads, reuse, or custom size.
+6. Owner sees what the template will prepare and what facts are missing.
+7. Owner confirms missing details.
+8. Creative Studio creates or opens the pack.
+9. Trust Center checks facts.
+10. Owner exports/copies manually and records result.
 
 ### Search event templates
 
@@ -159,6 +181,7 @@ No server-side full-text search is required for the curated catalog.
 | Stale facts in saved templates | Save fact slots and refs; rehydrate current facts before use; block export when required facts are missing. |
 | Product drifts into template marketplace | Keep Daily Desk and campaign pack outcome as primary entry; templates are supporting surfaces only. |
 | Search gets too broad | Use curated tags and in-memory filters; no full catalog scan. |
+| Output picker becomes a format marketplace | Keep labels business-use based and keep custom size as the advanced escape hatch. |
 
 ## Open Questions Before Implementation
 

@@ -7,13 +7,13 @@ This document is both the implementation plan and current implementation map.
 Implemented now:
 
 - CampaignCue owner upload entry from Editor and Asset Library.
-- Source package, design, job, version, quality report, repair request, correction event, and export metadata contracts.
+- Source package, design, job, version, repair request, and export metadata contracts for the active v1 path. Quality reports, job events, correction events, cost records, and review samples remain dormant provider-mode contracts.
 - CampaignCue-authenticated API routes for upload, list, job read, boot, autosave, repair record, Storage-backed export registration, and scoped Asset Library download handoff.
-- CampaignCue Storage-first artifacts with immutable source/package/version/reconstruction/quality/repair/export paths.
+- CampaignCue Storage-first artifacts with immutable active source/package/version/export paths and reserved provider-mode reconstruction/quality/repair diagnostic paths.
 - `CreativeEditorDocumentSnapshot` as durable editor truth with `cue-asset://assetId` references.
 - Boot-time signed URL hydration and autosave-time URL dehydration.
 - Flat-safe projection into the shared Creative Editor that preserves the original image as the first render.
-- Cost-shaped Firestore commits: upload completion writes design/job/version/quality/event/idempotency together, autosave batches design pointer plus version metadata, repair batches request plus correction event after the Storage artifact succeeds, and export batches CueLayers export metadata plus export-ready event after Asset Library registration succeeds.
+- Cost-shaped Firestore commits: upload completion writes design/job/version/idempotency together, autosave batches design pointer plus version metadata while reusing the existing layer index, repair writes one restore-fallback request, and export writes CueLayers export metadata after output Storage and Asset Library registration succeed.
 
 Not implemented as active runtime yet:
 
@@ -121,7 +121,7 @@ Add flags in `src/config/features.ts`.
 | `src/app/api/campaigncue/cue-layers/designs/[designId]/boot/route.ts` | Return editor boot package with runtime-hydrated asset URLs. |
 | `src/app/api/campaigncue/cue-layers/designs/[designId]/autosave/route.ts` | Save debounced runtime snapshot pointer. |
 | `src/app/api/campaigncue/cue-layers/designs/[designId]/versions/route.ts` | Not implemented as a separate route. Autosave creates immutable version snapshots. |
-| `src/app/api/campaigncue/cue-layers/designs/[designId]/repair/route.ts` | Implemented for restore-fallback/correction-event records. Worker repair remains gated. |
+| `src/app/api/campaigncue/cue-layers/designs/[designId]/repair/route.ts` | Implemented for one restore-fallback repair request record. Correction-event learning stream remains gated with provider repair. |
 | `src/app/api/campaigncue/cue-layers/designs/[designId]/exports/route.ts` | Implemented. Revision-pins, stores rendered export bytes, and registers exported assets for manual download/reuse. |
 | `src/lib/campaigncue/cue-layers/server.ts` | CampaignCue Admin reads/writes, idempotency, state transitions. |
 | `src/lib/campaigncue/cue-layers/storagePaths.ts` | Canonical Storage paths and asset ref helpers. |
@@ -173,10 +173,10 @@ Shared core candidates for the same engine across CampaignCue and MenuList:
 
 | Truth | Durable owner | Purpose |
 | --- | --- | --- |
-| `CampaignCueCreativeSourcePackage` | Storage JSON + Firestore pointer | Source kind, original/normalized/editor asset ids, provenance, seed observations. |
-| `CueLayersObservationBundle` | Storage JSON | Raw model/OCR/mask/layout/vector evidence. |
-| `CueLayersReconstructionDocument` | Storage JSON | Audited layer decisions, confidence, fallback, provenance. |
-| `CueLayersEditorProjection` | Storage JSON | Projection package that maps reconstruction decisions into shared editor state. |
+| `CampaignCueCreativeSourcePackage` | Storage JSON + Firestore pointer | Source kind, original/normalized/editor asset ids, provenance, seed observations, and active v1 inline compact business/protected-text/brand/rights snapshots. Catalog snapshots keep fact fields only; item/service price labels stay protected. |
+| `CueLayersObservationBundle` | Storage JSON | Dormant provider-mode raw model/OCR/mask/layout/vector evidence. |
+| `CueLayersReconstructionDocument` | Storage JSON | Dormant provider-mode audited layer decisions, confidence, fallback, provenance. |
+| `CueLayersEditorProjection` | Storage JSON | Dormant provider-mode projection package that maps reconstruction decisions into shared editor state. Active v1 projects directly into the editor snapshot and layer index. |
 | `CreativeEditorDocumentSnapshot` | Storage JSON | Durable current user-edited design state. |
 | `CueLayersLayerIndex` | Storage JSON | Sidecar layer metadata, provenance, fallbacks, warnings, and asset refs. |
 | `CueLayersExportOutput` | Storage file + Firestore pointer | Final downloadable output. |
@@ -195,12 +195,10 @@ Required fields:
 - `originalAssetId`, `normalizedAssetId`, `editorReferenceAssetId`
 - `width`, `height`, `mimeType`, `sha256`, `perceptualHash`
 - `provenance`
-- `seedObservationAssetId`
-- `designIntentManifestAssetId`
-- `businessTruthSnapshotAssetId`
-- `protectedTextTruthAssetId`
-- `brandSnapshotAssetId`
-- `rightsSnapshotAssetId`
+- `seedObservationAssetId` where a provider or generated-source route creates one
+- `designIntentManifestAssetId` where a generated-design route creates one
+- `snapshots.businessTruth`, `snapshots.protectedText`, `snapshots.brand`, and `snapshots.rights` in active v1
+- Optional `businessTruthSnapshotAssetId`, `protectedTextTruthAssetId`, `brandSnapshotAssetId`, and `rightsSnapshotAssetId` only when a future provider-mode route needs separate snapshot artifacts
 - `rights`: `sourceRightsStatus`, optional `containsPerson`, `containsLogo`, `watermarkDetected`
 - `createdAt`
 
@@ -346,7 +344,7 @@ Registry selection rules:
 - Segmentation chooses an enabled adapter with `segmentation_masks`; do not assume every Gemini image model supports pixel-level masks.
 - OCR/text truth chooses a provider that returns word/line boxes, confidence, and language; CampaignCue/MenuList facts remain protected truth.
 - Repair/inpaint stays conservative, selected-region only, flagged, and cost-estimated before dispatch.
-- Store model family, model id, prompt/version id, release stage, cost tier, and gate result in quality/cost reports.
+- Store model family, model id, prompt/version id, release stage, cost tier, and gate result in provider-mode quality/cost reports only when provider routes are enabled.
 - Allow model changes through server-side config or Remote Config-style switches, not durable design JSON.
 - Never use Imagen as a required path because Firebase documents Imagen shutdown on June 24, 2026.
 - Do not call premium models when deterministic routing says `fallback_only`, `text_recovery_priority`, or source quality is below minimum.
@@ -392,11 +390,13 @@ CueLayers readiness must be computed from separate gate results, not one model s
 | Structural usefulness | Layer count, group stability, z-order confidence, object area, object fragmentation. | Ready, merge/downgrade, or needs review. |
 | Export fidelity | Saved runtime state, server render output, preview render, asset hydration report. | Export allowed, retried, or failed-safe. |
 
-Each job should produce:
+Provider-mode jobs should produce:
 
 - a compact Firestore quality summary for owner/admin status,
 - a full Storage/GCS quality report for replay and support,
 - an optional visual diff artifact for internal review.
+
+The active flat-safe upload path keeps the compact visual/text/readiness summary on `cueLayerDesigns.quality` and does not write `cueLayerQualityReports` or full report artifacts until provider validation workers are enabled.
 
 ## Business Truth Layer
 
@@ -550,7 +550,7 @@ If the browser has unsaved changes, the UI must autosave/refresh before export. 
 | 1 | `CueLayersReconstructionDocument`, Zod validation, invariants. |
 | 2 | `CueLayersEditorProjection` projection to `CreativeEditorDocumentSnapshot` and Fabric runtime metadata. |
 | 3 | Immutable Storage paths and asset ref resolver. |
-| 4 | Firestore job/design/version/export/cost/event docs. |
+| 4 | Firestore job/design/version/export docs for active v1; cost/event docs reserved for provider mode. |
 | 5 | API job orchestration, Cloud Tasks/Run dispatch, state transitions. |
 | 6 | Upload normalization and metadata strip. |
 | 7 | Route diagnosis and budget selection. |

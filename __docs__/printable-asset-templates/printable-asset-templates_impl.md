@@ -71,6 +71,13 @@ export type PrintableAssetTypeId =
   | 'counter_sticker'
   | 'entrance_poster'
   | 'feedback_qr'
+  | 'campaign_flyer'
+  | 'gift_certificate'
+  | 'business_card'
+  | 'event_invitation'
+  | 'postcard'
+  | 'product_tag'
+  | 'campaign_poster'
   | 'complete_menu_kit';
 
 export type PrintableTemplateFamilyId =
@@ -147,10 +154,17 @@ This extends the current `src/lib/print-assets/printAssetCatalog.ts:26` model wi
 | `counter_sticker` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
 | `entrance_poster` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
 | `feedback_qr` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render using feedback URL. |
+| `campaign_flyer` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
+| `gift_certificate` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
+| `business_card` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
+| `event_invitation` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
+| `postcard` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
+| `product_tag` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
+| `campaign_poster` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
 | `print_menu` | Menu Card Export preset/style mapping, using existing `renderPdf`. |
 | `complete_menu_kit` | `generateMenuKit(menuKitInput)` with `templateFamilyId` in `MenuKitInput`. |
 
-Single printable assets support PDF and image downloads from the same selected template. The owner-facing preview is image-first and uses real generated output: table tent, single table card, entrance poster, counter sticker, and feedback QR use generated Creative Editor PNG previews; Print Menu renders the generated menu PDF first page as PNG. Desktop Print Menu must read the full selected project only when needed, use the no-loader DAL helper, and cache that project data for repeated template preview/download actions. Editor-backed PNG export is wrapped into print-size PDF with `jsPDF` for PDF output. Complete Menu Kit remains ZIP-only.
+Single printable assets support PDF and image downloads from the same selected template. The owner-facing preview is image-first and uses real generated output: table tent, single table card, entrance poster, counter sticker, feedback QR, campaign flyer, gift certificate, business card, invitation, postcard, product tag, and campaign poster use generated Creative Editor PNG previews; Print Menu renders the generated menu PDF first page as PNG. Desktop Print Menu must read the full selected project only when needed, use the no-loader DAL helper, and cache that project data for repeated template preview/download actions. Editor-backed PNG export is wrapped into print-size PDF with `jsPDF` for PDF output. Complete Menu Kit remains ZIP-only.
 
 ### Editor Document Contract
 
@@ -170,7 +184,7 @@ Document rules:
 - PNG/PDF export applies MenuList attribution at runtime through `resolveMenuListAttributionPolicy()`, so non-premium output is branded and eligible higher plans can remove it without placing branding inside the editor canvas.
 - The editor document is the source for preview, default download, and customized download.
 
-Full Print Menu uses the existing Menu Card Export renderer, which currently has three real layout families (`classic`, `premium`, `compact`). Therefore `print_menu` exposes only `classic-luxe`, `modern-calm`, and `qr-first` in Assets so owners do not see nine choices that collapse into the same PDF output. QR/display assets keep the full 9-family catalog because their renderers own family-specific header, logo, decoration, and color treatments.
+Full Print Menu uses the existing Menu Card Export renderer, which currently has three real layout families (`classic`, `premium`, `compact`). Therefore `print_menu` exposes only `classic-luxe`, `modern-calm`, and `qr-first` in Assets so owners do not see nine choices that collapse into the same PDF output. Editor-backed QR/display/campaign assets keep the full 9-family catalog because their renderers own family-specific header, logo, decoration, and color treatments.
 
 `MenuKitInput` now includes optional `templateFamilyId` in `src/lib/menu-kit/types.ts`.
 

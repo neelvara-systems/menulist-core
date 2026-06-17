@@ -106,7 +106,7 @@ const CreativeEditorElementBaseSchema = z.object({
     fontFamily: z.string().trim().max(160).optional(),
     fontSize: z.number().min(4).max(320).optional(),
     fontStyle: z.enum(["italic", "normal"]).optional(),
-    fontWeight: z.enum(["400", "600", "700", "800", "bold", "normal"]).optional(),
+    fontWeight: z.enum(["400", "600", "700", "800", "900", "bold", "normal"]).optional(),
     gradient: gradientSchema.optional(),
     height: z.number().min(1).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
     id: z.string().trim().regex(idPattern).min(2).max(160),

@@ -17,6 +17,10 @@
 | Shared Diwali template applies to food and retail | Metadata summary exists in both category docs; payload path may be shared. |
 | Search for `diwali` | Filters loaded in-memory summaries; no extra Firestore read. |
 | Search by channel `whatsapp` | Filters loaded category data; no server query. |
+| Owner chooses `WhatsApp sales pack` output | Filters loaded category/workspace summaries in memory by output type, channel, kind, required fact, and tags. |
+| Owner switches from WhatsApp to Google to print | No additional platform catalog, workspace index, Storage, provider, or Cloud Function call. |
+| Owner chooses output intent with no matching template | Owner can still create a bounded channel pack from the current cue. |
+| Owner chooses custom size | Opens the existing blank shared-editor flow; no template marketplace or new persistence path is created. |
 | Overflow doc exists | Not read until owner clicks "More templates". |
 | Platform summary lacks payload path | Seed/admin verifier rejects it. |
 | Platform doc exceeds soft limit | Seed/admin verifier rejects publish. |
@@ -54,11 +58,13 @@
 | Template action attempts direct social posting | Rejected; delivery is manual export/copy. |
 | Template recommendation asks a model what to promote | Rejected; Decision Engine and tags own ranking. |
 | CueLayers reused image is saved as a generic pack template automatically | Rejected; CueLayers source-package preservation remains the durable reuse artifact. |
+| Output picker labels become generic format catalog | Rejected; owner-facing labels must stay business-use based. |
 
 ## Mobile
 
 | Case | Expected |
 | --- | --- |
 | Owner selects a template on phone | Template card and missing inputs are usable with 44px targets. |
+| Owner selects output intent on phone | Uses short chips/cards and local filtering over already-loaded summaries. |
 | Owner tries precise layer editing on phone | UI routes to limited editor behavior or desktop-preferred messaging. |
 | Mobile template search | Uses loaded category doc; no mobile-only read path. |

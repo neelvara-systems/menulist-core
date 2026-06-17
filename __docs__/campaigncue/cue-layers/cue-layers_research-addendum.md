@@ -162,7 +162,7 @@ Avoid exposing provider names, mask thresholds, vectorization tuning, or diagnos
 
 ## Quality Reports
 
-Each job should produce a compact quality summary in Firestore and a full quality report in Storage.
+Provider-mode jobs should produce a compact quality summary in Firestore and a full quality report in Storage. The active flat-safe upload path keeps the compact owner readiness summary on `cueLayerDesigns.quality` and does not write full quality-report artifacts until provider validation workers are enabled.
 
 Firestore summary:
 

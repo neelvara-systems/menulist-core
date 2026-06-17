@@ -24,6 +24,7 @@ The flag gates owner-visible template surfaces. Seed/admin tooling exists separa
 
 | Path | Purpose |
 | --- | --- |
+| `src/constants/campaigncue/outputPicker.ts` | Owner-output intent registry and local template-matching helper. |
 | `src/constants/campaigncue/packTemplates.ts` | Collection names, storage roots, category overflow constants, template tags, owner copy. |
 | `src/types/campaigncuePackTemplates.ts` | Template summary, payload, search, workspace save, and hydration types. |
 | `src/lib/validation/campaigncuePackTemplateSchemas.ts` | Zod schemas for platform summaries, workspace saves, and payload references. |
@@ -31,7 +32,7 @@ The flag gates owner-visible template surfaces. Seed/admin tooling exists separa
 | `src/lib/campaigncue/pack-templates/catalog.ts` | Load one platform category catalog, filter/search in memory, and hydrate payload refs. |
 | `src/lib/campaigncue/pack-templates/workspaceTemplates.ts` | Workspace saved-template DAL. |
 | `src/lib/campaigncue/pack-templates/applyTemplate.ts` | Convert a selected template into CampaignCue pack intent, editor document, handoff fields, and missing-input checks. |
-| `src/components/templates/campaigncue/PackTemplatePicker.tsx` | Owner UI for recommended and searched pack templates. |
+| `src/components/templates/campaigncue/PackTemplatePicker.tsx` | Owner UI for recommended pack templates, CampaignCue output choices, local search, and explicit save. |
 | `scripts/campaigncue/seed-platform-pack-templates.js` | Admin seed/update script for platform category docs and Storage payloads. |
 | `scripts/verification/verify-campaigncue-pack-templates.js` | Static verifier for docs/code/category/cost guardrails. |
 
@@ -174,13 +175,15 @@ No CampaignCue-specific category enum may diverge from `BUSINESS_CATEGORIES`. Ca
 
 | Surface | Behavior |
 | --- | --- |
-| Daily Campaign Desk | Show at most one matching template suggestion for the top cue after the category catalog is loaded. |
+| Daily Campaign Desk | Show at most one matching template suggestion for the top cue after the category catalog is loaded. Let the owner optionally choose a CampaignCue output intent without leaving the pack flow. |
 | Campaign Pack Review | Let owner save the current pack as reusable when trust state allows. |
-| Creative Studio | Offer category-relevant pack templates only after campaign intent exists. |
+| Creative Studio | Offer category-relevant pack templates and output intents only after campaign intent exists. |
 | Shared Creative Editor | Do not import template DAL directly; CampaignCue adapter owns save/load callbacks and opens saved layouts with Campaign Pack editor context. |
 | CueLayers | Offer "Save as reusable pack base" only after source preservation and safety checks. |
 
-Runtime behavior: selecting a template hydrates its Storage payload only on click. If the template has a saved neutral editor document, CampaignCue opens it in the shared editor with `pack_template` context so task-based editing, protected facts, output/print formats, Trust Center status, manual delivery cards, result memory, and mobile-review messaging stay visible. If there is no saved editor document and required fact slots are missing, the owner is routed to inputs. If no required template facts are missing, CampaignCue creates a campaign pack through the existing guarded campaign API using the template title, brief, and channels; the server still applies the normal decision gate and trust report.
+Runtime behavior: selecting a template hydrates its Storage payload only on click. The CampaignCue output picker filters loaded summaries locally by output types, channels, template kind, required facts, and tags. If the template has a saved neutral editor document, CampaignCue opens it in the shared editor with `pack_template` context so task-based editing, protected facts, output/print formats, Trust Center status, manual delivery cards, result memory, and mobile-review messaging stay visible. The selected output intent is carried into that editor context as an owner task, output/print format focus, title/subtitle context, and delivery instruction, so choosing "WhatsApp", "Google", "print", or another pack type is not lost when the template opens directly in the editor. If there is no saved editor document and required fact slots are missing, the owner is routed to inputs. If no required template facts are missing, CampaignCue creates a campaign pack through the existing guarded campaign API using the template title, brief, and selected output-intent channels; the server still applies the normal decision gate and trust report.
+
+If the owner chooses an output intent without selecting a template, CampaignCue creates a pack with the intent's bounded channel set through the same guarded campaign API. The `custom_size` intent opens the existing blank shared-editor flow instead of creating a new format marketplace or new persistence path.
 
 ## Search Behavior
 
@@ -239,6 +242,7 @@ Add a verifier that checks:
 - shared editor does not import CampaignCue template DAL,
 - platform default load reads one category doc,
 - search/filter stays in memory,
+- output-intent filtering stays in memory,
 - full payloads are Storage-backed,
 - saved editor documents reopen with `pack_template` context rather than blank editor context,
 - saved templates are explicit only,

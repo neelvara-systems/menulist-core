@@ -16,6 +16,20 @@ The value is not template volume. The value is:
 - the owner can reuse what worked,
 - stale facts are blocked before export.
 
+CampaignCue can offer output choices, but they must be framed as business-use choices:
+
+- WhatsApp sales pack,
+- booking push pack,
+- Google local update,
+- Instagram post and story,
+- poster or flyer,
+- staff share pack,
+- ad handoff pack,
+- reuse old poster or image,
+- custom size.
+
+This is intentionally different from generic design tools that ask owners to choose from many formats before they know the campaign.
+
 ## Differentiation
 
 | Generic creative tools | CampaignCue |
@@ -25,7 +39,7 @@ The value is not template volume. The value is:
 | Owner brings the idea | Daily Desk suggests the useful action |
 | Template text may be stale | Facts are rehydrated and checked |
 | One design output | WhatsApp, Google, Instagram, print, staff, and result prompt |
-| Search across many designs | Search within relevant business category |
+| Search across many designs | Search within relevant business category and output intent |
 
 ## Approved Positioning
 
@@ -36,10 +50,11 @@ Use:
 - "Uses your current business details"
 - "Checks facts before use"
 - "Save packs that worked"
+- "Choose what the pack is for"
 
 Avoid:
 
-- "AI-powered template marketplace"
+- "model-owned template marketplace"
 - "Thousands of templates"
 - "Autopilot marketing"
 - "Direct publish"
@@ -68,9 +83,8 @@ No. CampaignCue prepares download/copy handoff packs. Direct posting is not acti
 1. Problem: SMB owners do not have time to browse templates.
 2. Better approach: Start from business category and campaign cue.
 3. Product: Curated pack templates with fact checks.
-4. Output: WhatsApp, Google, Instagram, print, staff handoff, and result prompt.
+4. Output: WhatsApp, Google, Instagram, print, staff handoff, ad handoff, old-asset reuse, and result prompt.
 5. Trust: Price, date, contact, and offer fields are protected.
 6. Reuse: Save packs that worked and update them safely.
 7. Cost discipline: One category catalog read, Storage payloads only when opened.
 8. Close: Less browsing, more ready-to-use campaigns.
-

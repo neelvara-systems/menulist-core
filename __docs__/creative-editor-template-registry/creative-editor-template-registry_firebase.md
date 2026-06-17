@@ -1,7 +1,7 @@
 # Creative Editor Template Registry - Firebase Cost
 
 **Status:** Implemented
-**Last Updated:** June 16, 2026
+**Last Updated:** June 17, 2026
 
 ## Summary
 
@@ -14,9 +14,12 @@ There are no new Cloud Functions and no new Firestore indexes. Access is through
 | Operation | Firestore Reads | Firestore Writes | Storage | Functions | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Open `/platform/asset-templates` | 1 | 0 | 0 | 0 | One selected `platformAssetTemplates/{businessCategory}` catalog read. Switching asset type filters local `data`. |
-| Create/update platform template design | 1 | 1 | 1 document upload + optional preview upload | 0 | Reads current category catalog, writes updated bounded `data`, and stores the neutral editor document in Storage. |
-| Save platform template metadata/status | 1 | 1 | 0 | 0 | Reads current category catalog and rewrites only the bounded metadata array; use this for draft/publish/archive changes. |
-| Delete platform template | 1 | 1 | Up to 2 deletes | 0 | Removes the summary from the category catalog, then best-effort deletes document and preview objects. |
+| Create/update category platform template design | 1 | 1 | 1 document upload + optional preview upload | 0 | Reads current category catalog, writes updated bounded `data`, and stores the neutral editor document in Storage. |
+| Create/update generic platform template design | 8 | 8 | 1 shared document upload + optional preview upload | 0 | Writes metadata into `generic` plus every shared business-category catalog while storing one shared Storage payload. This preserves one owner platform read. |
+| Save category platform template metadata/status | 1 | 1 | 0 | 0 | Reads current category catalog and rewrites only the bounded metadata array; use this for draft/publish/archive changes. |
+| Save generic platform template metadata/status | 8 | 8 | 0 | 0 | Derives the mutation fan-out from the stored record, then updates every category copy so generic templates cannot drift when edited from a category view. |
+| Delete category platform template | 1 | 1 | Up to 2 deletes | 0 | Removes the summary from the category catalog, then best-effort deletes document and preview objects. |
+| Delete generic platform template | Up to 8 | Up to 8 | Up to 2 deletes | 0 | Removes every copied generic summary from category catalogs, then best-effort deletes the shared Storage payload once. |
 | Open `/assets` with registry templates | 2 | 0 | 0 | 0 | One platform business-category catalog plus one store-level `default` user template doc. Generated fallback remains non-blocking if either read is empty/blocked. |
 | Select generated template | 0 | 0 | 0 | 0 | Local state. |
 | Customize generated template | 0 | 0 | 0 | 0 | Document generated in browser memory. |
@@ -67,8 +70,10 @@ The payload stores the size-limited neutral `CreativeEditorDocument`. List calls
 | Scenario | Incremental Firebase Cost |
 | --- | --- |
 | Platform user loads a category manager page 100 times | 100 platform category catalog reads. |
-| Platform user publishes 50 edited platform templates | 50 catalog reads + 50 catalog writes + 50 Storage document uploads, plus optional preview uploads. |
-| Platform user changes status for 50 templates | 50 catalog reads + 50 catalog writes, no Storage uploads. |
+| Platform user publishes 50 category-specific platform templates | 50 catalog reads + 50 catalog writes + 50 Storage document uploads, plus optional preview uploads. |
+| Platform user publishes 50 generic platform templates | 400 catalog reads + 400 catalog writes + 50 shared Storage document uploads, plus optional preview uploads. This is platform-only curation cost in exchange for one owner read. |
+| Platform user changes status for 50 category-specific templates | 50 catalog reads + 50 catalog writes, no Storage uploads. |
+| Platform user changes status for 50 generic templates | 400 catalog reads + 400 catalog writes, no Storage uploads. |
 | 1,000 owners browse Assets with registry templates | 1,000 platform catalog reads + 1,000 store `default` doc reads; generated fallback still works if catalogs are empty or blocked. |
 | 1,000 owners save one template | 1,000 store-index reads + 1,000 store-index writes + 1,000 Storage document uploads; optional preview uploads only when enabled. |
 | 1,000 owners reopen one saved template | 1,000 store-index reads + 1,000 Storage document downloads. |

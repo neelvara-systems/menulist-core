@@ -51,8 +51,15 @@ function getImagePdfPage(assetTypeId: PrintableAssetTypeId, width: number, heigh
     heightMm: number;
     widthMm: number;
 } {
+    if (assetTypeId === 'business_card') return { widthMm: 90, heightMm: 55 };
+    if (assetTypeId === 'product_tag') return { widthMm: 90, heightMm: 50 };
+    if (assetTypeId === 'gift_certificate') return { widthMm: 210, heightMm: 99 };
+    if (assetTypeId === 'postcard') return { widthMm: 148, heightMm: 105 };
     if (assetTypeId === 'counter_sticker') return { widthMm: 80, heightMm: 80 };
     if (assetTypeId === 'feedback_qr') return { widthMm: 100, heightMm: 150 };
+    if (assetTypeId === 'event_invitation') return { widthMm: 105, heightMm: 148 };
+    if (assetTypeId === 'campaign_flyer') return { widthMm: 148, heightMm: 210 };
+    if (assetTypeId === 'campaign_poster') return { widthMm: 210, heightMm: 297 };
 
     const aspect = height > 0 ? width / height : 1;
     if (aspect >= 1) {

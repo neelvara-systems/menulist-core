@@ -22,13 +22,15 @@ CampaignCue shows focused campaign pack starters for the saved business category
 | Fits the business type | Food, service, retail, health, creative, professional, and specialty businesses see relevant pack starters. | Category-specific campaign cards. |
 | Checks before use | CampaignCue asks for missing price, date, contact, photo, or rights details before the pack is ready. | Missing-input checklist beside a pack. |
 | One pack, many uses | A template can prepare WhatsApp, Google, Instagram, print, staff, and result memory outputs together. | Folder-style campaign pack preview. |
+| Choose the use, not the format | Owners choose WhatsApp, Google, print, staff, ads, reuse, or custom size when they need to narrow the pack. | Output choice chips beside pack cards. |
 | Save what worked | Owners can keep a useful pack and reuse it with current facts next time. | Saved pack card with "Use again". |
 
 ## How It Works
 
 1. **Pick a useful pack** - CampaignCue shows pack starters for the business category.
-2. **Add missing details** - The owner confirms only the facts needed for that campaign.
-3. **Use the checked pack** - Download, copy, print, share manually, and record what happened.
+2. **Choose the use if needed** - Narrow the pack to WhatsApp, Google, Instagram, print, staff, ads, reuse, or custom size.
+3. **Add missing details** - The owner confirms only the facts needed for that campaign.
+4. **Use the checked pack** - Download, copy, print, share manually, and record what happened.
 
 ## FAQ
 
@@ -51,7 +53,7 @@ No. The active product prepares download and copy handoff packs for manual use.
 ## SEO Meta
 
 - **Page Title:** Campaign Pack Templates for Local Businesses
-- **Meta Description:** Focused campaign pack starters by business type, with missing details and fact checks before download or manual use.
+- **Meta Description:** Focused campaign pack starters by business type, with WhatsApp, Google, print, staff, ad handoff, reuse, and fact checks before manual use.
 - **OG Title:** Campaign packs that fit your business
 - **OG Description:** Start from a useful campaign pack, confirm the missing details, and use it with confidence.
 - **Target Keywords:** campaign templates, local business campaign packs, WhatsApp campaign pack, Google Business Profile post template, reusable campaign pack
@@ -67,9 +69,8 @@ Use:
 
 Never use:
 
-- "AI-powered"
+- "model-owned"
 - "Smart"
 - "Dynamic"
 - "autopilot"
 - "direct publish"
-

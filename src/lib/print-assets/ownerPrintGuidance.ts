@@ -21,6 +21,13 @@ export const PRINT_SHOP_FILE_SPECS = [
     'Single Table Card: A6 portrait, 300 GSM matte card',
     'Counter Sticker: 80mm x 80mm matte vinyl sticker',
     'Entrance Poster: A4 portrait, 200-300 GSM matte paper',
+    'Flyer: A5 portrait, 170-250 GSM matte paper',
+    'Gift Certificate: gift-card landscape, 250-300 GSM matte card',
+    'Business Card: 90mm x 55mm, 300 GSM matte card',
+    'Invitation: A6 portrait, 250-300 GSM matte card',
+    'Postcard: A6 landscape, 250-300 GSM matte card',
+    'Product Tag: 90mm x 50mm, 250-300 GSM matte card or tag stock',
+    'Campaign Poster: A4 portrait, 200-300 GSM matte paper',
 ] as const;
 
 export const PRINT_ASSET_REPRINT_GUIDANCE = [

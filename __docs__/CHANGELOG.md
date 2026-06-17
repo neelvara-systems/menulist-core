@@ -6,6 +6,20 @@
 
 ---
 
+## June 17, 2026 - CampaignCue Output Picker
+
+### Added
+
+- **CampaignCue output picker added** - CampaignCue pack templates now include business-use output choices such as WhatsApp sales pack, booking push pack, Google local update, Instagram post and story, poster or flyer, staff share, ad handoff, old-asset reuse, and custom size.
+
+### Improved
+
+- **Template filtering stays owner-focused** - Output choices filter already-loaded CampaignCue pack templates by output type, channel, template kind, required facts, and tags instead of showing a generic design-format gallery.
+
+### Cost
+
+- **No new template read path added** - Switching output choices is local filtering over the already-loaded category and workspace template summaries. The custom-size option opens the existing blank editor path.
+
 ## June 16, 2026 - Platform Cost Posture
 
 ### Added
@@ -240,8 +254,8 @@
 - **No additional overview read path** - Daily Campaign Desk and Campaign Decision Engine are computed from the existing CampaignCue overview payload and recomputed locally after owner mutations. Campaign creation uses bounded campaign history in the existing server-authoritative creation path to store the selected decision without raw event scans.
 - **No campaign-pack collection added** - Pack review stays derived from existing overview data plus compact campaign metadata.
 - **No provider/model decision cost introduced** - The feature adds no Storage path, Cloud Function, realtime listener, paid generation, provider connection, direct provider call, model-owned decision, or paid model call.
-- **Firebase summary patterns tightened** - Business/profile saves and source input saves merge into `sourceSnapshots/current` instead of rescanning source inputs, CueLayers stores `current.jobId` for direct replay job reads, asset registration batches metadata and event writes, and synchronous CueLayers upload completion writes design/job/version/event/idempotency state in one batch.
-- **Firebase write commits reduced** - Campaign creation/action success paths now batch summary increments and idempotency completion with the primary mutation, trust-blocked public-use actions batch blocked-event and idempotency completion, and CueLayers autosave/repair/export metadata writes are grouped into Firestore batches after Storage artifacts succeed.
+- **Firebase summary patterns tightened** - Business/profile saves and source input saves merge into `sourceSnapshots/current` instead of rescanning source inputs, CueLayers stores `current.jobId` for direct replay job reads, asset registration batches metadata and event writes, and synchronous CueLayers upload completion writes design/job/version/idempotency state in one batch.
+- **Firebase write commits reduced** - Campaign creation/action success paths now batch summary increments and idempotency completion with the primary mutation, trust-blocked public-use actions batch blocked-event and idempotency completion, and CueLayers now avoids active v1 quality/event/correction/export-report writes while autosave reuses the existing layer index artifact.
 
 ### Validation
 
@@ -283,7 +297,7 @@
 ### Added
 
 - **CueLayers safe upload spine implemented** - CampaignCue owners can upload PNG, JPEG, or WebP images from Editor or Asset Library, open the preserved original in the shared Creative Editor, autosave immutable editor snapshots, and register exported assets for manual download/reuse.
-- **CueLayers contracts added** - CampaignCue now has CueLayers constants, types, validation schemas, immutable Storage paths, model capability registry, source-package artifacts, truth snapshots, layer index, quality report, repair record, correction event, and export metadata contracts.
+- **CueLayers contracts added** - CampaignCue now has CueLayers constants, types, validation schemas, immutable Storage paths, model capability registry, source-package artifacts with truth snapshots, layer index, repair record, and export metadata contracts. Quality report, job event, correction event, and cost contracts are reserved for provider/decomposition mode.
 - **CueLayers API routes added** - Protected routes now cover upload, design list, job read, boot, autosave, fallback repair record, and revision-pinned export.
 
 ### Boundaries
@@ -294,7 +308,7 @@
 ### Cost
 
 - **No model cost introduced** - The current CueLayers path uses validation, Storage, Firestore pointers, and shared-editor export registration only. Provider calls and worker fan-out remain off.
-- **Firestore stays pointer-only** - Large source packages, snapshots, reconstruction documents, layer indexes, quality reports, and exports live in Storage while Firestore stores compact state and pointers.
+- **Firestore stays pointer-only** - Active v1 source packages, layer indexes, editor snapshots, and exports live in Storage while Firestore stores compact state and pointers. Reconstruction documents, quality reports, and diagnostics remain provider-mode Storage contracts.
 
 ### Validation
 

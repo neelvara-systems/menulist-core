@@ -1,6 +1,6 @@
 # Printable Asset Templates - Website Content
 
-**Last Updated:** June 15, 2026
+**Last Updated:** June 17, 2026
 
 ## Publication Decision
 
@@ -14,11 +14,11 @@ Print files that look ready.
 
 ### Subheadline
 
-Download table, counter, entrance, feedback, and paper menu files with your logo, color, current menu link, and supported editor customization already connected.
+Download table, counter, entrance, feedback, flyer, gift certificate, business card, invitation, postcard, product tag, campaign poster, and paper menu files with your logo, color, current menu link, and supported editor customization already connected.
 
 Add two explicit proof points:
 
-Owners can choose supported finished template families for each asset type. QR/display assets can expose up to nine materially different style families; full Print Menu should show only its real unique PDF layouts until all nine families are genuinely supported.
+Owners can choose supported finished template families for each asset type. QR/display/campaign assets can expose up to nine materially different style families; full Print Menu should show only its real unique PDF layouts until all nine families are genuinely supported.
 
 Supported desktop assets can open in the editor from the selected template. Owners can adjust copy, placement, and brand details without breaking the QR link or required scan-safe placement.
 
@@ -38,7 +38,7 @@ MenuList creates finished print files from the current approved menu. The owner 
 
 | Benefit | Copy | Visual |
 | --- | --- | --- |
-| Ready for tables and counters | Table cards, counter stickers, entrance posters, feedback QR, and paper menu files are in one place. | Screenshot of Assets screen with asset type rail. |
+| Ready for tables, counters, and campaigns | Table cards, counter stickers, entrance posters, feedback QR, flyers, gift certificates, business cards, invitations, postcards, product tags, campaign posters, and paper menu files are in one place. | Screenshot of Assets screen with asset type rail. |
 | Uses the business identity | Store name, logo, and brand color are applied automatically. | Close-up of template preview. |
 | Current menu link | QR files point back to the current menu source. | QR card preview with short link. |
 | No blank design work | The owner chooses a finished style, optionally adjusts supported desktop assets from that template, and downloads. | Template grid and editor-backed preview. |
@@ -73,8 +73,8 @@ MenuList creates finished print files from the current approved menu. The owner 
 ## SEO Meta
 
 - **Page Title:** Menu QR and Print Files for Small Businesses
-- **Meta Description:** Download branded table cards, counter stickers, feedback QR files, and printable menu PDFs from your current MenuList menu.
-- **Target Keywords:** menu QR card, printable menu QR, table tent menu, restaurant print assets, small business QR menu
+- **Meta Description:** Download branded table cards, flyers, gift certificates, postcards, campaign posters, feedback QR files, and printable menu PDFs from your current MenuList menu.
+- **Target Keywords:** menu QR card, printable menu QR, table tent menu, small business print assets, flyer maker for small business
 
 ## Approved Language
 
@@ -91,7 +91,7 @@ Use:
 
 Avoid:
 
-- "AI-powered"
+- "model-owned"
 - "smart"
 - "dynamic"
 - "unlimited design"

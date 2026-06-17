@@ -17,11 +17,11 @@
 | Nav item | `Assets` appears immediately after `Use MenuList`. |
 | Route | `/assets` opens dedicated asset dashboard. |
 | Project selector | Multiple projects can be selected before download, and URL/feedback/last modified metadata follow the selected project. |
-| Asset rail | Print Menu, Table Tent, Single Table Card, Counter Sticker, Entrance Poster, Feedback QR, Complete Menu Kit appear. |
-| Template count | QR/display assets show 9 template families; full Print Menu shows only the unique supported PDF layouts. |
+| Asset rail | Print Menu, Table Tent, Single Table Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, Invitation, Postcard, Product Tag, Campaign Poster, and Complete Menu Kit appear. |
+| Template count | Editor-backed QR/display/campaign assets show 9 template families; full Print Menu shows only the unique supported PDF layouts. |
 | Preview | Template modal/sheet automatically shows a generated output preview using real store/logo/color/URL and no embedded PDF viewer. |
 | Format actions | Single printable assets offer separate PDF and image downloads. Complete Menu Kit stays ZIP-only. |
-| Customize action | Table Tent, Single Card, Counter Sticker, Entrance Poster, and Feedback QR show **Customize in editor** on desktop. Print Menu and Complete Menu Kit do not. |
+| Customize action | Table Tent, Single Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, Invitation, Postcard, Product Tag, and Campaign Poster show **Customize in editor** on desktop. Print Menu and Complete Menu Kit do not. |
 | Customize editor | The fullscreen editor opens from the selected template, QR/link source layers are locked, editable copy can change, no MenuList attribution layer appears in the editor canvas, and Image/Print PDF download uses the latest edited document. |
 | Runtime attribution | Non-premium Image/Print PDF output includes MenuList attribution added during render, while the saved editor document remains free of MenuList branding layers. |
 | Save as template | The fullscreen editor exposes **Save as template** for supported non-menu assets and saves the current neutral document to Saved designs. |

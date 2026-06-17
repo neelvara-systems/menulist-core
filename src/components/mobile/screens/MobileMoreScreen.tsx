@@ -130,6 +130,9 @@ const platformInternalScreens: MobilePlatformInternalScreenKey[] = [
     'costPosture',
     'assetTemplates',
     'pricingPlans',
+    'messagingOnboardingMonitor',
+    'ownerNotificationMonitor',
+    'platformNotificationMonitor',
 ];
 
 const answerlatticeInternalScreens: MobilePlatformInternalScreenKey[] = [
@@ -211,6 +214,9 @@ export type MoreSubScreen =
     | 'costPosture'
     | 'assetTemplates'
     | 'pricingPlans'
+    | 'messagingOnboardingMonitor'
+    | 'ownerNotificationMonitor'
+    | 'platformNotificationMonitor'
     | 'supportTickets'
     | 'feedbackAdmin'
     | 'knowledgeBase'
@@ -451,7 +457,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (['resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(currentScreen)) {
             return 'resellerHub';
         }
-        if (currentScreen === 'ownerBusinessAssistantMonitor') {
+        if (['ownerBusinessAssistantMonitor', 'costPosture', 'messagingOnboardingMonitor', 'ownerNotificationMonitor', 'platformNotificationMonitor'].includes(currentScreen)) {
             return 'main';
         }
         if (isPlatformInternalScreen(currentScreen)) {
@@ -530,6 +536,9 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         ...(FEATURE_FLAGS.ENABLE_PLATFORM_COST_POSTURE ? [{ key: 'costPosture', icon: <LuDollarSign color={token.colorSuccess} size={20} />, keywords: ['cost', 'firebase cost', 'ai cost', 'posture', 'guardrails'], label: 'Cost Posture', description: 'Cost guardrails, expensive-operation signals, and platform cost posture.', onClick: () => openSubScreen('costPosture') }] : []),
         { key: 'schedulerMonitor', icon: <LuClock3 color={token.colorWarning} size={20} />, keywords: ['scheduler', 'nightly', 'jobs', 'settlement', 'decision intelligence'], label: 'Scheduler Monitor', description: 'Nightly jobs, analytics settlement, and scheduler recovery controls.', onClick: () => openSubScreen('schedulerMonitor') },
         { key: 'extractionMonitor', icon: <LuSparkles color={token.colorPrimary} size={20} />, keywords: ['extraction', 'upload', 'ai', 'jobs', 'quality'], label: 'Extraction Monitor', description: 'Menu extraction health, cost, quality, and recent job failures.', onClick: () => openSubScreen('extractionMonitor') },
+        { key: 'messagingOnboardingMonitor', icon: <LuMessageCircle color={token.colorInfo} size={20} />, keywords: ['messaging onboarding', 'whatsapp', 'preview fixes', 'publish readiness'], label: 'Messaging Onboarding', description: 'Messaging onboarding sessions, preview fixes, and publish readiness.', onClick: () => openSubScreen('messagingOnboardingMonitor') },
+        { key: 'ownerNotificationMonitor', icon: <LuMail color={token.colorWarning} size={20} />, keywords: ['owner notifications', 'email', 'templates', 'delivery'], label: 'Owner Notifications', description: 'Owner notification templates and delivery operations.', onClick: () => openSubScreen('ownerNotificationMonitor') },
+        { key: 'platformNotificationMonitor', icon: <LuMail color={token.colorPrimary} size={20} />, keywords: ['platform notifications', 'system notices', 'templates', 'delivery'], label: 'Platform Notifications', description: 'Platform notification templates and delivery operations.', onClick: () => openSubScreen('platformNotificationMonitor') },
         ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR ? [{ key: 'answerlatticeIntakeMonitor', icon: <LuBookOpen color={token.colorSuccess} size={20} />, keywords: ['answerlattice', 'intake', 'knowledge', 'credits', 'ledger', 'scheduler'], label: 'Answerlattice Intake', description: 'Answerlattice intake jobs, support-credit ledger, media extraction, and summary health.', onClick: () => openSubScreen('answerlatticeIntake') }] : []),
     ] : [];
 

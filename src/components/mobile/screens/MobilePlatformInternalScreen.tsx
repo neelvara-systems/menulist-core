@@ -22,6 +22,9 @@ export type MobilePlatformInternalScreenKey =
     | 'costPosture'
     | 'assetTemplates'
     | 'pricingPlans'
+    | 'messagingOnboardingMonitor'
+    | 'ownerNotificationMonitor'
+    | 'platformNotificationMonitor'
     | 'supportTickets'
     | 'feedbackAdmin'
     | 'knowledgeBase'
@@ -70,6 +73,9 @@ const OwnerBusinessAssistantMonitor = dynamic(() => import('@template/main-app/p
 const PlatformCostPosture = dynamic(() => import('@template/main-app/platform/costPosture'), { loading: RouteLoading, ssr: false });
 const PlatformAssetTemplates = dynamic(() => import('@template/platform/assetTemplates'), { loading: RouteLoading, ssr: false });
 const PricingPlans = dynamic(() => import('@template/platform/pricingPlans'), { loading: RouteLoading, ssr: false });
+const MessagingOnboardingMonitor = dynamic(() => import('@template/main-app/platform/messagingOnboardingMonitor'), { loading: RouteLoading, ssr: false });
+const OwnerNotificationMonitor = dynamic(() => import('@template/main-app/platform/ownerNotificationMonitor'), { loading: RouteLoading, ssr: false });
+const PlatformNotificationMonitor = dynamic(() => import('@template/main-app/platform/platformNotificationMonitor'), { loading: RouteLoading, ssr: false });
 const SupportTickets = dynamic(() => import('@template/platform/supportTickets'), { loading: RouteLoading, ssr: false });
 const FeedbackAdmin = dynamic(() => import('@template/platform/feedbackAdmin'), { loading: RouteLoading, ssr: false });
 const KnowledgeBase = dynamic(() => import('@template/platform/knowledgeBase'), { loading: RouteLoading, ssr: false });
@@ -146,7 +152,7 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         Component: PlatformAssetTemplates,
         desktopPath: '/platform/asset-templates',
         description: 'Manage platform print asset templates and business-category template coverage.',
-        minWidth: 900,
+        minWidth: 0,
         surface: 'Asset Templates',
         title: 'Asset Templates',
     },
@@ -157,6 +163,30 @@ const PLATFORM_SCREEN_CONFIG: Record<MobilePlatformInternalScreenKey, PlatformSc
         minWidth: 760,
         surface: 'Pricing Plans',
         title: 'Pricing Plans',
+    },
+    messagingOnboardingMonitor: {
+        Component: MessagingOnboardingMonitor,
+        desktopPath: '/ops/messaging-onboarding',
+        description: 'Monitor messaging onboarding sessions, preview fixes, and publish readiness.',
+        minWidth: 760,
+        surface: 'Messaging Onboarding',
+        title: 'Messaging Onboarding',
+    },
+    ownerNotificationMonitor: {
+        Component: OwnerNotificationMonitor,
+        desktopPath: '/ops/owner-notifications',
+        description: 'Review and send owner notification templates and delivery operations.',
+        minWidth: 760,
+        surface: 'Owner Notifications',
+        title: 'Owner Notifications',
+    },
+    platformNotificationMonitor: {
+        Component: PlatformNotificationMonitor,
+        desktopPath: '/ops/platform-notifications',
+        description: 'Manage platform notification templates and platform-wide delivery operations.',
+        minWidth: 760,
+        surface: 'Platform Notifications',
+        title: 'Platform Notifications',
     },
     supportTickets: {
         Component: SupportTickets,
@@ -302,7 +332,7 @@ export default function MobilePlatformInternalScreen({ onBack, screen }: MobileP
                 style={{
                     maxWidth: '100%',
                     minWidth: 0,
-                    overflowX: 'hidden',
+                    overflowX: config.minWidth ? 'auto' : 'hidden',
                     padding: 12,
                     WebkitOverflowScrolling: 'touch',
                 }}

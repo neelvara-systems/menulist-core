@@ -55,7 +55,7 @@ The current implementation ships the conservative CueLayers spine:
 - Owner upload of PNG/JPEG/WebP from CampaignCue Editor or Asset Library.
 - CampaignCue-authenticated API routes for upload, design list, job read, boot, autosave, fallback repair record, and Storage-backed export registration.
 - CampaignCue Asset Library download handoff for private Storage-backed exports. Download URLs are generated at request time and are not persisted.
-- CampaignCue source package, business/protected-text/brand/rights snapshots, quality report, reconstruction record, editor projection, layer index, version snapshots, repair requests, correction events, and export records.
+- CampaignCue source package with inline business/protected-text/brand/rights snapshots, layer index, version snapshots, repair requests, and export records. Quality reports, reconstruction records, editor projection artifacts, job events, correction events, and cost ledgers are reserved for provider/decomposition mode.
 - Immutable CampaignCue Storage paths under `campaigncue/cue-layers/{workspaceId}/{designId}/...`.
 - `CreativeEditorDocumentSnapshot` persistence with `cue-asset://assetId` durable references and boot-time signed URL hydration.
 - Autosave validates image references against the current CueLayers layer index so saved documents cannot point to unknown `cue-asset://` ids.

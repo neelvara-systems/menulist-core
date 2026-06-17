@@ -4,7 +4,7 @@
 
 **Decision:** Partial mobile support is required.
 
-Owners may need to download or share a table card, counter file, or poster from a phone. The full side-by-side desktop catalog is not mobile-friendly, but a focused mobile version is valuable.
+Owners may need to download or share a table card, counter file, poster, flyer, gift certificate, business card, invitation, postcard, or tag from a phone. The full side-by-side desktop catalog is not mobile-friendly, but a focused mobile version is valuable.
 
 ## Feature Admission Test
 

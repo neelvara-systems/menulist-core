@@ -358,6 +358,59 @@
   line-height: 1.45;
 }
 
+.titleBlock h4 {
+  margin: 0;
+  color: #243b35;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.outputPickerGroups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.outputPickerGroup {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border-top: 1px solid #e3ddcf;
+  padding-top: 10px;
+}
+
+.outputPickerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.outputChoice,
+.outputChoiceSelected {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  border: 1px solid #d8d2c5;
+  padding: 9px 12px;
+  color: #243b35;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.outputChoice {
+  background: #fffdfa;
+}
+
+.outputChoiceSelected {
+  border-color: #24564d;
+  background: #24564d;
+  color: #fff;
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -802,6 +855,15 @@
   .twoGrid,
   .formGrid {
     grid-template-columns: 1fr;
+  }
+
+  .outputPickerGroups {
+    grid-template-columns: 1fr;
+  }
+
+  .outputChoice,
+  .outputChoiceSelected {
+    width: 100%;
   }
 
   .statusGrid {

@@ -57,6 +57,7 @@ This isolates schema, storage, editor, validation, and export bugs from nondeter
 | Text safety | Semantic mismatch blocks editable text. |
 | Business truth matching | Protected fields from CampaignCue facts block or downgrade conflicting text candidates. |
 | Business truth snapshot replay | Facts changed after job creation do not change replay; reconstruction uses the original source-package truth snapshot. |
+| Compact source snapshot | Source package snapshots keep only CueLayers-relevant business facts, item/service names, price labels, and contacts; catalog image URLs and source-reference arrays are not duplicated into the CueLayers package. |
 | Vector eligibility | Photographic/high-texture/complex path candidates remain raster. |
 | Layer cap | Excess candidates merge/downgrade instead of overloading editor. |
 | Status transitions | Invalid job transitions fail. |
@@ -152,9 +153,12 @@ This isolates schema, storage, editor, validation, and export bugs from nondeter
 | --- | --- |
 | Workspace load | Does not load all CueLayers artifacts. |
 | Status UI | Uses one doc listener or bounded polling and unsubscribes/stops. |
+| Active v1 upload writes | Writes original image, source package JSON with inline truth snapshots, layer index JSON, editor snapshot JSON, design doc, job doc, version doc, and optional idempotency completion only. Does not write separate truth snapshot JSON, projection JSON, reconstruction JSON, quality report JSON/doc, job event, or cost record. |
 | Autosave typing | Debounced; no write per keystroke. |
+| Autosave layer index reuse | Normal text/shape edits write one editor snapshot and version pointer but do not rewrite the unchanged layer index. |
 | Reopen design | Reads pointer doc plus one runtime artifact, not full history. |
-| Export | Creates one export request and one output artifact. |
+| Repair fallback | Writes one repair request only; no repair patch artifact or correction-event doc until provider repair is enabled. |
+| Export | Creates one export record and one output artifact, registers Asset Library metadata, and does not write duplicate export report JSON or job event. |
 | Duplicate image upload | Dedupes or warns when hash already exists. |
 | Duplicate generated design | Same source hash + design intent hash + prompt/model version does not create a duplicate provider job. |
 | Premium model route | Premium image model is blocked when cost estimate or owner/account capacity fails. |

@@ -29,7 +29,6 @@ import type {
     CampaignCueCueLayerDesign,
     CampaignCueCueLayerIndex,
     CampaignCueCueLayerJob,
-    CampaignCueCueLayerQualityReport,
     CampaignCueCueLayerUploadResult,
 } from "@type/campaigncueCueLayers";
 import type { CreativeEditorDocument, CreativeEditorElement } from "@/modules/creative-editor/types";
@@ -53,8 +52,6 @@ import {
 } from "./storagePaths";
 
 const nowTimestamp = () => admin.firestore.Timestamp.now();
-type CampaignCueCueLayerFirestoreBatch = ReturnType<typeof firestoreAdmin.batch>;
-
 const sanitizeForAdminFirestore = (value: any): any => {
     if (value === undefined) return null;
     if (value === null) return null;
@@ -273,41 +270,34 @@ async function checkCueLayersIdempotency(params: {
     }
 }
 
-function enqueueCueLayerEvent(batch: CampaignCueCueLayerFirestoreBatch, params: {
-    action: string;
-    createdAt?: unknown;
-    designId?: string;
-    jobId?: string;
-    metadata?: Record<string, unknown>;
-    scope: CampaignCueSessionScope;
-    workspaceId: string;
-}) {
-    const ref = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOB_EVENTS)
-        .doc(buildCampaignCueCueLayerId("cccl_event"));
-    batch.set(ref, sanitizeForAdminFirestore({
-        id: ref.id,
-        workspaceId: params.workspaceId,
-        actorId: params.scope.userId,
-        action: params.action,
-        designId: params.designId,
-        jobId: params.jobId,
-        metadata: params.metadata || {},
-        createdAt: params.createdAt || nowTimestamp(),
-    }));
-}
-
 function businessTruthSnapshot(businessBrain: CampaignCueBusinessBrain) {
+    const catalog = {
+        items: businessBrain.catalog.items.map((item) => ({
+            available: item.available,
+            category: item.category,
+            id: item.id,
+            name: item.name,
+            priceLabel: item.priceLabel,
+        })),
+        services: businessBrain.catalog.services.map((service) => ({
+            available: service.available,
+            category: service.category,
+            id: service.id,
+            name: service.name,
+            priceLabel: service.priceLabel,
+        })),
+    };
     return {
         businessName: businessBrain.name,
         locality: businessBrain.locality || "",
         contacts: businessBrain.contacts,
-        catalog: businessBrain.catalog,
+        catalog,
         brandVoice: businessBrain.brandKit.voice,
         sourceSnapshotId: businessBrain.sourceSnapshotId,
         snapshotHash: stableJsonHash({
             name: businessBrain.name,
             contacts: businessBrain.contacts,
-            catalog: businessBrain.catalog,
+            catalog,
         }),
     };
 }
@@ -321,8 +311,8 @@ function protectedTextSnapshot(businessBrain: CampaignCueBusinessBrain) {
         businessBrain.contacts.whatsapp,
         businessBrain.contacts.bookingUrl,
         businessBrain.contacts.publicMenuUrl,
-        ...businessBrain.catalog.items.map((item) => item.name),
-        ...businessBrain.catalog.services.map((service) => service.name),
+        ...businessBrain.catalog.items.flatMap((item) => [item.name, item.priceLabel]),
+        ...businessBrain.catalog.services.flatMap((service) => [service.name, service.priceLabel]),
     ].filter(Boolean);
 }
 
@@ -390,7 +380,6 @@ export async function createCampaignCueCueLayerUploadServer(params: {
     const reconstructionId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.RECONSTRUCTION);
     const projectionId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.PROJECTION);
     const versionId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.VERSION);
-    const qualityReportId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.QUALITY_REPORT);
     const ext = getCampaignCueCueLayerExtension(parsed.mimeType);
     const width = params.input.width || 1080;
     const height = params.input.height || 1080;
@@ -424,39 +413,20 @@ export async function createCampaignCueCueLayerUploadServer(params: {
     });
     const editorReferenceAsset = originalAsset;
 
-    const businessTruthAsset = await uploadJsonArtifact({
-        path: `${buildCueLayersStoragePaths.sourcePackage(workspaceId, designId, sourcePackageId).replace("/package.json", "")}/business-truth.json`,
-        retentionClass: "source_durable",
-        scope: assetScope,
-        value: businessTruthSnapshot(businessBrain),
-    });
-    const protectedTextAsset = await uploadJsonArtifact({
-        path: `${buildCueLayersStoragePaths.sourcePackage(workspaceId, designId, sourcePackageId).replace("/package.json", "")}/protected-text.json`,
-        retentionClass: "source_durable",
-        scope: assetScope,
-        value: protectedTextSnapshot(businessBrain),
-    });
-    const brandAsset = await uploadJsonArtifact({
-        path: `${buildCueLayersStoragePaths.sourcePackage(workspaceId, designId, sourcePackageId).replace("/package.json", "")}/brand.json`,
-        retentionClass: "source_durable",
-        scope: assetScope,
-        value: brandSnapshot(businessBrain),
-    });
-    const rightsAsset = await uploadJsonArtifact({
-        path: `${buildCueLayersStoragePaths.sourcePackage(workspaceId, designId, sourcePackageId).replace("/package.json", "")}/rights.json`,
-        retentionClass: "source_durable",
-        scope: assetScope,
-        value: {
-            sourceRightsStatus: "owner_uploaded_claimed",
-            containsPerson: false,
-            containsLogo: Boolean(businessBrain.brandKit.logoUrl),
-            watermarkDetected: false,
-        },
-    });
+    const rightsSnapshot = {
+        sourceRightsStatus: "owner_uploaded_claimed" as const,
+        containsPerson: false,
+        containsLogo: Boolean(businessBrain.brandKit.logoUrl),
+        watermarkDetected: false,
+    };
+    const sourceSnapshots = {
+        brand: brandSnapshot(businessBrain),
+        businessTruth: businessTruthSnapshot(businessBrain),
+        protectedText: protectedTextSnapshot(businessBrain),
+        rights: rightsSnapshot,
+    };
 
     const sourcePackage: CampaignCueCreativeSourcePackage = {
-        brandSnapshotAssetId: brandAsset.assetId,
-        businessTruthSnapshotAssetId: businessTruthAsset.assetId,
         createdAt: nowTimestamp(),
         createdByUserId: params.scope.userId,
         designId,
@@ -465,20 +435,14 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         mimeType: parsed.mimeType,
         normalizedAssetId: editorReferenceAsset.assetId,
         originalAssetId: originalAsset.assetId,
-        protectedTextTruthAssetId: protectedTextAsset.assetId,
         provenance: {
             fileName: params.input.fileName,
             sourceHash: sha256,
         },
-        rights: {
-            containsLogo: Boolean(businessBrain.brandKit.logoUrl),
-            containsPerson: false,
-            sourceRightsStatus: "owner_uploaded_claimed",
-            watermarkDetected: false,
-        },
-        rightsSnapshotAssetId: rightsAsset.assetId,
+        rights: rightsSnapshot,
         schemaVersion: CAMPAIGNCUE_CUE_LAYERS.SCHEMA_VERSION,
         sha256,
+        snapshots: sourceSnapshots,
         sourceKind: params.input.sourceKind,
         sourcePackageId,
         updatedAt: nowTimestamp(),
@@ -495,10 +459,6 @@ export async function createCampaignCueCueLayerUploadServer(params: {
             assets: {
                 originalAsset,
                 editorReferenceAsset,
-                businessTruthAsset,
-                protectedTextAsset,
-                brandAsset,
-                rightsAsset,
             },
         },
     });
@@ -520,20 +480,6 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         scope: assetScope,
         value: built.layerIndex,
     });
-    const projectionAsset = await uploadJsonArtifact({
-        assetId: projectionId,
-        path: buildCueLayersStoragePaths.projection(workspaceId, designId, reconstructionId, projectionId),
-        retentionClass: "runtime_durable",
-        scope: assetScope,
-        value: { ...built.projection, layerIndexAssetId: layerIndexAsset.assetId },
-    });
-    const reconstructionAsset = await uploadJsonArtifact({
-        assetId: reconstructionId,
-        path: buildCueLayersStoragePaths.reconstruction(workspaceId, designId, reconstructionId),
-        retentionClass: "runtime_durable",
-        scope: assetScope,
-        value: built.reconstruction,
-    });
     const editorSnapshotAsset = await uploadJsonArtifact({
         assetId: versionId,
         path: buildCueLayersStoragePaths.editorDocumentSnapshot(workspaceId, designId, versionId),
@@ -541,30 +487,15 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         scope: assetScope,
         value: dehydrateDocumentAssets(built.document, collectLayerAssetIds(built.layerIndex)),
     });
-    const qualityReport: CampaignCueCueLayerQualityReport = {
-        ...built.qualityReport,
-        createdAt: nowTimestamp(),
-        id: qualityReportId,
-        jobId,
-        reportAssetId: qualityReportId,
-    };
-    const qualityAsset = await uploadJsonArtifact({
-        assetId: qualityReportId,
-        path: buildCueLayersStoragePaths.qualityReport(workspaceId, designId, qualityReportId),
-        retentionClass: "diagnostic_temporary",
-        scope: assetScope,
-        value: qualityReport,
-    });
     const now = nowTimestamp();
     const design: CampaignCueCueLayerDesign = {
         createdAt: now,
         createdByUserId: params.scope.userId,
         current: {
             creativeEditorDocumentSnapshotAssetId: editorSnapshotAsset.assetId,
-            editorProjectionAssetId: projectionAsset.assetId,
             jobId,
             layerIndexAssetId: layerIndexAsset.assetId,
-            reconstructionAssetId: reconstructionAsset.assetId,
+            layerIndexVersionId: versionId,
             revision: 1,
             versionId,
         } as CampaignCueCueLayerDesign["current"],
@@ -575,13 +506,9 @@ export async function createCampaignCueCueLayerUploadServer(params: {
             warningCount: 1,
         },
         source: {
-            brandSnapshotAssetId: brandAsset.assetId,
-            businessTruthSnapshotAssetId: businessTruthAsset.assetId,
             currentSourcePackageAssetId: sourcePackageAsset.assetId,
             kind: params.input.sourceKind,
             originalAssetId: originalAsset.assetId,
-            protectedTextTruthAssetId: protectedTextAsset.assetId,
-            rightsSnapshotAssetId: rightsAsset.assetId,
         },
         status: "needs_review",
         title: params.input.title || `${safeTitle(params.input.fileName)} layered edit`,
@@ -596,9 +523,7 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         currentArtifactIds: {
             editorSnapshotAssetId: editorSnapshotAsset.assetId,
             layerIndexAssetId: layerIndexAsset.assetId,
-            projectionAssetId: projectionAsset.assetId,
-            qualityAssetId: qualityAsset.assetId,
-            reconstructionAssetId: reconstructionAsset.assetId,
+            sourcePackageAssetId: sourcePackageAsset.assetId,
         },
         designId,
         id: jobId,
@@ -625,22 +550,6 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         layerIndexAssetId: layerIndexAsset.assetId,
         layerIndexPath: layerIndexAsset.storagePath,
         createdByUserId: params.scope.userId,
-        createdAt: now,
-    }));
-    batch.set(workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_QUALITY_REPORTS).doc(qualityReport.id), sanitizeForAdminFirestore({
-        ...qualityReport,
-        reportAssetId: qualityAsset.assetId,
-    }));
-    const eventRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOB_EVENTS)
-        .doc(buildCampaignCueCueLayerId("cccl_event"));
-    batch.set(eventRef, sanitizeForAdminFirestore({
-        id: eventRef.id,
-        workspaceId,
-        actorId: params.scope.userId,
-        action: "cue_layers_upload_completed",
-        designId,
-        jobId,
-        metadata: { outcome: job.outcome, sourceKind: job.sourceKind },
         createdAt: now,
     }));
     if (params.input.idempotencyKey) {
@@ -697,8 +606,9 @@ export async function bootCampaignCueCueLayerDesignServer(params: {
     const { design, workspaceId } = await getCueLayerDesign(params);
     const versionId = (design.current as CampaignCueCueLayerDesign["current"] & { versionId?: string }).versionId;
     if (!versionId) throw new Error("CueLayers version pointer is missing.");
+    const layerIndexVersionId = (design.current as CampaignCueCueLayerDesign["current"] & { layerIndexVersionId?: string }).layerIndexVersionId || versionId;
     const documentPath = buildCueLayersStoragePaths.editorDocumentSnapshot(workspaceId, design.id, versionId);
-    const layerIndexPath = buildCueLayersStoragePaths.layerIndex(workspaceId, design.id, versionId);
+    const layerIndexPath = buildCueLayersStoragePaths.layerIndex(workspaceId, design.id, layerIndexVersionId);
     const [documentValue, layerIndex] = await Promise.all([
         readJsonArtifact<CampaignCueCreativeEditorDocumentSnapshot>(documentPath),
         readJsonArtifact<CampaignCueCueLayerIndex>(layerIndexPath),
@@ -719,7 +629,8 @@ export async function autosaveCampaignCueCueLayerDesignServer(params: {
     if (params.input.expectedRevision != null && params.input.expectedRevision !== design.current.revision) {
         return { error: "This design changed in another session. Refresh before saving.", status: 409 as const };
     }
-    const layerIndexVersionId = (design.current as CampaignCueCueLayerDesign["current"] & { versionId?: string }).versionId;
+    const layerIndexVersionId = (design.current as CampaignCueCueLayerDesign["current"] & { layerIndexVersionId?: string; versionId?: string }).layerIndexVersionId
+        || (design.current as CampaignCueCueLayerDesign["current"] & { versionId?: string }).versionId;
     const currentLayerIndex = layerIndexVersionId
         ? await readJsonArtifact<CampaignCueCueLayerIndex>(buildCueLayersStoragePaths.layerIndex(workspaceId, design.id, layerIndexVersionId))
         : { schemaVersion: CAMPAIGNCUE_CUE_LAYERS.LAYER_INDEX_SCHEMA_VERSION, workspaceId, designId: design.id, reconstructionId: "", entries: [] };
@@ -730,37 +641,29 @@ export async function autosaveCampaignCueCueLayerDesignServer(params: {
     const nextRevision = design.current.revision + 1;
     const versionId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.VERSION);
     const scope = { workspaceId, designId: design.id, versionId };
-    const [documentAsset, layerIndexAsset] = await Promise.all([
-        uploadJsonArtifact({
-            assetId: versionId,
-            path: buildCueLayersStoragePaths.editorDocumentSnapshot(workspaceId, design.id, versionId),
-            retentionClass: "runtime_durable",
-            scope,
-            value: {
-                ...dehydrated,
-                metadata: {
-                    ...dehydrated.metadata,
-                    cueLayers: {
-                        ...dehydrated.metadata?.cueLayers,
-                        designId: design.id,
-                        revision: nextRevision,
-                    },
+    const documentAsset = await uploadJsonArtifact({
+        assetId: versionId,
+        path: buildCueLayersStoragePaths.editorDocumentSnapshot(workspaceId, design.id, versionId),
+        retentionClass: "runtime_durable",
+        scope,
+        value: {
+            ...dehydrated,
+            metadata: {
+                ...dehydrated.metadata,
+                cueLayers: {
+                    ...dehydrated.metadata?.cueLayers,
+                    designId: design.id,
+                    revision: nextRevision,
                 },
             },
-        }),
-        uploadJsonArtifact({
-            path: buildCueLayersStoragePaths.layerIndex(workspaceId, design.id, versionId),
-            retentionClass: "runtime_durable",
-            scope,
-            value: currentLayerIndex,
-        }),
-    ]);
+        },
+    });
     const now = nowTimestamp();
     const update = {
         current: {
             ...design.current,
             creativeEditorDocumentSnapshotAssetId: documentAsset.assetId,
-            layerIndexAssetId: layerIndexAsset.assetId,
+            layerIndexVersionId,
             revision: nextRevision,
             versionId,
         },
@@ -781,8 +684,10 @@ export async function autosaveCampaignCueCueLayerDesignServer(params: {
             revision: nextRevision,
             creativeEditorDocumentSnapshotAssetId: documentAsset.assetId,
             creativeEditorDocumentSnapshotPath: documentAsset.storagePath,
-            layerIndexAssetId: layerIndexAsset.assetId,
-            layerIndexPath: layerIndexAsset.storagePath,
+            layerIndexAssetId: design.current.layerIndexAssetId,
+            layerIndexPath: layerIndexVersionId
+                ? buildCueLayersStoragePaths.layerIndex(workspaceId, design.id, layerIndexVersionId)
+                : undefined,
             createdByUserId: params.scope.userId,
             createdAt: now,
         }),
@@ -808,25 +713,9 @@ export async function repairCampaignCueCueLayerDesignServer(params: {
     }
     const repairId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.REPAIR);
     const now = nowTimestamp();
-    await uploadJsonArtifact({
-        assetId: repairId,
-        path: buildCueLayersStoragePaths.repairPatch(workspaceId, design.id, repairId),
-        retentionClass: "repair_durable",
-        scope: { workspaceId, designId: design.id, repairId },
-        value: {
-            schemaVersion: CAMPAIGNCUE_CUE_LAYERS.SCHEMA_VERSION,
-            repairId,
-            designId: design.id,
-            sourceRevision: design.current.revision,
-            correctionType: params.input.correctionType,
-            layerId: params.input.layerId,
-            createdAt: new Date().toISOString(),
-        },
-    });
-    const batch = firestoreAdmin.batch();
-    batch.set(
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_REPAIR_REQUESTS).doc(repairId),
-        sanitizeForAdminFirestore({
+    await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_REPAIR_REQUESTS)
+        .doc(repairId)
+        .set(sanitizeForAdminFirestore({
             id: repairId,
             workspaceId,
             designId: design.id,
@@ -838,20 +727,7 @@ export async function repairCampaignCueCueLayerDesignServer(params: {
             createdByUserId: params.scope.userId,
             createdAt: now,
             updatedAt: now,
-        }),
-    );
-    batch.set(
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_CORRECTION_EVENTS).doc(buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.CORRECTION)),
-        sanitizeForAdminFirestore({
-            workspaceId,
-            designId: design.id,
-            correctionType: params.input.correctionType,
-            layerId: params.input.layerId,
-            userId: params.scope.userId,
-            createdAt: now,
-        }),
-    );
-    await batch.commit();
+        }));
     return { repairId, status: "ready" as const, message: "Original fallback is available." };
 }
 
@@ -882,23 +758,6 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
         },
         path: exportOutputPath,
     });
-    const exportReportAsset = await uploadJsonArtifact({
-        assetId: exportId,
-        path: buildCueLayersStoragePaths.exportReport(workspaceId, design.id, exportId),
-        retentionClass: "export_durable",
-        scope: { workspaceId, designId: design.id, exportId },
-        value: {
-            schemaVersion: CAMPAIGNCUE_CUE_LAYERS.SCHEMA_VERSION,
-            exportId,
-            designId: design.id,
-            sourceRevision: params.input.sourceRevision,
-            format: params.input.format,
-            outputSha256: sha256Hex(renderedExport.buffer),
-            outputStorageGeneration: exportUpload.generation,
-            status: "ready",
-            createdAt: new Date().toISOString(),
-        },
-    });
     const assetInput: CampaignCueAssetInput = {
         name: `${design.title} export`,
         assetType: "export",
@@ -912,10 +771,9 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
         sizeBytes: exportUpload.size,
     };
     const asset = await createCampaignCueAssetServer({ input: assetInput, scope: params.scope });
-    const batch = firestoreAdmin.batch();
-    batch.set(
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_EXPORTS).doc(exportId),
-        sanitizeForAdminFirestore({
+    await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_EXPORTS)
+        .doc(exportId)
+        .set(sanitizeForAdminFirestore({
             id: exportId,
             workspaceId,
             designId: design.id,
@@ -925,24 +783,13 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
             status: "ready",
             sourceCreativeEditorDocumentSnapshotAssetId: design.current.creativeEditorDocumentSnapshotAssetId,
             outputAssetId: asset.id,
-            reportAssetId: exportReportAsset.assetId,
             sizeBytes: exportUpload.size,
             storageGeneration: exportUpload.generation,
             storagePath: exportOutputPath,
             createdByUserId: params.scope.userId,
             createdAt: now,
             updatedAt: now,
-        }),
-    );
-    enqueueCueLayerEvent(batch, {
-        action: "cue_layers_export_ready",
-        createdAt: now,
-        designId: design.id,
-        metadata: { exportId, assetId: asset.id, format: params.input.format },
-        scope: params.scope,
-        workspaceId,
-    });
-    await batch.commit();
+        }));
     return { asset, exportId, status: "ready" as const };
 }
 

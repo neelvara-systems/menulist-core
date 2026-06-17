@@ -6,7 +6,7 @@ MenuList gives every business ready-to-print menu and QR files that match its br
 
 ## Feature Narrative
 
-Small business owners do not think of table cards, counter stickers, and printed menus as "assets". They think of them as the face of the business. A poor QR card makes the business look unfinished even when the digital menu is correct.
+Small business owners do not think of table cards, counter stickers, flyers, gift vouchers, postcards, posters, and printed menus as "assets". They think of them as the face of the business. A poor QR card or rushed flyer makes the business look unfinished even when the digital menu is correct.
 
 Printable Asset Templates turns those files into a finished catalog. The owner chooses the file and style, then downloads. When a practical adjustment is needed, supported desktop assets open from the finished template in a governed editor with the QR link protected. Store name, logo, color, menu link, feedback link, and MenuList branding policy are handled automatically.
 
@@ -42,7 +42,7 @@ Printable Asset Templates turns those files into a finished catalog. The owner c
 ## Avoid
 
 - "Unlimited creative control"
-- "AI-powered templates"
+- "model-owned templates"
 - "Smart design"
 - "Unlimited creative control"
 - "Best-performing template"
@@ -62,7 +62,7 @@ Printable Asset Templates turns those files into a finished catalog. The owner c
 | --- | --- |
 | Restaurant | Table tent and full print menu. |
 | Cafe | Counter card and entrance poster. |
-| Salon | Single counter card and feedback QR. |
+| Salon | Single counter card, feedback QR, invitation, postcard, and gift certificate. |
 | Spa | Botanical or soft template family for booking/menu/service list. |
 | Bakery | Entrance poster and takeaway card from Menu Kit. |
 | Clinic or service counter | QR-first card and clean utility backup. |

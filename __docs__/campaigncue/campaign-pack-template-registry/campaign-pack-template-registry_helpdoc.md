@@ -14,13 +14,30 @@ You do not need to choose a technical category. CampaignCue uses your saved busi
 
 1. Open CampaignCue.
 2. Go to the Daily Campaign Desk or Campaign Pack screen.
-3. Choose a suggested pack or open templates.
-4. Pick a template that matches your goal, event, or channel.
-5. Add any missing details CampaignCue asks for.
-6. Review the checks.
-7. Download or copy the campaign pack.
+3. Choose the suggested pack or open templates.
+4. If needed, choose what the pack should help with: WhatsApp, Google, Instagram, print, staff sharing, ad handoff, old poster reuse, or custom size.
+5. Pick a template that matches your goal, event, or channel.
+6. Add any missing details CampaignCue asks for.
+7. Review the checks.
+8. Download or copy the campaign pack.
 
 Screenshot slot: Template cards on the Campaign Pack screen.
+
+## Choose What You Need
+
+CampaignCue does not ask you to browse a long list of design formats. It shows business-use choices:
+
+- WhatsApp sales pack,
+- booking push pack,
+- Google local update,
+- Instagram post and story,
+- poster or flyer,
+- staff share pack,
+- ad handoff pack,
+- reuse old poster or image,
+- custom size.
+
+Choosing one of these filters the loaded pack templates on your device. It does not create another template search charge.
 
 ## How To Find Festival Or Event Templates
 
@@ -77,6 +94,7 @@ CampaignCue keeps the original safe. Some text or image parts may stay as an ima
 
 - Save packs that worked well.
 - Use event tags for festival campaigns.
+- Choose the output you need before searching if you already know where you want to use the campaign.
 - Add real photos when possible.
 - Record what happened after using a pack so CampaignCue can suggest better options next time.
 
@@ -88,4 +106,3 @@ CampaignCue keeps the original safe. Some text or image parts may stay as an ima
 - Design Cue
 - CueLayers
 - Result Memory
-

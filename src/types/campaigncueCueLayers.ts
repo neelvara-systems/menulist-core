@@ -64,6 +64,26 @@ export interface CampaignCueCueLayerRightsMetadata {
     watermarkDetected?: boolean;
 }
 
+export interface CampaignCueCueLayerSourceSnapshots {
+    brand: {
+        logoUrl?: string;
+        name: string;
+        primaryColor?: string;
+        voice?: string;
+    };
+    businessTruth: {
+        brandVoice?: string;
+        catalog?: unknown;
+        contacts?: unknown;
+        businessName: string;
+        locality?: string;
+        snapshotHash: string;
+        sourceSnapshotId?: string;
+    };
+    protectedText: string[];
+    rights: CampaignCueCueLayerRightsMetadata;
+}
+
 export interface CampaignCueCreativeSourcePackage {
     brandSnapshotAssetId?: string;
     businessTruthSnapshotAssetId?: string;
@@ -91,6 +111,7 @@ export interface CampaignCueCreativeSourcePackage {
     schemaVersion: string;
     seedObservationAssetId?: string;
     sha256: string;
+    snapshots?: CampaignCueCueLayerSourceSnapshots;
     sourceKind: CampaignCueCueLayerSourceKind;
     sourcePackageId: string;
     updatedAt?: unknown;
@@ -106,6 +127,7 @@ export interface CampaignCueCueLayerDesign {
         editorProjectionAssetId?: string;
         jobId?: string;
         layerIndexAssetId?: string;
+        layerIndexVersionId?: string;
         previewAssetId?: string;
         reconstructionAssetId?: string;
         revision: number;

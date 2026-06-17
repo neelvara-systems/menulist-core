@@ -2,22 +2,24 @@
 
 ## Status
 
-Safe upload spine implemented. CueLayers collections, rules, indexes, immutable Storage paths, source packages, version snapshots, quality summaries, and export records exist in code. Long-running worker targets and provider decomposition are not active yet.
+Safe upload spine implemented. The active v1 runtime keeps CueLayers lightweight: one source package artifact with inline compact business/protected-text/brand/rights snapshots, one layer index artifact, one current editor snapshot, compact design/job/version/export/repair documents, and Storage-backed owner exports. Long-running worker targets, provider decomposition, diagnostic quality reports, job events, correction-event learning streams, and cost ledgers remain dormant contracts until those providers are enabled.
 
 Current implementation notes:
 
 - Firestore rules expose scoped read-only access for CueLayers design/job/version/export/repair/correction/quality documents and keep cost/review samples admin-only.
 - Storage rules allow scoped workspace-member reads under `campaigncue/cue-layers/{workspaceId}/{designId}/...` and deny client writes/deletes.
-- Server/Admin code writes all CueLayers artifacts and metadata through CampaignCue workspace scope.
+- Server/Admin code writes active CueLayers artifacts and metadata through CampaignCue workspace scope.
 - The active path is upload -> flat-safe editor projection -> autosave/version -> Storage-backed PNG export registration. Provider calls are not active, so provider cost is zero in the current runtime.
 - Asset Library downloads for private Storage-backed exports use runtime signed URLs. Signed URLs are not stored in Firestore or durable editor JSON.
+- Active v1 avoids duplicate diagnostic writes: no separate truth-snapshot JSON files, no projection/reconstruction JSON persistence, no quality-report collection writes, no job-event writes, no correction-event writes, and no export-report JSON artifact.
+- Active v1 business snapshots store catalog fact summaries only, not catalog image URLs or source-reference arrays. Item/service names and price labels remain in protected text truth.
 
 ## Cost Principles
 
 | Principle | Rule |
 | --- | --- |
 | Firestore pointer/state only | Store status, ids, counters, small summaries, and current pointers. |
-| Storage for heavy artifacts | Store images, masks, reports, editor projections, editor document snapshots, diffs, and exports in Storage/GCS. |
+| Storage for heavy artifacts | Store images, layer indexes, editor document snapshots, and exports in Storage/GCS. Provider-mode masks, reports, projections, diffs, and diagnostics stay Storage-backed when those routes are enabled. |
 | Immutable artifacts | Never overwrite generated assets or reports; write new versions and update pointers. |
 | Runtime signed URLs only | Persist asset ids or `cue-asset://assetId`, not signed URLs. |
 | Bounded reads | Read one workspace/design/job/status path, never whole libraries during processing. |
@@ -38,14 +40,14 @@ All collections are nested under:
 | --- | --- | --- |
 | `cueLayerDesigns/{designId}` | Design state, source pointer, current editor snapshot pointer, readiness, summary warnings. | Read only through rules; writes through API/Admin. |
 | `cueLayerJobs/{jobId}` | Reconstruction job state, progress, source package pointer, error code, retry metadata. | Read single job through `cueLayerDesigns.current.jobId` where available; writes through API/Admin. |
-| `cueLayerJobEvents/{eventId}` | Bounded operational events for support/debug. | Admin/server read by default. |
+| `cueLayerJobEvents/{eventId}` | Dormant provider/ops contract for bounded operational events when worker decomposition is enabled. Active v1 does not write this collection. | Admin/server read by default. |
 | `cueLayerVersions/{versionId}` | Version pointer records, not the large editor document snapshot itself. | Read list with limit. |
 | `cueLayerExports/{exportId}` | Export request/result state and download asset pointer. | Read own workspace exports. |
 | `cueLayerRepairRequests/{repairId}` | Targeted repair request/result state. | Read own request; writes through API/Admin. |
-| `cueLayerCorrectionEvents/{eventId}` | Structured owner/system correction signals for learning, support, and replay. | Server write; scoped/admin read by default. |
-| `cueLayerQualityReports/{qualityReportId}` | Compact quality gate summary and Storage report pointer. | Read own design summary; writes through API/Admin. |
-| `cueLayerCostRecords/{recordId}` | Estimated provider/worker/render costs. | Admin/server only or summary only. |
-| `cueLayerReviewSamples/{sampleId}` | QA sample pointers and human-review labels. | Admin/internal only. |
+| `cueLayerCorrectionEvents/{eventId}` | Dormant learning/support stream for provider repair and owner corrections. Active v1 restore-fallback repair writes only a repair request. | Server write; scoped/admin read by default. |
+| `cueLayerQualityReports/{qualityReportId}` | Dormant provider-mode quality gate summary and Storage report pointer. Active v1 keeps the compact warning/quality summary on `cueLayerDesigns`. | Read own design summary; writes through API/Admin. |
+| `cueLayerCostRecords/{recordId}` | Dormant estimated provider/worker/render costs. Active v1 has no provider spend and does not write cost records. | Admin/server only or summary only. |
+| `cueLayerReviewSamples/{sampleId}` | Dormant QA sample pointers and human-review labels for model/provider rollout. | Admin/internal only. |
 
 ## Firestore Document Shapes
 
@@ -60,14 +62,9 @@ Small state only:
 - `source.kind`
 - `source.currentSourcePackageAssetId`
 - `source.originalAssetId`
-- `source.businessTruthSnapshotAssetId`
-- `source.protectedTextTruthAssetId`
-- `source.brandSnapshotAssetId`
-- `source.rightsSnapshotAssetId`
-- `current.reconstructionAssetId`
-- `current.editorProjectionAssetId`
 - `current.creativeEditorDocumentSnapshotAssetId`
 - `current.layerIndexAssetId`
+- `current.layerIndexVersionId`
 - `current.jobId`
 - `current.previewAssetId`
 - `current.revision`
@@ -104,9 +101,9 @@ Do not store full observation bundles, Fabric runtime serialization, base64 imag
 
 Valid job statuses are `created`, `uploaded`, `processing`, `completed`, `failed`, and `cancelled`. Valid outcomes are `ready`, `needs_review`, `flat_safe`, `unsupported`, and `failed`. Valid steps are `normalizing`, `observing`, `decomposing`, `recovering_text`, `elementizing`, `vectorizing`, `repairing_background`, `resolving_scene`, `generating_editor_projection`, `validating`, and `exporting`.
 
-### `cueLayerQualityReports/{qualityReportId}`
+### `cueLayerQualityReports/{qualityReportId}` - dormant provider path
 
-Compact summary only:
+Compact summary only. Active v1 does not write this collection; it keeps first-pass visual/text/readiness summary fields on `cueLayerDesigns.quality`. Use this collection only when provider decomposition, visual diffing, or OCR/text validation workers need a reviewable report pointer.
 
 - `id`
 - `workspaceId`
@@ -145,7 +142,9 @@ The full quality report, text comparison details, rejected candidates, model ver
 
 Export requests must satisfy `sourceRevision === cueLayerDesigns.current.revision`. A stale export request is rejected or routed to an explicit conflict flow.
 
-### `cueLayerCorrectionEvents/{eventId}`
+### `cueLayerCorrectionEvents/{eventId}` - dormant provider path
+
+Active v1 restore-fallback repair writes `cueLayerRepairRequests/{repairId}` only. Use correction events when provider repair, owner corrections, or training/replay streams are enabled.
 
 - `id`
 - `workspaceId`
@@ -159,13 +158,21 @@ Export requests must satisfy `sourceRevision === cueLayerDesigns.current.revisio
 - `userId`
 - `createdAt`
 
-## Proposed Storage Paths
+## Storage Paths
 
-Server-owned durable paths:
+Active v1 server-owned durable paths:
 
 ```text
 campaigncue/cue-layers/{workspaceId}/{designId}/sources/{sourcePackageId}/package.json
 campaigncue/cue-layers/{workspaceId}/{designId}/sources/{sourcePackageId}/original.{ext}
+campaigncue/cue-layers/{workspaceId}/{designId}/versions/{versionId}/creative-editor-document.json
+campaigncue/cue-layers/{workspaceId}/{designId}/versions/{versionId}/layer-index.json
+campaigncue/cue-layers/{workspaceId}/{designId}/exports/{exportId}/output.{ext}
+```
+
+Provider/decomposition-mode paths remain reserved but dormant until the relevant workers and gates are enabled:
+
+```text
 campaigncue/cue-layers/{workspaceId}/{designId}/sources/{sourcePackageId}/normalized.png
 campaigncue/cue-layers/{workspaceId}/{designId}/sources/{sourcePackageId}/editor-reference.png
 campaigncue/cue-layers/{workspaceId}/{designId}/jobs/{jobId}/observations/{observationBundleId}.json
@@ -174,14 +181,11 @@ campaigncue/cue-layers/{workspaceId}/{designId}/reconstructions/{reconstructionI
 campaigncue/cue-layers/{workspaceId}/{designId}/reconstructions/{reconstructionId}/layers/{layerId}/export.png
 campaigncue/cue-layers/{workspaceId}/{designId}/reconstructions/{reconstructionId}/layers/{layerId}/mask.png
 campaigncue/cue-layers/{workspaceId}/{designId}/reconstructions/{reconstructionId}/projection/{projectionId}.json
-campaigncue/cue-layers/{workspaceId}/{designId}/versions/{versionId}/creative-editor-document.json
-campaigncue/cue-layers/{workspaceId}/{designId}/versions/{versionId}/layer-index.json
 campaigncue/cue-layers/{workspaceId}/{designId}/validation/{validationId}/render.png
 campaigncue/cue-layers/{workspaceId}/{designId}/validation/{validationId}/diff.png
 campaigncue/cue-layers/{workspaceId}/{designId}/quality/{qualityReportId}.json
 campaigncue/cue-layers/{workspaceId}/{designId}/repairs/{repairId}.json
 campaigncue/cue-layers/{workspaceId}/{designId}/repairs/{repairId}/layers/{layerId}/editor.png
-campaigncue/cue-layers/{workspaceId}/{designId}/exports/{exportId}/output.{ext}
 campaigncue/cue-layers/{workspaceId}/{designId}/exports/{exportId}/report.json
 ```
 
@@ -245,7 +249,7 @@ CueLayers should spend the least expensive resource first.
 | 1 | MIME, size, dimension, corruption, EXIF, local route heuristics. | Browser/server CPU; blocks bad inputs before any Firebase/model cost. |
 | 2 | Source hash and perceptual hash dedupe. | One bounded lookup or indexed direct record; avoids duplicate worker/model runs. |
 | 3 | Workspace/session/rate limit/SAFE_MODE/capacity check. | Small bounded reads; prevents provider spend. |
-| 4 | Create job and upload source image. | Small Firestore writes plus one Storage object in the current flat-safe path. |
+| 4 | Create job and upload source image. | Small Firestore writes plus source/package/layer-index/editor-snapshot Storage artifacts in the current flat-safe path. |
 | 5 | Worker observations and validation. | Provider calls only after budgets and source quality pass. |
 | 6 | Export-resolution assets. | Lazy; created only when the owner exports/downloads. |
 
@@ -258,11 +262,14 @@ Provider cost dominates Firebase cost, so the implementation should optimize for
 | Workspace guard read | 1 | Via CampaignCue API scope guard. |
 | Hash/dedupe lookup | 0-1 | Direct/indexed lookup by source hash or design-intent hash before creating a new expensive job. |
 | SAFE_MODE/rate/capacity checks | 1-3 bounded reads | Must run before worker/provider dispatch. Reuse existing helpers where product scope allows. |
-| Create/upload session write | 1 | If upload session is stored. |
-| Upload to Storage | 1 file | Size-limited. |
+| Idempotency claim | 0-1 write | Only when the caller supplies an idempotency key; creates the in-progress guard before Storage writes. |
+| Create/upload session write | 0 in active v1 | Add only when a signed/resumable landing-zone flow is introduced. |
+| Upload to Storage | 1 image + 3 JSON artifacts | Original image, source package with inline truth snapshots, layer index, and initial editor snapshot. |
 | Create design doc | 1 write | Small pointer/state doc. |
 | Create job doc | 1 write | Small state doc. |
-| Event/cost initial record | 1-2 writes | Bounded; synchronous upload completion event and idempotency completion share the same Firestore batch as the design/job write. |
+| Create version doc | 1 write | Pointer metadata for the initial editor snapshot. |
+| Event/quality/cost initial record | 0 in active v1 | Job events, quality reports, and cost records stay dormant until provider/worker decomposition is enabled. |
+| Idempotency completion | 0-1 write | Only when the caller supplies an idempotency key; batched with design/job/version writes. |
 
 The active flat-safe upload stores `cueLayerDesigns.current.jobId` as the current job pointer. Idempotent upload replay uses that pointer for a direct job document read and falls back to an indexed `designId` query only for legacy design records that do not have the pointer.
 
@@ -286,6 +293,7 @@ The active flat-safe upload stores `cueLayerDesigns.current.jobId` as the curren
 | Storage signed URL generation | per referenced asset | Not a Firestore read. |
 | Asset download signed URL | 1 per owner download | Generated on demand from an authenticated API route; not persisted. |
 | Editor document snapshot Storage read | 1 | Server reads and hydrates scoped asset URLs. |
+| Layer index Storage read | 1 | Sidecar is loaded from `current.layerIndexVersionId`, falling back to the current version for legacy records. |
 
 ### Autosave
 
@@ -293,31 +301,32 @@ The active flat-safe upload stores `cueLayerDesigns.current.jobId` as the curren
 | --- | ---: | --- |
 | Local IndexedDB write | free | Browser-local draft. |
 | Editor document snapshot Storage write | 1 per debounced save | Validate size first. |
+| Layer index Storage write | 0 per normal save | Autosave reuses the existing layer index unless a future decomposition/asset-change flow explicitly changes it. |
 | Design pointer update | 1 write | Update current revision; batched with the version pointer write. |
-| Version doc write | Only explicit version/checkpoint | Not every keystroke; batched with the design pointer update. |
+| Version doc write | 1 debounced checkpoint | Batched with the design pointer update. |
 
 ### Export
 
 | Operation | Count | Notes |
 | --- | ---: | --- |
-| Export request doc write | 1 | Idempotent. |
-| Editor document snapshot Storage read | 1 | Source of truth for render. |
-| Asset reads | per asset used | Use signed URLs/server bucket access. |
+| Export request doc write | 1 final export record | Written after output bytes and Asset Library metadata are ready. |
+| Editor document snapshot Storage read | Browser/editor-owned before request | Active v1 receives rendered bytes from the saved editor revision; future server export workers should read the snapshot directly. |
+| Asset reads | Browser/editor-owned before request | Future server export workers use server bucket access. |
 | Output Storage write | 1 | Final downloadable file; export registration is not created unless this write succeeds. |
-| Export doc update | 1 | Mark ready/failed; batched with the CueLayers export-ready event. |
-| CampaignCue asset record write | 1 optional | If owner registers export into Asset Library; asset metadata and its audit event are already batched by the shared CampaignCue asset registration path. |
+| Export report artifact | 0 in active v1 | Avoid duplicate report JSON unless a future server renderer needs it. |
+| CampaignCue asset record write | 1 | Export is registered into Asset Library for manual download/reuse; asset metadata and its audit event are owned by the shared CampaignCue asset path. |
 
 ### Repair
 
 | Operation | Count | Notes |
 | --- | ---: | --- |
-| Repair patch Storage write | 1 | Immutable repair intent artifact. |
-| Repair request write | 1 | Compact state record, batched with correction event metadata. |
-| Correction event write | 1 | Structured learning/support signal, batched with the repair request. |
+| Repair patch Storage write | 0 in active v1 | Restore-fallback repair has no large patch body. |
+| Repair request write | 1 | Compact restore-fallback intent and source revision. |
+| Correction event write | 0 in active v1 | Provider repair and learning streams remain dormant. |
 
 ## Job Event And Status Cost Policy
 
-Do not write progress for every layer, mask, or OCR word. Use coarse step events:
+Active v1 does not write job-event documents; `cueLayerJobs` and `cueLayerDesigns` contain the visible status and owner warning summary. When provider/worker decomposition is enabled, do not write progress for every layer, mask, or OCR word. Use coarse step events only:
 
 - `job_created`
 - `upload_verified`
@@ -383,9 +392,9 @@ Initial constants should include:
 | --- | --- |
 | Original source | Durable until asset/design deletion request. |
 | Normalized/editor reference | Durable while design exists. |
-| Observation bundles | Durable for replay, but can be compacted after retention window. |
-| Diagnostic renders/diffs | Short retention, for example 14-30 days. |
-| Full quality reports | Durable while the design exists, with heavy provider details compactable after review window. |
+| Observation bundles | Dormant provider path. Durable for replay when enabled, but compactable after retention window. |
+| Diagnostic renders/diffs | Dormant provider path. Short retention, for example 14-30 days. |
+| Full quality reports | Dormant provider path. Durable while the design exists, with heavy provider details compactable after review window. |
 | Failed temporary artifacts | Short retention, for example 7 days. |
 | Exports | Durable if registered as asset; otherwise expiring download. |
 | Cost records | Durable summary; raw step detail can compact. |
@@ -398,8 +407,7 @@ Planned query patterns:
 - `cueLayerJobs` by `designId`, `createdAt desc`.
 - `cueLayerExports` by `designId`, `createdAt desc`.
 - `cueLayerRepairRequests` by `designId`, `createdAt desc`.
-- `cueLayerQualityReports` by `designId`, `createdAt desc`.
-- `cueLayerReviewSamples` by `status`, `createdAt desc` for internal review.
+- Dormant provider indexes: `cueLayerQualityReports` by `designId`, `createdAt desc`; `cueLayerReviewSamples` by `status`, `createdAt desc` for internal review. These do not add active read/write cost until those collections contain documents.
 
 Avoid cross-workspace collection group queries unless an internal admin/reporting use case is explicitly built.
 

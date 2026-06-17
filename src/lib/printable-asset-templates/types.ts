@@ -8,6 +8,13 @@ export type PrintableAssetTypeId =
     | 'counter_sticker'
     | 'entrance_poster'
     | 'feedback_qr'
+    | 'campaign_flyer'
+    | 'gift_certificate'
+    | 'business_card'
+    | 'event_invitation'
+    | 'postcard'
+    | 'product_tag'
+    | 'campaign_poster'
     | 'complete_menu_kit';
 
 export type PrintableTemplateFamilyId =
@@ -40,7 +47,19 @@ export type PrintableAssetType = {
     id: PrintableAssetTypeId;
     menuKitAssetKey?: MenuKitAssetKey;
     outputFormat: PrintableAssetOutputFormat;
-    placement: 'tables' | 'counter' | 'entrance' | 'feedback' | 'full-menu' | 'bundle';
+    placement:
+        | 'tables'
+        | 'counter'
+        | 'entrance'
+        | 'feedback'
+        | 'full-menu'
+        | 'promotion'
+        | 'gift'
+        | 'identity'
+        | 'event'
+        | 'postcard'
+        | 'retail'
+        | 'bundle';
     requiresFeedback?: boolean;
     requiresMenuItems?: boolean;
     size: string;

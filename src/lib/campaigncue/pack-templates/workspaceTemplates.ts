@@ -16,8 +16,7 @@ import type {
 const safeSegment = (value: string) => (
     String(value || "")
         .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]+/g, "-")
+        .replace(/[^a-zA-Z0-9_-]+/g, "-")
         .replace(/^-+|-+$/g, "")
         .slice(0, 100)
 );
@@ -57,6 +56,8 @@ export async function saveCampaignCueWorkspacePackTemplate(
     if (!templateId) throw new Error("Template id is required");
 
     const now = Date.now();
+    const existingTemplates = await getExistingWorkspaceTemplates(input.workspaceId);
+    const existingRecord = existingTemplates.find((template) => template.templateId === templateId);
     const root = buildWorkspaceTemplateRoot(input.workspaceId, templateId);
     const payloadPath = `${root}/pack-template.json`;
     const editorDocumentPath = input.editorDocument ? `${root}/editor-document.json` : undefined;
@@ -70,58 +71,72 @@ export async function saveCampaignCueWorkspacePackTemplate(
     if (sizeOf(payloadJson) > CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_PAYLOAD_BYTES) {
         throw new Error("Campaign pack template payload is too large");
     }
-    await uploadString(ref(firebaseStorage, payloadPath), payloadJson, "raw", {
-        cacheControl: "private, max-age=31536000, immutable",
-        contentType: "application/json",
-    });
-
-    if (input.editorDocument && editorDocumentPath) {
-        const editorJson = JSON.stringify(input.editorDocument);
-        if (sizeOf(editorJson) > CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_EDITOR_DOCUMENT_BYTES) {
-            throw new Error("Campaign pack editor document is too large");
-        }
-        await uploadString(ref(firebaseStorage, editorDocumentPath), editorJson, "raw", {
+    const uploadedPaths: string[] = [];
+    try {
+        await uploadString(ref(firebaseStorage, payloadPath), payloadJson, "raw", {
             cacheControl: "private, max-age=31536000, immutable",
             contentType: "application/json",
         });
-    }
+        uploadedPaths.push(payloadPath);
 
-    if (input.previewDataUrl && previewPath && previewContentType) {
-        await uploadString(ref(firebaseStorage, previewPath), input.previewDataUrl, "data_url", {
-            cacheControl: "private, max-age=31536000, immutable",
-            contentType: previewContentType,
-        });
-    }
+        if (input.editorDocument && editorDocumentPath) {
+            const editorJson = JSON.stringify(input.editorDocument);
+            if (sizeOf(editorJson) > CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_EDITOR_DOCUMENT_BYTES) {
+                throw new Error("Campaign pack editor document is too large");
+            }
+            await uploadString(ref(firebaseStorage, editorDocumentPath), editorJson, "raw", {
+                cacheControl: "private, max-age=31536000, immutable",
+                contentType: "application/json",
+            });
+            uploadedPaths.push(editorDocumentPath);
+        }
 
-    const existingTemplates = await getExistingWorkspaceTemplates(input.workspaceId);
-    const existingRecord = existingTemplates.find((template) => template.templateId === templateId);
-    const summary: CampaignCuePackTemplateSummary = {
-        ...input.summary,
-        businessCategory: input.businessCategory,
-        createdAt: existingRecord?.createdAt || input.summary.createdAt || now,
-        editorDocumentPath,
-        payloadPath,
-        previewPath,
-        qualityTier: "workspace_saved",
-        schemaVersion: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.SCHEMA_VERSION,
-        status: "active",
-        templateId,
-        templateType: "workspace",
-        updatedAt: now,
-    };
-    const data = [
-        summary,
-        ...existingTemplates.filter((template) => template.templateId !== templateId),
-    ].slice(0, CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_WORKSPACE_TEMPLATES);
-    const index: CampaignCueWorkspacePackTemplateIndex = {
-        data,
-        id: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.WORKSPACE_INDEX_DOC_ID,
-        schemaVersion: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.SCHEMA_VERSION,
-        updatedAt: now,
-        workspaceId: input.workspaceId,
-    };
-    await setDoc(getWorkspaceTemplateIndexRef(input.workspaceId), index);
-    return summary;
+        if (input.previewDataUrl && previewPath && previewContentType) {
+            await uploadString(ref(firebaseStorage, previewPath), input.previewDataUrl, "data_url", {
+                cacheControl: "private, max-age=31536000, immutable",
+                contentType: previewContentType,
+            });
+            uploadedPaths.push(previewPath);
+        }
+
+        const summary: CampaignCuePackTemplateSummary = {
+            ...input.summary,
+            businessCategory: input.businessCategory,
+            createdAt: existingRecord?.createdAt || input.summary.createdAt || now,
+            editorDocumentPath,
+            payloadPath,
+            previewPath,
+            qualityTier: "workspace_saved",
+            schemaVersion: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.SCHEMA_VERSION,
+            status: "active",
+            templateId,
+            templateType: "workspace",
+            updatedAt: now,
+        };
+        const data = [
+            summary,
+            ...existingTemplates.filter((template) => template.templateId !== templateId),
+        ].slice(0, CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_WORKSPACE_TEMPLATES);
+        const index: CampaignCueWorkspacePackTemplateIndex = {
+            data,
+            id: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.WORKSPACE_INDEX_DOC_ID,
+            schemaVersion: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.SCHEMA_VERSION,
+            updatedAt: now,
+            workspaceId: input.workspaceId,
+        };
+        await setDoc(getWorkspaceTemplateIndexRef(input.workspaceId), index);
+        return summary;
+    } catch (error) {
+        const previousPaths = new Set([
+            existingRecord?.payloadPath,
+            existingRecord?.editorDocumentPath,
+            existingRecord?.previewPath,
+        ].filter(Boolean));
+        await Promise.all(uploadedPaths
+            .filter((path) => !previousPaths.has(path))
+            .map((path) => deleteObject(ref(firebaseStorage, path)).catch(() => undefined)));
+        throw error;
+    }
 }
 
 export async function deleteCampaignCueWorkspacePackTemplate(input: {

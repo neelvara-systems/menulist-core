@@ -8,7 +8,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob } from '@lib/menu-kit/menuKitGenerator';
-import { PRINTABLE_ASSET_TYPES, getPrintableAssetType, isPrintableAssetTypeId } from '@lib/printable-asset-templates/assetTypes';
+import { PRINTABLE_ASSET_TYPES, getPrintableAssetPreviewCopy, getPrintableAssetType, isPrintableAssetTypeId } from '@lib/printable-asset-templates/assetTypes';
 import {
     buildPrintableAssetEditorDocument,
     isPrintableAssetEditorRenderable,
@@ -38,7 +38,7 @@ import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuDownload, LuFileText, LuPackage, LuPrinter, LuQrCode, LuSparkles, LuTrash2, LuX } from 'react-icons/lu';
+import { LuBadge, LuBadgePercent, LuCalendarDays, LuDownload, LuFileText, LuGift, LuMail, LuMegaphone, LuPackage, LuPrinter, LuQrCode, LuSparkles, LuTag, LuTrash2, LuX } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../../shared/ProjectSelector';
 
 const { Paragraph, Text, Title } = Typography;
@@ -116,6 +116,13 @@ function getAssetIcon(assetId: PrintableAssetTypeId) {
     if (assetId === 'print_menu') return <LuFileText size={18} />;
     if (assetId === 'complete_menu_kit') return <LuPackage size={18} />;
     if (assetId === 'entrance_poster') return <LuPrinter size={18} />;
+    if (assetId === 'campaign_flyer') return <LuMegaphone size={18} />;
+    if (assetId === 'gift_certificate') return <LuGift size={18} />;
+    if (assetId === 'business_card') return <LuBadge size={18} />;
+    if (assetId === 'event_invitation') return <LuCalendarDays size={18} />;
+    if (assetId === 'postcard') return <LuMail size={18} />;
+    if (assetId === 'product_tag') return <LuTag size={18} />;
+    if (assetId === 'campaign_poster') return <LuBadgePercent size={18} />;
     return <LuQrCode size={18} />;
 }
 
@@ -154,12 +161,14 @@ function getPrintablePreviewFormat(asset: PrintableAssetType): PrintableAssetOut
 
 function getPrintableActionModalWidth(assetId: PrintableAssetTypeId): number {
     if (assetId === 'table_tent') return 640;
+    if (assetId === 'gift_certificate' || assetId === 'business_card' || assetId === 'postcard' || assetId === 'product_tag') return 620;
     if (assetId === 'counter_sticker' || assetId === 'feedback_qr') return 500;
     return 540;
 }
 
 function getPrintableActionPreviewHeight(assetId: PrintableAssetTypeId): number {
     if (assetId === 'table_tent') return 340;
+    if (assetId === 'gift_certificate' || assetId === 'business_card' || assetId === 'postcard' || assetId === 'product_tag') return 300;
     if (assetId === 'counter_sticker' || assetId === 'feedback_qr') return 330;
     if (assetId === 'print_menu' || assetId === 'entrance_poster') return 420;
     return 420;
@@ -338,14 +347,7 @@ export default function PrintableAssetTemplatesRoute() {
             title: family.label,
         }));
     }, [availableTemplateFamilies, selectedPlatformTemplates]);
-    const previewActionLabel = selectedAssetId === 'feedback_qr'
-        ? 'Feedback QR'
-        : selectedAssetId === 'counter_sticker'
-            ? labels.scanForUpper
-            : labels.printCardTitle;
-    const previewInstructionLabel = selectedAssetId === 'feedback_qr'
-        ? 'Scan to leave feedback'
-        : labels.scanToView;
+    const { actionLabel: previewActionLabel, instructionLabel: previewInstructionLabel } = getPrintableAssetPreviewCopy(selectedAssetId, labels);
     const activeProject = data?.allProjects.find((project) => project.projectId === data.projectId) || data?.allProjects[0] || null;
     const projectSelectorItems = useMemo<ProjectSelectorItem[]>(() => (
         data?.allProjects.map((project) => ({
@@ -809,7 +811,7 @@ export default function PrintableAssetTemplatesRoute() {
         editorDocumentRef.current = stripPrintableAssetEditorAttributionLayers(documentValue);
     }, []);
 
-    const handleSaveEditorTemplate = useCallback(async ({ document: documentValue }: CreativeEditorTemplateSaveRequest) => {
+    const handleSaveEditorTemplate = useCallback(async ({ document: documentValue, previewDataUrl }: CreativeEditorTemplateSaveRequest) => {
         if (!editorState || !canUseUserTemplates) {
             throw new Error('Template saving is not available for this asset');
         }
@@ -820,6 +822,7 @@ export default function PrintableAssetTemplatesRoute() {
             document: cleanDocument,
             templateFamilyId: editorState.templateFamilyId,
             templateId: editorState.savedTemplateId,
+            thumbnailDataUrl: previewDataUrl,
             title: editorState.title || cleanDocument.title,
         });
         setEditorState((current) => current ? { ...current, savedTemplateId: template.id, title: template.title } : current);

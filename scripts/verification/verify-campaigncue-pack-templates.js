@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { readSharedBusinessCategories } = require("../campaigncue/read-shared-business-categories");
 
 const ROOT = path.resolve(__dirname, "..", "..");
 const read = (relativePath) => fs.readFileSync(path.join(ROOT, relativePath), "utf8");
@@ -17,6 +18,7 @@ const assertIncludes = (relativePath, token) => {
 
 const requiredFiles = [
   "src/constants/campaigncue/packTemplates.ts",
+  "src/constants/campaigncue/outputPicker.ts",
   "src/types/campaigncuePackTemplates.ts",
   "src/lib/validation/campaigncuePackTemplateSchemas.ts",
   "src/lib/campaigncue/pack-templates/category.ts",
@@ -24,6 +26,7 @@ const requiredFiles = [
   "src/lib/campaigncue/pack-templates/workspaceTemplates.ts",
   "src/lib/campaigncue/pack-templates/applyTemplate.ts",
   "src/components/templates/campaigncue/PackTemplatePicker.tsx",
+  "scripts/campaigncue/read-shared-business-categories.js",
   "scripts/campaigncue/seed-platform-pack-templates.js",
   "scripts/campaigncue/platform-pack-template-seeds.json",
   "__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_firebase.md",
@@ -35,7 +38,7 @@ for (const file of requiredFiles) {
   if (!exists(file)) fail(`missing required file ${file}`);
 }
 
-const validCategories = ["service", "retail", "food", "professional", "creative", "health", "specialty"];
+const validCategories = readSharedBusinessCategories(ROOT);
 const seeds = JSON.parse(read("scripts/campaigncue/platform-pack-template-seeds.json"));
 if (!Array.isArray(seeds) || seeds.length < validCategories.length) {
   fail("seed catalog must include at least one template per shared business category");
@@ -51,13 +54,25 @@ for (const category of validCategories) {
 }
 
 assertIncludes("src/config/features.ts", "ENABLE_CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY");
+assertIncludes("src/config/features.ts", "ENABLE_CAMPAIGNCUE_OUTPUT_PICKER");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "CAMPAIGNCUE_OUTPUT_PICKER_ITEMS");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "CAMPAIGNCUE_OUTPUT_PICKER_GROUPS");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaignCueOutputItemMatchesTemplate");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "custom_size");
+assertIncludes("src/constants/campaigncue/index.ts", "outputPicker");
 assertIncludes("src/constants/campaigncue/database.ts", "PLATFORM_PACK_TEMPLATES");
 assertIncludes("src/constants/campaigncue/database.ts", "PACK_TEMPLATE_INDEXES");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "PackTemplatePicker");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "listCampaignCuePackTemplates");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "getCampaignCuePackTemplate");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "Campaign pack created from reusable base.");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "createCampaignFromOutputIntent");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "showOutputPicker={FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_OUTPUT_PICKER}");
+assertIncludes("src/components/templates/campaigncue/PackTemplatePicker.tsx", "Campaign outputs");
+assertIncludes("src/components/templates/campaigncue/PackTemplatePicker.tsx", "not a generic design-format library");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "buildPackTemplateEditorContext");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "intent?: CampaignCueOutputPickerItem");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "output-intent:");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "kind: \"pack_template\"");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "Reusable campaign pack and editor layout saved.");
 assertIncludes("src/lib/campaigncue/pack-templates/applyTemplate.ts", "editorDocument: input.editorDocument");

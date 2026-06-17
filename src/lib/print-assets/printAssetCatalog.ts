@@ -15,6 +15,12 @@ export type PrintAssetPlacement =
     | 'entrance'
     | 'feedback'
     | 'full-menu'
+    | 'promotion'
+    | 'gift'
+    | 'identity'
+    | 'event'
+    | 'postcard'
+    | 'retail'
     | 'bundle';
 
 export type MenuKitPrintAssetId =
@@ -27,6 +33,13 @@ export type PrintAssetId =
     | MenuKitPrintAssetId
     | 'feedback_qr'
     | 'print_menu'
+    | 'campaign_flyer'
+    | 'gift_certificate'
+    | 'business_card'
+    | 'event_invitation'
+    | 'postcard'
+    | 'product_tag'
+    | 'campaign_poster'
     | 'complete_menu_kit';
 
 export type PrintAssetCatalogItem = {
@@ -98,6 +111,55 @@ export const PRINT_ASSET_CATALOG: PrintAssetCatalogItem[] = [
         title: 'Print Menu',
     },
     {
+        description: 'Use for offers, launches, delivery inserts, or handouts.',
+        id: 'campaign_flyer',
+        placement: 'promotion',
+        size: 'A5 portrait',
+        title: 'Flyer',
+    },
+    {
+        description: 'Printable voucher for gifts, credits, or prepaid offers.',
+        id: 'gift_certificate',
+        placement: 'gift',
+        size: 'Gift card',
+        title: 'Gift Certificate',
+    },
+    {
+        description: 'Small card with business identity, contact, and QR.',
+        id: 'business_card',
+        placement: 'identity',
+        size: '90 x 55 mm',
+        title: 'Business Card',
+    },
+    {
+        description: 'Invite card for events, openings, workshops, or specials.',
+        id: 'event_invitation',
+        placement: 'event',
+        size: 'A6 portrait',
+        title: 'Invitation',
+    },
+    {
+        description: 'Mailer-style card for offers, thanks, reminders, or local drops.',
+        id: 'postcard',
+        placement: 'postcard',
+        size: 'A6 landscape',
+        title: 'Postcard',
+    },
+    {
+        description: 'Small QR tag for retail, bakery, pickup, or counter items.',
+        id: 'product_tag',
+        placement: 'retail',
+        size: '90 x 50 mm',
+        title: 'Product Tag',
+    },
+    {
+        description: 'Offer poster for windows, counters, and local campaigns.',
+        id: 'campaign_poster',
+        placement: 'promotion',
+        size: 'A4 portrait',
+        title: 'Campaign Poster',
+    },
+    {
         description: 'Download every print, social, and placement file together.',
         id: 'complete_menu_kit',
         placement: 'bundle',
@@ -135,6 +197,36 @@ export const PRINT_ASSET_GROUPS: Array<{
         description: 'Full printable menu output.',
         id: 'full-menu',
         title: 'Full Menu',
+    },
+    {
+        description: 'Flyers and posters for offers, launches, and local campaigns.',
+        id: 'promotion',
+        title: 'Promotion',
+    },
+    {
+        description: 'Voucher-style files for gifts, credit, or prepaid offers.',
+        id: 'gift',
+        title: 'Gift',
+    },
+    {
+        description: 'Small identity cards for contact and quick scan handoff.',
+        id: 'identity',
+        title: 'Identity',
+    },
+    {
+        description: 'Invitation cards for events, openings, and workshops.',
+        id: 'event',
+        title: 'Event',
+    },
+    {
+        description: 'Mailer-style cards for reminders, thanks, and small campaigns.',
+        id: 'postcard',
+        title: 'Postcard',
+    },
+    {
+        description: 'Small item tags for retail, pickup, bakery, or counter products.',
+        id: 'retail',
+        title: 'Retail',
     },
     {
         description: 'Everything in one download.',

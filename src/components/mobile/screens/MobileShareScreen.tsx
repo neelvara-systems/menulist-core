@@ -12,7 +12,7 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { PRINTABLE_ASSET_TYPES, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
+import { PRINTABLE_ASSET_TYPES, getPrintableAssetPreviewCopy, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
 import { renderPrintableAsset } from '@lib/printable-asset-templates/renderPrintableAsset';
 import {
     DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID,
@@ -45,7 +45,10 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    LuBadge,
+    LuBadgePercent,
     LuBookOpen,
+    LuCalendarDays,
     LuCheck,
     LuClipboard,
     LuCopy,
@@ -54,9 +57,12 @@ import {
     LuExternalLink,
     LuFileJson,
     LuFileText,
+    LuGift,
     LuImage,
     LuLink2,
+    LuMail,
     LuMapPin,
+    LuMegaphone,
     LuMessageSquare,
     LuMonitor,
     LuPackage,
@@ -67,6 +73,7 @@ import {
     LuShare2,
     LuShield,
     LuSmartphone,
+    LuTag,
     LuX,
 } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
@@ -941,6 +948,7 @@ export default function MobileShareScreen({
     if (isPrintAssetsMode) {
         const templateRowPreviewWidth = isCompactHandheld ? 116 : 132;
         const templateRowPreviewHeight = isCompactHandheld ? 108 : 116;
+        const previewCopy = getPrintableAssetPreviewCopy(selectedPrintableAssetId, labels);
 
         return (
             <Flex gap={isCompactHandheld ? 14 : 18} style={{ padding: isCompactHandheld ? 12 : 16 }} vertical>
@@ -1067,21 +1075,11 @@ export default function MobileShareScreen({
                                         type="button"
                                     >
                                         <TemplateFamilySwatch
-                                            actionLabel={
-                                                selectedPrintableAssetId === 'feedback_qr'
-                                                    ? 'Feedback QR'
-                                                    : selectedPrintableAssetId === 'counter_sticker'
-                                                        ? labels.scanForUpper
-                                                        : labels.printCardTitle
-                                            }
+                                            actionLabel={previewCopy.actionLabel}
                                             assetTypeId={selectedPrintableAssetId}
                                             brandColor={storeBrandColor}
                                             family={family}
-                                            instructionLabel={
-                                                selectedPrintableAssetId === 'feedback_qr'
-                                                    ? 'Scan to leave feedback'
-                                                    : labels.scanToView
-                                            }
+                                            instructionLabel={previewCopy.instructionLabel}
                                             shortLink={data.menuLink.replace(/^https?:\/\//, '')}
                                             storeLogo={data.storeLogo}
                                             storeName={data.storeName}
@@ -1169,23 +1167,13 @@ export default function MobileShareScreen({
                     visible={isProjectSelectorOpen}
                 />
                 <PrintableTemplateActionSheet
-                    actionLabel={
-                        selectedPrintableAssetId === 'feedback_qr'
-                            ? 'Feedback QR'
-                            : selectedPrintableAssetId === 'counter_sticker'
-                                ? labels.scanForUpper
-                                : labels.printCardTitle
-                    }
+                    actionLabel={previewCopy.actionLabel}
                     asset={selectedPrintableAsset}
                     assetTypeId={selectedPrintableAssetId}
                     brandColor={storeBrandColor}
                     busyKey={printableBusyKey}
                     family={printableActionTemplate}
-                    instructionLabel={
-                        selectedPrintableAssetId === 'feedback_qr'
-                            ? 'Scan to leave feedback'
-                            : labels.scanToView
-                    }
+                    instructionLabel={previewCopy.instructionLabel}
                     onClose={closePrintableTemplateActions}
                     onDownload={(templateFamilyId, outputFormat) => void handlePrintableAssetRender(templateFamilyId, outputFormat)}
                     previewAsset={previewAsset}
@@ -1757,6 +1745,13 @@ function getMobilePrintableAssetIcon(assetId: PrintableAssetTypeId) {
     if (assetId === 'complete_menu_kit') return <LuPackage size={18} />;
     if (assetId === 'entrance_poster') return <LuPrinter size={18} />;
     if (assetId === 'feedback_qr') return <LuMessageSquare size={18} />;
+    if (assetId === 'campaign_flyer') return <LuMegaphone size={18} />;
+    if (assetId === 'gift_certificate') return <LuGift size={18} />;
+    if (assetId === 'business_card') return <LuBadge size={18} />;
+    if (assetId === 'event_invitation') return <LuCalendarDays size={18} />;
+    if (assetId === 'postcard') return <LuMail size={18} />;
+    if (assetId === 'product_tag') return <LuTag size={18} />;
+    if (assetId === 'campaign_poster') return <LuBadgePercent size={18} />;
     return <LuQrCode size={18} />;
 }
 

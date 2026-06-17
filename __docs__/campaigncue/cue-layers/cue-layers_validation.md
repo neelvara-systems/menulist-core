@@ -12,9 +12,9 @@ CueLayers currently supports the conservative production path:
 1. Owner opens CampaignCue Editor or Asset Library.
 2. Owner uploads a PNG, JPEG, or WebP image under the current 3 MB direct-upload cap.
 3. Server validates CampaignCue runtime, session scope, rate limit, MIME, size, and dimensions.
-4. Server creates a CampaignCue source package and immutable Storage artifacts.
-5. Server snapshots business truth, protected text truth, brand truth, and rights posture at job time.
-6. Server creates design/job/version/quality records under the CampaignCue workspace.
+4. Server creates a CampaignCue source package artifact with inline business truth, protected text truth, brand truth, and rights snapshots.
+5. Server creates only the active v1 immutable artifacts needed for reuse: original image, source package JSON, layer index JSON, and initial editor snapshot JSON.
+6. Server creates compact design/job/version records under the CampaignCue workspace.
 7. Server projects the original image into `CreativeEditorDocumentSnapshot` as a locked image object using `cue-asset://assetId`.
 8. Editor boot hydrates the signed URL at runtime only.
 9. Autosave writes immutable editor document snapshots and updates the design pointer.
@@ -46,6 +46,7 @@ CueLayers currently supports the conservative production path:
 | Design list read a nonexistent top-level `sourceKind`. | UI now reads `design.source.kind`. |
 | Storage-backed exports had Asset Library records but no owner download handoff. | Added authenticated asset download API and Asset Library Download action that generates short-lived URLs at request time. |
 | Autosave accepted URL-shaped `cue-asset://` references without proving they belonged to the current design. | Autosave now validates image asset ids against the current CueLayers layer index before writing a new version. |
+| Active v1 wrote too many provider-grade artifacts for a flat-safe upload path. | Source truth snapshots are now inlined into the source package, catalog snapshots are compacted to fact fields, protected text includes item/service price labels, projection/reconstruction/quality JSON persistence is dormant, upload no longer writes quality/event documents, autosave reuses the unchanged layer index, repair writes only a repair request, and export no longer writes duplicate report/event records. |
 
 ## Security Result
 
@@ -65,11 +66,11 @@ CueLayers currently supports the conservative production path:
 | Path | Cost posture |
 | --- | --- |
 | Design list | One bounded query ordered by `updatedAt`, limited by `CAMPAIGNCUE_PAGE_SIZE`. |
-| Upload | Client blocks images over 3 MB before base64 conversion. Server uses one workspace bootstrap/read path, one idempotency claim, batched Firestore writes, one source-image Storage object for the current flat-safe path, and Storage JSON artifacts for snapshots/reports. No provider calls. |
-| Boot | One design doc read plus two Storage JSON reads and signed URL generation. No Firestore broad scans. |
-| Autosave | Debounced client save; one design doc read, two Storage JSON writes, one design update, and one version pointer write. |
-| Repair | Records restore-fallback/correction event only. No model/worker cost. |
-| Export | Requires saved revision, writes one immutable Storage output, registers Asset Library metadata, and creates a signed URL only when the owner downloads. No direct provider posting or social integration cost. |
+| Upload | Client blocks images over 3 MB before base64 conversion. Server uses one workspace bootstrap/read path, one optional idempotency claim, one original-image Storage object, three JSON artifacts, and batched design/job/version/idempotency writes. No quality/event/cost collection writes and no provider calls. |
+| Boot | One design doc read plus two Storage JSON reads, layer-index lookup through `current.layerIndexVersionId`, and signed URL generation. No Firestore broad scans. |
+| Autosave | Debounced client save; one design doc read, one editor-snapshot Storage write, one design update, and one version pointer write. The layer index is not rewritten unless a future asset/decomposition flow changes it. |
+| Repair | Records one restore-fallback repair request. No patch artifact, correction-event write, model call, or worker cost. |
+| Export | Requires saved revision, writes one immutable Storage output, registers Asset Library metadata, writes one CueLayers export doc, and creates a signed URL only when the owner downloads. No export report artifact, job event, direct provider posting, or social integration cost. |
 
 ## UX Result
 
@@ -94,11 +95,11 @@ Docs now separate current runtime from long-term architecture:
 | Check | Status |
 | --- | --- |
 | TypeScript | Passed: `npx tsc --noEmit --incremental false` |
-| CampaignCue verifier | Passed: `npm run verify:campaigncue` with 513 checks. |
+| CampaignCue verifier | Passed: `npm run verify:campaigncue` with 1076 runtime checks plus pack template registry checks. |
 | Lint | Passed: `npm run lint` |
-| Production build | Not rerun in this review pass because the review request explicitly said not to run `npm run build`. A previous same-day build passed before this review. |
+| Production build | Not rerun in this cost-optimization pass because production builds are opt-in. |
 | Diff whitespace | Passed: `git diff --check` |
-| Firebase deploy | Blocked by external project access: `firebase deploy --config firebase-campaigncue.json --project campaigncue-qa --only firestore:rules,firestore:indexes,storage --non-interactive` failed with HTTP 403, project `campaigncue-qa` not found or permission denied. |
+| Firebase deploy | Not required in this pass; no Firestore rules, Storage rules, indexes, or Cloud Function logic changed. |
 
 ## Remaining Gated Work
 

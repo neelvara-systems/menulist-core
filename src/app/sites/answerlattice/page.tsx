@@ -595,18 +595,31 @@ function SupportSuiteSection({ basePath }: { basePath: string }) {
                     })}
                 </div>
 
-                <div className="mt-8 rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6" data-answerlattice-reveal>
-                    <div className="grid gap-4 lg:grid-cols-4">
+                <div className="al-suite-stack" data-answerlattice-reveal>
+                    <div className="al-suite-stack__intro">
+                        <p>Support layer build path</p>
+                        <h3>One setup flow turns messy inputs into support users can use.</h3>
+                        <span>Each step adds structure: sources, page context, support surfaces, and the review loop.</span>
+                    </div>
+                    <div className="al-suite-stack__cards" aria-label="How AnswerLattice turns scattered product knowledge into support surfaces">
                         {SUITE_BUILD_STEPS.map((step, index) => (
-                            <article key={step.title} className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-5">
-                                <div className="flex items-center justify-between gap-3">
-                                    <span className="text-xs font-bold text-teal-200">{String(index + 1).padStart(2, '0')}</span>
-                                    <em className="not-italic rounded-full border border-teal-300/15 bg-teal-300/[0.06] px-2 py-1 text-[11px] font-semibold text-teal-100">
-                                        {step.meta}
-                                    </em>
+                            <article
+                                key={step.title}
+                                className="al-suite-stack__card"
+                                data-answerlattice-reveal-item
+                                style={
+                                    {
+                                        '--al-suite-stack-index': index,
+                                        '--al-suite-stack-top': `${6.75 + index * 0.68}rem`,
+                                    } as CSSProperties
+                                }
+                            >
+                                <div className="al-suite-stack__card-head">
+                                    <span>{String(index + 1).padStart(2, '0')}</span>
+                                    <em>{step.meta}</em>
                                 </div>
-                                <h3 className="mt-4 text-base font-semibold text-white">{step.title}</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{step.detail}</p>
+                                <h3>{step.title}</h3>
+                                <p>{step.detail}</p>
                             </article>
                         ))}
                     </div>

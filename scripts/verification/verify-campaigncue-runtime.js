@@ -299,17 +299,23 @@ function verifyServerRuntime() {
   assertIncludes(cueLayersServer, ".doc(replayJobId)", "CueLayers replay uses direct job doc read when pointer exists");
   assertIncludes(cueLayersServer, "jobSnap.data() as CampaignCueCueLayerJob", "CueLayers replay hydrates pointed job directly");
   assertIncludes(cueLayersServer, "jobId,", "CueLayers design current stores latest job pointer");
-  assertIncludes(cueLayersServer, "enqueueCueLayerEvent", "CueLayers event writes can be batched with related metadata");
+  assertIncludes(cueLayersServer, "snapshots: sourceSnapshots", "CueLayers source package stores inline source truth snapshots");
+  assertIncludes(cueLayersServer, "priceLabel: item.priceLabel", "CueLayers compact source snapshot preserves item price labels");
+  assertIncludes(cueLayersServer, "priceLabel: service.priceLabel", "CueLayers compact source snapshot preserves service price labels");
+  assertNotIncludes(cueLayersServer, "imageUrl: item.imageUrl", "CueLayers source snapshot avoids catalog image URL bloat");
+  assertNotIncludes(cueLayersServer, "sourceRefs: item.sourceRefs", "CueLayers source snapshot avoids catalog source-ref bloat");
+  assertIncludes(cueLayersServer, "layerIndexVersionId", "CueLayers autosave reuses unchanged layer-index artifact");
+  assertNotIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOB_EVENTS", "CueLayers active v1 avoids job event collection writes");
   assertIncludes(cueLayersServer, "bootCampaignCueCueLayerDesignServer", "CueLayers boot server entry");
   assertIncludes(cueLayersServer, "autosaveCampaignCueCueLayerDesignServer", "CueLayers autosave server entry");
   assertIncludes(cueLayersServer, "await batch.commit();\n    return {\n        design:", "CueLayers autosave batches design pointer and version metadata writes");
-  assertIncludes(cueLayersServer, "CUE_LAYER_REPAIR_REQUESTS).doc(repairId)", "CueLayers repair stores repair request metadata");
-  assertIncludes(cueLayersServer, "CUE_LAYER_CORRECTION_EVENTS", "CueLayers repair batches correction event metadata");
+  assertIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_REPAIR_REQUESTS", "CueLayers repair stores repair request metadata");
+  assertNotIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_CORRECTION_EVENTS", "CueLayers active v1 avoids correction-event collection writes");
   assertIncludes(cueLayersServer, "exportCampaignCueCueLayerDesignServer", "CueLayers export server entry");
   assertIncludes(cueLayersServer, "params.input.sourceRevision !== design.current.revision", "CueLayers export rejects stale revisions");
   assertIncludes(cueLayersServer, "parseRenderedExportDataUrl", "CueLayers export validates rendered output bytes");
   assertIncludes(cueLayersServer, "path: exportOutputPath", "CueLayers export writes immutable output before asset registration");
-  assertIncludes(cueLayersServer, "action: \"cue_layers_export_ready\"", "CueLayers export still records ready event");
+  assertNotIncludes(cueLayersServer, "exportReportAsset", "CueLayers active v1 avoids duplicate export report artifacts");
   assertIncludes(cueLayersServer, "businessTruthSnapshot", "CueLayers snapshots business truth");
   assertIncludes(cueLayersServer, "protectedTextSnapshot", "CueLayers snapshots protected text truth");
   assertIncludes(cueLayersServer, "brandSnapshot", "CueLayers snapshots brand truth");
@@ -338,6 +344,7 @@ function verifyServerRuntime() {
   assertIncludes(cueLayersSchemas, "MAX_EDITOR_DOCUMENT_BYTES", "CueLayers schema caps editor document size");
   assertIncludes(cueLayersSchemas, "renderedDataUrl", "CueLayers export schema requires rendered bytes handoff");
   assertIncludes(cueLayersSchemas, "product-owned source reference", "CueLayers image schema requires product-owned asset reference");
+  assertIncludes(cueLayersSchemas, '"900"', "CueLayers autosave accepts shared editor heavy font weight");
 }
 
 function verifyClientRuntime() {

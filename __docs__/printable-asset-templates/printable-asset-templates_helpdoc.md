@@ -2,7 +2,7 @@
 
 ## Quick Summary
 
-Assets gives you downloadable files for tables, counters, entrances, feedback, and paper menus. Choose the file, choose a style, and download.
+Assets gives you downloadable files for tables, counters, entrances, feedback, campaigns, small cards, postcards, product tags, and paper menus. Choose the file, choose a style, and download.
 
 ## Getting Started
 
@@ -28,14 +28,14 @@ Assets gives you downloadable files for tables, counters, entrances, feedback, a
 
 ## Download a File
 
-1. Select the file type, such as **Table Tent** or **Counter Sticker**.
+1. Select the file type, such as **Table Tent**, **Flyer**, or **Gift Certificate**.
 2. Choose a style.
 3. Review the image preview shown in the modal or sheet.
 4. Tap **Download PDF** or **Download image**.
 
 ## Adjust a File on Desktop
 
-For Table Tent, Single Table / Counter Card, Counter Sticker, Entrance Poster, and Feedback QR, click **Customize in editor** after opening a style.
+For Table Tent, Single Table / Counter Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, Invitation, Postcard, Product Tag, and Campaign Poster, click **Customize in editor** after opening a style.
 
 Use this when you need to move text slightly, shorten a phrase, or adjust the layout. The QR link stays protected so the printed file still opens the right page.
 
@@ -57,6 +57,13 @@ The file will use your current store name, logo, color, and menu link.
 | Counter Sticker | Billing counter, pickup counter, or reception desk. |
 | Entrance Poster | Door, window, or host stand. |
 | Feedback QR | Asking customers to leave private feedback. |
+| Flyer | Offer handout, delivery insert, or local campaign card. |
+| Gift Certificate | Gift, credit, or prepaid offer voucher. |
+| Business Card | Contact card with your latest link. |
+| Invitation | Event, opening, workshop, or special invite. |
+| Postcard | Small mailer-style card for thanks, reminders, or offers. |
+| Product Tag | Retail, bakery, pickup, or counter item tag. |
+| Campaign Poster | Offer poster for windows and counters. |
 | Complete Menu Kit | Downloading everything together. |
 
 ## Troubleshooting

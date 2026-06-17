@@ -18,6 +18,7 @@ Owners should be able to choose a recommended pack template, fill missing facts,
 ## Mobile-Safe Actions
 
 - View the category-relevant recommended template.
+- Choose a business-use output intent such as WhatsApp, Google, Instagram, print, staff, ad handoff, reuse old asset, or custom size.
 - Search/filter already-loaded templates.
 - Select an event tag such as Diwali, Christmas, New Year, birthday, or anniversary.
 - Confirm missing facts.
@@ -49,6 +50,7 @@ No mobile-only collection, listener, or API should be added.
 - Touch targets at least 44px.
 - Show templates as outcome cards, not a dense gallery.
 - Keep filters to short chips: event, channel, goal, format.
+- Prefer business-use labels over format labels: "WhatsApp sales pack" instead of "Square post".
 - Owner copy must say "Use this pack" or "Reuse this pack", not "instantiate template".
 - Missing facts must appear before export.
 - If template payload download fails, keep the current campaign pack untouched.
@@ -71,4 +73,3 @@ Avoid:
 - "schema version"
 - "provider generation"
 - "direct publish"
-
