@@ -36,7 +36,9 @@ CampaignCue must work on mobile because WhatsApp download/share, campaign review
 - Show trust status as Ready, Needs review, or Blocked.
 - Keep export/download visible.
 - Show credits before generation.
+- Keep CampaignCue on the same MenuList app foundation for dark/light mode, language selection, RTL, timezone, profile, and settings. CampaignCue dashboard chrome labels use the shared app locale files. Mobile CampaignCue may simplify review/download/result surfaces, but it must not introduce a separate settings or login model.
+- Render campaign dates, manual reminders, and asset/reuse timestamps through the shared `next-intl` formatter so mobile review/download/result screens inherit the owner's selected timezone, date format, and time format. Native datetime input values must be interpreted in the CampaignCue workspace timezone before storage.
 
 ## Current Pass
 
-No mobile code was changed. This document sets the implementation acceptance criteria.
+CampaignCue now mounts on the shared authenticated app provider stack and shared dashboard header/sidebar primitives. Dense editor work remains desktop-first; mobile scope stays review, download/copy, missing-input completion, asset upload/rights confirmation, and result capture.

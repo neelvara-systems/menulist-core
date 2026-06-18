@@ -44,6 +44,14 @@ export type AiMenuManagerActionType =
     | "decision_blocks_update"
     | "menu_special_note_update"
     | "menu_design_mood_update"
+    | "menu_design_layout_update"
+    | "menu_design_preset_apply"
+    | "menu_design_visibility_update"
+    | "menu_design_color_update"
+    | "menu_design_background_update"
+    | "menu_design_settings_open"
+    | "menu_temp_status_set"
+    | "menu_temp_status_clear"
     | "bulk_price_update"
     | "bulk_availability_update"
     | "image_item_generate"
@@ -54,6 +62,51 @@ export type AiMenuManagerActionType =
     | "special_menu_create"
     | "special_menu_activate"
     | "menu_publish"
+    | "menu_qr_download"
+    | "menu_share_copy_link"
+    | "store_business_profile_update"
+    | "store_locale_region_update"
+    | "store_working_hours_update"
+    | "store_time_slot_preset_create"
+    | "store_time_slot_preset_update"
+    | "store_time_slot_preset_delete"
+    | "store_address_contact_update"
+    | "public_presence_text_update"
+    | "public_presence_link_update"
+    | "public_presence_link_share"
+    | "public_presence_qr_download"
+    | "public_presence_social_links_update"
+    | "public_presence_business_attributes_update"
+    | "public_presence_business_copy_generate"
+    | "seo_settings_update"
+    | "analytics_tracking_update"
+    | "domain_subdomain_update"
+    | "customer_app_settings_update"
+    | "customer_app_icon_update"
+    | "customer_app_install_link_share"
+    | "digital_screen_status_card"
+    | "digital_screen_link_share"
+    | "digital_screen_override_update"
+    | "digital_screen_slide_upload"
+    | "feedback_inbox_list"
+    | "feedback_reply_save"
+    | "feedback_link_share"
+    | "feedback_qr_download"
+    | "pos_sync_settings_update"
+    | "pos_sync_setup_info_copy"
+    | "pos_sync_technical_summary_copy"
+    | "pos_sync_sample_payload_download"
+    | "integration_status_review"
+    | "locations_screen_open"
+    | "staff_access_open"
+    | "roles_permissions_open"
+    | "billing_screen_open"
+    | "transactions_screen_open"
+    | "business_health_open"
+    | "past_activity_open"
+    | "print_assets_open"
+    | "print_menu_open"
+    | "help_screen_open"
     | "system_manual_task_create"
     | "system_clarification_request"
     | "system_unsupported_action";
@@ -149,6 +202,27 @@ export interface AiMenuManagerBeforeAfterSummary {
     warnings?: string[];
 }
 
+export interface AiMenuManagerSuggestedReply {
+    helper?: string;
+    label: string;
+    prompt: string;
+}
+
+export type AiMenuManagerLocalActionType = "copy_url" | "open_url" | "download_qr" | "copy_text" | "download_text";
+
+export interface AiMenuManagerLocalAction {
+    filename?: string;
+    helper?: string;
+    label: string;
+    mimeType?: string;
+    qrFooter?: string;
+    qrStoreName?: string;
+    qrSubtitle?: string;
+    qrTitle?: string;
+    type: AiMenuManagerLocalActionType;
+    value: string;
+}
+
 export interface AiMenuManagerProjectPatch {
     kind: AiMenuManagerPatchKind;
     itemIds?: string[];
@@ -185,7 +259,16 @@ export interface AiMenuManagerCardPayload {
     scope: AiMenuManagerScope;
     entityRefs: AiMenuManagerEntityRef[];
     beforeAfterSummary: AiMenuManagerBeforeAfterSummary;
-    actions: Array<"approve" | "cancel" | "edit" | "open_existing_screen" | "mark_done" | "try_again">;
+    suggestedReplies?: AiMenuManagerSuggestedReply[];
+    localActions?: AiMenuManagerLocalAction[];
+    actions: Array<
+        | "approve"
+        | "cancel"
+        | "edit"
+        | "open_existing_screen"
+        | "mark_done"
+        | "try_again"
+    >;
     createdAt: string;
 }
 
@@ -203,6 +286,23 @@ export interface AiMenuManagerCardSummary {
     status: AiMenuManagerProposalStatus;
     risk: AiMenuManagerRisk;
     projectId?: string;
+    updatedAt: string;
+}
+
+export interface AiMenuManagerPendingOperation {
+    operationId: string;
+    sessionId: string;
+    tId: number | string;
+    sId: number | string;
+    projectId: string;
+    card: AiMenuManagerCardPayload;
+    executionMode: AiMenuManagerExecutionMode;
+    patch?: AiMenuManagerProjectPatch;
+    patchHash?: string;
+    baseProjectUpdatedAt?: string;
+    baseProjectHash?: string;
+    idempotencyKeys: string[];
+    createdAt: string;
     updatedAt: string;
 }
 
@@ -241,6 +341,7 @@ export interface AiMenuManagerSessionDoc {
     status: "active" | "closed";
     compactMessages: AiMenuManagerCompactMessage[];
     pendingCardSummaries: AiMenuManagerCardSummary[];
+    pendingOperations?: AiMenuManagerPendingOperation[];
     recentReceiptSummaries: AiMenuManagerReceipt[];
     counters: {
         commands: number;
@@ -301,11 +402,27 @@ export interface AiMenuManagerActionDefinition {
         | "C3 summary/store write"
         | "C4 guarded server mutation"
         | "C5 manual only"
+        | "C0 local plus compact session doc"
         | "Compact proposal/session write";
     mobileBehavior: string;
     sourceEvidence: string[];
     readiness: AiMenuManagerActionReadiness;
     requiredFlags?: string[];
+}
+
+export type AiMenuManagerCommandContextTarget =
+    | "item"
+    | "category"
+    | "menu_design"
+    | "digital_menu"
+    | "official_page"
+    | "digital_screens"
+    | "feedback"
+    | "store_settings";
+
+export interface AiMenuManagerCommandContextSelection {
+    target?: AiMenuManagerCommandContextTarget | null;
+    selectedEntityIds?: string[];
 }
 
 export interface AiMenuManagerCommandRequest {
@@ -315,6 +432,7 @@ export interface AiMenuManagerCommandRequest {
     inputType: AiMenuManagerInputType;
     text?: string;
     uploadRefs?: Array<{ storagePath: string; mimeType: string; size: number }>;
+    composerContext?: AiMenuManagerCommandContextSelection;
     clientContextVersion?: string;
     idempotencyKey: string;
 }

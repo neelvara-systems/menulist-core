@@ -375,6 +375,7 @@ Rules:
 - The visual must show a message, a prepared operation card, approval controls, and a receipt. Avoid generic chatbot screenshots or abstract AI decoration.
 - Copy may use `AI Menu Manager` and `AI-powered. Owner-approved.` for this feature only.
 - Keep the safety loop visible: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt.
+- Guided item/category/menu-area selection may be described as an owner-control proof on the dedicated page, but avoid UI-instruction copy such as dropdown walkthroughs.
 - Unsupported external posting must appear as manual task/export/handoff language, not a completed external update.
 - Mobile layout must keep cards readable with 44px approval-style controls and no horizontal overflow.
 - On mobile, convert the left rail into a sticky horizontal tab row and collapse cards to one column.
@@ -453,6 +454,9 @@ no background change on scroll
 no shadow on scroll
 no backdrop-filter / glass blur on public website routes
 ```
+
+- Mobile hamburger navigation should not render long feature/resource lists as one always-expanded column. Use accordions for dense groups, keep `Features` open by default, keep `Resources` collapsed unless already on a resource page, and use nested Start/Publish/Operate groups for feature links.
+- Mobile drawer rows must keep 44px+ touch targets, token-based light/dark colors, visible focus states, and active-route highlighting without duplicating the same destination in both top-level and nested navigation.
 
 ### 5.5 Brand Mark
 

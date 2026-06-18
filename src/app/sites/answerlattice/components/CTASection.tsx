@@ -9,7 +9,7 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
                     Give your product users support they can trust.
                 </h2>
                 <p>
-                    Launch with an in-app support widget, hosted help, approved answers, ticket fallback, and a review loop that keeps support knowledge current. Keep building your product while AnswerLattice handles the first layer of support.
+                    Launch with an in-app support widget, hosted help, and approved answers before fallback. Missing coverage becomes tickets, feedback, and review work so support knowledge keeps improving without pretending to run on autopilot.
                 </p>
                 <div className="al-final-cta__actions">
                     <AnswerlatticeLink

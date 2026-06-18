@@ -75,7 +75,7 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Business Health campaign page policy (June 17, 2026):** `/features/business-health` is the public campaign URL for Business Health. Do not use `/business-health` for public marketing because that route belongs to the logged-in owner app. The campaign page may go deeper than the homepage section and may describe Business Health as an AI health check, but must stay inside the shipped contract: latest MenuList check, public surface status, customer attention, standard cached periods, location state, last checked date, No action needed when stable, and safe handoff to AI Menu Manager or existing owner-screen routing. It must not imply generic chatbot, ask-anything behavior, realtime sales, POS revenue, competitor tracking, predictions, automatic external-platform updates, or direct Business Health-owned public-truth mutation.
 
-**AI Menu Manager placement policy (June 17, 2026):** AI Menu Manager is now the website growth hook after the source-to-public workflow. The homepage should first establish one approved MenuList source, then show how AI Menu Manager keeps that source current by message. The dedicated public route is `/ai-menu-manager`. Copy must keep the loop explicit: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Unsupported external posting must be described as a manual task/export/handoff, not direct completion.
+**AI Menu Manager placement policy (June 17, 2026):** AI Menu Manager is now the website growth hook after the source-to-public workflow. The homepage should first establish one approved MenuList source, then show how AI Menu Manager keeps that source current by message. The dedicated public route is `/ai-menu-manager`. Copy must keep the loop explicit: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Unsupported external posting must be described as a manual task/export/handoff, not direct completion. As of v3.6.63, the dedicated page may mention guided item/category/menu-area selection as owner control, but it should not read like UI instructions or weaken the natural-language promise.
 
 **CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination explains the flow publicly, then requires sign-in before accepting a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
 
@@ -841,6 +841,8 @@ Key FAQ topics:
 **Dropdown links:**
 
 The desktop `Features` label is a menu trigger, not a direct route. The `/features` route is reached through the top `Feature overview` row inside the dropdown. This prevents accidental navigation when an owner is trying to open a feature link.
+
+On mobile, the hamburger keeps `Features` open by default because feature discovery is the largest navigation job, but Start, Publish, and Operate collapse as nested accordions so the drawer stays scannable. `Resources` stays collapsed unless the visitor is already browsing resources. Do not duplicate AI Menu Manager as a separate top-level mobile row while it is already listed inside the Operate feature group.
 
 1. Menu Import — `/features/menu-import`
 2. Menu Content Prep — `/features/menu-content-prep`

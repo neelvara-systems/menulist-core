@@ -66,6 +66,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         sessionId,
         tId: scope.tId,
         sId: scope.sId,
+        projectId: parsed.data.projectId,
     });
 
     return NextResponse.json(serializeForJson({

@@ -2,7 +2,7 @@
 
 **Status:** Required mobile support plan
 **Decision:** Partial mobile support inside MobileShell with a guarded bottom-tab entry
-**Last Updated:** June 17, 2026
+**Last Updated:** June 18, 2026
 
 ---
 
@@ -85,6 +85,51 @@ The mobile PWA review found these action families that AMM must either support t
 | Reviews/Reputation | Disabled today; AMM can show only blocked/manual cards until the review flags and production adapters are intentionally enabled. |
 | Account, Billing, Transactions, Platform, Reseller, Answerlattice/internal | Direct AMM mutation is unsupported; AMM may explain or hand off to the existing screen only. |
 
+### Mobile More Command Bridge
+
+AMM recognizes owner commands that reference existing Mobile More screens and returns a precise registered action-family card or unsupported card instead of a generic item-change clarification.
+
+This bridge covers:
+
+- Business Profile, Brand Settings, Official Page, Social Media, Business Attributes, and Customer App.
+- Search & Discovery, Domain, Business Copy, SEO, Analytics, Discovery Setup, and Integrations.
+- Language & Region, Working Hours, Time Slots, Temporary Status, Locations, Staff, Roles, Billing, Transactions, Business Health, Past Activity, Help, Assets, Print Menu, Feedback, Digital Screens, and POS Sync.
+- Platform, Reseller, and Answerlattice/internal screens as blocked/explanation cards only.
+
+The bridge is intentionally handoff-only for mutations. It does not write store, staff, billing, location, platform, reseller, Answerlattice, POS, or external integration truth. Known screen/action families still use exact action types such as `store_working_hours_update`, `menu_temp_status_set`, `customer_app_settings_update`, `digital_screen_status_card`, `billing_screen_open`, and `print_menu_open`. `system_manual_task_create` is reserved for true ad hoc tasks that do not map to a known MenuList family.
+
+Broad More commands that have fixed manual choices use the same guided-choice pattern as Menu Design:
+
+- "Change working hours" asks for Today only, All weekdays, Weekend, or Closed today.
+- "Set temporary status" asks for Closed today, Holiday, Special hours, or Back open.
+- "Change time slots" asks for Breakfast, Lunch, Dinner, or Happy hour.
+- "Setup customer app" asks for Copy install link, Share app link, Open app settings, or Update app icon.
+- "Show menu on TV" asks for Copy screen link, Open screen setup, Update slides, or Pause screen.
+- "Manage feedback" asks for Copy feedback link, Download feedback QR, Open feedback inbox, or Prepare reply.
+
+Choosing one option only drafts the next owner message. It does not execute, approve, or write anything until the owner sends that message and finishes the existing flow.
+
+When the owner sends "Copy menu link", "Download menu QR", "Copy official page link", "Download official page QR", "Copy feedback link", "Download feedback QR", "Copy customer app install link", "Copy digital screen link", "Copy POS setup details", "Copy POS technical summary", or "Download POS sample payload", AMM prepares the matching browser-local export card for the selected context. The card shows copy/open/download controls where available. This stays inside `MobileShell`, creates no menu-truth write, and does not store generated QR image or text export data in Firestore.
+
+The suggestion launcher uses the same two-layer pattern for owner-friendly discovery:
+
+- the empty mobile state may show a short set of starter cards for frequent daily work: store closed today, working hours, and sold-out/time-slot drafts.
+- layer 1 shows the action area, such as menu style, working hours, temporary status, customer app, digital screens, feedback, or print/export.
+- layer 2 shows only the relevant choices, such as Premium & Minimal, List/Grid/Card, Closed today, Copy screen link, or Download feedback QR.
+- starter cards and final sheet selections fill the composer; they do not send, approve, or mutate data.
+- the mobile version stays inside the `MobileShell` bottom sheet with large touch rows and back navigation.
+
+The composer Work on picker is separate from suggestions:
+
+- it opens as a MobileShell bottom sheet.
+- its launcher sits beside Suggestions as a composer tool, not inside the suggestion list.
+- opening Work on closes the suggestion sheet, and opening Suggestions closes Work on.
+- top-level targets are Item, Category, Menu design, Digital menu, Official page, Digital screens, Feedback, and Store settings.
+- Item supports multi-select for selected-item operations, such as choosing three tea items and sending "increase price by 10".
+- Category supports one selected category so commands such as "deactivate" or "increase price by 10" resolve against that category.
+- Item/category lists use compact rows and only show search for long lists or active search text, so short category lists do not waste screen height.
+- selecting context only affects the next message text; no card, approval, Firestore write, or mutation happens until the owner sends the message.
+
 ---
 
 ## MobileShell Contract
@@ -125,6 +170,8 @@ Rules:
 - No side-by-side diff tables on phone.
 - Use before/after rows.
 - Use bottom sheets for edit/scope/time.
+- Show contextual suggestion groups in a bottom sheet; selecting a suggestion fills the composer and does not submit.
+- Clarification card option rows also fill the composer only; they do not approve or execute work.
 - Optimistic UI only after backend accepts approval lock.
 - Non-blocking retry for failed completion.
 - No red/alarming copy unless destructive action requires it.
@@ -150,7 +197,7 @@ Rules:
 | Customer app | Show current app setting/icon/link and proposed change; install-link sharing stays browser-local/native share. |
 | Digital screen | Status/link/override cards stay compact; slide upload/delete requires media preview and explicit confirmation. |
 | Feedback inbox | Show bounded recent feedback only; resolve/reply cards must show customer message context without unbounded history reads. |
-| POS sync/integration | POS changes require guarded cards; integration status is read-only/manual-task unless a first-party adapter exists. |
+| POS sync/integration | POS changes require guarded cards; integration status is read-only unless a real guarded integration is already present. |
 | Share/export | Use browser-local or native share/download flows; do not create Firestore proposal detail unless owner explicitly asks AMM to track it. |
 | Compliance pages | Show status and before/after custom override text; reset requires destructive confirmation. |
 | Communication templates | Show short message preview with Copy and Share; no Firestore write by default. |

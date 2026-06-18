@@ -10,7 +10,7 @@ export const ANSWERLATTICE_SITE_URL = 'https://answerlattice.com';
 export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - 24/7 Support Layer for Founder-Led SaaS';
 
 export const ANSWERLATTICE_SITE_DESCRIPTION =
-    'AnswerLattice turns scattered product knowledge into a standard support knowledge structure: approved answers for your widget, help center, FAQs, ticket fallback, and future AI agents.';
+    'AnswerLattice turns scattered product knowledge into reviewed support knowledge: approved answers first, fallback when coverage is missing, and visible support gaps for founder review.';
 
 export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     path: string;

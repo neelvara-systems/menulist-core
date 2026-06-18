@@ -18,6 +18,12 @@ import {
     getCampaignCueCueLayersRepairApiPath,
     getCampaignCueCampaignActionApiPath,
 } from "@constant/campaigncue/routes";
+import DashboardHeaderShell from "@/components/shared/dashboardShell/DashboardHeaderShell";
+import DashboardSidebarShell, {
+    DASHBOARD_SIDEBAR_COLLAPSED_WIDTH,
+    DASHBOARD_SIDEBAR_EXPANDED_WIDTH,
+    type DashboardSidebarShellItem,
+} from "@/components/shared/dashboardShell/DashboardSidebarShell";
 import {
     CAMPAIGNCUE_CHANNEL_STUDIO_COPY,
     CAMPAIGNCUE_DEFAULT_LOCALE,
@@ -26,6 +32,8 @@ import {
     CAMPAIGNCUE_SOURCE_TYPE_LABELS,
 } from "@constant/campaigncue/workspace";
 import type { CampaignCueOutputPickerItem } from "@constant/campaigncue/outputPicker";
+import { useAppDispatch } from "@hook/useAppDispatch";
+import { useAppSelector } from "@hook/useAppSelector";
 import { FEATURE_FLAGS } from "@config/features";
 import { runCampaignCueCreativeEditorAiTool } from "@lib/campaigncue/creativeEditorAiTools";
 import { buildCampaignCueDailyDesk } from "@lib/campaigncue/dailyDesk";
@@ -40,6 +48,7 @@ import {
     listCampaignCuePackTemplates,
 } from "@lib/campaigncue/pack-templates/catalog";
 import { saveCampaignCueWorkspacePackTemplate } from "@lib/campaigncue/pack-templates/workspaceTemplates";
+import { formatDateTime, fromNativeDateTimeInputValue, type DateLike, type IntlFormatter } from "@util/dateTime";
 import {
     type CreativeEditorDocument,
     type CreativeEditorDesignCueApplyHandler,
@@ -79,8 +88,21 @@ import type {
     CampaignCuePackTemplateListResult,
     CampaignCuePackTemplateSummary,
 } from "@type/campaigncuePackTemplates";
+import AppSettingsPanel from "@organisms/sidebar/appSettingsPanel";
+import ProfileActionsModal from "@organisms/headerComponent/profileActionsModal";
+import {
+    getDarkModeState,
+    getRTLDirectionState,
+    getSidebarState,
+    toggleAppSettingsPanel,
+    toggleDarkMode,
+    toggleSidbar,
+} from "@reduxSlices/clientThemeConfig";
+import { Avatar, Badge, Button, Divider, Flex, Tooltip, theme } from "antd";
 import dynamic from "next/dynamic";
-import type { ChangeEvent, ComponentType } from "react";
+import { useSession } from "next-auth/react";
+import { useFormatter, useTranslations } from "next-intl";
+import type { CSSProperties, ChangeEvent, ComponentType } from "react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
     LuArrowRight,
@@ -89,21 +111,28 @@ import {
     LuCalendarDays,
     LuCheck,
     LuCheckCircle2,
+    LuChevronLeft,
+    LuChevronRight,
     LuAlertCircle,
     LuClipboardCheck,
     LuDownload,
+    LuExternalLink,
     LuFileText,
+    LuHome,
     LuImage,
     LuLayers,
     LuMapPin,
+    LuMoon,
     LuPackageCheck,
     LuPrinter,
     LuRefreshCw,
     LuRotateCcw,
     LuSearch,
     LuSend,
+    LuSettings2,
     LuShieldCheck,
     LuSparkles,
+    LuSun,
     LuUpload,
     LuUploadCloud,
     LuUsers,
@@ -177,15 +206,16 @@ const trustTone = (gate?: string) => {
 
 const displayLabel = (value?: string) => (value || "").replace(/_/g, " ");
 
-const formatLooseDate = (value: unknown) => {
+const formatCampaignCueDate = (value: unknown, formatter: IntlFormatter) => {
     if (!value) return "";
-    const rawDate = typeof value === "string" || typeof value === "number" || value instanceof Date
-        ? new Date(value)
-        : typeof (value as { toDate?: unknown }).toDate === "function"
-            ? (value as { toDate: () => Date }).toDate()
-            : null;
-    if (!rawDate || Number.isNaN(rawDate.getTime())) return "";
-    return rawDate.toLocaleDateString();
+    const label = formatDateTime(value as DateLike, "date", formatter);
+    return label === "N/A" ? "" : label;
+};
+
+const formatCampaignCueDateTime = (value: unknown, formatter: IntlFormatter) => {
+    if (!value) return "";
+    const label = formatDateTime(value as DateLike, "datetime", formatter);
+    return label === "N/A" ? "" : label;
 };
 
 const noticeTone = (notice: string) => (
@@ -273,6 +303,35 @@ const getLocalSignInUrl = () => {
     return isLocal ? `/signin?callbackUrl=${callbackUrl}` : buildCampaignCueAuthLaunchUrl(SIGNIN_URL);
 };
 
+const getUserInitials = (name?: string | null, email?: string | null) => {
+    const source = (name || email || "CC").trim();
+    const parts = source.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return source.slice(0, 2).toUpperCase();
+};
+
+const getCampaignCueThemeVars = (token: ReturnType<typeof theme.useToken>["token"]) => ({
+    "--cc-bg": token.colorBgLayout,
+    "--cc-panel": token.colorBgContainer,
+    "--cc-panel-alt": token.colorFillAlter,
+    "--cc-surface": token.colorBgElevated,
+    "--cc-border": token.colorBorder,
+    "--cc-border-soft": token.colorBorderSecondary,
+    "--cc-text": token.colorText,
+    "--cc-text-muted": token.colorTextSecondary,
+    "--cc-text-soft": token.colorTextTertiary,
+    "--cc-primary": token.colorPrimary,
+    "--cc-primary-bg": token.colorPrimaryBg,
+    "--cc-primary-border": token.colorPrimaryBorder,
+    "--cc-success-bg": token.colorSuccessBg,
+    "--cc-success-text": token.colorSuccessText,
+    "--cc-warning-bg": token.colorWarningBg,
+    "--cc-warning-text": token.colorWarningText,
+    "--cc-error-bg": token.colorErrorBg,
+    "--cc-error-text": token.colorErrorText,
+    "--cc-shadow": token.boxShadowSecondary,
+} as CSSProperties);
+
 const downloadBlob = (filename: string, blob: Blob) => {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -297,26 +356,16 @@ const openDownloadUrl = (url: string, filename: string) => {
     anchor.remove();
 };
 
-const parseDateTimeLocal = (value: string): string => {
+const parseDateTimeLocal = (value: string, timeZone?: string): string => {
     if (!value) return "";
     const normalized = value.trim();
     if (!normalized) return "";
 
-    const [datePart, timePart] = normalized.split("T");
-    if (!datePart || !timePart) return "";
-
-    const dateParts = datePart.split("-").map(Number);
-    const timeParts = timePart.split(":").map(Number);
-    if (dateParts.length !== 3 || timeParts.length < 2) return "";
-
-    const [year, month, day] = dateParts;
-    const [hour, minute, second] = timeParts;
-    if (![year, month, day, hour, minute].every((value) => Number.isFinite(value))) return "";
-
-    const parsed = new Date(year, month - 1, day, hour, minute, second ?? 0);
-    if (Number.isNaN(parsed.getTime())) return "";
-
-    return parsed.toISOString();
+    try {
+        return fromNativeDateTimeInputValue(normalized, timeZone || CAMPAIGNCUE_DEFAULT_TIMEZONE);
+    } catch {
+        return "";
+    }
 };
 
 const outputFilename = (campaign: CampaignCueCampaign, output: CampaignCueOutput) => (
@@ -1257,8 +1306,17 @@ function DecisionEvidenceCard({ decision }: { decision: CampaignCueDecision }) {
 }
 
 export default function CampaignCueWorkspaceApp() {
+    const dispatch = useAppDispatch();
+    const { data: session } = useSession();
+    const formatter = useFormatter();
+    const tChrome = useTranslations("CampaignCue.Navigation");
+    const { token } = theme.useToken();
+    const isCollapsed = useAppSelector(getSidebarState);
+    const isDarkMode = useAppSelector(getDarkModeState);
+    const isRTLDirection = useAppSelector(getRTLDirectionState);
     const [state, setState] = useState<ApiState>({ loading: true });
     const [tab, setTab] = useState<CampaignCueWorkspaceTabKey>("home");
+    const [sidebarShellExpanded, setSidebarShellExpanded] = useState(false);
     const [busyKey, setBusyKey] = useState<string | null>(null);
     const [notice, setNotice] = useState<string>("");
     const [publicSiteHref, setPublicSiteHref] = useState("/");
@@ -1313,6 +1371,77 @@ export default function CampaignCueWorkspaceApp() {
     const [selectedOutcomeSignalId, setSelectedOutcomeSignalId] = useState<string | undefined>();
     const [packTemplateState, setPackTemplateState] = useState<PackTemplateState>({ loading: false });
     const data = state.data;
+    const campaignCueThemeVars = useMemo(() => getCampaignCueThemeVars(token), [token]);
+    const activeTabDefinition = useMemo(() => (
+        CAMPAIGNCUE_WORKSPACE_TABS.find((item) => item.key === tab) || CAMPAIGNCUE_WORKSPACE_TABS[0]
+    ), [tab]);
+    const activeTabLabel = tChrome(`tabs.${activeTabDefinition.key}` as any);
+    const sidebarOffset = isCollapsed && !sidebarShellExpanded
+        ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH
+        : DASHBOARD_SIDEBAR_EXPANDED_WIDTH;
+    const sessionUser = session?.user || {};
+    const userLoginLabel = (sessionUser as any)?.displayEmail
+        || (sessionUser as any)?.phone
+        || (sessionUser as any)?.phoneUsername
+        || (sessionUser as any)?.email
+        || "CampaignCue account";
+    const userData = {
+        email: String((sessionUser as any)?.email || userLoginLabel || ""),
+        image: String((sessionUser as any)?.image || ""),
+        name: String((sessionUser as any)?.name || "CampaignCue owner"),
+    };
+    const userInitials = getUserInitials(userData.name, userLoginLabel);
+    const campaignCueNavItems = useMemo<DashboardSidebarShellItem[]>(() => {
+        const groups = CAMPAIGNCUE_WORKSPACE_TABS.reduce((groupMap, item) => {
+            const items = groupMap.get(item.group) || [];
+            items.push(item);
+            groupMap.set(item.group, items);
+            return groupMap;
+        }, new Map<string, typeof CAMPAIGNCUE_WORKSPACE_TABS[number][]>());
+
+        return Array.from(groups.entries()).map(([group, items]) => {
+            const firstItem = items[0];
+            const activeItem = items.find((item) => item.key === tab);
+            return {
+                active: false,
+                expanded: Boolean(activeItem),
+                icon: firstItem.icon,
+                key: group,
+                label: tChrome(`groups.${group}` as any),
+                onClick: () => setTab((activeItem || firstItem).key),
+                subNavActive: Boolean(activeItem),
+                subNav: items.map((item) => ({
+                    active: item.key === tab,
+                    icon: item.icon,
+                    key: item.key,
+                    label: tChrome(`tabs.${item.key}` as any),
+                    onClick: () => setTab(item.key),
+                })),
+            };
+        });
+    }, [tChrome, tab]);
+    const campaignCueActionItems = useMemo<DashboardSidebarShellItem[]>(() => ([
+        {
+            icon: LuSettings2,
+            key: "campaigncue-app-settings",
+            label: tChrome("actions.appAppearance"),
+            onClick: () => dispatch(toggleAppSettingsPanel(true)),
+        },
+        {
+            icon: isDarkMode ? LuSun : LuMoon,
+            key: "campaigncue-theme-mode",
+            label: isDarkMode ? tChrome("actions.lightMode") : tChrome("actions.darkMode"),
+            onClick: () => dispatch(toggleDarkMode(!isDarkMode)),
+        },
+        {
+            icon: LuExternalLink,
+            key: "campaigncue-public-site",
+            label: tChrome("actions.publicSite"),
+            onClick: () => {
+                if (typeof window !== "undefined") window.location.href = publicSiteHref;
+            },
+        },
+    ]), [dispatch, isDarkMode, publicSiteHref, tChrome]);
 
     const load = async () => {
         setState((current) => ({ ...current, loading: true, error: undefined }));
@@ -1695,15 +1824,15 @@ export default function CampaignCueWorkspaceApp() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...sourceDraft,
-                    expiresAt: parseDateTimeLocal(sourceDraft.expiresAt) || undefined,
+                    expiresAt: parseDateTimeLocal(sourceDraft.expiresAt, businessDraft.timezone) || undefined,
                 }),
             });
-                const payload = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    setNotice(payload?.error || "Source input could not be saved.");
-                    return;
-                }
-                setSourceDraft({ expiresAt: "", label: "", sourceType: "manual_note", status: "needs_review", value: "" });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setNotice(payload?.error || "Source input could not be saved.");
+                return;
+            }
+            setSourceDraft({ expiresAt: "", label: "", sourceType: "manual_note", status: "needs_review", value: "" });
             setNotice("Source input saved.");
             const sourceInput = payload?.data as CampaignCueSourceInput | undefined;
             if (sourceInput?.id) {
@@ -2472,7 +2601,7 @@ export default function CampaignCueWorkspaceApp() {
     };
 
     return (
-        <main className={styles.shell}>
+        <main className={styles.shell} style={campaignCueThemeVars}>
             {cueLayersUploadEnabled ? (
                 <input
                     ref={cueLayerUploadInputRef}
@@ -2482,53 +2611,107 @@ export default function CampaignCueWorkspaceApp() {
                     type="file"
                 />
             ) : null}
-            <header className={styles.topbar}>
-                <div className={styles.brand}>
-                    <span className={styles.brandMark}>CC</span>
-                    <div className={styles.brandText}>
-                        <strong>CampaignCue</strong>
-                        <span>{data.workspace.name}</span>
-                    </div>
-                </div>
-                <div className={styles.topActions}>
-                    {notice ? (
-                        <span aria-live="polite" className={styles.chip} data-tone={noticeTone(notice)} role="status">
-                            {notice}
-                        </span>
-                    ) : null}
-                    <button className={styles.ghostButton} disabled={state.loading} onClick={load} type="button">
-                        <LuRefreshCw size={16} />
-                        Refresh
-                    </button>
-                    <a className={styles.ghostButton} href={publicSiteHref}>
-                        Public site
-                    </a>
-                </div>
-            </header>
+            <div className={styles.dashboardFrame} dir={isRTLDirection ? "rtl" : "ltr"}>
+                <DashboardSidebarShell
+                    actionItems={campaignCueActionItems}
+                    ariaLabel="CampaignCue sections"
+                    isCollapsed={isCollapsed}
+                    logoCollapsed={<span className={styles.sidebarBrandMark}>CC</span>}
+                    logoExpanded={
+                        <div className={styles.sidebarBrand}>
+                            <span className={styles.sidebarBrandMark}>CC</span>
+                            <span>CampaignCue</span>
+                        </div>
+                    }
+                    navItems={campaignCueNavItems}
+                    onExpandedChange={setSidebarShellExpanded}
+                />
 
-            <div className={styles.layout}>
-                <aside className={styles.sidebar} aria-label="CampaignCue sections">
-                    {CAMPAIGNCUE_WORKSPACE_TABS.map((item, index) => {
-                        const Icon = item.icon;
-                        const showGroup = index === 0 || CAMPAIGNCUE_WORKSPACE_TABS[index - 1]?.group !== item.group;
-                        return (
-                            <Fragment key={item.key}>
-                                {showGroup ? <span className={styles.navGroupLabel}>{item.group}</span> : null}
-                                <button
-                                    className={styles.tabButton}
-                                    data-active={tab === item.key}
-                                    onClick={() => setTab(item.key)}
-                                    type="button"
-                                >
-                                    <Icon size={17} />
-                                    {item.label}
-                                </button>
-                            </Fragment>
-                        );
-                    })}
-                </aside>
+                <div
+                    className={styles.dashboardBody}
+                    style={{
+                        paddingLeft: `${sidebarOffset}px`,
+                    }}
+                >
+                    <DashboardHeaderShell
+                        className={styles.dashboardHeader}
+                        left={
+                            <Flex align="center" gap={8} className={styles.headerLeft}>
+                                <Tooltip title={isCollapsed ? tChrome("header.expandSidebar") : tChrome("header.collapseSidebar")}>
+                                    <Button
+                                        aria-label={isCollapsed ? tChrome("header.expandSidebar") : tChrome("header.collapseSidebar")}
+                                        icon={isCollapsed ? <LuChevronRight /> : <LuChevronLeft />}
+                                        onClick={() => dispatch(toggleSidbar(!isCollapsed))}
+                                        type="text"
+                                    />
+                                </Tooltip>
+                                <Tooltip title={tChrome("header.dailyDesk")}>
+                                    <Button
+                                        aria-label={tChrome("header.openDailyDesk")}
+                                        icon={<LuHome />}
+                                        onClick={() => setTab("home")}
+                                        type="text"
+                                    />
+                                </Tooltip>
+                                <div className={styles.headerTitle}>
+                                    <span>CampaignCue</span>
+                                    <strong>{activeTabLabel}</strong>
+                                </div>
+                            </Flex>
+                        }
+                        right={
+                            <>
+                                {notice ? (
+                                    <span aria-live="polite" className={styles.chip} data-tone={noticeTone(notice)} role="status">
+                                        {notice}
+                                    </span>
+                                ) : null}
+                                <Tooltip title={tChrome("header.refreshWorkspace")}>
+                                    <Button
+                                        aria-label={tChrome("header.refreshWorkspace")}
+                                        disabled={state.loading}
+                                        icon={<LuRefreshCw />}
+                                        onClick={load}
+                                        type="text"
+                                    />
+                                </Tooltip>
+                                <Tooltip title={isDarkMode ? tChrome("header.useLightMode") : tChrome("header.useDarkMode")}>
+                                    <Button
+                                        aria-label={isDarkMode ? tChrome("header.useLightMode") : tChrome("header.useDarkMode")}
+                                        icon={isDarkMode ? <LuSun /> : <LuMoon />}
+                                        onClick={() => dispatch(toggleDarkMode(!isDarkMode))}
+                                        type="text"
+                                    />
+                                </Tooltip>
+                                <Tooltip title={tChrome("header.appAppearance")}>
+                                    <Button
+                                        aria-label={tChrome("header.openAppAppearance")}
+                                        icon={<LuSettings2 />}
+                                        onClick={() => dispatch(toggleAppSettingsPanel(true))}
+                                        type="text"
+                                    />
+                                </Tooltip>
+                                <Tooltip title={tChrome("header.publicSite")}>
+                                    <Button
+                                        aria-label={tChrome("header.openPublicSite")}
+                                        href={publicSiteHref}
+                                        icon={<LuExternalLink />}
+                                        type="text"
+                                    />
+                                </Tooltip>
+                                <Divider type="vertical" style={{ height: 32, margin: 0 }} />
+                                <ProfileActionsModal userData={userData}>
+                                    <Badge dot status="success" offset={[-3, 29]}>
+                                        <Avatar size={32} src={(userData as any)?.image}>
+                                            {userInitials}
+                                        </Avatar>
+                                    </Badge>
+                                </ProfileActionsModal>
+                            </>
+                        }
+                    />
 
-                <div className={styles.content}>
+                    <div className={styles.content}>
                     {tab === "home" ? (
                         <>
                             <section className={styles.hero}>
@@ -3536,38 +3719,41 @@ export default function CampaignCueWorkspaceApp() {
                                     </div>
                                     {cueLayerDesigns.length ? (
                                         <div className={styles.list}>
-                                            {cueLayerDesigns.slice(0, 5).map((design) => (
-                                                <div className={styles.assetRow} key={design.id}>
-                                                    <div className={styles.rowStart}>
-                                                        <div className={styles.iconBox}>
-                                                            <LuLayers size={18} />
+                                            {cueLayerDesigns.slice(0, 5).map((design) => {
+                                                const updatedLabel = formatCampaignCueDate(design.updatedAt, formatter);
+                                                return (
+                                                    <div className={styles.assetRow} key={design.id}>
+                                                        <div className={styles.rowStart}>
+                                                            <div className={styles.iconBox}>
+                                                                <LuLayers size={18} />
+                                                            </div>
+                                                            <div className={styles.titleBlock}>
+                                                                <h3>{design.title}</h3>
+                                                                <p>
+                                                                    {displayLabel(design.source.kind)}
+                                                                    {" · "}
+                                                                    revision {design.current.revision}
+                                                                    {updatedLabel ? ` · ${updatedLabel}` : ""}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                        <div className={styles.titleBlock}>
-                                                            <h3>{design.title}</h3>
-                                                            <p>
-                                                                {displayLabel(design.source.kind)}
-                                                                {" · "}
-                                                                revision {design.current.revision}
-                                                                {formatLooseDate(design.updatedAt) ? ` · ${formatLooseDate(design.updatedAt)}` : ""}
-                                                            </p>
+                                                        <div className={styles.chips}>
+                                                            <span className={styles.chip} data-tone={cueLayerDesignTone(design.status)}>
+                                                                {displayLabel(design.status)}
+                                                            </span>
+                                                            <button
+                                                                className={styles.ghostButton}
+                                                                disabled={busyKey === `cue-layer-open:${design.id}`}
+                                                                onClick={() => openCueLayerDesign(design.id)}
+                                                                type="button"
+                                                            >
+                                                                <LuArrowRight size={16} />
+                                                                Open
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                    <div className={styles.chips}>
-                                                        <span className={styles.chip} data-tone={cueLayerDesignTone(design.status)}>
-                                                            {displayLabel(design.status)}
-                                                        </span>
-                                                        <button
-                                                            className={styles.ghostButton}
-                                                            disabled={busyKey === `cue-layer-open:${design.id}`}
-                                                            onClick={() => openCueLayerDesign(design.id)}
-                                                            type="button"
-                                                        >
-                                                            <LuArrowRight size={16} />
-                                                            Open
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     ) : null}
                                 </>
@@ -3731,20 +3917,26 @@ export default function CampaignCueWorkspaceApp() {
                                 ) : null}
                             </div>
                             <div className={styles.list}>
-                                {data.schedules.map((schedule) => (
-                                    <div className={styles.scheduleRow} key={schedule.id}>
-                                        <div className={styles.rowStart}>
-                                            <div className={styles.iconBox}>
-                                                <LuCalendarDays size={18} />
+                                {data.schedules.map((schedule) => {
+                                    const scheduledLabel = formatCampaignCueDateTime(schedule.scheduledAt, formatter);
+                                    return (
+                                        <div className={styles.scheduleRow} key={schedule.id}>
+                                            <div className={styles.rowStart}>
+                                                <div className={styles.iconBox}>
+                                                    <LuCalendarDays size={18} />
+                                                </div>
+                                                <div className={styles.titleBlock}>
+                                                    <h3>{displayLabel(schedule.channel)}</h3>
+                                                    <p>
+                                                        {schedule.note}
+                                                        {scheduledLabel ? ` · ${scheduledLabel}` : ""}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className={styles.titleBlock}>
-                                                <h3>{displayLabel(schedule.channel)}</h3>
-                                                <p>{schedule.note}</p>
-                                            </div>
+                                            <span className={styles.chip}>{schedule.status}</span>
                                         </div>
-                                        <span className={styles.chip}>{schedule.status}</span>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 {!data.schedules.length ? <div className={styles.empty}><p>No scheduled tasks.</p></div> : null}
                             </div>
                         </section>
@@ -4114,6 +4306,8 @@ export default function CampaignCueWorkspaceApp() {
                         </section>
                     ) : null}
                 </div>
+                <AppSettingsPanel />
+            </div>
             </div>
         </main>
     );

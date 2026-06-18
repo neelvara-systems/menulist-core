@@ -160,7 +160,7 @@ $obp-closed-color: #c62828;
     background: transparent;
     border-color: transparent;
 
-    @media (min-width: 900px) {
+    @container (min-width: 900px) {
       background: #171917;
       border-color: #2a2e29;
     }
@@ -330,6 +330,7 @@ $obp-closed-color: #c62828;
   min-height: 100dvh;
   background: $obp-bg;
   color-scheme: light;
+  container-type: inline-size;
   font-family:
     system-ui,
     -apple-system,
@@ -1562,26 +1563,26 @@ $obp-closed-color: #c62828;
 
 // ── Responsive ──
 
-@media (max-width: 390px) {
+@container (max-width: 390px) {
   .iconGridCompact {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 22px 8px;
   }
 }
 
-@media (max-width: 380px) {
+@container (max-width: 380px) {
   .iconGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 340px) {
+@container (max-width: 340px) {
   .iconGridCompact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (min-width: 480px) {
+@container (min-width: 480px) {
   .shell {
     padding-top: 24px;
   }
@@ -1603,7 +1604,7 @@ $obp-closed-color: #c62828;
   }
 }
 
-@media (min-width: 560px) {
+@container (min-width: 560px) {
   .actions {
     display: flex;
   }
@@ -1615,7 +1616,7 @@ $obp-closed-color: #c62828;
   }
 }
 
-@media (min-width: 900px) {
+@container (min-width: 900px) {
   .shell {
     max-width: $obp-desktop-width;
     padding: calc(32px + env(safe-area-inset-top)) 36px calc(32px + env(safe-area-inset-bottom));

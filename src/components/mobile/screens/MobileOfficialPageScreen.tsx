@@ -64,6 +64,14 @@ const MobileOfficialPagePreviewSheet = dynamic(() => import('../sheets/MobileOff
 const ColorPickerSheet = dynamic(() => import('../sheets/ColorPickerSheet'), { ssr: false });
 
 interface MobileOfficialPageScreenProps {
+    embedded?: boolean;
+    embeddedPhotoDeleteResetToken?: number;
+    embeddedProjectsList?: any[];
+    embeddedSelectedProjectId?: string | null;
+    embeddedStoreDetails?: any;
+    onEmbeddedPhotoDeleteQueueChange?: (photoUrls: string[]) => void;
+    onEmbeddedLanguageChange?: (language: string) => void;
+    onEmbeddedStoreDetailsChange?: (storeDetails: any) => void;
     onBack: () => void;
 }
 
@@ -448,7 +456,17 @@ function AddPhotoRow({ accept, description, disabled, label, onSelectFile }: Add
     );
 }
 
-export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageScreenProps) {
+export default function MobileOfficialPageScreen({
+    embedded = false,
+    embeddedPhotoDeleteResetToken,
+    embeddedProjectsList,
+    embeddedSelectedProjectId,
+    embeddedStoreDetails,
+    onEmbeddedLanguageChange,
+    onEmbeddedPhotoDeleteQueueChange,
+    onEmbeddedStoreDetailsChange,
+    onBack,
+}: MobileOfficialPageScreenProps) {
     const t = useTranslations('BusinessSettings');
     const tMobile = useTranslations('MobileSettings');
     const tShare = useTranslations('MobileShare');
@@ -456,8 +474,11 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const session = useClientAuthSession();
-    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
-    const { projectsList, selectedProjectId } = useMobileProjects();
+    const { storeDetails: contextStoreDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const storeDetails = embeddedStoreDetails || contextStoreDetails;
+    const mobileProjects = useMobileProjects();
+    const projectsList = embedded ? (embeddedProjectsList || []) : mobileProjects.projectsList;
+    const selectedProjectId = embedded ? (embeddedSelectedProjectId || null) : mobileProjects.selectedProjectId;
     const managedLanguages = getStoreManagedLanguages(storeDetails);
     const [selectedLanguage, setSelectedLanguage] = useState(getStorePreferredLanguage(storeDetails));
     const [isSaving, setIsSaving] = useState(false);
@@ -476,6 +497,8 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
     const coverInputRef = useRef<HTMLInputElement | null>(null);
     const replacePhotoInputRef = useRef<HTMLInputElement | null>(null);
+    const lastEmbeddedSyncKeyRef = useRef('');
+    const lastEmbeddedPhotoDeleteResetTokenRef = useRef(embeddedPhotoDeleteResetToken);
     const officialPageUrl = useMemo(
         () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
         [storeDetails?.customDomain, storeDetails?.subdomain]
@@ -926,15 +949,56 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
     }, []);
 
     useEffect(() => {
+        if (!embedded || !selectedLanguage) return;
+        onEmbeddedLanguageChange?.(selectedLanguage);
+    }, [embedded, onEmbeddedLanguageChange, selectedLanguage]);
+
+    useEffect(() => {
+        if (!embedded || !onEmbeddedPhotoDeleteQueueChange) return;
+        onEmbeddedPhotoDeleteQueueChange(photoDeleteQueue);
+    }, [embedded, onEmbeddedPhotoDeleteQueueChange, photoDeleteQueue]);
+
+    useEffect(() => {
+        if (!embedded || embeddedPhotoDeleteResetToken === undefined) return;
+        if (lastEmbeddedPhotoDeleteResetTokenRef.current === embeddedPhotoDeleteResetToken) return;
+        lastEmbeddedPhotoDeleteResetTokenRef.current = embeddedPhotoDeleteResetToken;
+        setPhotoDeleteQueue([]);
+    }, [embedded, embeddedPhotoDeleteResetToken]);
+
+    const storeHydrationKey = embedded ? storeDetails?.storeId : storeDetails;
+
+    useEffect(() => {
         if (!storeDetails) return;
-        setSelectedLanguage(getStorePreferredLanguage(storeDetails));
-        setFormData(getInitialPresenceForm(storeDetails));
-        setOriginalFormData(getInitialPresenceForm(storeDetails));
+        const nextFormData = getInitialPresenceForm(storeDetails);
         const nextLocalizedDrafts = buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails));
+        if (embedded) {
+            lastEmbeddedSyncKeyRef.current = JSON.stringify({
+                localizedDrafts: nextLocalizedDrafts,
+                publicPresence: buildPublicPresenceDraft(storeDetails, nextFormData, nextLocalizedDrafts),
+            });
+        }
+        setSelectedLanguage(getStorePreferredLanguage(storeDetails));
+        setFormData(nextFormData);
+        setOriginalFormData(nextFormData);
         setLocalizedDrafts(nextLocalizedDrafts);
         setOriginalLocalizedDrafts(nextLocalizedDrafts);
         setPhotoDeleteQueue([]);
-    }, [storeDetails]);
+    }, [embedded, storeHydrationKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (!embedded || !storeDetails || !onEmbeddedStoreDetailsChange) return;
+        const nextPublicPresence = buildPublicPresenceDraft(storeDetails, formData, localizedDrafts);
+        const nextKey = JSON.stringify({
+            localizedDrafts,
+            publicPresence: nextPublicPresence,
+        });
+        if (nextKey === lastEmbeddedSyncKeyRef.current) return;
+        lastEmbeddedSyncKeyRef.current = nextKey;
+        onEmbeddedStoreDetailsChange({
+            ...storeDetails,
+            publicPresence: nextPublicPresence,
+        });
+    }, [embedded, formData, localizedDrafts, onEmbeddedStoreDetailsChange, storeDetails]);
 
     if (!FEATURE_FLAGS.ENABLE_OBP) {
         return null;
@@ -956,13 +1020,15 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
 
     return (
         <Flex style={{ minHeight: '100%' }} vertical>
-            <MobileSettingsScreenHeader
-                description={t('officialPageSubtitle')}
-                infoContent={officialPageInfoContent}
-                onBack={onBack}
-                title={t('officialPage')}
-            />
-            <Flex gap={12} style={{ padding: 16 }} vertical>
+            {!embedded ? (
+                <MobileSettingsScreenHeader
+                    description={t('officialPageSubtitle')}
+                    infoContent={officialPageInfoContent}
+                    onBack={onBack}
+                    title={t('officialPage')}
+                />
+            ) : null}
+            <Flex gap={12} style={{ padding: embedded ? '0 0 24px' : 16 }} vertical>
                 <MobileLocalizedLanguageSelector
                     helperText="Choose which public-content language you want to edit. Links, toggles, ratings, and photos stay shared for all languages."
                     languages={managedLanguages}
@@ -971,7 +1037,7 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     title="Official page content language"
                 />
 
-                {officialPageUrl ? (
+                {!embedded && officialPageUrl ? (
                     <MobileLinkCard
                         compact={isCompactHandheld}
                         description={tShare('obpShareHint')}
@@ -1616,45 +1682,47 @@ export default function MobileOfficialPageScreen({ onBack }: MobileOfficialPageS
                     ) : null}
                 </SectionCard>
 
-                <Flex
-                    gap={8}
-                    style={{
-                        backdropFilter: 'blur(10px)',
-                        backgroundColor: token.colorBgContainer,
-                        borderTop: `1px solid ${token.colorBorderSecondary}`,
-                        bottom: 0,
-                        marginInline: -16,
-                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
-                        position: 'sticky',
-                        zIndex: 20,
-                    }}
-                    vertical
-                >
-                    <Button
-                        block
-                        color="primary"
-                        disabled={isSaving}
-                        fill="outline"
-                        icon={<LuEye size={18} />}
-                        onClick={() => setIsPreviewSheetOpen(true)}
-                        size="large"
+                {!embedded ? (
+                    <Flex
+                        gap={8}
+                        style={{
+                            backdropFilter: 'blur(10px)',
+                            backgroundColor: token.colorBgContainer,
+                            borderTop: `1px solid ${token.colorBorderSecondary}`,
+                            bottom: 0,
+                            marginInline: -16,
+                            padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                            position: 'sticky',
+                            zIndex: 20,
+                        }}
+                        vertical
                     >
-                        {isDirty ? tDesign('previewChanges') : tDesign('previewOfficialPage')}
-                    </Button>
-                    {isDirty ? (
-                        <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35, textAlign: 'center' }}>
-                            {tDesign('previewUnsavedHint')}
-                        </Text>
-                    ) : null}
-                    <Flex gap={12}>
-                        <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large">
-                            {tMobile('reset')}
+                        <Button
+                            block
+                            color="primary"
+                            disabled={isSaving}
+                            fill="outline"
+                            icon={<LuEye size={18} />}
+                            onClick={() => setIsPreviewSheetOpen(true)}
+                            size="large"
+                        >
+                            {isDirty ? tDesign('previewChanges') : tDesign('previewOfficialPage')}
                         </Button>
-                        <Button block disabled={!isDirty || isSaving} loading={isSaving} onClick={handleSave} size="large">
-                            {tMobile('saveChanges')}
-                        </Button>
+                        {isDirty ? (
+                            <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35, textAlign: 'center' }}>
+                                {tDesign('previewUnsavedHint')}
+                            </Text>
+                        ) : null}
+                        <Flex gap={12}>
+                            <Button block disabled={!isDirty || isSaving} fill="outline" onClick={handleReset} size="large">
+                                {tMobile('reset')}
+                            </Button>
+                            <Button block disabled={!isDirty || isSaving} loading={isSaving} onClick={handleSave} size="large">
+                                {tMobile('saveChanges')}
+                            </Button>
+                        </Flex>
                     </Flex>
-                </Flex>
+                ) : null}
             </Flex>
             {previewStoreDetails ? (
                 <MobileOfficialPagePreviewSheet

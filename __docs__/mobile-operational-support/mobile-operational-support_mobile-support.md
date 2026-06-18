@@ -166,6 +166,7 @@ All mobile screens write data in **identical format** to desktop:
 - **Service worker:** `next-pwa` v5.6.0 configured
 - **Manifest:** `public/manifest.json` with proper icons, orientation, start_url, and owner shortcuts for Today, Menu, Share & QR, and Feedback
 - **Offline banner:** Implemented in `MobileShell.tsx`
+- **Owner offline fallback:** After a successful online owner service-worker registration, `public/sw.js` can serve `/offline`; platform website visits preserve that owner worker, but a first-ever offline open before registration can still show the browser's native network error.
 - **Desktop switch:** "Switch to Desktop" in More screen (sets `localStorage.forceDesktopMode`)
 - **Return banner:** "Return to Mobile" shown when mobile user is in forced desktop mode
 - **Owner PWA launch:** `public/manifest.json` starts at `/today`, and cached `/dashboard` launches also map to the Today tab in `MobileShell`.

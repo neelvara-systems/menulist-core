@@ -4,18 +4,24 @@ import './sites/answerlattice/styles.css';
 import './sites/answerlattice/scroll-reveal.css';
 import 'antd/dist/reset.css';
 import { Metadata } from 'next';
-import { PLATFORM_URL } from '@constant/urls';
 import { APP_THEME_COLOR } from 'src/constants/common';
+import {
+    MENULIST_SITE_DESCRIPTION,
+    MENULIST_SITE_IMAGE,
+    MENULIST_SITE_IMAGE_ALT,
+    MENULIST_SITE_TITLE,
+    MENULIST_SITE_URL,
+} from '@constant/menulist/website';
 import { interFont } from 'src/fonts/inter';
 import DeploymentBuildBadge from '../components/common/DeploymentBuildBadge';
 import ServiceWorkerRegister from '../components/ServiceWorkerRegister';
 import AntdRegistry from '../lib/AntdRegistry';
 
-const siteUrl = PLATFORM_URL;
+const siteUrl = MENULIST_SITE_URL;
 
-const defaultTitle = 'MenuList - Upload Your Menu Online';
-const defaultDescription = 'Start with your current menu. MenuList prepares your live menu, official page, QR assets, customer app, PDF, and web link from one owner-approved source.';
-const defaultImage = '/images/website/menulist-og-official-source.png';
+const defaultTitle = MENULIST_SITE_TITLE;
+const defaultDescription = MENULIST_SITE_DESCRIPTION;
+const defaultImage = MENULIST_SITE_IMAGE;
 const appleStartupImages = [
     {
         url: '/splash/apple-splash-1290x2796.png',
@@ -59,6 +65,9 @@ export const metadata: Metadata = {
     title: defaultTitle,
     description: defaultDescription,
     metadataBase: new URL(siteUrl),
+    alternates: {
+        canonical: siteUrl,
+    },
     manifest: '/manifest.json',
     keywords: ['official menu', 'business menu', 'menu management', 'QR menu', 'official business page', 'multi-location menu'],
     authors: [{ name: 'MenuList', url: siteUrl }],
@@ -72,7 +81,7 @@ export const metadata: Metadata = {
                 url: defaultImage,
                 width: 1200,
                 height: 630,
-                alt: 'MenuList - upload your menu online preview',
+                alt: MENULIST_SITE_IMAGE_ALT,
             },
         ],
         locale: 'en_US',

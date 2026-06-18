@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.61 (Business Health AI Diagnostic Positioning)
+**Version:** 3.6.64 (SEO/AEO Metadata Parity)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 17, 2026
+**Last Updated:** June 18, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,13 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.61** | **Business Health AI Diagnostic Positioning** | **"Business Health checks. AI Menu Manager prepares approved fixes."** | **ACTIVE** |
+| **3.6.64** | **SEO/AEO Metadata Parity** | **Production canonical metadata, schema URL source, and post-setup noindex guard.** | **ACTIVE** |
+
+Version 3.6.64 aligns the main MenuList website's shared SEO/AEO metadata with the current official-source positioning. Root fallback metadata, website-layout metadata, homepage JSON-LD, and page-level JSON-LD now read from shared MenuList website constants backed by the production `https://menulist.ai` deployment target. `/create-menu/success` is now a server metadata wrapper around the existing client success UI and emits `noindex, nofollow` robots metadata plus a self canonical to the non-query success path so post-setup query URLs do not inherit indexable website metadata. `npm run verify:agent-readiness` now guards the canonical metadata constants, schema URL source, stale fallback title removal, and success-page noindex wrapper. This is static website metadata/discovery/docs work only; public website copy, owner dashboard runtime, menu publishing, auth, pricing/payment, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.63 updates the public AI Menu Manager page copy to reflect the guided context workflow now supported in the product: owners can ask naturally, or choose an item, category, or menu area first when they want tighter control. The copy stays focused on selected store/project scope, broad-work approval, and registered MenuList action cards. This is static public website locale/docs work only; owner dashboard runtime, AMM execution, Firebase rules, Cloud Functions, pricing/payment runtime, auth, extraction, and customer menu runtime were not changed.
+
+Version 3.6.62 tightens the mobile hamburger menu after the feature list became too long for a first-time phone visitor. The drawer now keeps Features open by default, exposes Feature overview as the first row, collapses Start/Publish/Operate into nested accordion groups, opens Resources only on resource routes, highlights the current nested route, and removes the duplicate mobile top-level AI Menu Manager item because AI Menu Manager already lives under Features -> Operate. This is public website header/CSS/docs polish only; feature routes, owner dashboard runtime, customer menu runtime, pricing, payment, auth, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
 Version 3.6.61 updates Business Health public positioning for the AI-era website story. Business Health is now described as the AI health check for the owner's menu and public presence: it checks cached MenuList facts, shows what needs attention, says No action needed when stable, and hands fixes to AI Menu Manager or existing owner screens. This does not reintroduce Business Health action support. Business Health remains read-only/diagnostic, while AI Menu Manager owns prepared cards, approvals, existing MenuList operations, and receipts. This is static public website locale/metadata/discovery/docs work only; owner dashboard runtime, Business Health APIs, scheduler read models, AMM execution, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
 
@@ -723,6 +729,9 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.64 | June 18, 2026 | Aligned shared SEO/AEO metadata to production canonical constants, added explicit homepage canonical metadata, moved `/create-menu/success` behind a noindex server metadata wrapper, and hardened `verify:agent-readiness`. |
+| 3.6.63 | June 18, 2026 | Updated the AI Menu Manager public page copy to mention guided item/category/menu-area context selection while preserving natural-language commands, selected project scope, and approval-safe cards. |
+| 3.6.62 | June 18, 2026 | Converted the mobile hamburger feature list into an accordion with Features open by default, nested Start/Publish/Operate groups, current-route highlighting, and no duplicate AI Menu Manager entry. |
 | 3.6.61 | June 17, 2026 | Updated Business Health website positioning as an AI health check while preserving the read-only diagnostic boundary and AI Menu Manager handoff. |
 | 3.6.59 | June 17, 2026 | Added `/ai-menu-manager`, homepage AI Menu Manager launch hook, header/footer/feature navigation, pricing/how-it-works/FAQ copy, sitemap, and LLM discovery coverage without changing product runtime. |
 | 3.6.58 | June 17, 2026 | Added native guided storytelling to the homepage source-to-public workflow without global smooth-scroll hijack. |

@@ -1,15 +1,16 @@
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { Button, Card, Divider, Flex, Segmented, theme } from 'antd'
+import { Button, Card, Flex, Segmented, theme } from 'antd'
+import dynamic from 'next/dynamic';
 import { useContext, useMemo, useState } from 'react';
 import ShareLinkCard from '../../../ShareLinkCard';
 import AIDefaultsModal from '../../editorView/AIDefaultsModal';
-import { normalizeMenuMood } from '../designSystem'
-import BrandColorPicker from '../designSystem/BrandColorPicker'
-import MenuPageSettingsNew from '../menuPage/menuPageSettingsNew'
-import OfficialPageSettings from '../officialPage/officialPageSettings'
 import { pageOptions, PageType } from '../types'
+import { MobileAntdAppBridge } from '@/components/mobile/antd';
+
+const MobileDesignEditorScreen = dynamic(() => import('@/components/mobile/screens/MobileDesignEditorScreen'), { ssr: false });
+const MobileOfficialPageScreen = dynamic(() => import('@/components/mobile/screens/MobileOfficialPageScreen'), { ssr: false });
 
 interface B2CSidebarProps {
     activePage: PageType;
@@ -18,34 +19,51 @@ interface B2CSidebarProps {
     setProjectData: (data: any) => void;
     storeDraft: any;
     setStoreDraft: (data: any) => void;
+    obpPhotoDeleteResetToken: number;
+    onObpPhotoDeleteQueueChange: (photoUrls: string[]) => void;
     setActiveLanguage: (language: string) => void;
 }
 
-function B2CSidebar({ activePage, setActivePage, projectData, setProjectData, storeDraft, setStoreDraft, setActiveLanguage }: B2CSidebarProps) {
+function B2CSidebar({
+    activePage,
+    setActivePage,
+    projectData,
+    setProjectData,
+    storeDraft,
+    setStoreDraft,
+    obpPhotoDeleteResetToken,
+    onObpPhotoDeleteQueueChange,
+    setActiveLanguage,
+}: B2CSidebarProps) {
     const { token } = theme.useToken();
     const labels = useOfferingLabels();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [isAIDefaultsOpen, setIsAIDefaultsOpen] = useState(false);
+    const currentStoreDetails = storeDraft || storeDetails;
+    const sidebarTitle = activePage === PageType.OBP
+        ? 'Official page settings'
+        : `${labels.offeringTitle} design`;
     const pageUrl = useMemo(() => {
-        if (!storeDetails?.subdomain && !storeDetails?.customDomain) return '';
+        if (!currentStoreDetails?.subdomain && !currentStoreDetails?.customDomain) return '';
         if (!projectData?.name) return '';
         return generateProjectUrl(
-            storeDetails?.subdomain,
-            storeDetails?.customDomain,
+            currentStoreDetails?.subdomain,
+            currentStoreDetails?.customDomain,
             projectData.name,
             projectData?.isDefault,
         );
-    }, [projectData?.isDefault, projectData?.name, storeDetails?.customDomain, storeDetails?.subdomain]);
+    }, [currentStoreDetails?.customDomain, currentStoreDetails?.subdomain, projectData?.isDefault, projectData?.name]);
 
     return (
         <Flex gap={12} vertical>
             <Card
                 size="small"
-                title={`Customise your ${labels.offeringLower}`}
-                style={{ width: 400, height: 'calc(100vh - 120px)', overflowY: 'scroll' }}
-                styles={{ body: { background: token.colorBgLayout } }}
+                title={sidebarTitle}
+                style={{ width: 430, height: 'calc(100vh - 120px)', overflow: 'hidden' }}
+                styles={{ body: { background: token.colorBgLayout, height: 'calc(100% - 42px)', overflow: 'hidden', padding: 12 } }}
             >
-                <Flex vertical gap={12}>
+                <MobileAntdAppBridge />
+                <Flex vertical gap={12} style={{ height: '100%', minHeight: 0 }}>
                     <Segmented
                         value={activePage}
                         onChange={setActivePage}
@@ -78,51 +96,36 @@ function B2CSidebar({ activePage, setActivePage, projectData, setProjectData, st
                         </Card>
                     ) : null}
 
-                    {activePage === PageType.OBP && storeDraft ? (
-                        <OfficialPageSettings
-                            onLanguageChange={setActiveLanguage}
-                            storeDetails={storeDraft}
-                            onStoreDraftChange={setStoreDraft}
-                        />
-                    ) : null}
-
-                    {activePage === PageType.MENU && (
-                        <>
-                            <MenuPageSettingsNew
-                                businessCategory={storeDetails?.businessCategory}
-                                businessType={storeDetails?.businessType}
-                                projectData={projectData}
-                                setProjectData={setProjectData}
+                    <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 2 }}>
+                        {activePage === PageType.OBP && storeDraft ? (
+                            <MobileOfficialPageScreen
+                                embedded
+                                embeddedPhotoDeleteResetToken={obpPhotoDeleteResetToken}
+                                embeddedProjectsList={projectData ? [projectData] : []}
+                                embeddedSelectedProjectId={projectData?.projectId || null}
+                                embeddedStoreDetails={storeDraft}
+                                onBack={() => undefined}
+                                onEmbeddedLanguageChange={setActiveLanguage}
+                                onEmbeddedPhotoDeleteQueueChange={onObpPhotoDeleteQueueChange}
+                                onEmbeddedStoreDetailsChange={setStoreDraft}
                             />
+                        ) : null}
 
-                            <Divider style={{ margin: '8px 0' }} />
-
-                            <BrandColorPicker
-                                value={projectData?.config?.design?.brand?.accentColor}
-                                onChange={(color) => {
-                                    setProjectData({
-                                        ...projectData,
-                                        config: {
-                                            ...projectData?.config,
-                                            design: {
-                                                ...projectData?.config?.design,
-                                                brand: {
-                                                    ...projectData?.config?.design?.brand,
-                                                    accentColor: color,
-                                                },
-                                            },
-                                        },
-                                    });
-                                }}
-                                currentMood={normalizeMenuMood(projectData?.config?.design?.menu?.mood)}
+                        {activePage === PageType.MENU ? (
+                            <MobileDesignEditorScreen
+                                embedded
+                                embeddedProjectData={projectData}
+                                embeddedStoreDetails={currentStoreDetails}
+                                onBack={() => undefined}
+                                onEmbeddedProjectDataChange={setProjectData}
                             />
-                        </>
-                    )}
+                        ) : null}
+                    </div>
                 </Flex>
             </Card>
             <AIDefaultsModal
-                businessType={storeDetails?.businessType}
-                businessCategory={storeDetails?.businessCategory}
+                businessType={currentStoreDetails?.businessType}
+                businessCategory={currentStoreDetails?.businessCategory}
                 onClose={() => setIsAIDefaultsOpen(false)}
                 open={isAIDefaultsOpen}
                 projectData={projectData}

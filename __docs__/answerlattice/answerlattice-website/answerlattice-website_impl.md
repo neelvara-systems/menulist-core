@@ -1,7 +1,7 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.2.85
-> **Last Updated:** 2026-06-10
+> **Version:** 1.2.86
+> **Last Updated:** 2026-06-18
 > **Audience:** Developers
 
 ---
@@ -214,6 +214,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - homepage exposes the implemented system map: Launch Setup, Support Control, Knowledge Governance, and Runtime Layer
 - June 10 market-pattern pass moved the homepage from a long feature catalog toward a product-led support-suite story: support-suite cards, setup path, install quickstarts, positioning boundary, and category comparison entered the main conversion path without adding runtime reads or unsupported helpdesk claims.
 - June 10 homepage compression pass reduced the rendered homepage from 18 sections to 11, shortened hero/suite/support-surface copy, preserved the sticky support-surface story and feature-wise product overview cards, and moved repeated setup/trust/comparison detail into Product, feature, resource, security, and comparison pages.
+- June 18 first-fold sharpening pass changed the homepage hero eyebrow, subtitle, proof strip, suite intro, metadata description, reusable hero copy, and final CTA so the first screen states the doctrine-safe contract: approved answers first, fallback when coverage is missing, and reviewable support gaps for founder approval.
 - June 10 product page and shared feature/capability templates now reconnect every narrower feature page back to the broader suite: setup, in-app support, hosted help, fallback, feedback, and owner-approved answers.
 - June 10 competitive cross-check pass added shared evaluation strips to product-area and product-feature templates so each page answers setup path, security boundary, and category-fit questions before the final CTA.
 - June 10 visual asset pass replaced generic dummy frames with 25 production-ready generated product-scene PNGs and matching internal SVG sources for homepage, Product, product-area, feature, widget, and demo slots while preserving stable filenames and dimensions.
@@ -475,6 +476,7 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-18 | 1.2.86 | Sharpened homepage first-fold copy, site metadata, reusable hero copy, and final CTA around approved answers before fallback and reviewable support gaps without changing routes, domains, runtime data calls, or dependencies |
 | 2026-06-10 | 1.2.85 | Added reusable AnswerLattice concept illustrations for source-to-answer, governance loop, install verification, safe-context boundary, and category positioning across Product, Install, Security, and Comparisons |
 | 2026-06-10 | 1.2.84 | Generated 25 production-ready AnswerLattice product-scene PNGs and internal source SVGs for the maintained website visual slots while preserving stable asset paths |
 | 2026-06-10 | 1.2.83 | Added the maintained AnswerLattice visual asset inventory and data attributes for current/future visual slots without generating new assets |

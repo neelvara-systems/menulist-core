@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.53 Feature Visual Tag De-Duplication
-**Last Updated:** June 11, 2026
+**Status:** IMPLEMENTED — v3.6.64 SEO/AEO Metadata Parity
+**Last Updated:** June 18, 2026
 **Audience:** Developers
 
 ---
@@ -10,7 +10,7 @@
 
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
 
-The latest launch-polish pass keeps the feature-page visual proof system from v3.6.49 but simplifies the hero media treatment so feature visuals read as clean product-proof canvases: wider hero media columns, fewer nested borders, no duplicate internal marketing headlines, no trailing duplicate proof-chip row, softer chips, and mobile-readable microcopy.
+The latest metadata parity pass keeps the existing website copy and page structure intact while aligning shared SEO/AEO metadata to the production MenuList canonical URL. Root fallback metadata, website layout metadata, homepage JSON-LD, and page-level JSON-LD read from `src/constants/menulist/website.ts`; `/create-menu/success` is a server metadata wrapper around the existing client success UI and is intentionally `noindex, nofollow, nocache` with a self canonical to the non-query success path.
 
 ```
 Route Group: src/app/(website)/
@@ -49,7 +49,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/trust-security` | `(website)/trust-security/page.tsx` | `TrustSecurityPage` | Server | Per-page |
 | `/create-menu` | `(website)/create-menu/page.tsx` | `CreateMenuClient` | Server (gate) | Per-page |
 | `/create-menu/preview/[draftId]` | `(website)/create-menu/preview/[draftId]/page.tsx` | `PreviewClient` | — | — |
-| `/create-menu/success` | `(website)/create-menu/success/page.tsx` | — | — | — |
+| `/create-menu/success` | `(website)/create-menu/success/page.tsx` + `CreateMenuSuccessClient.tsx` | `CreateMenuSuccessClient` | Server metadata wrapper + client success UI | `noindex, nofollow, nocache` |
 | `/resources` | `(website)/resources/page.tsx` | `ResourcesHub` | Server | Per-page |
 | `/resources/[slug]` | `(website)/resources/[slug]/page.tsx` | `ArticleLayout` | Server static params | Dynamic per article |
 | `/{locale}/resources` | `(website)/[locale]/resources/page.tsx` | `ResourceHubPageShell` | Server static params | Localized per-page for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES` |
@@ -69,6 +69,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
 - `/product` is a framework-level permanent redirect to `/how-it-works` (legacy URL preservation) and is intentionally omitted from sitemap and LLM discovery inventories.
 - `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows a locale-backed guided-setup fallback when OFF.
+- `/create-menu/success` is a post-setup utility route that may carry query-string menu URLs. It must remain outside discovery inventories and emit explicit `noindex, nofollow, nocache` robots metadata from the server wrapper, with a self canonical to `/create-menu/success`.
 - `/resources` and resource article routes are feature-gated by `ENABLE_WEBSITE_RESOURCES`.
 - Resource article routes are generated from `src/content/websiteResources/` and use `generateStaticParams()` for the 15 article slugs.
 - Reviewed localized resource routes are generated from the same resource registry for `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES`; non-reviewed locales are not exposed as resource routes.
@@ -94,6 +95,8 @@ LocalisationProvider (locale from next-intl/server)
 **Default metadata (from layout):**
 - Title: `MenuList - One Official Menu Source for Customers`
 - Description: `Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source.`
+- Metadata base: production `https://menulist.ai` from `src/constants/menulist/website.ts`
+- Canonical: `https://menulist.ai`
 - OG image: `/images/website/menulist-og-official-source.png`
 - Backward-compatible OG copy: `/og-image.png`
 - Robots: index, follow (full crawling enabled)
@@ -125,6 +128,8 @@ LocalisationProvider (locale from next-intl/server)
 
 **AI Menu Manager launch hook:** v3.6.59 adds `/ai-menu-manager`, `AiMenuManagerSection`, and a first-level header/footer navigation link for the public AI Menu Manager launch. The homepage now introduces AI Menu Manager directly after `InteractiveWorkflowSection`, so the story remains: one approved MenuList source first, then message-based approved updates. The page and homepage section use localized copy, card-native visuals, and approval-safe language: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. This is public website component/CSS/locale/docs only; owner dashboard runtime, AMM API behavior, Firebase rules, Cloud Functions, pricing/payment runtime, auth, extraction, and customer menu runtime were not changed.
 
+**AI Menu Manager guided context copy:** v3.6.63 updates only the dedicated `/ai-menu-manager` locale copy to reflect the product's guided context workflow. The page now says owners can ask naturally, or choose an item, category, or menu area first for tighter control. The copy still keeps selected store/project scope, broad-work approval, registered MenuList actions, and manual external handoff boundaries visible. This is static website locale/docs work only; the owner AMM UI, AMM DAL/API behavior, Firebase rules, Cloud Functions, pricing/payment runtime, auth, extraction, and customer menu runtime were not changed.
+
 **Business Health Features-page proof:** v3.6.32 adds Business Health as a compact Operations card in `FeaturesPage.tsx`. The card uses the shared `WebsiteFeatureCard` pattern and localized `Features.group4F1*` copy to explain AI health checks, latest MenuList check, last checked date, customer attention, whether anything needs action, the No action needed stable state, and safe handoff to AI Menu Manager or existing owner screens. This is public website component import/locale/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
 
 **Business Health campaign page:** v3.6.33 adds `/features/business-health` for marketing campaigns. The route shell lives in `src/app/(website)/features/business-health/page.tsx`, renders `BusinessHealthFeaturePage`, emits `WebsitePageStructuredData` with `path="/features/business-health"`, and uses a product-style Business Health preview followed by a MenuList-styled sticky story section modeled on Answerlattice's "From inputs to support surfaces" layout. The page now frames Business Health as the diagnostic counterpart to AI Menu Manager: Business Health finds issues; AI Menu Manager prepares approved fixes. The left rail tabs are `What it checks`, `Owner outcome`, and `Why owners can trust it`; the right side uses stacked sticky cards for the matching check/outcome/trust content. The homepage Business Health section links to the page through `View Business Health`, and the `/features` Operations card links to the same route. Platform discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. `/business-health` remains the protected owner route and is not used as a public marketing URL.
@@ -138,6 +143,8 @@ LocalisationProvider (locale from next-intl/server)
 **Customer Feedback Loop campaign page:** v3.6.43 adds `/features/customer-feedback-loop` as a generic `FeatureDetailPage` route for public guest feedback. The page frames the shipped Internal Feedback System as a correction loop: customers can report wrong prices, missing items, outdated details, or service concerns from public menu/OBP/QR/direct-link surfaces; owners review feedback privately; real issues route back to the approved source. The `/features` Operations group, desktop Features dropdown, and mobile hamburger feature list now include a linked `Customer feedback loop` entry through `websiteFeatureNavLinks` / `websiteFeatureNavGroups`. Platform discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. This is public website locale/metadata/discovery/docs copy only; guest feedback runtime, owner inbox runtime, mobile shell runtime, Firebase, Cloud Functions, pricing, payment, auth, and customer menu runtime were not changed.
 
 **Feature dropdown interaction polish:** v3.6.44 changes the desktop `Features` top-nav item from a direct `/features` link into a menu trigger button. The `/features` route is still available through the `Feature overview` row inside the panel. The desktop panel now renders the same Start, Publish, and Operate groups used by the mobile hamburger, and `websiteFeatureNavGroups` is the shared grouping source. CSS adds a small invisible hover bridge between the trigger and fixed panel so pointer travel does not close the dropdown, and the panel border/shadow is softened for dark mode. This is static website header/CSS/docs only; feature routes, owner dashboard runtime, customer menu runtime, Firebase, Cloud Functions, pricing, payment, auth, and Vercel deployment were not changed.
+
+**Mobile feature drawer accordion:** v3.6.62 changes the mobile hamburger drawer from an always-expanded feature map into a two-level accordion. `Header.tsx` keeps the top-level Features accordion open by default, keeps Resources collapsed unless the visitor is already on a resource route, opens the active Start/Publish/Operate feature group, and removes the duplicate top-level AI Menu Manager mobile entry because it already appears inside Features -> Operate. `website.css` owns the drawer accordion triggers, nested group panels, Feature overview card, active route states, and light/dark token styling. This is static website header/CSS/docs only; feature routes, owner dashboard runtime, customer menu runtime, Firebase, Cloud Functions, pricing, payment, auth, and Vercel deployment were not changed.
 
 **Feature card link affordance:** v3.6.44 also makes `/features` cards with a dedicated route visually distinct from static informational cards. `WebsiteFeatureCard` supports optional `leadingIcon` and `action` props. `FeaturesPage.tsx` opts into the leading-icon row for every feature card and passes a localized top-right `Features.cardAction` pill only when `feature.href` exists, while the link `aria-label` keeps the fuller `Features.cardCta` text. `website.css` gives `.ws-feature-card-link` cards a stronger resting border, subtle accent wash, compact `View` action, and clearer hover/focus movement. Non-clickable cards keep the same leading-icon structure without the action pill.
 
@@ -320,13 +327,15 @@ src/pages/
 
 - All non-homepage pages are **server components** with `export const metadata` (unique title, description, canonical, OG)
 - Homepage is a server shell that uses default metadata from layout + server-rendered `SchemaMarkup` JSON-LD before rendering the client homepage sections
+- `src/constants/menulist/website.ts` is the shared MenuList website metadata source and uses the production deployment target for canonical metadata/schema URLs
 - `SchemaMarkup.tsx` injects Organization, WebSite, SoftwareApplication, WebPage, and BreadcrumbList schema on homepage through `JsonLdScript`
-- `WebsitePageStructuredData.tsx` injects WebPage and BreadcrumbList schema on active platform pages
+- `WebsitePageStructuredData.tsx` injects WebPage and BreadcrumbList schema on active platform pages using the same production canonical URL source
+- `/create-menu/success` keeps post-setup query URLs out of indexable discovery with server-emitted `noindex, nofollow, nocache` metadata and a self canonical to the non-query success path
 - Sitemap: `src/app/sitemap.ts` and `public/sitemap.xml` use the shared active route inventory and omit the legacy `/product` redirect
 - Robots: Full crawling enabled (index, follow, max-image-preview: large) with non-www canonical discovery links
 - Agent context: `public/llms.txt` and `public/llms-full.txt` define public business fact access, official handoff boundaries, unknown handling, and WebMCP/MCP deferral
 - Per-page canonical URLs via `alternates.canonical`
-- Verification: `npm run verify:agent-readiness` checks platform/Answerlattice discovery registries, structured-data coverage, robots, sitemap, and LLM files. `npm run verify:website-resource-locales` checks reviewed resource locale packs.
+- Verification: `npm run verify:agent-readiness` checks platform/Answerlattice discovery registries, structured-data coverage, robots, sitemap, LLM files, MenuList canonical metadata constants, schema URL source, stale fallback metadata removal, and the post-setup noindex guard. `npm run verify:website-resource-locales` checks reviewed resource locale packs.
 
 ---
 

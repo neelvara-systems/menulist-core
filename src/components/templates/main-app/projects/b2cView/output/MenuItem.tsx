@@ -34,6 +34,7 @@ export default function MenuItemOutput({
 }: MenuItemOutputProps) {
     const isAvailable = item.available !== false;
     const itemStyle = moodConfig.itemStyle;
+    const itemBorderWidth = itemStyle.borderWidth ?? 0;
 
     const isVertical = imagePosition === 'top';
 
@@ -46,7 +47,9 @@ export default function MenuItemOutput({
             `}
             style={{
                 background: itemStyle.background,
-                border: `${itemStyle.borderWidth || 1}px solid ${itemStyle.borderColor}`,
+                border: itemBorderWidth > 0 && itemStyle.borderColor
+                    ? `${itemBorderWidth}px solid ${itemStyle.borderColor}`
+                    : 'none',
                 borderRadius: itemStyle.borderRadius,
             }}
         >

@@ -1,7 +1,7 @@
 import JsonLdScript from '@/components/seo/JsonLdScript';
-import { PLATFORM_URL } from '@constant/urls';
+import { MENULIST_SITE_URL } from '@constant/menulist/website';
 
-const SITE_URL = PLATFORM_URL;
+const SITE_URL = MENULIST_SITE_URL;
 
 function buildUrl(path: string): string {
   if (!path || path === '/') return SITE_URL;

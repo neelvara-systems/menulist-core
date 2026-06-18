@@ -136,6 +136,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 ### Data Access Layer (DAL) Patterns
 
 - **Client-Side Preference**: Use client-side DAL over unnecessary API routes
+- **Firebase Call Challenge**: Before adding any Firestore read/write/delete or API route that exists only to perform Firestore work, first ask whether the client already has the required tenant/store/project context and can use an existing DAL, compact session doc, cache, or batched write. Use server routes only for secrets, provider calls, imports/jobs, external integrations, high-risk server-only policy, or durable ledgers that cannot be safely enforced by existing client DAL/security rules.
 - **Compositional Patterns**: apiCallComposer, requestBodyComposer for consistency
 - **Firebase Cost Awareness**: Every read/write/delete impacts revenue
 - **Single Sources of Truth**: Eliminate redundant data access patterns
@@ -178,6 +179,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 
 - **Cost Tracking**: Document every operation's revenue impact
 - **Read Optimization**: Prefer client-side queries over server functions
+- **No Reflex API Routes**: Do not add protected API routes just to re-read data already loaded in the owner context. Prefer a tenant-scoped DAL/session-doc pattern unless server-only authority is required.
 - **Write Patterns**: Batch operations, minimize document writes
 - **Auth Context**: User context affects security rules and costs
 - **Scheduled Function Consolidation**: Do not add new standalone MenuList scheduled Cloud Functions for operational maintenance by default. Add tasks to `functions/src/schedulers/menulistMaintenanceScheduler.ts` with an explicit cadence, per-task Firestore lease, state tracking, and Firebase cost note. Store-EOD analytics/intelligence remains in `functions/src/decisionBlocksScoring.ts`; Answerlattice scheduled work remains in `functions-answerlattice/`.
@@ -267,7 +269,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Shared Data Mirror**: Static data shared with Cloud Functions must live in `src/data/shared/` and be copied byte-for-byte to `functions/src/sharedData/`.
 - **Core Architecture Protection**: Do not silently change shared types, enums, DB fields, constants, or DAL contracts. Present impact analysis first if a shared change is unavoidable.
 - **No Settings Bloat**: Do not add owner-facing toggles for behavior already controlled by existing settings or sensible defaults.
-- **Firebase Cost Discipline**: Avoid redundant reads, batch writes, paginate growing lists, document every new read/write/delete pattern.
+- **Firebase Cost Discipline**: Avoid redundant reads, batch writes, paginate growing lists, document every new read/write/delete pattern, and reject new proposal/event/operation docs when a capped daily/session summary can safely hold the state.
 - **Operational Monitoring**: AI and expensive routes need SAFE_MODE and rate limiting; mutation/payment/publish flows need appropriate monitoring and alerts.
 - **Public Entity Addressability**: Customer-facing items and business entities should have stable, human-readable URLs when they are intended to be shareable/indexable.
 - **Public Cache Invalidation**: Any code path that writes public-facing `projects` or `stores` truth must invalidate the public menu/OBP cache. Client/browser DAL paths must use `src/lib/cache/publicClientCache.ts`; server/API paths must revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`. This applies to desktop, mobile, direct Firestore writes, API routes, special menus, PWA/customer app settings, and multi-outlet propagation/override flows.

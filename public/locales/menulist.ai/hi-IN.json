@@ -91,6 +91,59 @@
         "Assets": "एसेट्स",
         "Growth Kits": "Growth Kits"
     },
+    "CampaignCue": {
+        "Navigation": {
+            "groups": {
+                "Start": "शुरुआत",
+                "Campaigns": "कैम्पेन",
+                "Channels": "चैनल",
+                "Operations": "ऑपरेशन्स"
+            },
+            "tabs": {
+                "home": "डेली डेस्क",
+                "details": "बिज़नेस",
+                "sources": "ऑफर, इवेंट और नोट्स",
+                "delivery": "एक्सपोर्ट",
+                "settings": "सेटिंग्स",
+                "cues": "आइडिया",
+                "campaigns": "पैक",
+                "editor": "एडिटर",
+                "creative": "सोशल",
+                "video": "रील्स",
+                "ugc": "स्क्रिप्ट",
+                "whatsapp": "WhatsApp",
+                "google": "Google",
+                "ads": "Ads",
+                "trust": "चेक्स",
+                "visibility": "विज़िबिलिटी",
+                "calendar": "कैलेंडर",
+                "assets": "एसेट्स",
+                "analytics": "रिज़ल्ट्स",
+                "agency": "एजेंसी",
+                "locations": "लोकेशन्स",
+                "billing": "प्लान"
+            },
+            "actions": {
+                "appAppearance": "ऐप दिखावट",
+                "darkMode": "डार्क मोड",
+                "lightMode": "लाइट मोड",
+                "publicSite": "पब्लिक साइट"
+            },
+            "header": {
+                "expandSidebar": "साइडबार फैलाएं",
+                "collapseSidebar": "साइडबार छोटा करें",
+                "dailyDesk": "डेली डेस्क",
+                "openDailyDesk": "डेली डेस्क खोलें",
+                "refreshWorkspace": "वर्कस्पेस रीफ्रेश करें",
+                "useLightMode": "लाइट मोड इस्तेमाल करें",
+                "useDarkMode": "डार्क मोड इस्तेमाल करें",
+                "appAppearance": "ऐप दिखावट",
+                "openAppAppearance": "ऐप दिखावट सेटिंग्स खोलें",
+                "publicSite": "पब्लिक साइट",
+                "openPublicSite": "पब्लिक साइट खोलें"
+            }
+        }
+    },
     "Settings": {
         "language": "भाषा",
         "selectLanguage": "भाषा चुनें",
@@ -4749,7 +4802,7 @@
             "q14": "क्या staff AI Menu Manager use कर सकता है?",
             "a14": "Staff access owner permissions पर depend करता है। High-risk work approval rules follow करता है और owner-controlled access bypass नहीं कर सकता।",
             "q15": "क्या यह Zomato, Swiggy, Google या Instagram directly update कर सकता है?",
-            "a15": "सिर्फ तब जब supported first-party adapter हो। Otherwise MenuList manual task, export, या copy/share card prepare करता है ताकि external step clear रहे।"
+            "a15": "नहीं। AI Menu Manager इन platforms पर publish या update नहीं करता। Unsupported destinations not-supported card दिखाते हैं और MenuList truth unchanged रहता है।"
         },
         "FinalCta": {
             "title": "एक public menu बनाएं ",
@@ -5425,7 +5478,7 @@
             "flow3Desc": "Approved work existing MenuList save, import, image, publish, cache और receipt paths use करता है।",
             "commandsEyebrow": "Daily commands",
             "commandsTitle": "Message से menu updates",
-            "commandsSubtitle": "Examples selected store और project से grounded रहते हैं। All-project या multi-outlet work approval से पहले shown होता है।",
+            "commandsSubtitle": "Naturally पूछें, या tighter control चाहिए तो पहले item, category या menu area चुनें। हर example selected store और project से grounded रहता है, और broad work approval से पहले shown होता है।",
             "demo0Input": "Tea 20",
             "demo0Output": "Old price, new price और approval वाला price card.",
             "demo1Input": "Cold coffee over",
@@ -5436,14 +5489,14 @@
             "demo3Output": "Existing MenuList theme controls से design card.",
             "demo4Input": "Generate image for masala tea",
             "demo4Output": "Draft image card. Owner decide करता है use करना है या नहीं.",
-            "demo5Input": "Update this on Zomato",
-            "demo5Output": "Supported adapter न हो तो manual task या export card.",
+            "demo5Input": "Copy menu link",
+            "demo5Output": "Selected MenuList link के लिए copy card.",
             "opsEyebrow": "Menu operations",
             "opsTitle": "Menu work के लिए बना है, random chat नहीं।",
             "opsHighlight": "random chat नहीं",
-            "opsSubtitle": "हर executable request registered MenuList action type से map होती है। Unsupported external work clear manual task बनता है, fake done state नहीं।",
+            "opsSubtitle": "हर executable request registered MenuList action type से map होती है। Unsupported external platforms clear not-supported card बनते हैं, fake done state नहीं।",
             "ops0Title": "Prices और availability",
-            "ops0Desc": "Selected menu से single-item या bulk price, sold-out, visibility और status cards prepare करें।",
+            "ops0Desc": "Selected menu से single-item, selected-item, category या bulk price, sold-out, visibility और status cards prepare करें।",
             "ops1Title": "Specials और publishing",
             "ops1Desc": "Today specials, banners, special menus और publishing work सही approval level के साथ prepare करें।",
             "ops2Title": "Images और content",
@@ -5452,8 +5505,8 @@
             "ops3Desc": "Live menu overwrite किए बिना existing menu import और extraction review paths use करें।",
             "ops4Title": "Design और theme",
             "ops4Desc": "Style requests को MenuList design controls से previewable changes में बदलें।",
-            "ops5Title": "External handoff",
-            "ops5Desc": "Zomato, Swiggy, Google, Instagram जैसे destinations real supported adapter न हो तो manual रहते हैं।",
+            "ops5Title": "Unsupported platforms",
+            "ops5Desc": "Zomato, Swiggy, Google, Instagram जैसे destinations AI Menu Manager से supported नहीं हैं।",
             "safetyEyebrow": "Owner control",
             "safetyTitle": "AI work prepare करता है। Control आपके पास रहता है।",
             "safetySubtitle": "Feature approval, selected store/project context और receipts के around design है ताकि important menu truth silently change न हो।",

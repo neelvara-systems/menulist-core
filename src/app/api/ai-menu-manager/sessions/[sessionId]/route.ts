@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@constant/permissions';
 import { getAiMenuManagerInbox } from '@database/aiMenuManager/server';
 import {
     applyAiMenuManagerRateLimit,
+    buildAiMenuManagerInvalidRequestResponse,
     resolveAiMenuManagerSelectedStoreScope,
 } from '@lib/ai-menu-manager/apiGuards';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
@@ -45,6 +46,11 @@ export const GET = withAuth(async (
     if (rateLimit) return rateLimit;
 
     const storeId = request.nextUrl.searchParams.get('storeId');
+    const projectId = request.nextUrl.searchParams.get('projectId')?.trim();
+    if (!projectId) {
+        return buildAiMenuManagerInvalidRequestResponse(request, session, 'session');
+    }
+
     const scope = resolveAiMenuManagerSelectedStoreScope(request, session, storeId);
     if ('error' in scope && scope.error) return scope.error;
 
@@ -62,6 +68,7 @@ export const GET = withAuth(async (
         sessionId,
         tId: scope.tId,
         sId: scope.sId,
+        projectId,
     });
 
     return NextResponse.json(serializeForJson({

@@ -53,6 +53,11 @@ export default function Header() {
   const t = useTranslations("Website");
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
+  const [openMobileSections, setOpenMobileSections] = useState<Record<string, boolean>>({
+    features: true,
+    resources: false,
+  });
+  const [openMobileFeatureGroups, setOpenMobileFeatureGroups] = useState<Record<string, boolean>>({});
   const pathname = usePathname();
 
   const openDrawer = () => setIsOpen(true);
@@ -66,6 +71,22 @@ export default function Header() {
     pathname?.startsWith("/resources")
     || /^\/[a-z]{2}-[A-Z]{2}\/resources/.test(pathname || ""),
   );
+  const isCurrentPath = (href: string) => pathname === href || Boolean(pathname?.endsWith(href));
+  const activeFeatureGroupKey = websiteFeatureNavGroups.find((group) =>
+    group.links.some((featureLink) => isCurrentPath(featureLink.href)),
+  )?.key;
+  const toggleMobileSection = (key: string) => {
+    setOpenMobileSections((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  };
+  const toggleMobileFeatureGroup = (key: string) => {
+    setOpenMobileFeatureGroups((current) => ({
+      ...current,
+      [key]: !current[key],
+    }));
+  };
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -73,6 +94,25 @@ export default function Header() {
       document.body.style.overflow = "";
     };
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setOpenMobileSections({
+      features: true,
+      resources: isResourcesPath,
+    });
+    setOpenMobileFeatureGroups(
+      Object.fromEntries(
+        websiteFeatureNavGroups.map((group, index) => [
+          group.key,
+          group.key === activeFeatureGroupKey || (!activeFeatureGroupKey && index === 0),
+        ]),
+      ) as Record<string, boolean>,
+    );
+  }, [activeFeatureGroupKey, isOpen, isResourcesPath]);
 
   return (
     <>
@@ -419,6 +459,7 @@ export default function Header() {
 
             {/* Nav links */}
             <nav
+              className="ws-mobile-drawer-nav"
               style={{ flex: 1, padding: "0.25rem 0.75rem", overflowY: "auto" }}
             >
               {navItemKeys.map((item) => {
@@ -427,6 +468,167 @@ export default function Header() {
                 const isActive = pathname === item.href
                   || (item.href === "/features" && isFeaturesPath)
                   || (item.href === "/resources" && isResourcesPath);
+
+                if (item.key === "features") {
+                  const isFeaturesOpen = openMobileSections.features;
+
+                  return (
+                    <section
+                      key={item.href}
+                      className="ws-mobile-accordion"
+                      data-open={isFeaturesOpen ? "true" : "false"}
+                    >
+                      <button
+                        type="button"
+                        className="ws-mobile-accordion__trigger"
+                        aria-expanded={isFeaturesOpen}
+                        aria-controls="ws-mobile-features-panel"
+                        onClick={() => toggleMobileSection("features")}
+                      >
+                        <span className="ws-mobile-accordion__trigger-copy">
+                          <Icon
+                            size={18}
+                            color={
+                              isActive
+                                ? "var(--ws-brand-secondary)"
+                                : "var(--ws-text-muted)"
+                            }
+                          />
+                          <span>{t(`Header.${item.key}`)}</span>
+                        </span>
+                        <LuChevronDown size={16} aria-hidden="true" />
+                      </button>
+                      <div
+                        id="ws-mobile-features-panel"
+                        className="ws-mobile-accordion__panel"
+                        hidden={!isFeaturesOpen}
+                      >
+                        <Link
+                          href="/features"
+                          onClick={closeDrawer}
+                          className="ws-mobile-feature-overview-link"
+                        >
+                          <LuLayoutGrid size={16} aria-hidden="true" />
+                          <span>
+                            <strong>{t("Header.featureOverviewTitle")}</strong>
+                            <small>{t("Header.featureOverviewDesc")}</small>
+                          </span>
+                          <LuArrowRight size={16} aria-hidden="true" />
+                        </Link>
+                        <div className="ws-mobile-feature-links" aria-label={t("Header.featuresMenuTitle")}>
+                          {websiteFeatureNavGroups.map((group) => {
+                            const isGroupOpen = Boolean(openMobileFeatureGroups[group.key]);
+
+                            return (
+                              <div
+                                key={group.key}
+                                className="ws-mobile-feature-links__group"
+                                data-open={isGroupOpen ? "true" : "false"}
+                              >
+                                <button
+                                  type="button"
+                                  className="ws-mobile-feature-links__group-trigger"
+                                  aria-expanded={isGroupOpen}
+                                  aria-controls={`ws-mobile-feature-group-${group.key}`}
+                                  onClick={() => toggleMobileFeatureGroup(group.key)}
+                                >
+                                  <span>{t(`Header.${group.key}`)}</span>
+                                  <LuChevronDown size={14} aria-hidden="true" />
+                                </button>
+                                <div
+                                  id={`ws-mobile-feature-group-${group.key}`}
+                                  className="ws-mobile-feature-links__group-panel"
+                                  hidden={!isGroupOpen}
+                                >
+                                  {group.links.map((featureLink) => {
+                                    const FeatureIcon = featureLink.icon;
+                                    const isFeatureActive = isCurrentPath(featureLink.href);
+
+                                    return (
+                                      <Link
+                                        key={featureLink.href}
+                                        href={featureLink.href}
+                                        onClick={closeDrawer}
+                                        className="ws-mobile-feature-link"
+                                        aria-current={isFeatureActive ? "page" : undefined}
+                                      >
+                                        <FeatureIcon size={15} aria-hidden="true" />
+                                        {t(`Header.${featureLink.key}`)}
+                                      </Link>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </section>
+                  );
+                }
+
+                if (item.key === "resources") {
+                  const isResourcesOpen = openMobileSections.resources;
+
+                  return (
+                    <section
+                      key={item.href}
+                      className="ws-mobile-accordion"
+                      data-open={isResourcesOpen ? "true" : "false"}
+                    >
+                      <button
+                        type="button"
+                        className="ws-mobile-accordion__trigger"
+                        aria-expanded={isResourcesOpen}
+                        aria-controls="ws-mobile-resources-panel"
+                        onClick={() => toggleMobileSection("resources")}
+                      >
+                        <span className="ws-mobile-accordion__trigger-copy">
+                          <Icon
+                            size={18}
+                            color={
+                              isActive
+                                ? "var(--ws-brand-secondary)"
+                                : "var(--ws-text-muted)"
+                            }
+                          />
+                          <span>{t(`Header.${item.key}`)}</span>
+                        </span>
+                        <LuChevronDown size={16} aria-hidden="true" />
+                      </button>
+                      <div
+                        id="ws-mobile-resources-panel"
+                        className="ws-mobile-accordion__panel"
+                        hidden={!isResourcesOpen}
+                      >
+                        <div className="ws-mobile-resource-links" aria-label={t("Header.resourcesMenuTitle")}>
+                          {resourceDropdownLinks.map((resourceLink) => {
+                            const ResourceIcon = resourceLink.icon;
+                            const isResourceActive = isCurrentPath(resourceLink.href);
+
+                            return (
+                              <Link
+                                key={resourceLink.href}
+                                href={resourceLink.href}
+                                onClick={closeDrawer}
+                                className="ws-mobile-resource-link"
+                                aria-current={isResourceActive ? "page" : undefined}
+                              >
+                                <ResourceIcon size={15} aria-hidden="true" />
+                                {t(`Header.${resourceLink.key}`)}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </section>
+                  );
+                }
+
+                if (item.key === "aiMenuManager") {
+                  return null;
+                }
+
                 return (
                   <div key={item.href}>
                     <Link
@@ -467,47 +669,6 @@ export default function Header() {
                       />
                       {t(`Header.${item.key}`)}
                     </Link>
-                    {item.key === "features" && (
-                      <div className="ws-mobile-feature-links" aria-label={t("Header.featuresMenuTitle")}>
-                        {websiteFeatureNavGroups.map((group) => (
-                          <div key={group.key} className="ws-mobile-feature-links__group">
-                            <p>{t(`Header.${group.key}`)}</p>
-                            {group.links.map((featureLink) => {
-                              const FeatureIcon = featureLink.icon;
-                              return (
-                                <Link
-                                  key={featureLink.href}
-                                  href={featureLink.href}
-                                  onClick={closeDrawer}
-                                  className="ws-mobile-feature-link"
-                                >
-                                  <FeatureIcon size={15} aria-hidden="true" />
-                                  {t(`Header.${featureLink.key}`)}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {item.key === "resources" && (
-                      <div className="ws-mobile-resource-links" aria-label={t("Header.resourcesMenuTitle")}>
-                        {resourceDropdownLinks.map((resourceLink) => {
-                          const ResourceIcon = resourceLink.icon;
-                          return (
-                            <Link
-                              key={resourceLink.href}
-                              href={resourceLink.href}
-                              onClick={closeDrawer}
-                              className="ws-mobile-resource-link"
-                            >
-                              <ResourceIcon size={15} aria-hidden="true" />
-                              {t(`Header.${resourceLink.key}`)}
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 );
               })}

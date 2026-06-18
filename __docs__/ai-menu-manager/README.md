@@ -3,9 +3,9 @@
 > **Feature:** AI Menu Manager
 > **Internal slug:** `ai-menu-manager`
 > **Product:** MenuList
-> **Status:** Initial implementation validated - feature flagged off by default
-> **Last Updated:** June 17, 2026
-> **Version:** 1.0
+> **Status:** Initial implementation validated - enabled behind AMM feature flags in current config
+> **Last Updated:** June 18, 2026
+> **Version:** 1.1
 
 ---
 
@@ -80,6 +80,14 @@ The most important rule:
 
 > AMM can talk naturally, but it can act only through registered, previewable, approved MenuList operations.
 
+Suggestion prompts are draft helpers only. The empty chat state should lead with frequent daily owner work: store closed today, working-hours changes, and a contextual sold-out item when the selected menu has items. If item context is unavailable, the third starter can fall back to time-slot work. AMM groups the full suggestion sheet by current menu context such as quick fixes, promotion, photos/content, style, daily operations, and publish/import. When a suggestion has sub-options, AMM first shows the owner a focused second layer such as presentation tone, layout, theme color, working-hours choice, customer app task, or digital screen task. Choosing a final option places the command in the composer; the owner must still send it before a card is prepared.
+
+The composer exposes **Work on** and **Suggestions** as separate tools. Opening one closes the other, so the owner never has two guidance panels competing for the composer. **Work on** scopes the next message to an item, multiple items, one category, menu design, digital menu, official page, digital screens, feedback, or store settings. Item/category choices use compact selectable rows; search appears only for longer lists or active search text. Picking context does not create a card or write Firestore. AMM keeps the owner-visible text explicit, such as `Selected items: Masala Tea, Cold coffee. increase price by 10`, and passes the selected entity IDs into the resolver so duplicate item/category names still resolve to exactly what the owner picked. The normal resolver, action registry, approval card, existing mutation path, and receipt flow still apply.
+
+Clarification cards can also show option rows. Choosing an option only drafts the next owner message; it does not approve or execute a card.
+
+Feedback link and feedback QR requests are dedicated browser-local export cards, not generic manual tasks. When the owner sends "Copy feedback link" or "Show feedback QR", AMM prepares the selected menu's feedback URL with Copy link, Open link, and Download QR controls. These controls do not mutate menu truth and do not store QR base64 in Firestore.
+
 ---
 
 ## Codebase Truth Anchors
@@ -107,7 +115,7 @@ The most important rule:
 | Execution model | Action registry; no unregistered writes. |
 | Manual parity | Manual UI and AMM are alternative entrances into the same actions. |
 | Store/project context | AMM screen includes store and project selectors; actions default to the currently selected store and project, not all projects. |
-| Data model | Compact session/day docs, actionable proposal docs, Storage for heavy artifacts. |
+| Data model | Compact session/day docs for normal cards, proposal docs only for server-backed/durable cards, Storage for heavy artifacts. |
 | Firebase cost | Reads are cached and bounded; no per-token/per-message Firestore writes. |
 | AI cost | Acceptable when bounded by safe mode, rate limits, capacity, and accounting. |
 | Image generation | Generate draft images; owner must approve before menu use. |
@@ -173,16 +181,25 @@ Unsupported or unavailable external actions become manual-task/export cards, not
 
 ```ts
 // src/config/features.ts
-ENABLE_AI_MENU_MANAGER: false
-ENABLE_AI_MENU_MANAGER_MOBILE: false
-ENABLE_AI_MENU_MANAGER_VOICE_INPUT: false
-ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS: false
-ENABLE_AI_MENU_MANAGER_RULES: false
-ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES: false
+ENABLE_AI_MENU_MANAGER: true
+ENABLE_AI_MENU_MANAGER_MOBILE: true
+ENABLE_AI_MENU_MANAGER_VOICE_INPUT: true
+ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS: true
+ENABLE_AI_MENU_MANAGER_RULES: true
+ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES: true
+ENABLE_AI_MENU_MANAGER_DEBUG_ARTIFACTS: false
 AI_MENU_MANAGER_SESSION_STORAGE_MODE: "daily_compact"
 ```
 
 The feature is designed as a complete day-one contract. Flags are safety controls, not scope-reduction switches.
+
+## Firebase Cost Rule
+
+For deterministic selected-project actions, prefer the client DAL over AMM API routes when the selected project context is already loaded and no server-only secret, provider, import job, external integration, staff/account permission, or durable server ledger is required.
+
+Normal price, availability, visibility, featured section, note, and design preset cards are stored in the compact `aiMenuManagerSessions/{sessionId}` daily doc as capped pending operations. They do not create one proposal document per card. Approval applies the stored patch through the existing `updateProject()` path and then writes the compact receipt back to the same session doc.
+
+Command submit, completion, and cancel reuse the compact session already loaded in the open AMM screen and write the updated daily session doc directly. They do not read a proposal doc or transaction-read the session again for normal deterministic cards.
 
 ---
 
@@ -191,3 +208,4 @@ The feature is designed as a complete day-one contract. Flags are safety control
 | Version | Date | Changes |
 | --- | --- | --- |
 | 1.0 | June 17, 2026 | Initial docs-first contract created from the captured ChatGPT conversation, current Codex planning discussion, and MenuList codebase cross-check. |
+| 1.1 | June 18, 2026 | Deterministic project actions moved to the client DAL compact-session model to avoid proposal-doc reads/writes for normal owner operations. |

@@ -135,7 +135,7 @@ Yes. Manual screens stay available. AMM is another entrance into the same MenuLi
 
 ### "Can this publish to delivery apps?"
 
-Only where a supported adapter exists. Otherwise MenuList prepares a manual task or export so the owner still has less work.
+No. AI Menu Manager does not publish to delivery apps. It works on MenuList-owned menu, link, QR, design, import, image, and publish flows.
 
 ### "What makes this different from menu generators?"
 
@@ -195,7 +195,7 @@ Premium packaging can separate expensive action families:
 
 - generated images.
 - high-volume batch operations.
-- external publish adapters.
+- supported MenuList publish/export capacity.
 - multi-outlet rules.
 - advanced import/review capacity.
 

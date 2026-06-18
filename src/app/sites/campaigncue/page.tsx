@@ -82,6 +82,14 @@ type LocalProof = {
     proof: string;
 };
 
+type CatalogItem = {
+    group: string;
+    title: string;
+    detail: string;
+    tag: string;
+    icon: IconType;
+};
+
 type FooterGroup = {
     title: string;
     links: Array<{
@@ -91,35 +99,33 @@ type FooterGroup = {
 };
 
 const NAV_LINKS = [
-    { label: 'Workflow', href: '#workflow' },
-    { label: 'Outputs', href: '#studio' },
+    { label: 'Today', href: '#daily-desk' },
+    { label: 'Packs', href: '#studio' },
+    { label: 'Index', href: '#catalog' },
     { label: 'Examples', href: '#starts' },
-    { label: 'CueLayers', href: '#cuelayers' },
     { label: 'Trust', href: '#trust' },
+    { label: 'FAQ', href: '#faq' },
 ];
 
 const HERO_PILLS = [
-    'No blank prompt',
-    'Export and download first',
-    'Owner review before use',
+    'Starts from real business facts',
+    'Exports before it posts',
+    'Risky claims stay visible',
 ];
 
 const FIT_ITEMS = [
-    'Restaurants',
-    'Salons',
-    'Retail shops',
-    'Local services',
-    'Fitness studios',
-    'Clinics',
-    'Agencies',
-    'Multi-location teams',
-    'Manual posting workflows',
+    "Today's cue",
+    'Checked facts',
+    'WhatsApp + Google',
+    'Creative + print',
+    'Manual handoff',
+    'Result memory',
 ];
 
 const OUTPUTS: OutputFormat[] = [
     {
         title: 'WhatsApp pack',
-        description: 'Status text, reply line, image note, and consent reminder for manual sharing.',
+        description: 'Status text, reply line, image note, and consent reminder ready for manual sharing.',
         icon: LuMessageSquare,
         status: 'Copy ready',
     },
@@ -137,7 +143,7 @@ const OUTPUTS: OutputFormat[] = [
     },
     {
         title: 'Print and staff pack',
-        description: 'Counter poster, flyer note, coupon or QR card, staff share text, and counter script.',
+        description: 'Counter poster, flyer note, coupon or QR card, staff share text, and a short counter script.',
         icon: LuFileDown,
         status: 'Use in store',
     },
@@ -170,7 +176,7 @@ const OUTPUTS: OutputFormat[] = [
 const WORKFLOW_STEPS: WorkflowStep[] = [
     {
         label: '01',
-        title: 'Read today',
+        title: 'Read the business facts',
         detail: 'Offers, items, services, photos, hours, links, source notes, and owner inputs become the campaign base.',
         icon: LuStore,
     },
@@ -213,7 +219,7 @@ const OWNER_DAY_STEPS: IconCard[] = [
     },
     {
         title: 'Download the pack',
-        description: 'Use WhatsApp text, Google draft, social creative, reel brief, or print handoff manually.',
+        description: 'Use WhatsApp text, Google fields, social creative, reel brief, or print handoff manually.',
         icon: LuDownload,
     },
     {
@@ -238,6 +244,65 @@ const LOCAL_PROOFS: LocalProof[] = [
         title: 'Local service callout',
         detail: 'Area served, availability, phone CTA, proof note, and manual posting checklist.',
         proof: 'No unsupported promise',
+    },
+];
+
+const CATALOG_ITEMS: CatalogItem[] = [
+    {
+        group: 'Start',
+        title: 'Today cue',
+        detail: 'One practical thing to promote, pulled from current business facts and missing detail prompts.',
+        tag: 'First screen',
+        icon: LuLayoutDashboard,
+    },
+    {
+        group: 'Start',
+        title: 'Offer facts',
+        detail: 'Price, date, slot, service, product, link, photo, or rule that the pack is allowed to use.',
+        tag: 'Owner input',
+        icon: LuFileText,
+    },
+    {
+        group: 'Pack',
+        title: 'WhatsApp and Google',
+        detail: 'Manual-ready message, local update, CTA, image note, and publish checklist for the same cue.',
+        tag: 'Channel pack',
+        icon: LuMessageSquare,
+    },
+    {
+        group: 'Pack',
+        title: 'Creative and print',
+        detail: 'Square, story, poster, table card, shelf note, or staff handoff copy from one source-backed pack.',
+        tag: 'Asset pack',
+        icon: LuImage,
+    },
+    {
+        group: 'Review',
+        title: 'Claim check',
+        detail: 'Sales promises, ranking claims, before/after copy, consent, and sensitive wording stay visible.',
+        tag: 'Safety',
+        icon: LuShieldAlert,
+    },
+    {
+        group: 'Review',
+        title: 'Image reuse',
+        detail: 'CueLayers can keep a flat-safe fallback while editable candidates remain reviewable.',
+        tag: 'CueLayers',
+        icon: LuLayers,
+    },
+    {
+        group: 'Handoff',
+        title: 'Manual export',
+        detail: 'Download assets, copy channel text, create a manual schedule task, or send for approval.',
+        tag: 'No direct post',
+        icon: LuDownload,
+    },
+    {
+        group: 'Handoff',
+        title: 'Result memory',
+        detail: 'Mark used, skipped, booked, sold, or needs follow-up so the next cue has better context.',
+        tag: 'Learning',
+        icon: LuBarChart3,
     },
 ];
 
@@ -269,7 +334,7 @@ const PRODUCT_CAPABILITIES: IconCard[] = [
     },
     {
         title: 'Creative Trust Center',
-        description: 'Every risky claim, missing proof, stale detail, or provider action is visible before the owner uses the pack.',
+        description: 'Every risky claim, missing proof, stale detail, or spend action is visible before the owner uses the pack.',
         icon: LuClipboardCheck,
     },
 ];
@@ -335,7 +400,7 @@ const OWNER_OUTCOMES: IconCard[] = [
     },
     {
         title: 'Control cost and risk',
-        description: 'Heavy generation, provider posting, and ad spend stay behind capability gates.',
+        description: 'Generation, export choices, and ad spend decisions stay visible before the owner commits.',
         icon: LuWalletCards,
     },
 ];
@@ -343,7 +408,7 @@ const OWNER_OUTCOMES: IconCard[] = [
 const FAQ_ITEMS = [
     {
         question: 'Does CampaignCue publish directly to Instagram, Google, or WhatsApp?',
-        answer: 'No. The current product is export/download-first. It creates packs owners can copy, download, schedule manually, approve, or mark used. Direct provider posting is a separate future layer.',
+        answer: 'No. The active product is export/download-first. It creates packs owners can copy, download, schedule manually, approve, or mark used. Direct account posting is not part of the active delivery mode.',
     },
     {
         question: 'Is this only for MenuList restaurants?',
@@ -359,7 +424,7 @@ const FAQ_ITEMS = [
     },
     {
         question: 'Can owners reuse existing images?',
-        answer: 'Yes. CueLayers is planned around uploaded or generated flat images becoming editable candidates with protected text, source truth, and safe fallback when reconstruction is uncertain.',
+        answer: 'Yes. CueLayers treats uploaded or generated flat images as editable candidates when reconstruction is safe, with protected text, source truth, and a flat fallback when reconstruction is uncertain.',
     },
 ];
 
@@ -448,7 +513,7 @@ function withBasePath(basePath: string, href: string): string {
 function BrandMark() {
     return (
         <span className="campaigncue-brand-mark" aria-hidden="true">
-            <LuSparkles />
+            <LuMegaphone />
         </span>
     );
 }
@@ -492,23 +557,23 @@ function HeroProductPreview() {
                     <section className="campaigncue-preview-main" aria-label="Today cue preview">
                         <div className="campaigncue-preview-kicker">
                             <LuRadar aria-hidden="true" />
-                            <span>Best cue right now</span>
+                            <span>Ready after fact check</span>
                         </div>
-                        <h2>Fill 4 PM bookings with a service pack.</h2>
-                        <p>Booking link is ready. Before/after claim needs owner review.</p>
+                        <h2>Promote the lunch combo before 2 PM.</h2>
+                        <p>Photo, price, pickup link, Google update, WhatsApp status, and counter card are ready.</p>
                         <div className="campaigncue-preview-proof">
                             <span>
                                 <LuCheckCircle2 aria-hidden="true" />
-                                Service saved
+                                Price checked
                             </span>
                             <span>
                                 <LuShieldAlert aria-hidden="true" />
-                                Claim review
+                                No ranking claim
                             </span>
                         </div>
                         <div className="campaigncue-preview-actions">
-                            <span>WhatsApp copy</span>
-                            <span>Story asset</span>
+                            <span>Copy WhatsApp</span>
+                            <span>Download poster</span>
                             <span>Google draft</span>
                         </div>
                     </section>
@@ -528,22 +593,6 @@ function HeroProductPreview() {
                         })}
                     </section>
 
-                    <section className="campaigncue-preview-canvas" aria-label="Creative editor preview">
-                        <div className="campaigncue-mini-toolbar">
-                            <span>Editor</span>
-                            <strong>Export safe</strong>
-                        </div>
-                        <div className="campaigncue-mini-poster">
-                            <span>Weekend slots</span>
-                            <strong>20% off color refresh</strong>
-                            <em>Book on WhatsApp</em>
-                        </div>
-                        <div className="campaigncue-mini-layers">
-                            <span>Text</span>
-                            <span>Offer</span>
-                            <span>Photo</span>
-                        </div>
-                    </section>
                 </div>
             </div>
         </div>
@@ -556,33 +605,37 @@ function WorkflowRail() {
             {WORKFLOW_STEPS.map((step) => {
                 const Icon = step.icon;
                 return (
-                    <article className="campaigncue-workflow-step" key={step.title}>
-                        <div>
+                    <div className="campaigncue-workflow-step" key={step.title}>
+                        <span className="campaigncue-workflow-marker">
                             <span>{step.label}</span>
                             <Icon aria-hidden="true" />
+                        </span>
+                        <div>
+                            <h3>{step.title}</h3>
+                            <p>{step.detail}</p>
                         </div>
-                        <h3>{step.title}</h3>
-                        <p>{step.detail}</p>
-                    </article>
+                    </div>
                 );
             })}
         </div>
     );
 }
 
-function IconCardGrid({ cards }: { cards: IconCard[] }) {
+function BenefitList({ cards }: { cards: IconCard[] }) {
     return (
-        <div className="campaigncue-card-grid">
+        <div className="campaigncue-benefit-list">
             {cards.map((card) => {
                 const Icon = card.icon;
                 return (
-                    <article className="campaigncue-card" key={card.title}>
-                        <span className="campaigncue-card-icon" aria-hidden="true">
+                    <div className="campaigncue-benefit-row" key={card.title}>
+                        <span aria-hidden="true">
                             <Icon />
                         </span>
-                        <h3>{card.title}</h3>
-                        <p>{card.description}</p>
-                    </article>
+                        <div>
+                            <strong>{card.title}</strong>
+                            <p>{card.description}</p>
+                        </div>
+                    </div>
                 );
             })}
         </div>
@@ -591,18 +644,41 @@ function IconCardGrid({ cards }: { cards: IconCard[] }) {
 
 function OutputGrid() {
     return (
-        <div className="campaigncue-output-grid">
+        <div className="campaigncue-output-ledger">
             {OUTPUTS.map((output) => {
                 const Icon = output.icon;
                 return (
-                    <article className="campaigncue-output-card" key={output.title}>
+                    <div className="campaigncue-output-row" key={output.title}>
+                        <span className="campaigncue-output-icon" aria-hidden="true">
+                            <Icon />
+                        </span>
                         <div>
-                            <Icon aria-hidden="true" />
-                            <span>{output.status}</span>
+                            <strong>{output.title}</strong>
+                            <p>{output.description}</p>
                         </div>
-                        <h3>{output.title}</h3>
-                        <p>{output.description}</p>
-                    </article>
+                        <span className="campaigncue-output-status">{output.status}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
+function CapabilityLedger({ cards }: { cards: IconCard[] }) {
+    return (
+        <div className="campaigncue-capability-ledger">
+            {cards.map((card) => {
+                const Icon = card.icon;
+                return (
+                    <div className="campaigncue-capability-row" key={card.title}>
+                        <span aria-hidden="true">
+                            <Icon />
+                        </span>
+                        <div>
+                            <strong>{card.title}</strong>
+                            <p>{card.description}</p>
+                        </div>
+                    </div>
                 );
             })}
         </div>
@@ -611,13 +687,13 @@ function OutputGrid() {
 
 function PromptStarts() {
     return (
-        <div className="campaigncue-start-grid">
+        <div className="campaigncue-start-list">
             {STARTING_POINTS.map((start) => (
-                <article className="campaigncue-start-card" key={start.title}>
-                    <span>{start.title}</span>
+                <div className="campaigncue-start-row" key={start.title}>
+                    <strong>{start.title}</strong>
                     <p>{start.detail}</p>
                     <LuChevronRight aria-hidden="true" />
-                </article>
+                </div>
             ))}
         </div>
     );
@@ -626,17 +702,25 @@ function PromptStarts() {
 function OwnerDayPath() {
     return (
         <section className="campaigncue-owner-path" aria-label="How owners use CampaignCue">
-            {OWNER_DAY_STEPS.map((step, index) => {
-                const Icon = step.icon;
-                return (
-                    <article key={step.title}>
-                        <span>{String(index + 1).padStart(2, '0')}</span>
-                        <Icon aria-hidden="true" />
-                        <strong>{step.title}</strong>
-                        <p>{step.description}</p>
-                    </article>
-                );
-            })}
+            <div className="campaigncue-owner-path-intro">
+                <span>Owner path</span>
+                <strong>Four plain moves, no marketing calendar required.</strong>
+            </div>
+            <ol>
+                {OWNER_DAY_STEPS.map((step, index) => {
+                    const Icon = step.icon;
+                    return (
+                        <li key={step.title}>
+                            <span>{String(index + 1).padStart(2, '0')}</span>
+                            <Icon aria-hidden="true" />
+                            <div>
+                                <strong>{step.title}</strong>
+                                <p>{step.description}</p>
+                            </div>
+                        </li>
+                    );
+                })}
+            </ol>
         </section>
     );
 }
@@ -644,24 +728,66 @@ function OwnerDayPath() {
 function RealWorkProof() {
     return (
         <section className="campaigncue-real-work" aria-label="Concrete CampaignCue examples">
-            <div>
+            <div className="campaigncue-real-work-copy">
                 <span>Real work, not filler</span>
-                <h2>Every card names the business fact behind the campaign.</h2>
+                <h2>Every pack shows the fact behind the campaign.</h2>
                 <p>
-                    A campaign pack should feel like it came from the owner&apos;s actual day:
-                    a price, a slot, a photo, a link, a location, or a proof note.
+                    A campaign pack should feel like it came from the owner&apos;s actual day: a price,
+                    an open slot, a product photo, a booking link, a service area, or a proof note.
                 </p>
             </div>
-            <div className="campaigncue-real-work-grid">
+            <div className="campaigncue-real-work-ledger">
                 {LOCAL_PROOFS.map((item) => (
-                    <article key={item.title}>
-                        <strong>{item.title}</strong>
-                        <p>{item.detail}</p>
+                    <div className="campaigncue-real-work-row" key={item.title}>
+                        <div>
+                            <strong>{item.title}</strong>
+                            <p>{item.detail}</p>
+                        </div>
                         <span>
                             <LuShieldCheck aria-hidden="true" />
                             {item.proof}
                         </span>
-                    </article>
+                    </div>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function CampaignCueCatalog() {
+    const groups = Array.from(new Set(CATALOG_ITEMS.map((item) => item.group)));
+
+    return (
+        <section className="campaigncue-catalog" id="catalog" aria-label="CampaignCue pack index">
+            <aside className="campaigncue-catalog-rail" aria-label="CampaignCue pack categories">
+                <span>Pack index</span>
+                <h2>Browse by owner job.</h2>
+                <nav>
+                    {groups.map((group) => (
+                        <a href={`#catalog-${group.toLowerCase()}`} key={group}>
+                            {group}
+                        </a>
+                    ))}
+                </nav>
+            </aside>
+            <div className="campaigncue-catalog-list">
+                {groups.map((group) => (
+                    <section id={`catalog-${group.toLowerCase()}`} key={group}>
+                        <h3>{group}</h3>
+                        {CATALOG_ITEMS.filter((item) => item.group === group).map((item) => {
+                            const Icon = item.icon;
+                            return (
+                                <div className="campaigncue-catalog-row" key={`${item.group}-${item.title}`}>
+                                    <Icon aria-hidden="true" />
+                                    <div>
+                                        <strong>{item.title}</strong>
+                                        <p>{item.detail}</p>
+                                    </div>
+                                    <span>{item.tag}</span>
+                                </div>
+                            );
+                        })}
+                    </section>
                 ))}
             </div>
         </section>
@@ -737,17 +863,16 @@ export default function CampaignCueHomePage() {
                     <span className="campaigncue-eyebrow">Daily campaign desk for local businesses</span>
                     <h1>CampaignCue</h1>
                     <p>
-                        Every day, CampaignCue shows what to promote, what detail is missing, and what is ready
-                        to use. It prepares channel packs from real business facts, then keeps delivery manual
-                        and owner-controlled.
+                        Know what to promote today. Get the WhatsApp text, Google update, social creative,
+                        print note, video brief, and safety checks in one source-backed pack.
                     </p>
                     <div className="campaigncue-actions">
                         <a className="campaigncue-primary-action" href={withBasePath(basePath, '/app')}>
                             Open workspace
                             <LuArrowRight aria-hidden="true" />
                         </a>
-                        <a className="campaigncue-secondary-action" href="#workflow">
-                            See workflow
+                        <a className="campaigncue-secondary-action" href="#studio">
+                            See pack examples
                         </a>
                     </div>
                     <div className="campaigncue-hero-pills" aria-label="CampaignCue launch boundaries">
@@ -768,9 +893,11 @@ export default function CampaignCueHomePage() {
                 ))}
             </section>
 
-            <OwnerDayPath />
-
             <RealWorkProof />
+
+            <CampaignCueCatalog />
+
+            <OwnerDayPath />
 
             <section className="campaigncue-section" id="workflow">
                 <SectionIntro eyebrow="Workflow" title="A simple daily loop from business fact to usable campaign pack.">
@@ -815,7 +942,7 @@ export default function CampaignCueHomePage() {
 
             <section className="campaigncue-section" id="studio">
                 <SectionIntro eyebrow="Outputs" title="One campaign cue, many owner-ready pieces.">
-                    CampaignCue separates creative preparation from provider posting. The product creates
+                    CampaignCue separates creative preparation from account posting. The product creates
                     practical files, text, briefs, and checklists that an owner or agency can use immediately.
                 </SectionIntro>
                 <OutputGrid />
@@ -827,7 +954,7 @@ export default function CampaignCueHomePage() {
                         CampaignCue uses the shared Creative Editor through a product adapter. Design Cue commands,
                         guided edit tools, resize presets, export checks, and campaign context stay connected.
                     </SectionIntro>
-                    <IconCardGrid cards={OWNER_OUTCOMES} />
+                    <BenefitList cards={OWNER_OUTCOMES} />
                 </div>
                 <div className="campaigncue-editor-preview" aria-label="Creative Studio preview">
                     <div className="campaigncue-editor-toolbar">
@@ -909,7 +1036,7 @@ export default function CampaignCueHomePage() {
                 <div>
                     <SectionIntro eyebrow="Trust And Safety" title="CampaignCue blocks work that should not go live.">
                         Human review is part of the product. Claim checks, source checks, spend gates, rights notes,
-                        and provider-posting boundaries stay visible before the owner exports or uses anything.
+                        and delivery boundaries stay visible before the owner exports or uses anything.
                     </SectionIntro>
                     <div className="campaigncue-trust-points">
                         <span>
@@ -922,7 +1049,7 @@ export default function CampaignCueHomePage() {
                         </span>
                         <span>
                             <LuWalletCards aria-hidden="true" />
-                            Cost gates for paid provider actions
+                            Cost gates for paid actions
                         </span>
                     </div>
                 </div>
@@ -934,9 +1061,9 @@ export default function CampaignCueHomePage() {
                     <span>Delivery Boundary</span>
                     <h2>Day one is export-first by design.</h2>
                     <p>
-                        The website now says the same thing as the product architecture: CampaignCue creates,
-                        checks, downloads, copies, schedules manual tasks, and records outcomes. It does not
-                        silently connect accounts, publish posts, send WhatsApp messages, or spend ad budget.
+                        CampaignCue creates, checks, downloads, copies, schedules manual tasks, and records
+                        outcomes. It does not silently connect accounts, publish posts, send WhatsApp messages,
+                        or spend ad budget.
                     </p>
                 </div>
                 <div className="campaigncue-delivery-list">
@@ -964,7 +1091,7 @@ export default function CampaignCueHomePage() {
                     The product is intentionally local-business first: campaigns need facts, timing, source proof,
                     approvals, and usable exports more than another content feed.
                 </SectionIntro>
-                <IconCardGrid cards={PRODUCT_CAPABILITIES} />
+                <CapabilityLedger cards={PRODUCT_CAPABILITIES} />
             </section>
 
             <section className="campaigncue-section campaigncue-faq" id="faq">
@@ -1018,7 +1145,7 @@ export default function CampaignCueHomePage() {
                 <FooterLinks basePath={basePath} />
                 <div className="campaigncue-footer-bottom">
                     <span>© 2026 CampaignCue</span>
-                    <span>Export-first delivery. Direct provider posting remains a gated future layer.</span>
+                    <span>Export-first delivery. Direct account posting is outside the active delivery mode.</span>
                 </div>
             </footer>
         </main>

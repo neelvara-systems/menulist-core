@@ -60,33 +60,70 @@ const OWNER_APP_PATHS = [
     /^\/users(?:\/|$)/,
 ];
 
+function getResolvedDomain() {
+    if (typeof window === 'undefined') return null;
+
+    try {
+        return resolveDomain(window.location.host);
+    } catch {
+        return null;
+    }
+}
+
+function isOwnerAppPath(pathname: string): boolean {
+    return OWNER_APP_PATHS.some((pattern) => pattern.test(pathname));
+}
+
+function isStandaloneDisplayMode(): boolean {
+    if (typeof window === 'undefined') return false;
+
+    const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean };
+
+    return window.matchMedia?.('(display-mode: standalone)').matches === true
+        || navigatorWithStandalone.standalone === true;
+}
+
+function getRegistrationScriptUrl(reg: ServiceWorkerRegistration): string | undefined {
+    return reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL;
+}
+
+function shouldPreserveOwnerWorkerWithoutTarget(): boolean {
+    const resolved = getResolvedDomain();
+    return resolved?.type === 'platform';
+}
+
 function getTargetSwUrl(): string | null {
     if (typeof window === 'undefined') return null;
-    try {
-        const resolved = resolveDomain(window.location.host);
-        // Customer tenants (subdomain or custom domain) → minimal SW.
-        if (resolved.type === 'subdomain' || resolved.type === 'custom') {
-            return CUSTOMER_SW_URL;
-        }
-        // Dedicated private docs product host.
-        if (resolved.type === 'product' && resolved.productSite?.id === 'mycodex') {
-            return MYCODEX_SW_URL;
-        }
-        // Platform origins serve both the public marketing website and the
-        // owner app. Keep Workbox off public website routes so Safari cannot
-        // keep stale marketing pages or assets in control while scrolling.
-        if (resolved.type === 'platform') {
-            return OWNER_APP_PATHS.some((pattern) => pattern.test(window.location.pathname))
-                ? OWNER_SW_URL
-                : null;
-        }
-        // Other product sites and localhost should not register a worker.
-        return null;
-    } catch {
+
+    const resolved = getResolvedDomain();
+    if (!resolved) {
         // Unknown origin → register nothing. Safer than attaching either
         // worker to the wrong scope.
         return null;
     }
+
+    // Customer tenants (subdomain or custom domain) → minimal SW.
+    if (resolved.type === 'subdomain' || resolved.type === 'custom') {
+        return CUSTOMER_SW_URL;
+    }
+
+    // Dedicated private docs product host.
+    if (resolved.type === 'product' && resolved.productSite?.id === 'mycodex') {
+        return MYCODEX_SW_URL;
+    }
+
+    // Platform origins serve both the public marketing website and the
+    // owner app. Normal website routes should not install Workbox, but an
+    // already-installed standalone owner app must be able to repair/register
+    // its worker even when iOS launches it at the origin root.
+    if (resolved.type === 'platform') {
+        return isOwnerAppPath(window.location.pathname) || isStandaloneDisplayMode()
+            ? OWNER_SW_URL
+            : null;
+    }
+
+    // Other product sites and localhost should not register a worker.
+    return null;
 }
 
 export default function ServiceWorkerRegister() {
@@ -100,12 +137,25 @@ export default function ServiceWorkerRegister() {
             try {
                 const registrations = await navigator.serviceWorker.getRegistrations();
 
-                // Development and non-PWA origins should never keep a stale
-                // worker attached. If one exists, unregister it so localhost
-                // does not keep routing requests through old Workbox logic.
+                // Development should never keep a stale worker attached.
+                // Production non-PWA routes remove wrong workers, but platform
+                // website routes preserve the correct owner worker so visiting
+                // menulist.online/ cannot break the installed owner app's
+                // offline fallback for the same origin.
                 if (process.env.NODE_ENV !== 'production' || !targetUrl) {
                     let removedRegistration = false;
+                    const ownerWorkerUrlToPreserve = process.env.NODE_ENV === 'production'
+                        && !targetUrl
+                        && shouldPreserveOwnerWorkerWithoutTarget()
+                        ? new URL(OWNER_SW_URL, window.location.origin).href
+                        : null;
+
                     for (const reg of registrations) {
+                        const activeUrl = getRegistrationScriptUrl(reg);
+                        if (ownerWorkerUrlToPreserve && activeUrl === ownerWorkerUrlToPreserve) {
+                            continue;
+                        }
+
                         const removed = await reg.unregister().catch(() => false);
                         removedRegistration = removedRegistration || removed;
                     }
@@ -132,7 +182,7 @@ export default function ServiceWorkerRegister() {
                 // script. This handles migration from the legacy auto-register
                 // setup where customer tenants may have `sw.js` registered.
                 for (const reg of registrations) {
-                    const activeUrl = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL;
+                    const activeUrl = getRegistrationScriptUrl(reg);
                     if (activeUrl && activeUrl !== absoluteTargetUrl) {
                         await reg.unregister().catch(() => { });
                     }
@@ -140,7 +190,7 @@ export default function ServiceWorkerRegister() {
 
                 // If the correct SW is already registered, nothing to do.
                 const alreadyRegistered = registrations.some((reg) => {
-                    const activeUrl = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL;
+                    const activeUrl = getRegistrationScriptUrl(reg);
                     return activeUrl === absoluteTargetUrl;
                 });
 

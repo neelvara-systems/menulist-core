@@ -4,7 +4,7 @@ import { CAMPAIGNCUE_LOCAL_WORKSPACE_PATH, CAMPAIGNCUE_WORKSPACE_PATH } from "./
 export const CAMPAIGNCUE_SITE_URL = getProductDeploymentTarget("campaigncue", "production").url;
 export const CAMPAIGNCUE_SITE_TITLE = "CampaignCue - Daily Campaign Desk for Local Businesses";
 export const CAMPAIGNCUE_SITE_DESCRIPTION =
-    "CampaignCue turns real local-business facts into a daily campaign desk, export-ready packs, safe editor changes, manual delivery steps, and result memory.";
+    "CampaignCue turns real local-business facts into source-checked campaign packs for WhatsApp, Google, social, print, video, and manual handoff.";
 
 export const CAMPAIGNCUE_ROBOTS_DISALLOW_PATHS = [
     CAMPAIGNCUE_WORKSPACE_PATH,

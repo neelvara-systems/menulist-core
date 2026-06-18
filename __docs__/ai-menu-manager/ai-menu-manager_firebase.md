@@ -2,7 +2,7 @@
 
 **Status:** Initial implementation validated - cost model active for implemented foundation
 **Cost posture:** Firestore cost is the top constraint
-**Last Updated:** June 17, 2026
+**Last Updated:** June 18, 2026
 
 ---
 
@@ -10,12 +10,12 @@
 
 AI Menu Manager must be compact by default.
 
-It must not write one Firestore document per chat message, token, provider chunk, small event, card render, or internal state transition. The owner-facing session should be a compact current-state document, actionable cards should have proposal documents, and heavy artifacts should live in Storage.
+It must not write one Firestore document per chat message, token, provider chunk, small event, card render, or internal state transition. The owner-facing session should be a compact current-state document. Normal deterministic selected-project cards stay in that compact session as capped pending operations; proposal documents are reserved for server-backed adapters that need provider secrets, import/upload jobs, external integration policy, or a durable operation ledger. Heavy artifacts should live in Storage.
 
 Estimated default cost at 1,000 stores with 10 AMM commands per store per month:
 
 - Session/inbox reads: low, because one compact session doc is the default load.
-- Proposal writes: proportional to actionable cards only.
+- Proposal writes: zero for normal deterministic cards; proportional only to server-backed/durable cards.
 - Project writes: same cost as manual action because AMM uses existing project update path.
 - AI/provider accounting: existing AI operation accounting where reused.
 - Storage: low unless generated images/import artifacts are used heavily.
@@ -33,8 +33,8 @@ AMM compact documents must have explicit caps so a busy owner session cannot gro
 | Field | Required cap |
 | --- | --- |
 | `compactMessages` | Keep only recent compact message summaries, target max 20. Store full transcript/debug text in Storage only when needed. |
-| `pendingCardSummaries` | Keep only active actionable card summaries, target max 25. Resolved card detail stays on proposal docs. |
-| `recentReceiptSummaries` | Keep only recent receipts, target max 20. Full receipt stays on the proposal doc. |
+| `pendingCardSummaries` | Keep only active actionable card summaries, target max 25. Deterministic card detail stays in capped `pendingOperations`; server-backed card detail may stay on proposal docs. |
+| `recentReceiptSummaries` | Keep only recent receipts, target max 20. Deterministic receipt detail stays compact; server-backed receipt detail may stay on the proposal doc. |
 | `artifactRefs` | Keep only current artifact pointers, target max 20. Large artifact manifests move to Storage. |
 | `idempotencyKeys` | Keep only recent keys required for retry protection, target max 10 per proposal. |
 
@@ -48,7 +48,7 @@ Required pattern:
 
 - current day/session doc contains the fast owner timeline.
 - active pending cards are available from the current session summary or a deterministic active-inbox summary.
-- proposal detail docs load only when the owner opens a card or when the compact summary is stale.
+- proposal detail docs load only for server-backed cards or when a compact summary explicitly points to durable proposal detail.
 - historical sessions load only from paginated history.
 
 ### Deterministic IDs
@@ -56,12 +56,12 @@ Required pattern:
 Use deterministic IDs where safe:
 
 - daily session ID derived from tenant, store, project, and date.
-- idempotency-keyed command/proposal creation to avoid duplicate proposal writes.
+- idempotency-keyed command/session/proposal creation to avoid duplicate compact operations or proposal writes.
 - deterministic manual-task/export IDs when retrying the same approved operation.
 
-This avoids extra get-or-create reads and duplicate proposal documents during retries.
+This avoids extra get-or-create reads and duplicate compact operations or proposal documents during retries.
 
-Implementation requirement: retry safety must cover the transaction body, not only the client-generated id. If a deterministic proposal document already exists, AMM must return the existing card and avoid appending duplicate compact messages, pending summaries, proposal writes, approval counters, execution counters, or receipt summaries.
+Implementation requirement: retry safety must cover the persisted session/proposal state, not only the client-generated id. If a deterministic operation already exists in the loaded compact session, AMM must update the same card rather than appending duplicate compact messages or pending summaries. If a server-backed proposal document already exists, AMM must return that existing card and avoid duplicate proposal writes, approval counters, execution counters, or receipt summaries.
 
 ### Batched Mutation Preference
 
@@ -99,8 +99,8 @@ Job-card polling must be bounded:
 
 | Collection | Purpose | Access model |
 | --- | --- | --- |
-| `aiMenuManagerSessions` | Compact session/day timeline, pending summaries, recent receipts | Protected API or tenant-scoped client read only if explicitly approved |
-| `aiMenuManagerProposals` | Actionable cards and operation records | Protected API; direct client writes not allowed |
+| `aiMenuManagerSessions` | Compact session/day timeline, pending operation cards, recent receipts | Tenant/store-scoped client DAL for deterministic cards; protected API may also write server-backed cards |
+| `aiMenuManagerProposals` | Server-backed actionable cards and durable operation records | Protected API/Admin SDK only; direct client writes not allowed |
 | `aiMenuManagerRules` | Owner-approved deterministic rules | Protected API; explicit owner approval |
 | `projects/{tId}/{sId}/{projectId}` | Existing menu truth | Existing `updateProject()` / approved mutation path |
 | `menuChangeLog/{tId}/{sId}` | Existing silent menu change memory | Existing side effects only |
@@ -142,33 +142,40 @@ Every executable adapter must mirror the cost class declared in [ai-menu-manager
 
 | Operation | Collection | Trigger | Docs read | Notes |
 | --- | --- | --- | --- | --- |
-| Load current session summary | `aiMenuManagerSessions` | AMM route open | 1 | Contains compact messages, pending card summaries, receipts. |
-| Load proposal detail | `aiMenuManagerProposals` | Owner opens a card | 1 per opened card | Avoid loading all proposal details on first paint. |
+| Sync Firebase Auth claims | existing auth sync | Route/bootstrap before direct DAL access | existing auth-sync cost only when claims are missing/stale | Required before top-level compact-session reads/writes; reuse existing `/api/auth/set-claims` behavior instead of adding AMM-specific auth routes. |
+| Load current session summary | `aiMenuManagerSessions` | AMM route open | 1 | Contains compact messages, full pending operation cards, receipts. |
+| Load active pending proposal cards | `aiMenuManagerProposals` | Server-backed adapters only | 0 by default | Deterministic selected-project cards do not read proposal docs. |
 | Load menu context packet | `projects` or cache | Command only when cache miss | 0-1 | Prefer cached packet keyed by project update marker. |
 
-Cost rule: opening AMM should not query all proposals, all messages, all menu items, and all past receipts.
+Cost rule: opening AMM should not query all proposals, all messages, all menu items, and all past receipts. The normal screen open reads the current selected-project daily session doc only; proposal docs are reserved for server-backed adapters.
 
 Cost rule: unresolved cards must not require scanning previous daily sessions.
 
-Cost rule: AMM context packets are built for the selected store and selected project shown in the AMM selectors. Opening AMM must not load every project for the store by default.
+Cost rule: AMM context packets are built for the selected store and selected project shown in the AMM selectors. Opening AMM may load the existing bounded project-selector summary list, but must not load every project's full menu data or build context packets for non-selected projects.
 
 ### Submit Command
 
 | Operation | Collection | Trigger | Reads | Writes | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Get/create session | `aiMenuManagerSessions` | Command submit | 0-1 | 1 merge | Reuse deterministic current day/session doc. |
-| Build context packet | cache / `projects` | Cache miss | 0-1 | 0 | No repeated project scans if cache is valid. |
-| Create proposals | `aiMenuManagerProposals` | Actionable cards | 0 | N | N equals actionable cards, not messages. |
-| Update session summary | `aiMenuManagerSessions` | After proposals | 0 | 1 merge | Store compact card summaries only. |
+| Ensure selected-store Firebase Auth claims | existing auth sync | Before direct session write | existing auth-sync cost only when stale | Prevents permission failures when platform/HQ users switch active store context. |
+| Write updated compact session | `aiMenuManagerSessions` | Command submit | 0 AMM session reads | 1 write | Uses the loaded current-session snapshot, appends capped compact messages and pending operations locally, then writes the same daily doc. |
+| Build context packet | selected project already loaded | Command submit | 0 additional | 0 | Deterministic commands use the selected project already in desktop/mobile state. |
+| Resolve store context | active session | Command submit | 0 additional | 0 | Use active session/store context; do not read `stores/{sId}` for deterministic cards. |
+| Choose Work on context | none | Composer context picker | 0 | 0 | Uses the selected project already loaded in memory. Item/category selections only rewrite the next owner message before resolver execution. |
+| Pick starter card | none | Empty-state contextual starter | 0 | 0 | Starter cards are derived from the selected project already loaded in memory and only draft text or open the second suggestion layer. |
+| Browse suggestion groups | none | Opening desktop inline tray or mobile sheet | 0 | 0 | Suggestions and second-layer guided choices are derived from the selected project already loaded in memory. Selecting a final option only fills the composer. |
+| Pick clarification option | none | Card option row click | 0 | 0 | Option rows draft the next owner message locally and do not create a new card until the owner sends it. |
+| Store pending operation | `aiMenuManagerSessions` | Actionable card | included above | included above | Full card plus exact patch/hash/base-project marker is capped in `pendingOperations`. |
+| Create proposal doc | `aiMenuManagerProposals` | Server-backed adapters only | 0 | N | Only when secrets/jobs/external policy/durable ledger require the server path. |
 
 ### Approve Card
 
 | Operation | Collection | Trigger | Reads | Writes | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Lock proposal | `aiMenuManagerProposals` | Approve/edit/cancel | 1 | 1 | Uses idempotency key. |
+| Verify pending operation | in-memory selected session state | Approve deterministic card | 0 | 0 | The approved patch comes from the stored pending operation, not from freeform card text. |
 | Execute project mutation | `projects` | Approved project action | Existing `updateProject()` cost | Existing `updateProject()` cost | Preserves MCE/MOL/cache path. |
-| Complete proposal | `aiMenuManagerProposals` | After execution | 0-1 | 1 | Store receipt summary and execution status. |
-| Update session summary | `aiMenuManagerSessions` | After completion | 0 | 1 merge | Move card from pending to recent receipt. |
+| Complete operation | `aiMenuManagerSessions` | After execution/manual done/cancel | 0 AMM session reads when the loaded session snapshot is passed | 1 session write | Move card from pending to recent receipt, capped. |
+| Lock/complete proposal | `aiMenuManagerProposals` | Server-backed adapters only | 1-2 | 1-2 | Use only when the adapter requires the protected API path. |
 
 Existing `updateProject()` may fetch old project state when MCE/MOL/master awareness is enabled, then writes the project and triggers revalidation. Evidence: `src/database/projects/index.ts:931`, `src/database/projects/index.ts:995`, `src/database/projects/index.ts:1003`, `src/database/projects/index.ts:1070`.
 
@@ -176,7 +183,14 @@ If several approved cards share the same project, risk class, and approval scope
 
 AMM must treat `storeId` and `projectId` as the current selector context. Store-level actions use the selected store. Project-level actions use the selected project. Cross-project, all-project, or all-store behavior is not the default and requires an explicit scope proposal before execution.
 
-Production hardening note: approval and completion requests must echo the selected `projectId` and `actionType`. The server verifies them against the proposal before locking or completing the card. Approval also rebuilds the compact selected-project context and rejects stale cards when the stored base hash no longer matches.
+Production hardening note: deterministic client approval rebuilds the selected-project context and rejects stale cards when the stored base hash no longer matches. Server-backed approval and completion requests must echo the selected `projectId` and `actionType`; the server verifies them against the proposal before locking or completing the card.
+
+Scale estimate for two successful deterministic project operations after the screen is already open:
+
+- AMM command overhead: 0 AMM session reads + 2 session writes.
+- AMM completion overhead: 0 AMM session reads + 2 session writes when the loaded session snapshot is passed.
+- Existing project mutation overhead: 2 existing `updateProject()` saves plus any enabled MCE/MOL/cache side effects.
+- No proposal-doc reads/writes are needed for those deterministic operations.
 
 ### Image Generation
 
@@ -217,17 +231,19 @@ Mobile AMM action costs must follow the existing manual mobile screen costs:
 | Customer communication templates | Existing browser-local template generator | Keep generation/copy/share `C0 local`; no proposal doc unless owner asks AMM to retain the message. |
 | Sharable item cards, menu kit assets, print previews, physical surfaces | Browser-local canvas/PDF/native-share utilities | Keep preview/download/share `C0 local`; no AMM artifact write unless a durable receipt is required. |
 | Menu presence monitor | Existing `updateMenuPresence()` store write | Confirm/unconfirm touches current store presence fields only; status uses loaded store context. |
-| Reviews/reputation guard | Disabled review APIs and guarded suggestion route | No AMM polling or direct external posting; if enabled later, keep bounded status reads and suggestion accounting. |
+| Reviews/reputation guard | Disabled review APIs and guarded suggestion route | No AMM polling or external-platform posting; disabled review APIs stay out of AMM mutation scope. |
 | New item metadata and image editing | Existing accounted AI APIs | Draft-only proposal cards; applying output uses the normal item/image approval path. |
 | POS setup helpers | Existing POS settings UI and store fields | Copy/download helpers stay local; instruction email draft may update the existing daily instruction count only. |
 
 Cost optimization scope found in the mobile sweep:
 
 - Mobile share/export operations should remain browser-local by default.
+- Feedback link copy/open and feedback QR download are `C0 local` card controls. AMM may keep the compact card/receipt summary only; it must not write QR image data, base64 payloads, or extra artifact docs for this flow.
 - Mobile action adapters should reuse the existing mobile screen DAL/API; do not add mobile-only AMM collections.
 - Bounded read cards such as feedback inbox, digital screen status, POS test, domain verify, and integration status need explicit result caps and stop conditions.
 - Store-level changes from multiple related cards can merge into one existing `updateStore()` call only when approval scope remains clear.
 - Feature-doc sweep additions should prefer local cards first: communication templates, item share cards, physical surfaces, print previews, menu kit asset share, POS technical summary copy, and sample payload download must not create Firestore writes by default.
+- Exact local export cards such as menu link/QR, official page link/QR, feedback link/QR, customer app install link, digital screen link, POS setup copy, POS technical summary copy, and POS sample payload download use already-loaded selected project/store context and browser-local copy/download/QR generation. They must not create a standalone proposal document, store base64 QR data, or add a Firestore read only to render the card.
 - Compliance and review-status cards should avoid repeated API calls from the same open AMM session; use the compact session/card summary or short-lived cache for already loaded status.
 - Presence confirmations should write only the specific `menuPresence.{surface}` field through the current DAL and should not create a separate AMM mirror collection.
 - POS instruction drafts must preserve the existing daily-send count and should never store the webhook secret in AMM proposal/session documents.
@@ -292,7 +308,7 @@ The table below is the family-level cost rule. Exact per-action cost classes are
 
 | Action family | Additional Firebase cost over manual path |
 | --- | --- |
-| Price/availability/theme/item/category/attribute patch | 1 proposal write + 1 completion write + compact session merge; project write cost same as manual. |
+| Price/availability/theme/item/category/attribute patch | Deterministic path: command submit uses the loaded compact session snapshot and 1 compact session write; completion/cancel also uses the loaded compact session snapshot and 1 compact session write; no proposal-doc read/write and no deterministic-session transaction read. Project write cost same as manual. Server-backed path only when adapter needs server authority. |
 | Image generation | Existing image generation accounting/storage plus proposal/session writes. |
 | Menu import | Existing extraction job cost plus proposal/session writes. |
 | Project metadata, active status, and cover image | Existing project metadata/summary/cache path plus proposal/session writes; cover image may add Storage cost. |

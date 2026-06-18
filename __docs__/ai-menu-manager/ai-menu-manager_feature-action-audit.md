@@ -83,7 +83,7 @@ These features may inform AMM context or produce read-only cards, but they are n
 | `ai-extraction-monitoring`, `ops-alerting-delivery`, `ops-control-room`, `incident-response`, `platform-cost-posture`, `cost-self-protection` | Platform/internal monitoring or cost surfaces. AMM can expose owner-safe receipts/status only if a first-party owner action exists. |
 | `business-truth-graph`, `canonical-truth-infrastructure`, `customer-facing-infrastructure`, `discovery-infrastructure`, `presence-dominance`, `truth-accuracy-dominance`, `surface-os`, `infrastructure-compounding`, `control-layer-strategy`, `silent-correction-systems` | Doctrine/strategy layers. Use as architecture guardrails, not action types. |
 | `lifecycle-messaging`, `owner-notifications`, `messaging-onboarding`, `messaging-onboarding-dashboard`, `onboarding`, `onboarding-centralization`, `auth-onboarding` | Notification/onboarding context. AMM can hand off or explain, but direct mutation needs a dedicated adapter. |
-| `category-dominance`, `growth-engine`, `growth-execution-strategy`, `free-tools-strategy`, `social-content`, `sales`, `marketing` | Growth/marketing ideas. Direct posting remains manual/export unless a first-party adapter exists. |
+| `category-dominance`, `growth-engine`, `growth-execution-strategy`, `free-tools-strategy`, `social-content`, `sales`, `marketing` | Growth/marketing ideas. Direct third-party posting is not an AMM action; use supported MenuList-owned export/share cards only. |
 
 ---
 

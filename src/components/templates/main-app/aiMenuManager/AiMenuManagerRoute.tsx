@@ -1,22 +1,63 @@
 'use client';
 
 import { applyAiMenuManagerProjectPatch } from '@lib/ai-menu-manager/actions/projectPatches';
-import { getAiMenuManagerProjectPromptHints } from '@lib/ai-menu-manager/projectPromptHints';
+import { getAiMenuManagerCardEditPrompt } from '@lib/ai-menu-manager/cardEditPrompt';
 import {
-    completeAiMenuManagerClientProposal,
+    buildAiMenuManagerComposerPrompt,
+    canUseAiMenuManagerComposerContext,
+    filterAiMenuManagerComposerEntities,
+    getAiMenuManagerComposerContextData,
+    getAiMenuManagerComposerContextLabel,
+    type AiMenuManagerComposerContext,
+    type AiMenuManagerComposerTarget,
+} from '@lib/ai-menu-manager/composerContext';
+import {
+    getAiMenuManagerProjectPromptGroups,
+    getAiMenuManagerPromptText,
+    getAiMenuManagerStarterSuggestions,
+    type AiMenuManagerPromptKind,
+    type AiMenuManagerPromptSuggestion,
+} from '@lib/ai-menu-manager/projectPromptHints';
+import {
+    buildAiMenuManagerClientExecutionDirective,
+    cancelAiMenuManagerClientOperation,
+    completeAiMenuManagerClientOperation,
     getAiMenuManagerClientInbox,
     sendAiMenuManagerCommand,
-    submitAiMenuManagerProposalAction,
 } from '@database/aiMenuManager';
 import { getProjectDataWithoutLoader, getProjectsListWithoutLoader, updateProjectWithoutLoader } from '@database/projects';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../../shared/ProjectSelector';
 import type { Project } from '@template/main-app/projects/types';
-import type { AiMenuManagerCardPayload, AiMenuManagerReceipt } from '@type/aiMenuManager';
+import type {
+    AiMenuManagerCardPayload,
+    AiMenuManagerPendingOperation,
+    AiMenuManagerReceipt,
+    AiMenuManagerSessionDoc,
+} from '@type/aiMenuManager';
 import { removeObjRef } from '@util/utils';
 import { App, Button, Card, Empty, Input, Modal, Space, Spin, Tag, Typography, theme } from 'antd';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuBot, LuCircleSlash, LuIndianRupee, LuMessageSquare, LuPalette, LuSend } from 'react-icons/lu';
+import {
+    LuBot,
+    LuCheck,
+    LuChevronLeft,
+    LuChevronRight,
+    LuCircleSlash,
+    LuExternalLink,
+    LuEye,
+    LuImage,
+    LuIndianRupee,
+    LuMegaphone,
+    LuMessageSquare,
+    LuPalette,
+    LuSearch,
+    LuSend,
+    LuSlidersHorizontal,
+    LuSparkles,
+    LuUpload,
+    LuX,
+} from 'react-icons/lu';
 import AiMenuProposalCard from './cards/AiMenuProposalCard';
 
 const { Paragraph, Text, Title } = Typography;
@@ -40,6 +81,40 @@ type TimelineMessage = {
     text: string;
 };
 
+function compactMessagesToTimeline(compactMessages?: AiMenuManagerSessionDoc['compactMessages']): TimelineMessage[] {
+    return (compactMessages || []).reduce<TimelineMessage[]>((messages, entry) => {
+        const role = entry.role === 'owner' ? 'owner' : 'menu_manager';
+        if (role === 'menu_manager') {
+            return messages;
+        }
+        const previous = messages[messages.length - 1];
+        if (previous?.role === role && previous.text === entry.text) {
+            return messages;
+        }
+        messages.push({
+            id: entry.messageId,
+            role,
+            text: entry.text,
+        });
+        return messages;
+    }, []);
+}
+
+const promptIconByKind: Record<AiMenuManagerPromptKind, typeof LuIndianRupee> = {
+    availability: LuCircleSlash,
+    content: LuMessageSquare,
+    design: LuPalette,
+    external: LuExternalLink,
+    image: LuImage,
+    import: LuUpload,
+    note: LuMessageSquare,
+    more: LuSparkles,
+    price: LuIndianRupee,
+    promote: LuMegaphone,
+    publish: LuUpload,
+    visibility: LuEye,
+};
+
 export default function AiMenuManagerRoute() {
     const { message } = App.useApp();
     const { token } = theme.useToken();
@@ -48,27 +123,80 @@ export default function AiMenuManagerRoute() {
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-    const [sessionId, setSessionId] = useState<string | null>(null);
-    const [cards, setCards] = useState<AiMenuManagerCardPayload[]>([]);
+    const [, setSessionId] = useState<string | null>(null);
+    const [currentSession, setCurrentSession] = useState<AiMenuManagerSessionDoc | null>(null);
+    const [operations, setOperations] = useState<AiMenuManagerPendingOperation[]>([]);
     const [receipts, setReceipts] = useState<AiMenuManagerReceipt[]>([]);
     const [timeline, setTimeline] = useState<TimelineMessage[]>([]);
     const [input, setInput] = useState('');
+    const [composerContext, setComposerContext] = useState<AiMenuManagerComposerContext>({
+        selectedEntityIds: [],
+        target: null,
+    });
+    const [contextSearch, setContextSearch] = useState('');
     const [loadingProjects, setLoadingProjects] = useState(false);
     const [loadingProject, setLoadingProject] = useState(false);
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+    const [isContextPickerOpen, setIsContextPickerOpen] = useState(false);
+    const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+    const [activeSuggestion, setActiveSuggestion] = useState<AiMenuManagerPromptSuggestion | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [workingCardId, setWorkingCardId] = useState<string | null>(null);
     const chatScrollRef = useRef<HTMLDivElement | null>(null);
+    const sessionIdRef = useRef<string | null>(null);
+    const sessionProjectIdRef = useRef<string | null>(null);
 
-    const quickPrompts = useMemo(() => {
-        const promptHints = getAiMenuManagerProjectPromptHints(selectedProject);
-        return [
-            promptHints.pricePrompt ? { label: promptHints.pricePrompt, helper: 'Change a price', icon: LuIndianRupee } : null,
-            promptHints.availabilityPrompt ? { label: promptHints.availabilityPrompt, helper: 'Mark an item unavailable', icon: LuCircleSlash } : null,
-            { label: 'Show note: Fresh menu today', helper: 'Prepare a menu note', icon: LuMessageSquare },
-            { label: 'Make menu premium', helper: 'Prepare a style update', icon: LuPalette },
-        ].filter((prompt): prompt is { label: string; helper: string; icon: typeof LuIndianRupee } => Boolean(prompt));
-    }, [selectedProject]);
+    const rememberSessionId = useCallback((nextSessionId: string | null | undefined, projectId: string) => {
+        const normalizedSessionId = nextSessionId || null;
+        sessionIdRef.current = normalizedSessionId;
+        sessionProjectIdRef.current = normalizedSessionId ? projectId : null;
+        setSessionId(normalizedSessionId);
+    }, []);
+
+    const getSessionIdForProject = useCallback((projectId: string) => (
+        sessionProjectIdRef.current === projectId ? sessionIdRef.current || undefined : undefined
+    ), []);
+
+    const storeName = useMemo(() => (
+        (storeDetails as any)?.businessName
+        || (storeDetails as any)?.storeName
+        || (storeDetails as any)?.name
+        || 'Selected store'
+    ), [storeDetails]);
+    const businessType = useMemo(() => (
+        (storeDetails as any)?.businessType
+        || (storeDetails as any)?.businessCategory
+    ), [storeDetails]);
+    const storePublicContext = useMemo(() => ({
+        customDomain: (storeDetails as any)?.customDomain,
+        screenToken: (storeDetails as any)?.screen?.screenToken || (storeDetails as any)?.screenToken,
+        subdomain: (storeDetails as any)?.subdomain,
+    }), [storeDetails]);
+    const promptGroups = useMemo(() => getAiMenuManagerProjectPromptGroups(selectedProject), [selectedProject]);
+    const starterSuggestions = useMemo(() => getAiMenuManagerStarterSuggestions(promptGroups), [promptGroups]);
+    const composerContextData = useMemo(() => getAiMenuManagerComposerContextData({
+        businessType,
+        project: selectedProject,
+        storeName,
+    }), [businessType, selectedProject, storeName]);
+    const composerContextLabel = useMemo(() => getAiMenuManagerComposerContextLabel({
+        data: composerContextData,
+        selection: composerContext,
+    }), [composerContext, composerContextData]);
+    const activeComposerTarget = useMemo(() => (
+        composerContextData.targets.find((entry) => entry.target === composerContext.target) || null
+    ), [composerContext.target, composerContextData.targets]);
+    const filteredContextEntities = useMemo(() => filterAiMenuManagerComposerEntities(
+        composerContextData.entities,
+        composerContext.target,
+        contextSearch,
+    ), [composerContext.target, composerContextData.entities, contextSearch]);
+    const activeContextEntityCount = useMemo(() => (
+        composerContextData.entities.filter((entity) => entity.target === composerContext.target).length
+    ), [composerContext.target, composerContextData.entities]);
+    const shouldShowContextSearch = Boolean(
+        activeComposerTarget?.requiresEntity && (activeContextEntityCount > 8 || contextSearch.trim()),
+    );
 
     const projectSelectorItems = useMemo<ProjectSelectorItem[]>(() => (
         projects.map((project) => ({
@@ -91,6 +219,7 @@ export default function AiMenuManagerRoute() {
     const selectedProjectSelectorItem = useMemo(() => (
         projectSelectorItems.find((project) => project.id === selectedProjectId) || null
     ), [projectSelectorItems, selectedProjectId]);
+    const cards = useMemo(() => operations.map((operation) => operation.card), [operations]);
 
     const loadProjects = useCallback(async () => {
         if (!storeId) return;
@@ -122,23 +251,21 @@ export default function AiMenuManagerRoute() {
             const inbox = await getAiMenuManagerClientInbox({
                 storeId,
                 projectId,
-                sessionId: sessionId || undefined,
+                sessionId: getSessionIdForProject(projectId),
             });
-            setSessionId(inbox.sessionId || sessionId);
-            setCards(inbox.cards || []);
-            setReceipts(inbox.receipts || []);
-            const compact = inbox.session?.compactMessages || [];
-            setTimeline(compact.map((entry) => ({
-                id: entry.messageId,
-                role: entry.role === 'owner' ? 'owner' : 'menu_manager',
-                text: entry.text,
-            })));
+            rememberSessionId(inbox.sessionId, projectId);
+            const nextOperations = inbox.operations || [];
+            const nextReceipts = inbox.receipts || [];
+            setCurrentSession(inbox.session || null);
+            setOperations(nextOperations);
+            setReceipts(nextReceipts);
+            setTimeline(compactMessagesToTimeline(inbox.session?.compactMessages));
         } catch (error: any) {
             message.error(error?.message || 'Unable to load selected menu');
         } finally {
             setLoadingProject(false);
         }
-    }, [message, sessionId, storeId]);
+    }, [getSessionIdForProject, message, rememberSessionId, storeId]);
 
     useEffect(() => {
         loadProjects();
@@ -149,24 +276,151 @@ export default function AiMenuManagerRoute() {
     }, [loadSelectedProject, selectedProjectId]);
 
     useEffect(() => {
+        setComposerContext({ selectedEntityIds: [], target: null });
+        setContextSearch('');
+        setIsContextPickerOpen(false);
+    }, [selectedProjectId]);
+
+    useEffect(() => {
         const node = chatScrollRef.current;
         if (!node) return;
         node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' });
     }, [cards.length, timeline.length, loadingProject]);
 
-    const refreshCurrent = useCallback(async () => {
-        await loadSelectedProject(selectedProjectId);
-    }, [loadSelectedProject, selectedProjectId]);
-
     const handleSelectProject = useCallback((projectId: string) => {
         setSelectedProjectId(projectId);
         setIsProjectSelectorOpen(false);
+        setComposerContext({ selectedEntityIds: [], target: null });
+        setContextSearch('');
+    }, []);
+
+    const selectComposerTarget = useCallback((target: AiMenuManagerComposerTarget) => {
+        const targetConfig = composerContextData.targets.find((entry) => entry.target === target);
+        setComposerContext({ selectedEntityIds: [], target });
+        setContextSearch('');
+        if (!targetConfig?.requiresEntity) {
+            setIsContextPickerOpen(false);
+        }
+    }, [composerContextData.targets]);
+
+    const clearComposerContext = useCallback(() => {
+        setComposerContext({ selectedEntityIds: [], target: null });
+        setContextSearch('');
+    }, []);
+
+    const toggleComposerEntity = useCallback((entityId: string) => {
+        const target = composerContextData.targets.find((entry) => entry.target === composerContext.target);
+        const shouldCloseAfterSelect = target?.maxSelection === 1 && !composerContext.selectedEntityIds.includes(entityId);
+        setComposerContext((prev) => {
+            const exists = prev.selectedEntityIds.includes(entityId);
+            if (exists) {
+                return {
+                    ...prev,
+                    selectedEntityIds: prev.selectedEntityIds.filter((id) => id !== entityId),
+                };
+            }
+            if (target?.maxSelection === 1) {
+                return { ...prev, selectedEntityIds: [entityId] };
+            }
+            return { ...prev, selectedEntityIds: [...prev.selectedEntityIds, entityId] };
+        });
+        if (shouldCloseAfterSelect) {
+            setIsContextPickerOpen(false);
+        }
+    }, [composerContext.selectedEntityIds, composerContext.target, composerContextData.targets]);
+
+    const pickSuggestion = useCallback((prompt: string) => {
+        setInput(prompt);
+        setIsContextPickerOpen(false);
+        setIsSuggestionsOpen(false);
+        setActiveSuggestion(null);
+        clearComposerContext();
+    }, [clearComposerContext]);
+
+    const closeSuggestions = useCallback(() => {
+        setIsSuggestionsOpen(false);
+        setActiveSuggestion(null);
+    }, []);
+
+    const toggleContextPicker = useCallback(() => {
+        setIsContextPickerOpen((open) => {
+            const nextOpen = !open;
+            if (nextOpen) {
+                setIsSuggestionsOpen(false);
+                setActiveSuggestion(null);
+            }
+            return nextOpen;
+        });
+    }, []);
+
+    const toggleSuggestions = useCallback(() => {
+        setIsSuggestionsOpen((open) => {
+            if (open) {
+                setActiveSuggestion(null);
+                return false;
+            }
+            setIsContextPickerOpen(false);
+            return true;
+        });
+    }, []);
+
+    const handleSuggestionClick = useCallback((suggestion: AiMenuManagerPromptSuggestion) => {
+        if (suggestion.children?.length) {
+            setActiveSuggestion(suggestion);
+            return;
+        }
+        pickSuggestion(getAiMenuManagerPromptText(suggestion));
+    }, [pickSuggestion]);
+
+    const activateStarterSuggestion = useCallback((suggestion: AiMenuManagerPromptSuggestion) => {
+        if (suggestion.children?.length) {
+            setActiveSuggestion(suggestion);
+            setIsContextPickerOpen(false);
+            setIsSuggestionsOpen(true);
+            return;
+        }
+        pickSuggestion(getAiMenuManagerPromptText(suggestion));
+    }, [pickSuggestion]);
+
+    const draftPrompt = useCallback((prompt: string) => {
+        setInput(prompt);
+        clearComposerContext();
+    }, [clearComposerContext]);
+
+    const editCard = useCallback((card: AiMenuManagerCardPayload) => {
+        setInput(getAiMenuManagerCardEditPrompt(card));
+        clearComposerContext();
+    }, [clearComposerContext]);
+
+    const applySessionState = useCallback((session: AiMenuManagerSessionDoc) => {
+        const nextOperations = session.pendingOperations || [];
+        const nextReceipts = session.recentReceiptSummaries || [];
+        setCurrentSession(session);
+        setOperations(nextOperations);
+        setReceipts(nextReceipts);
+        setTimeline(compactMessagesToTimeline(session.compactMessages));
     }, []);
 
     const submitPrompt = useCallback(async (prompt?: string) => {
-        const text = (prompt ?? input).trim();
+        const rawText = (prompt ?? input).trim();
+        if (!rawText) return;
+        if (!canUseAiMenuManagerComposerContext({ data: composerContextData, selection: composerContext })) {
+            message.warning('Choose the item or category first');
+            return;
+        }
+        const text = buildAiMenuManagerComposerPrompt({
+            data: composerContextData,
+            input: rawText,
+            selection: composerContext,
+        }).trim();
+        const commandContext = composerContext.target
+            ? {
+                target: composerContext.target,
+                selectedEntityIds: composerContext.selectedEntityIds,
+            }
+            : undefined;
         if (!text) return;
-        if (!storeId || !selectedProjectId) {
+        if (!storeId || !selectedProjectId || !selectedProject) {
             message.warning('Choose a store and menu first');
             return;
         }
@@ -182,87 +436,102 @@ export default function AiMenuManagerRoute() {
 
         try {
             const response = await sendAiMenuManagerCommand({
-                sessionId: sessionId || undefined,
+                sessionId: getSessionIdForProject(selectedProjectId),
                 storeId: String(storeId),
                 projectId: selectedProjectId,
+                project: selectedProject,
+                storeName,
+                businessType,
+                storePublicContext,
+                composerContext: commandContext,
                 inputType: 'text',
+                sessionSnapshot: currentSession,
                 text,
             });
-            setSessionId(response.sessionId);
-            setCards((prev) => [...response.cards, ...prev.filter((card) => !response.cards.some((next) => next.cardId === card.cardId))]);
-            setTimeline((prev) => [
-                ...prev,
-                {
-                    id: response.messageId,
-                    role: 'menu_manager',
-                    text: response.cards[0]?.title || 'Prepared a menu card',
-                },
-            ]);
+            clearComposerContext();
+            rememberSessionId(response.sessionId, selectedProjectId);
+            if (response.session) {
+                applySessionState({
+                    ...response.session,
+                    pendingOperations: response.session.pendingOperations || response.operations || [],
+                });
+            } else {
+                setOperations(response.operations || []);
+                setTimeline((prev) => [
+                    ...prev,
+                    {
+                        id: response.messageId,
+                        role: 'menu_manager',
+                        text: response.cards[0]?.title || 'Prepared a menu card',
+                    },
+                ]);
+            }
         } catch (error: any) {
             message.error(error?.message || 'Menu Manager could not prepare that change');
         } finally {
             setSubmitting(false);
         }
-    }, [input, message, selectedProjectId, sessionId, storeId]);
+    }, [applySessionState, businessType, clearComposerContext, composerContext, composerContextData, currentSession, getSessionIdForProject, input, message, rememberSessionId, selectedProject, selectedProjectId, storeId, storeName, storePublicContext]);
 
     const completeDirective = useCallback(async (card: AiMenuManagerCardPayload) => {
         if (!storeId || !selectedProject) return;
+        const operation = operations.find((entry) => entry.operationId === card.cardId);
+        if (!operation) {
+            message.error('Card no longer matches this menu');
+            return;
+        }
         setWorkingCardId(card.cardId);
         try {
-            if (card.kind === 'manual_task' || card.kind === 'unsupported' || card.actions.includes('mark_done')) {
-                await submitAiMenuManagerProposalAction({
-                    proposalId: card.cardId,
-                    storeId,
-                    projectId: card.scope.projectId,
-                    actionType: card.actionType,
-                    action: 'mark_done',
-                });
-                setCards((prev) => prev.filter((entry) => entry.cardId !== card.cardId));
-                message.success('Manual task marked done');
-                await refreshCurrent();
+            if (card.kind === 'unsupported') {
+                const result = await cancelAiMenuManagerClientOperation({ operation, sessionSnapshot: currentSession });
+                applySessionState(result.session);
+                message.info('No MenuList action was taken');
                 return;
             }
 
-            const actionResponse = await submitAiMenuManagerProposalAction({
-                proposalId: card.cardId,
-                storeId,
-                projectId: card.scope.projectId,
-                actionType: card.actionType,
-                action: 'approve',
-            });
-            const directive = actionResponse.data?.directive;
-            if (!directive) {
-                message.info('This card is prepared, but no executable directive was returned');
+            if (card.kind === 'manual_task' || card.actions.includes('mark_done')) {
+                const result = await completeAiMenuManagerClientOperation({
+                    operation,
+                    result: 'manual_task',
+                    message: card.localActions?.length
+                        ? `${card.title} prepared. No MenuList menu truth was changed.`
+                        : undefined,
+                    sessionSnapshot: currentSession,
+                });
+                applySessionState(result.session);
+                message.success(card.localActions?.length ? 'Done' : 'Task marked done');
                 return;
             }
+
+            const directive = buildAiMenuManagerClientExecutionDirective({
+                operation,
+                project: selectedProject,
+                storeName,
+                businessType,
+            });
 
             try {
                 const patchedProject = applyAiMenuManagerProjectPatch(selectedProject, directive);
                 const savedProject = await updateProjectWithoutLoader(patchedProject);
                 setSelectedProject(removeObjRef(savedProject || patchedProject) as Project);
-                await completeAiMenuManagerClientProposal({
-                    proposalId: card.cardId,
-                    storeId,
-                    projectId: card.scope.projectId,
-                    actionType: card.actionType,
-                    executionId: directive.executionId,
-                    patchHash: directive.patchHash,
+                const result = await completeAiMenuManagerClientOperation({
+                    operation,
                     result: 'executed',
                     message: `${card.title} applied.`,
+                    sessionSnapshot: currentSession,
                 });
+                applySessionState(result.session);
                 message.success('Menu updated');
-                await refreshCurrent();
             } catch (error: any) {
-                await completeAiMenuManagerClientProposal({
-                    proposalId: card.cardId,
-                    storeId,
-                    projectId: card.scope.projectId,
-                    actionType: card.actionType,
-                    executionId: directive.executionId,
-                    patchHash: directive.patchHash,
+                const failedResult = await completeAiMenuManagerClientOperation({
+                    operation,
                     result: 'failed',
                     message: error?.message || 'Project update failed',
+                    sessionSnapshot: currentSession,
                 }).catch(() => null);
+                if (failedResult?.session) {
+                    applySessionState(failedResult.session);
+                }
                 throw error;
             }
         } catch (error: any) {
@@ -270,26 +539,25 @@ export default function AiMenuManagerRoute() {
         } finally {
             setWorkingCardId(null);
         }
-    }, [message, refreshCurrent, selectedProject, storeId]);
+    }, [applySessionState, businessType, currentSession, message, operations, selectedProject, storeId, storeName]);
 
     const cancelCard = useCallback(async (card: AiMenuManagerCardPayload) => {
         if (!storeId) return;
+        const operation = operations.find((entry) => entry.operationId === card.cardId);
+        if (!operation) {
+            setOperations((prev) => prev.filter((entry) => entry.operationId !== card.cardId));
+            return;
+        }
         setWorkingCardId(card.cardId);
         try {
-            await submitAiMenuManagerProposalAction({
-                proposalId: card.cardId,
-                storeId,
-                projectId: card.scope.projectId,
-                actionType: card.actionType,
-                action: 'cancel',
-            });
-            setCards((prev) => prev.filter((entry) => entry.cardId !== card.cardId));
+            const result = await cancelAiMenuManagerClientOperation({ operation, sessionSnapshot: currentSession });
+            applySessionState(result.session);
         } catch (error: any) {
             message.error(error?.message || 'Unable to cancel this card');
         } finally {
             setWorkingCardId(null);
         }
-    }, [message, storeId]);
+    }, [applySessionState, currentSession, message, operations, storeId]);
 
     return (
         <div
@@ -367,13 +635,71 @@ export default function AiMenuManagerRoute() {
                                     >
                                         <Title level={4} style={{ marginBottom: 6 }}>What should change?</Title>
                                         <Text type="secondary">
-                                            Send a message or choose one of the suggestions below.
+                                            Start from a message, a suggestion, or a selected menu area.
                                         </Text>
+                                        {starterSuggestions.length ? (
+                                            <div
+                                                style={{
+                                                    display: 'grid',
+                                                    gap: 10,
+                                                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                                                    marginTop: 18,
+                                                    maxWidth: 720,
+                                                    width: '100%',
+                                                }}
+                                            >
+                                                {starterSuggestions.map((suggestion) => {
+                                                    const Icon = promptIconByKind[suggestion.kind];
+                                                    return (
+                                                        <button
+                                                            key={suggestion.label}
+                                                            onClick={() => activateStarterSuggestion(suggestion)}
+                                                            style={{
+                                                                alignItems: 'flex-start',
+                                                                background: token.colorBgElevated,
+                                                                border: `1px solid ${token.colorBorderSecondary}`,
+                                                                borderRadius: 12,
+                                                                color: token.colorText,
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                gap: 10,
+                                                                minHeight: 84,
+                                                                padding: '12px 14px',
+                                                                textAlign: 'left',
+                                                            }}
+                                                            type="button"
+                                                        >
+                                                            <span
+                                                                style={{
+                                                                    alignItems: 'center',
+                                                                    background: token.colorFillTertiary,
+                                                                    borderRadius: 10,
+                                                                    color: token.colorPrimary,
+                                                                    display: 'inline-flex',
+                                                                    flexShrink: 0,
+                                                                    height: 34,
+                                                                    justifyContent: 'center',
+                                                                    width: 34,
+                                                                }}
+                                                            >
+                                                                <Icon size={18} />
+                                                            </span>
+                                                            <span style={{ minWidth: 0 }}>
+                                                                <Text strong style={{ display: 'block' }}>{suggestion.label}</Text>
+                                                                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 3 }}>
+                                                                    {suggestion.helper}
+                                                                </Text>
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : null}
                                     </div>
                                 ) : null}
                                 {timeline.map((entry) => (
                                     <div
-                                        key={entry.id}
+                                        key={`message_${entry.id}`}
                                         style={{
                                             display: 'flex',
                                             justifyContent: entry.role === 'owner' ? 'flex-end' : 'flex-start',
@@ -395,18 +721,411 @@ export default function AiMenuManagerRoute() {
                                 ))}
                                 {cards.map((card) => (
                                     <AiMenuProposalCard
-                                        key={card.cardId}
+                                        key={`card_${card.cardId}`}
                                         card={card}
                                         disabled={workingCardId === card.cardId}
                                         onApprove={completeDirective}
                                         onCancel={cancelCard}
+                                        onDraftPrompt={draftPrompt}
+                                        onEdit={editCard}
                                     />
                                 ))}
                             </Space>
                         )}
                     </div>
 
+                    {isSuggestionsOpen ? (
+                        <div
+                            data-testid="amm-desktop-suggestions-tray"
+                            style={{
+                                background: token.colorBgContainer,
+                                borderTop: `1px solid ${token.colorSplit}`,
+                                maxHeight: 320,
+                                overflowY: 'auto',
+                                padding: 16,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    alignItems: 'flex-start',
+                                    display: 'flex',
+                                    gap: 12,
+                                    justifyContent: 'space-between',
+                                    marginBottom: 14,
+                                }}
+                            >
+                                <div>
+                                    <Text strong>Suggestions</Text>
+                                    <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+                                        Choose one to place it in the message box. Send it when ready.
+                                    </Text>
+                                </div>
+                                <Button
+                                    aria-label="Close suggestions"
+                                    icon={<LuX size={16} />}
+                                    onClick={closeSuggestions}
+                                    shape="circle"
+                                    size="small"
+                                    type="text"
+                                />
+                            </div>
+                            <Space direction="vertical" size={14} style={{ width: '100%' }}>
+                                {activeSuggestion ? (
+                                    <div>
+                                        <Button
+                                            icon={<LuChevronLeft size={16} />}
+                                            onClick={() => setActiveSuggestion(null)}
+                                            size="small"
+                                            style={{ marginBottom: 12, paddingInline: 0 }}
+                                            type="link"
+                                        >
+                                            Back
+                                        </Button>
+                                        <Text strong style={{ display: 'block', marginBottom: 4 }}>{activeSuggestion.label}</Text>
+                                        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                                            {activeSuggestion.helper}
+                                        </Text>
+                                        <div
+                                            style={{
+                                                display: 'grid',
+                                                gap: 8,
+                                                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                                            }}
+                                        >
+                                            {(activeSuggestion.children || []).map((prompt) => {
+                                                const Icon = promptIconByKind[prompt.kind];
+                                                return (
+                                                    <button
+                                                        key={prompt.label}
+                                                        onClick={() => pickSuggestion(getAiMenuManagerPromptText(prompt))}
+                                                        style={{
+                                                            alignItems: 'center',
+                                                            background: token.colorFillTertiary,
+                                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                                            borderRadius: 12,
+                                                            color: token.colorText,
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            gap: 12,
+                                                            minHeight: 56,
+                                                            padding: '12px 14px',
+                                                            textAlign: 'left',
+                                                            width: '100%',
+                                                        }}
+                                                        type="button"
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                alignItems: 'center',
+                                                                color: token.colorTextSecondary,
+                                                                display: 'inline-flex',
+                                                                flexShrink: 0,
+                                                                justifyContent: 'center',
+                                                                width: 24,
+                                                            }}
+                                                        >
+                                                            <Icon size={18} />
+                                                        </span>
+                                                        <span style={{ minWidth: 0 }}>
+                                                            <Text strong style={{ display: 'block' }}>{prompt.label}</Text>
+                                                            <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                                                                {prompt.helper}
+                                                            </Text>
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ) : promptGroups.map((group) => (
+                                    <div key={group.groupId}>
+                                        <Text strong style={{ display: 'block', marginBottom: 8 }}>{group.title}</Text>
+                                        <div
+                                            style={{
+                                                display: 'grid',
+                                                gap: 8,
+                                                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                                            }}
+                                        >
+                                            {group.suggestions.map((prompt) => {
+                                                const Icon = promptIconByKind[prompt.kind];
+                                                const hasChildren = Boolean(prompt.children?.length);
+                                                return (
+                                                    <button
+                                                        key={prompt.label}
+                                                        onClick={() => handleSuggestionClick(prompt)}
+                                                        style={{
+                                                            alignItems: 'center',
+                                                            background: token.colorFillTertiary,
+                                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                                            borderRadius: 12,
+                                                            color: token.colorText,
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            gap: 12,
+                                                            minHeight: 56,
+                                                            padding: '12px 14px',
+                                                            textAlign: 'left',
+                                                            width: '100%',
+                                                        }}
+                                                        type="button"
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                alignItems: 'center',
+                                                                color: token.colorTextSecondary,
+                                                                display: 'inline-flex',
+                                                                flexShrink: 0,
+                                                                justifyContent: 'center',
+                                                                width: 24,
+                                                            }}
+                                                        >
+                                                            <Icon size={18} />
+                                                        </span>
+                                                        <span style={{ flex: 1, minWidth: 0 }}>
+                                                            <Text strong style={{ display: 'block' }}>{prompt.label}</Text>
+                                                            <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                                                                {prompt.helper}
+                                                            </Text>
+                                                        </span>
+                                                        {hasChildren ? (
+                                                            <LuChevronRight
+                                                                color={token.colorTextQuaternary}
+                                                                size={18}
+                                                                style={{ flexShrink: 0 }}
+                                                            />
+                                                        ) : null}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </Space>
+                        </div>
+                    ) : null}
+
                     <div style={{ borderTop: `1px solid ${token.colorSplit}`, padding: 18 }}>
+                        {isContextPickerOpen ? (
+                            <div
+                                data-testid="amm-desktop-context-picker"
+                                style={{
+                                    background: token.colorFillQuaternary,
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                    borderRadius: 14,
+                                    marginBottom: 12,
+                                    padding: 12,
+                                }}
+                            >
+                                <div style={{ alignItems: 'center', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                                    <div>
+                                        <Text strong style={{ display: 'block' }}>Work on</Text>
+                                        <Text type="secondary" style={{ fontSize: 12 }}>
+                                            Optional context for the next message.
+                                        </Text>
+                                    </div>
+                                    {composerContext.target ? (
+                                        <Button
+                                            disabled={submitting}
+                                            onClick={clearComposerContext}
+                                            size="small"
+                                            type="text"
+                                        >
+                                            Clear
+                                        </Button>
+                                    ) : null}
+                                </div>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        flexWrap: 'wrap',
+                                        gap: 8,
+                                        marginTop: 10,
+                                    }}
+                                >
+                                    {composerContextData.targets.map((target) => (
+                                        <button
+                                            key={target.target}
+                                            onClick={() => selectComposerTarget(target.target)}
+                                            style={{
+                                                alignItems: 'center',
+                                                background: composerContext.target === target.target ? token.colorPrimaryBg : token.colorBgContainer,
+                                                border: `1px solid ${composerContext.target === target.target ? token.colorPrimary : token.colorBorderSecondary}`,
+                                                borderRadius: 999,
+                                                color: token.colorText,
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                gap: 6,
+                                                minHeight: 34,
+                                                padding: '6px 12px',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                            type="button"
+                                        >
+                                            <span
+                                                style={{
+                                                    alignItems: 'center',
+                                                    color: composerContext.target === target.target ? token.colorPrimary : token.colorTextQuaternary,
+                                                    display: 'inline-flex',
+                                                    flexShrink: 0,
+                                                    height: 16,
+                                                    justifyContent: 'center',
+                                                    width: 16,
+                                                }}
+                                            >
+                                                {composerContext.target === target.target ? <LuCheck color={token.colorPrimary} size={15} /> : null}
+                                            </span>
+                                            <Text strong style={{ lineHeight: 1.2 }}>{target.label}</Text>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {activeComposerTarget?.requiresEntity ? (
+                                    <div style={{ marginTop: 12 }}>
+                                        <div
+                                            style={{
+                                                alignItems: 'flex-end',
+                                                display: 'grid',
+                                                gap: 10,
+                                                gridTemplateColumns: shouldShowContextSearch ? 'minmax(0, 1fr) minmax(220px, 300px)' : '1fr',
+                                                marginBottom: 8,
+                                            }}
+                                        >
+                                            <div>
+                                                <Text strong style={{ display: 'block' }}>
+                                                    {composerContext.target === 'item' ? 'Pick items' : 'Pick category'}
+                                                </Text>
+                                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                                    {activeContextEntityCount} available
+                                                </Text>
+                                            </div>
+                                            {shouldShowContextSearch ? (
+                                                <Input
+                                                    allowClear
+                                                    onChange={(event) => setContextSearch(event.target.value)}
+                                                    placeholder={composerContext.target === 'item' ? 'Find item' : 'Find category'}
+                                                    prefix={<LuSearch size={15} />}
+                                                    size="small"
+                                                    value={contextSearch}
+                                                />
+                                            ) : null}
+                                        </div>
+                                        <div style={{
+                                            display: 'grid',
+                                            gap: 6,
+                                            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                                            maxHeight: 174,
+                                            overflowY: 'auto',
+                                        }}>
+                                            {filteredContextEntities.slice(0, 80).map((entity) => {
+                                                const selected = composerContext.selectedEntityIds.includes(entity.id);
+                                                return (
+                                                    <button
+                                                        key={entity.id}
+                                                        onClick={() => toggleComposerEntity(entity.id)}
+                                                        style={{
+                                                            alignItems: 'center',
+                                                            background: selected ? token.colorPrimaryBg : token.colorBgContainer,
+                                                            border: `1px solid ${selected ? token.colorPrimary : token.colorBorderSecondary}`,
+                                                            borderRadius: 8,
+                                                            color: token.colorText,
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            gap: 8,
+                                                            minHeight: 38,
+                                                            padding: '6px 9px',
+                                                            textAlign: 'left',
+                                                        }}
+                                                        type="button"
+                                                    >
+                                                        <span style={{
+                                                            alignItems: 'center',
+                                                            color: selected ? token.colorPrimary : token.colorTextQuaternary,
+                                                            display: 'inline-flex',
+                                                            flexShrink: 0,
+                                                            height: 18,
+                                                            justifyContent: 'center',
+                                                            width: 18,
+                                                        }}>
+                                                            {selected ? <LuCheck size={15} /> : null}
+                                                        </span>
+                                                        <span style={{ flex: 1, minWidth: 0 }}>
+                                                            <Text
+                                                                strong
+                                                                style={{
+                                                                    display: 'block',
+                                                                    lineHeight: 1.2,
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                    whiteSpace: 'nowrap',
+                                                                }}
+                                                            >
+                                                                {entity.label}
+                                                            </Text>
+                                                            {entity.helper ? (
+                                                                <Text
+                                                                    type="secondary"
+                                                                    style={{
+                                                                        display: 'block',
+                                                                        fontSize: 12,
+                                                                        lineHeight: 1.2,
+                                                                        overflow: 'hidden',
+                                                                        textOverflow: 'ellipsis',
+                                                                        whiteSpace: 'nowrap',
+                                                                    }}
+                                                                >
+                                                                    {entity.helper}
+                                                                </Text>
+                                                            ) : null}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                            {!filteredContextEntities.length ? (
+                                                <Text type="secondary">No matching {composerContext.target === 'item' ? 'items' : 'categories'}.</Text>
+                                            ) : null}
+                                        </div>
+                                        {composerContext.selectedEntityIds.length ? (
+                                            <div
+                                                style={{
+                                                    alignItems: 'center',
+                                                    display: 'flex',
+                                                    gap: 8,
+                                                    justifyContent: 'flex-end',
+                                                    marginTop: 8,
+                                                }}
+                                            >
+                                                <Tag color="blue">
+                                                    {composerContext.selectedEntityIds.length} selected
+                                                </Tag>
+                                                <Button
+                                                    onClick={() => setIsContextPickerOpen(false)}
+                                                    size="small"
+                                                    type="primary"
+                                                >
+                                                    Done
+                                                </Button>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                ) : activeComposerTarget ? (
+                                    <div
+                                        style={{
+                                            background: token.colorFillTertiary,
+                                            border: `1px solid ${token.colorBorderSecondary}`,
+                                            borderRadius: 10,
+                                            marginTop: 12,
+                                            padding: '10px 12px',
+                                        }}
+                                    >
+                                        <Text strong style={{ display: 'block' }}>{activeComposerTarget.label}</Text>
+                                        <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                                            {activeComposerTarget.helper}
+                                        </Text>
+                                    </div>
+                                ) : null}
+                            </div>
+                        ) : null}
                         <div
                             style={{
                                 alignItems: 'flex-end',
@@ -460,55 +1179,45 @@ export default function AiMenuManagerRoute() {
                         </div>
                         <div
                             style={{
-                                display: 'grid',
+                                alignItems: 'center',
+                                display: 'flex',
+                                flexWrap: 'wrap',
                                 gap: 8,
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                                marginTop: 14,
+                                justifyContent: 'space-between',
+                                marginTop: 10,
                             }}
                         >
-                            {quickPrompts.map((prompt) => {
-                                const Icon = prompt.icon;
-                                return (
-                                    <button
-                                        key={prompt.label}
-                                        disabled={!selectedProjectId || submitting}
-                                        onClick={() => submitPrompt(prompt.label)}
-                                        style={{
-                                            alignItems: 'center',
-                                            background: token.colorFillTertiary,
-                                            border: `1px solid ${token.colorBorderSecondary}`,
-                                            borderRadius: 12,
-                                            color: token.colorText,
-                                            cursor: !selectedProjectId || submitting ? 'not-allowed' : 'pointer',
-                                            display: 'flex',
-                                            gap: 12,
-                                            minHeight: 50,
-                                            opacity: !selectedProjectId || submitting ? 0.55 : 1,
-                                            padding: '10px 14px',
-                                            textAlign: 'left',
-                                            width: '100%',
-                                        }}
-                                        type="button"
+                            <Space size={8} wrap>
+                                <Button
+                                    disabled={!selectedProjectId || submitting}
+                                    icon={<LuSlidersHorizontal size={16} />}
+                                    onClick={toggleContextPicker}
+                                    size="small"
+                                >
+                                    {composerContextLabel}
+                                </Button>
+                                <Button
+                                    disabled={!selectedProjectId || submitting}
+                                    icon={<LuSparkles size={16} />}
+                                    onClick={toggleSuggestions}
+                                    size="small"
+                                >
+                                    {isSuggestionsOpen ? 'Hide suggestions' : 'Suggestions'}
+                                </Button>
+                                {composerContext.target ? (
+                                    <Button
+                                        disabled={submitting}
+                                        onClick={clearComposerContext}
+                                        size="small"
+                                        type="text"
                                     >
-                                        <span
-                                            style={{
-                                                alignItems: 'center',
-                                                color: token.colorTextSecondary,
-                                                display: 'inline-flex',
-                                                flexShrink: 0,
-                                                justifyContent: 'center',
-                                                width: 24,
-                                            }}
-                                        >
-                                            <Icon size={18} />
-                                        </span>
-                                        <span style={{ minWidth: 0 }}>
-                                            <Text strong style={{ display: 'block' }}>{prompt.label}</Text>
-                                            <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>{prompt.helper}</Text>
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                                        Clear
+                                    </Button>
+                                ) : null}
+                            </Space>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                Selection only applies to the next message.
+                            </Text>
                         </div>
                     </div>
                 </Card>
@@ -553,7 +1262,7 @@ export default function AiMenuManagerRoute() {
                                     Prices, availability, visibility, menu notes, and style changes wait for approval.
                                 </Text>
                                 <Text type="secondary">
-                                    External platform requests stay as manual tasks.
+                                    External platform posting is not supported from Menu Manager.
                                 </Text>
                             </Space>
                         </Card>

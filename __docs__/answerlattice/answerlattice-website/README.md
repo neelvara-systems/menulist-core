@@ -1,8 +1,8 @@
 # AnswerLattice Website (answerlattice.com)
 
 > **Feature:** Public marketing website for AnswerLattice product
-> **Status:** ✅ IMPLEMENTED — refreshed for product-led support-suite positioning, page-aware SaaS and digital-product support conversion, self-service AnswerLattice, concept illustrations, and agent-readable public discovery
-> **Date:** 2026-06-10
+> **Status:** ✅ IMPLEMENTED — refreshed for approved-answers-first homepage positioning, product-led support-suite conversion, self-service AnswerLattice, concept illustrations, and agent-readable public discovery
+> **Date:** 2026-06-18
 > **Domain:** answerlattice.com (production) | ecomsai.com (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -30,7 +30,7 @@
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | Product-user support hero with inline sample workspace preview + compact proof strip + support-suite cards + scroll-led support-surface story + feature-wise product overview cards + support improvement loop + install-surface quickstarts + AI-built SaaS fit + positioning boundary + pricing checkpoint + objections + CTA |
+| `/` | Homepage | Product-user support hero with approved-answers-first proof, inline sample workspace preview, support-suite cards, scroll-led support-surface story, feature-wise product overview cards, support improvement loop, install-surface quickstarts, AI-built SaaS fit, positioning boundary, pricing checkpoint, objections, and CTA |
 | `/product` | Product | Self-serve product overview for SaaS and digital products with hero CTAs, conversion proof strip, connected support-suite framing, visual workflow proof for setup, team access, in-product widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, support gaps, and category comparison |
 | `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, product pages, widget key, first-client launch proof, and setup/demo/source-prep CTAs |
 | `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, owner FAQ answers, and widget proof strip |

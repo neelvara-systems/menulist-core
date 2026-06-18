@@ -1,8 +1,8 @@
 'use client';
 
 import type { AiMenuManagerCardPayload } from '@type/aiMenuManager';
-import { Button, Card, Space, Tag, Typography, theme } from 'antd';
-import { LuCheck, LuExternalLink, LuX } from 'react-icons/lu';
+import { App, Button, Card, Space, Tag, Typography, theme } from 'antd';
+import { LuCheck, LuCopy, LuDownload, LuExternalLink, LuPencil, LuX } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 
@@ -12,21 +12,95 @@ function riskColor(risk: AiMenuManagerCardPayload['risk']) {
     return 'green';
 }
 
+async function copyTextToClipboard(value: string) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.style.left = '-9999px';
+    textarea.style.position = 'fixed';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+}
+
+function getLocalActionIcon(type: NonNullable<AiMenuManagerCardPayload['localActions']>[number]['type']) {
+    if (type === 'download_qr' || type === 'download_text') return <LuDownload />;
+    if (type === 'open_url') return <LuExternalLink />;
+    return <LuCopy />;
+}
+
+function downloadTextFile(action: NonNullable<AiMenuManagerCardPayload['localActions']>[number]) {
+    const blob = new Blob([action.value], { type: action.mimeType || 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = action.filename || 'menulist-export.txt';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+}
+
 export default function AiMenuProposalCard({
     card,
     disabled,
     onApprove,
     onCancel,
+    onDraftPrompt,
+    onEdit,
     onOpenExisting,
 }: {
     card: AiMenuManagerCardPayload;
     disabled?: boolean;
     onApprove?: (card: AiMenuManagerCardPayload) => void;
     onCancel?: (card: AiMenuManagerCardPayload) => void;
+    onDraftPrompt?: (prompt: string) => void;
+    onEdit?: (card: AiMenuManagerCardPayload) => void;
     onOpenExisting?: (card: AiMenuManagerCardPayload) => void;
 }) {
     const { token } = theme.useToken();
+    const { message } = App.useApp();
     const summary = card.beforeAfterSummary;
+    const primaryLocalAction = card.localActions?.find((action) => action.type === 'copy_url' || action.type === 'copy_text');
+
+    const handleLocalAction = async (action: NonNullable<AiMenuManagerCardPayload['localActions']>[number]) => {
+        try {
+            if (action.type === 'copy_url' || action.type === 'copy_text') {
+                await copyTextToClipboard(action.value);
+                message.success(`${action.label} copied`);
+                return;
+            }
+
+            if (action.type === 'open_url') {
+                window.open(action.value, '_blank', 'noopener,noreferrer');
+                return;
+            }
+
+            if (action.type === 'download_text') {
+                downloadTextFile(action);
+                message.success(`${action.label} downloaded`);
+                return;
+            }
+
+            const { downloadQrCode, generateBrandedQrCodeDataUrl } = await import('@lib/utils/qrCode');
+            const qrDataUrl = await generateBrandedQrCodeDataUrl(action.value, {
+                footer: action.qrFooter || action.value.replace(/^https?:\/\//, ''),
+                storeName: action.qrStoreName,
+                subtitle: action.qrSubtitle || 'Scan to open',
+                title: action.qrTitle || action.label,
+            });
+            downloadQrCode(qrDataUrl, action.filename || 'menulist-qr');
+            message.success(`${action.label} downloaded`);
+        } catch {
+            message.error(`Could not ${action.label.toLowerCase()}`);
+        }
+    };
 
     return (
         <Card
@@ -94,9 +168,89 @@ export default function AiMenuProposalCard({
                     ))}
                 </div>
 
+                {card.suggestedReplies?.length ? (
+                    <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                        <Text strong>Choose an option</Text>
+                        <div style={{ display: 'grid', gap: 8 }}>
+                            {card.suggestedReplies.map((reply) => (
+                                <button
+                                    key={`${card.cardId}:${reply.prompt}`}
+                                    onClick={() => onDraftPrompt?.(reply.prompt)}
+                                    style={{
+                                        background: token.colorBgContainer,
+                                        border: `1px solid ${token.colorBorderSecondary}`,
+                                        borderRadius: 10,
+                                        color: token.colorText,
+                                        cursor: 'pointer',
+                                        minHeight: 44,
+                                        padding: '10px 12px',
+                                        textAlign: 'left',
+                                    }}
+                                    type="button"
+                                >
+                                    <Text strong>{reply.label}</Text>
+                                    {reply.helper ? (
+                                        <Text type="secondary" style={{ display: 'block' }}>{reply.helper}</Text>
+                                    ) : null}
+                                </button>
+                            ))}
+                        </div>
+                    </Space>
+                ) : null}
+
+                {card.localActions?.length ? (
+                    <div
+                        style={{
+                            background: token.colorFillSecondary,
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: 8,
+                            padding: 12,
+                    }}
+                >
+                    <Text strong>Ready to use</Text>
+                        {primaryLocalAction?.value ? (
+                            <Text
+                                code
+                                style={{
+                                    display: 'block',
+                                    marginTop: 8,
+                                    maxHeight: primaryLocalAction.type === 'copy_text' ? 180 : undefined,
+                                    maxWidth: '100%',
+                                    overflow: primaryLocalAction.type === 'copy_text' ? 'auto' : undefined,
+                                    whiteSpace: primaryLocalAction.type === 'copy_text' ? 'pre-wrap' : 'normal',
+                                    wordBreak: 'break-word',
+                                }}
+                            >
+                                {primaryLocalAction.value}
+                            </Text>
+                        ) : null}
+                        <Space wrap style={{ marginTop: 10 }}>
+                            {card.localActions.map((action) => (
+                                <Button
+                                    key={`${card.cardId}:${action.type}:${action.label}`}
+                                    icon={getLocalActionIcon(action.type)}
+                                    disabled={disabled}
+                                    onClick={() => void handleLocalAction(action)}
+                                >
+                                    {action.label}
+                                </Button>
+                            ))}
+                        </Space>
+                    </div>
+                ) : null}
+
                 <Text type="secondary">{card.approvalPolicy.reason}</Text>
 
                 <Space wrap>
+                    {card.actions.includes('edit') ? (
+                        <Button
+                            icon={<LuPencil />}
+                            disabled={disabled}
+                            onClick={() => onEdit?.(card)}
+                        >
+                            Edit
+                        </Button>
+                    ) : null}
                     {card.actions.includes('approve') ? (
                         <Button
                             type="primary"
@@ -114,7 +268,7 @@ export default function AiMenuProposalCard({
                             disabled={disabled}
                             onClick={() => onApprove?.(card)}
                         >
-                            Mark done
+                            {card.localActions?.length ? 'Done' : 'Mark done'}
                         </Button>
                     ) : null}
                     {card.actions.includes('open_existing_screen') ? (

@@ -7,20 +7,27 @@ import { getLocale } from 'next-intl/server';
 import WebsiteThemeShortcut from '@/components/website/shared/WebsiteThemeShortcut';
 import WebsiteDocumentTheme from '@/components/website/shared/WebsiteDocumentTheme';
 import WebsiteAuthProvider from "./WebsiteAuthProvider";
+import {
+    MENULIST_SITE_DESCRIPTION,
+    MENULIST_SITE_IMAGE,
+    MENULIST_SITE_IMAGE_ALT,
+    MENULIST_SITE_TITLE,
+    MENULIST_SITE_URL,
+} from '@constant/menulist/website';
 
+const siteUrl = MENULIST_SITE_URL;
 
-import { PLATFORM_URL } from '@constant/urls';
-
-const siteUrl = PLATFORM_URL;
-
-const siteTitle = 'MenuList - One Official Menu Source for Customers';
-const siteDescription = 'Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source.';
-const siteImage = '/images/website/menulist-og-official-source.png';
+const siteTitle = MENULIST_SITE_TITLE;
+const siteDescription = MENULIST_SITE_DESCRIPTION;
+const siteImage = MENULIST_SITE_IMAGE;
 
 export const metadata: Metadata = {
     title: siteTitle,
     description: siteDescription,
     metadataBase: new URL(siteUrl),
+    alternates: {
+        canonical: siteUrl,
+    },
     openGraph: {
         title: siteTitle,
         description: siteDescription,
@@ -31,7 +38,7 @@ export const metadata: Metadata = {
                 url: siteImage,
                 width: 1200,
                 height: 630,
-                alt: 'MenuList official menu source preview',
+                alt: MENULIST_SITE_IMAGE_ALT,
             },
         ],
         locale: 'en_US',

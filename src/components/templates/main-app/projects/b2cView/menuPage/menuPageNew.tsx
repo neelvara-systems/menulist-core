@@ -1789,19 +1789,25 @@ function MenuPageNew({
         }
     };
 
-    const getItemStyle = (): React.CSSProperties => ({
-        display: 'flex',
-        flexDirection: imageOnTop ? 'column' : 'row',
-        gap: isMobile ? 10 : 12,
-        padding: isMobile ? 11 : 14,
-        background: moodConfig.itemStyle.background,
-        border: `${moodConfig.itemStyle.borderWidth || 1}px solid ${moodConfig.itemStyle.borderColor}`,
-        borderRadius: moodConfig.itemStyle.borderRadius,
-        cursor: 'pointer',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        transition: 'transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease',
-    });
+    const getItemStyle = (): React.CSSProperties => {
+        const itemBorderWidth = moodConfig.itemStyle.borderWidth ?? 0;
+
+        return {
+            display: 'flex',
+            flexDirection: imageOnTop ? 'column' : 'row',
+            gap: isMobile ? 10 : 12,
+            padding: isMobile ? 11 : 14,
+            background: moodConfig.itemStyle.background,
+            border: itemBorderWidth > 0 && moodConfig.itemStyle.borderColor
+                ? `${itemBorderWidth}px solid ${moodConfig.itemStyle.borderColor}`
+                : 'none',
+            borderRadius: moodConfig.itemStyle.borderRadius,
+            cursor: 'pointer',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            transition: 'transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease',
+        };
+    };
 
     const handleItemMouseEnter = (event: React.MouseEvent<HTMLElement>) => {
         const hoverEffect = moodConfig.itemStyle.hoverEffect || 'none';

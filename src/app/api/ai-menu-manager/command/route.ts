@@ -32,6 +32,19 @@ function getStoreName(store: Record<string, any> | null | undefined, fallback: s
     return store?.businessName || store?.name || store?.storeName || `Store ${fallback}`;
 }
 
+function getStoreFromSession(session: any, storeId: string | number) {
+    const stores = [
+        ...(Array.isArray(session?.user?.stores) ? session.user.stores : []),
+        ...(Array.isArray(session?.stores) ? session.stores : []),
+    ];
+    return stores.find((store) => {
+        const candidateIds = [store?.storeId, store?.sId, store?.id]
+            .filter((value) => value !== undefined && value !== null)
+            .map(String);
+        return candidateIds.includes(String(storeId));
+    }) || null;
+}
+
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER) {
         return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
@@ -77,8 +90,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    const storeSnap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(scope.sId)).get();
-    const store = storeSnap.exists ? storeSnap.data() as Record<string, any> : null;
+    const sessionStore = getStoreFromSession(session, scope.sId);
+    const needsStoreRead = !sessionStore
+        || (!sessionStore.businessType && !sessionStore.businessCategory)
+        || (!sessionStore.businessName && !sessionStore.name && !sessionStore.storeName);
+    const store = needsStoreRead
+        ? await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(scope.sId)).get()
+            .then((storeSnap) => (storeSnap.exists ? storeSnap.data() as Record<string, any> : null))
+        : sessionStore;
     const storeName = getStoreName(store, scope.sId);
     const context = buildAiMenuManagerContextPacket({
         project,
@@ -101,6 +120,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         sId: scope.sId,
         projectId: parsed.data.projectId,
         context,
+        composerContext: parsed.data.composerContext,
         cardId: preliminaryCardId,
         createdAt: new Date().toISOString(),
     });

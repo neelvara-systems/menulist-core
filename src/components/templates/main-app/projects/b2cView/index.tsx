@@ -1,4 +1,5 @@
 import { publishProject, uploadFile } from "@database/projects";
+import { deleteOBPPhotos } from "@database/stores/uploadOBPPhoto";
 import { getDataUrlMimeType } from "@lib/media/imageProfiles";
 import { updateStore } from "@database/stores";
 import { useAppDispatch } from "@hook/useAppDispatch";
@@ -13,7 +14,7 @@ import MainContentRenderer from "@template/website/mainContentRenderer";
 import { StoreDataType } from "@type/platform/store";
 import { removeObjRef } from "@util/utils";
 import { Flex } from "antd";
-import { forwardRef, useContext, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useState } from "react";
 import { resolveMenuDesignConfig } from "./designSystem";
 import { Project } from '../types';
 import PreviewModal from "./previewModal";
@@ -48,6 +49,8 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
     const [projectData, setProjectData] = useState<Project>(removeObjRef(activeProject));
     const [storeDraft, setStoreDraft] = useState<StoreDataType | null>(storeDetails ? removeObjRef(storeDetails) : null);
     const [lastPublishedStoreDraft, setLastPublishedStoreDraft] = useState<StoreDataType | null>(storeDetails ? removeObjRef(storeDetails) : null);
+    const [obpPhotoDeleteQueue, setObpPhotoDeleteQueue] = useState<string[]>([]);
+    const [obpPhotoDeleteResetToken, setObpPhotoDeleteResetToken] = useState(0);
     const [previewModalOpen, setPreviewModalOpen] = useState(false);
     const [lastPublishedState, setLastPublishedState] = useState<Project | null>(null);
     const dispatch = useAppDispatch();
@@ -69,6 +72,14 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
         ));
     };
 
+    const handleObpPhotoDeleteQueueChange = useCallback((photoUrls: string[]) => {
+        setObpPhotoDeleteQueue((previous) => {
+            const previousKey = JSON.stringify(previous);
+            const nextKey = JSON.stringify(photoUrls);
+            return previousKey === nextKey ? previous : [...photoUrls];
+        });
+    }, []);
+
     // Expose functions to parent via ref
     useImperativeHandle(ref, () => ({
         openPreview: () => setPreviewModalOpen(true),
@@ -77,6 +88,8 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
             dispatch(startLoader(loaderId));
             try {
                 let updatedProjectCopy: Project | null = null;
+                const hasOfficialChanges = hasOfficialPageChanges();
+                const queuedObpPhotoDeletes = [...obpPhotoDeleteQueue];
 
                 if (hasProjectChanges()) {
                     const projectCopy: Project = removeObjRef(projectData);
@@ -112,7 +125,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     } catch { /* non-blocking */ }
                 }
 
-                if (hasOfficialPageChanges() && storeDraft?.storeId) {
+                if (hasOfficialChanges && storeDraft?.storeId) {
                     const storeUpdate: any = {
                         storeId: storeDraft.storeId,
                         publicPresence: storeDraft.publicPresence || {},
@@ -135,7 +148,13 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     setLastPublishedStoreDraft(removeObjRef(nextStoreDetails));
                 }
 
-                if (updatedProjectCopy || hasOfficialPageChanges()) {
+                if (queuedObpPhotoDeletes.length > 0) {
+                    await deleteOBPPhotos(queuedObpPhotoDeletes);
+                    setObpPhotoDeleteQueue([]);
+                    setObpPhotoDeleteResetToken((token) => token + 1);
+                }
+
+                if (updatedProjectCopy || hasOfficialChanges || queuedObpPhotoDeletes.length > 0) {
                     dispatch(showSuccessToast("Public page changes published"));
                 }
                 setHasChanges?.(false);
@@ -143,7 +162,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                 dispatch(stopLoader(loaderId));
             }
         }
-    }), [projectData, lastPublishedState, storeDraft, lastPublishedStoreDraft, dispatch, setActiveProject, setHasChanges, setStoreDetails, storeDetails]);
+    }), [projectData, lastPublishedState, storeDraft, lastPublishedStoreDraft, obpPhotoDeleteQueue, dispatch, setActiveProject, setHasChanges, setStoreDetails, storeDetails]);
 
     // Track project changes and notify parent
     useEffect(() => {
@@ -153,8 +172,8 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
             setLastPublishedState(removeObjRef(projectData));
         }
 
-        setHasChanges?.(hasProjectChanges() || hasOfficialPageChanges());
-    }, [projectData, lastPublishedState, storeDraft, lastPublishedStoreDraft, setHasChanges]);
+        setHasChanges?.(hasProjectChanges() || hasOfficialPageChanges() || obpPhotoDeleteQueue.length > 0);
+    }, [projectData, lastPublishedState, storeDraft, lastPublishedStoreDraft, obpPhotoDeleteQueue, setHasChanges]);
 
     useEffect(() => {
         if (!storeDetails) {
@@ -165,6 +184,8 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
         const clonedStore = removeObjRef(storeDetails);
         setStoreDraft(clonedStore);
         setLastPublishedStoreDraft(removeObjRef(clonedStore));
+        setObpPhotoDeleteQueue([]);
+        setObpPhotoDeleteResetToken((token) => token + 1);
     }, [storeDetails?.storeId]);
 
     return (
@@ -188,6 +209,8 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     setProjectData={setProjectData}
                     storeDraft={storeDraft}
                     setStoreDraft={setStoreDraft}
+                    obpPhotoDeleteResetToken={obpPhotoDeleteResetToken}
+                    onObpPhotoDeleteQueueChange={handleObpPhotoDeleteQueueChange}
                     setActiveLanguage={setActiveLanguage}
                 />
                 <PreviewModal

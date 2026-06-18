@@ -1,9 +1,15 @@
 import JsonLdScript from '@/components/seo/JsonLdScript';
-import { PLATFORM_URL } from '@constant/urls';
+import {
+  MENULIST_ENTITY_DESCRIPTION,
+  MENULIST_SITE_DESCRIPTION,
+  MENULIST_SITE_IMAGE,
+  MENULIST_SITE_TITLE,
+  MENULIST_SITE_URL,
+} from '@constant/menulist/website';
 
-const SITE_URL = PLATFORM_URL;
-const SITE_DESCRIPTION = 'MenuList is a system that manages official menus and public business information across all customer-facing surfaces.';
-const SITE_IMAGE = `${SITE_URL}/images/website/menulist-og-official-source.png`;
+const SITE_URL = MENULIST_SITE_URL;
+const SITE_DESCRIPTION = MENULIST_ENTITY_DESCRIPTION;
+const SITE_IMAGE = `${SITE_URL}${MENULIST_SITE_IMAGE}`;
 const SITE_LOGO = `${SITE_URL}/apple-touch-icon.png`;
 
 const graph = {
@@ -67,8 +73,8 @@ const graph = {
       '@type': 'WebPage',
       '@id': `${SITE_URL}/#webpage`,
       url: SITE_URL,
-      name: 'MenuList - One Official Menu Source for Customers',
-      description: 'Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source.',
+      name: MENULIST_SITE_TITLE,
+      description: MENULIST_SITE_DESCRIPTION,
       isPartOf: { '@id': `${SITE_URL}/#website` },
       about: { '@id': `${SITE_URL}/#software` },
       primaryImageOfPage: {

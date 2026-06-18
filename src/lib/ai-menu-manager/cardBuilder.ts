@@ -17,6 +17,8 @@ export function buildProposalCard(params: {
     entityRefs: AiMenuManagerEntityRef[];
     beforeAfterSummary: AiMenuManagerBeforeAfterSummary;
     createdAt: string;
+    suggestedReplies?: AiMenuManagerCardPayload['suggestedReplies'];
+    localActions?: AiMenuManagerCardPayload['localActions'];
 }): AiMenuManagerCardPayload {
     const approvalPolicy = buildApprovalPolicy(params.definition);
     const isManualTask = params.definition.executionMode === 'manual_task'
@@ -34,6 +36,8 @@ export function buildProposalCard(params: {
         scope: params.scope,
         entityRefs: params.entityRefs,
         beforeAfterSummary: params.beforeAfterSummary,
+        suggestedReplies: params.suggestedReplies,
+        localActions: params.localActions,
         actions: isManualTask
             ? ['mark_done', 'cancel']
             : approvalPolicy.requiresApproval
@@ -53,6 +57,8 @@ export function buildManualTaskCard(params: {
     beforeAfterSummary: AiMenuManagerBeforeAfterSummary;
     createdAt: string;
     actionType?: AiMenuManagerActionType;
+    suggestedReplies?: AiMenuManagerCardPayload['suggestedReplies'];
+    localActions?: AiMenuManagerCardPayload['localActions'];
 }): AiMenuManagerCardPayload {
     return {
         cardId: params.cardId,
@@ -70,6 +76,43 @@ export function buildManualTaskCard(params: {
         scope: params.scope,
         entityRefs: params.entityRefs,
         beforeAfterSummary: params.beforeAfterSummary,
+        suggestedReplies: params.suggestedReplies,
+        localActions: params.localActions,
+        actions: ['mark_done', 'cancel'],
+        createdAt: params.createdAt,
+    };
+}
+
+export function buildLocalExportCard(params: {
+    cardId: string;
+    definition: AiMenuManagerActionDefinition;
+    title: string;
+    message: string;
+    scope: AiMenuManagerScope;
+    entityRefs: AiMenuManagerEntityRef[];
+    beforeAfterSummary: AiMenuManagerBeforeAfterSummary;
+    createdAt: string;
+    localActions: AiMenuManagerCardPayload['localActions'];
+    suggestedReplies?: AiMenuManagerCardPayload['suggestedReplies'];
+}): AiMenuManagerCardPayload {
+    return {
+        cardId: params.cardId,
+        kind: 'manual_task',
+        actionType: params.definition.actionType,
+        title: params.title,
+        message: params.message,
+        status: 'manual_task',
+        risk: params.definition.risk,
+        approvalPolicy: {
+            level: params.definition.approvalLevel,
+            requiresApproval: false,
+            reason: 'This card prepares a local copy or download only. Menu truth is unchanged.',
+        },
+        scope: params.scope,
+        entityRefs: params.entityRefs,
+        beforeAfterSummary: params.beforeAfterSummary,
+        suggestedReplies: params.suggestedReplies,
+        localActions: params.localActions,
         actions: ['mark_done', 'cancel'],
         createdAt: params.createdAt,
     };
@@ -80,12 +123,14 @@ export function buildClarificationCard(params: {
     scope: AiMenuManagerScope;
     message: string;
     createdAt: string;
+    suggestedReplies?: AiMenuManagerCardPayload['suggestedReplies'];
+    title?: string;
 }): AiMenuManagerCardPayload {
     return {
         cardId: params.cardId,
         kind: 'clarification',
         actionType: 'system_clarification_request',
-        title: 'Choose what you want to change',
+        title: params.title || 'Choose what you want to change',
         message: params.message,
         status: 'pending_approval',
         risk: 'low',
@@ -100,6 +145,7 @@ export function buildClarificationCard(params: {
             title: 'More detail needed',
             rows: [{ label: 'Needed', after: params.message }],
         },
+        suggestedReplies: params.suggestedReplies,
         actions: ['edit', 'cancel'],
         createdAt: params.createdAt,
     };
@@ -110,27 +156,30 @@ export function buildUnsupportedCard(params: {
     scope: AiMenuManagerScope;
     message: string;
     createdAt: string;
+    beforeAfterSummary?: AiMenuManagerBeforeAfterSummary;
+    entityRefs?: AiMenuManagerEntityRef[];
+    title?: string;
 }): AiMenuManagerCardPayload {
     return {
         cardId: params.cardId,
         kind: 'unsupported',
         actionType: 'system_unsupported_action',
-        title: 'Manual task needed',
+        title: params.title || 'Action not supported',
         message: params.message,
         status: 'manual_task',
         risk: 'high',
         approvalPolicy: {
             level: 'none',
             requiresApproval: false,
-            reason: 'MenuList will not post or change that external platform. Use this as a manual handoff.',
+            reason: 'MenuList will not change that external or protected surface from this card.',
         },
         scope: params.scope,
-        entityRefs: [],
-        beforeAfterSummary: {
+        entityRefs: params.entityRefs || [],
+        beforeAfterSummary: params.beforeAfterSummary || {
             title: 'External work',
             rows: [{ label: 'Action', after: params.message }],
         },
-        actions: ['mark_done', 'cancel'],
+        actions: ['cancel'],
         createdAt: params.createdAt,
     };
 }

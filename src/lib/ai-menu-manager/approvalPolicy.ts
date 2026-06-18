@@ -19,7 +19,7 @@ function getApprovalReason(definition: AiMenuManagerActionDefinition) {
         case 'destructive_confirm':
             return 'This can remove or disable content and needs approval.';
         case 'external_confirm':
-            return 'This involves external or public handoff work and needs approval.';
+            return 'This prepares a MenuList export, share, download, or publish action and needs approval.';
         case 'confirm':
             return 'Review the prepared change before it applies.';
         case 'none':

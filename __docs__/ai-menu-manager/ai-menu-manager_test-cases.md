@@ -77,9 +77,17 @@ Every passing test should confirm four things:
 ### AMM-INTAKE-004: Unsupported External Publish Request
 
 **When** the owner asks "Update this on Zomato."
-**Then** AMM checks whether a supported adapter exists.
-**And** if no adapter exists, AMM creates a manual-task or export card.
-**And** AMM does not mark external publishing complete.
+**Then** AMM creates a destination-specific not-supported card such as `Zomato is not supported`, not a generic manual-task placeholder.
+**And** the card has no `Mark done` control because MenuList cannot complete that external action.
+**And** AMM does not mark external platform work complete.
+
+### AMM-INTAKE-004B: General Question Is Out Of Scope
+
+**When** the owner asks "What is today's weather?"
+**Then** AMM creates a `system_unsupported_action` card.
+**And** the card explains that Menu Manager handles MenuList work, not live weather, news, sports, market, or general chat questions.
+**And** no external lookup, menu mutation, store mutation, or public truth change occurs.
+**And** the card has no `Mark done` control.
 
 ### AMM-INTAKE-005: Selected Project Context
 
@@ -172,6 +180,14 @@ The card must show:
 
 The card must map to existing menu design settings, not a separate theme model.
 
+Theme/layout/color/display clarification behavior:
+
+- "change the theme" shows the existing presentation tone choices: Clean & Calm, Warm & Inviting, Premium & Minimal, Bold & Social, Fast & Direct.
+- "change menu layout" shows List, Grid, and Card.
+- "change theme color" shows the existing brand color presets.
+- "change display options" shows show/hide choices for item prices, item images, category icons, and category tabs.
+- Choosing any option drafts the next owner message; sending that message creates the proposal card.
+
 ### AMM-CARD-004A: Featured Section Card
 
 The card must show:
@@ -204,7 +220,7 @@ For a linked outlet or HQ menu, the card must show:
 **Then** the approved patch must apply through the existing project update path or a formally equivalent execution path.
 **And** customer-facing cache invalidation runs.
 **And** Menu Observation Layer writes only according to existing feature flags.
-**And** the proposal document records completion.
+**And** the compact session receipt records completion. Server-backed adapters may also record completion on the proposal document.
 
 ### AMM-EXEC-002: Rejected Card Does Not Mutate Project
 
@@ -301,6 +317,61 @@ The parity matrix must be generated from [ai-menu-manager_action-type-checklist.
 | Reviews/reputation guard | Existing disabled feature flags and guarded/manual fallback behavior. |
 | Staff/access update | Existing guarded staff APIs. |
 
+### AMM-MOBILE-MORE-001: Existing More Flow Handoff
+
+**When** the owner says "Open customer app settings", "Change working hours for today", "Open digital screens", "Open print menu", or "Open billing".
+**Then** AMM creates the exact registered action-family card, such as `customer_app_settings_update`, `store_working_hours_update`, `digital_screen_status_card`, `print_menu_open`, or `billing_screen_open`.
+**And** the card names the exact existing More path where the owner should finish the work.
+**And** no store, staff, billing, screen, POS, or public truth is mutated from the card.
+**And** known MenuList flows must not fall back to `system_manual_task_create`.
+
+### AMM-MOBILE-MORE-002: Internal More Flow Block
+
+**When** the owner says "Open platform tenants", "Open reseller dashboard", or "Open Answerlattice intake".
+**Then** AMM creates a `system_unsupported_action` card.
+**And** the card explains that internal platform/reseller/Answerlattice screens cannot be operated by Menu Manager.
+**And** the owner is directed to use the existing internal screen with the required permissions.
+
+### AMM-MOBILE-MORE-003: Design Navigation Versus Design Mutation
+
+**When** the owner says "Open menu design".
+**Then** AMM creates a `menu_design_settings_open` card for `More > Menu Design`.
+**When** the owner says "Use grid layout", "Set theme color to Gold", or "Make menu premium".
+**Then** AMM creates the matching registered menu design proposal card.
+
+### AMM-MOBILE-MORE-004: Guided More Choices
+
+**When** the owner says "Change working hours", "Set temporary status", "Setup customer app", "Show menu on TV", or "Manage feedback".
+**Then** AMM creates a `system_clarification_request` card with bounded option rows.
+**And** choosing an option drafts a follow-up owner command instead of executing immediately.
+**And** the drafted command resolves to the exact registered action-family card that names the existing Mobile More path.
+**And** no store, screen, feedback, PWA, or temporary-status truth is mutated by the guided choice itself.
+
+### AMM-MOBILE-MORE-005: Exact Local Export Cards
+
+**When** the owner says "Copy menu link" or "Download menu QR".
+**Then** AMM creates `menu_share_copy_link` or `menu_qr_download` with Copy, Open, and Download QR controls when the loaded selected-project context has a public menu link.
+**And** AMM creates the same exact action type as a setup handoff only when the loaded context has no public menu link.
+
+**When** the owner says "Copy official page link" or "Download official page QR".
+**Then** AMM creates `public_presence_link_share` or `public_presence_qr_download` with Copy, Open, and Download QR controls when the loaded store context has an official page link.
+**And** AMM creates the same exact action type as a setup handoff only when the loaded context has no official page link.
+
+**When** the owner says "Copy feedback link" or "Show feedback QR".
+**Then** AMM creates `feedback_link_share` or `feedback_qr_download` with Copy, Open, and Download QR controls.
+
+**When** the owner says "Copy customer app install link".
+**Then** AMM creates `customer_app_install_link_share` with Copy, Open, and Download QR controls when the loaded store context has a public link.
+**And** AMM creates `customer_app_settings_update` only when the public link is missing and the owner must finish setup.
+
+**When** the owner says "Copy digital screen link".
+**Then** AMM creates `digital_screen_link_share` with Copy, Open, and Download QR controls when the loaded store context has a screen token.
+**And** AMM creates the same exact action type as a setup handoff only when the loaded context has no screen token.
+
+**When** the owner says "Copy POS setup details", "Copy POS technical summary", or "Download POS sample payload".
+**Then** AMM creates `pos_sync_setup_info_copy`, `pos_sync_technical_summary_copy`, or `pos_sync_sample_payload_download`.
+**And** those cards expose Copy text and/or Download text controls without creating a Firestore proposal doc.
+
 ---
 
 ## Firebase Cost Tests
@@ -311,10 +382,11 @@ The parity matrix must be generated from [ai-menu-manager_action-type-checklist.
 **Then** AMM writes compact session summaries according to the configured storage mode.
 **And** AMM does not create a Firestore document per token or model step.
 
-### AMM-COST-002: Proposal Writes Are Bounded
+### AMM-COST-002: Card Writes Are Bounded
 
-Each actionable card may create or update one proposal document.
-Status transitions should update the same proposal document unless retention/audit requirements explicitly require a separate artifact.
+Normal deterministic selected-project cards must update the compact daily session doc rather than creating a proposal document per card.
+Server-backed cards may create or update one proposal document when provider secrets, import/upload jobs, external policy, or durable ledger detail requires it.
+Status transitions should update the same compact session/proposal record unless retention/audit requirements explicitly require a separate artifact.
 
 ### AMM-COST-003: Heavy Artifacts Go To Storage
 
@@ -333,7 +405,7 @@ It must not attach an unbounded listener to all historical AMM proposals or sess
 
 ### AMM-COST-006: Compact Array Caps
 
-Session and proposal documents must enforce caps for compact messages, pending card summaries, receipt summaries, artifact refs, and idempotency keys.
+Session and proposal documents must enforce caps for compact messages, pending card summaries, pending operations, receipt summaries, artifact refs, and idempotency keys.
 When a cap is exceeded, old detail must move to Storage or remain on proposal detail docs instead of growing the compact document.
 
 ### AMM-COST-007: Active Inbox Does Not Scan Old Sessions
@@ -343,10 +415,15 @@ The unresolved cards must be available through the current compact summary, dete
 
 ### AMM-COST-008: Retry Does Not Duplicate Proposals
 
-Submitting the same command twice with the same idempotency key must not create duplicate proposal docs.
+Submitting the same command twice with the same idempotency key must not create duplicate compact pending operations or proposal docs.
 Approving the same card twice with the same idempotency key must not execute the project mutation twice.
 
-### AMM-COST-009: Related Approved Patches Merge
+### AMM-COST-009: Completion Uses Loaded Session Snapshot
+
+For normal deterministic selected-project cards, completion and cancel must reuse the compact session already loaded in the open AMM screen.
+They must not transaction-read the session again before writing the receipt/pending-card update.
+
+### AMM-COST-010: Related Approved Patches Merge
 
 When an owner approves a safe related batch, AMM should produce one project mutation instead of many sequential saves.
 The test should cover bulk price, batch availability, and description repair.
@@ -364,6 +441,8 @@ Cleanup must use Storage lifecycle rules or existing consolidated cleanup discip
 ### AMM-COST-012: Mobile Local Actions Stay Local
 
 Mobile QR, menu kit, print asset, customer app link, feedback link, digital screen link, POS setup copy, and native share/download actions must not create Firestore writes unless a durable AMM proposal/receipt is explicitly required.
+
+Feedback link and QR acceptance: "Copy feedback link" must create a `feedback_link_share` card with the selected menu feedback URL, Copy link, Open link, and Download QR controls. "Show feedback QR" must create a `feedback_qr_download` card with the same local controls. Neither flow may mutate menu truth or store generated QR image data in Firestore.
 
 ### AMM-COST-013: Mobile Operational Actions Reuse Existing Docs
 
@@ -529,6 +608,24 @@ Disabling `ENABLE_AI_MENU_MANAGER_RULES` stops rule suggestion and rule executio
 
 ## Regression Tests
 
+- Suggestion chooser selection fills the composer and does not prepare a card until the owner presses Send.
+- Empty-state starter cards prioritize frequent daily operations: Store closed today, Change working hours, and a contextual sold-out item when available. They fill the composer or open a second-layer suggestion choice and do not prepare a card until the owner presses Send.
+- Suggestion chooser groups are contextual to the selected menu and include quick fixes, promotion, photos/content, style, and publish/import where relevant.
+- Suggestion chooser supports a two-layer guided flow for settings-style work: the owner first chooses the action area, then chooses the exact option such as Premium & Minimal, Grid layout, Closed today, Copy screen link, or Download feedback QR.
+- Moving between suggestion layers is local UI state only and creates zero Firebase reads or writes.
+- Work on context picker selection fills no card by itself and creates zero Firebase reads or writes.
+- Work on > Item supports multi-select. Selecting three items and sending "increase price by 10" creates one bulk price proposal with old/new rows for the selected items only.
+- Work on > Category supports one selected category. Sending "deactivate" creates a category visibility proposal for that category; sending "increase price by 10" creates a category-scoped bulk price proposal.
+- Work on item/category lists use compact rows and do not show a search input for short lists; search appears for longer lists or active search text.
+- Desktop suggestion chooser stays inside the Menu Manager chat frame as an inline tray and does not open a page-level drawer over the dashboard.
+- Desktop Work on picker stays inside the Menu Manager chat frame near the composer and does not open a page-level drawer.
+- Desktop and mobile Work on/Suggestions surfaces are mutually exclusive: opening one closes the other, including when a nested suggestion layer is active.
+- Mobile suggestion chooser remains a MobileShell bottom sheet with large touch rows.
+- Mobile Work on picker remains a MobileShell bottom sheet with large touch rows.
+- Mobile suggestion chooser shows back navigation from the second layer and never routes out of `MobileShell`.
+- Vague choice commands such as "change the theme", "generate image", or "promote this item" create clarification cards with selectable option rows instead of generic dead-end text.
+- Selecting a clarification option row fills the composer and does not approve, complete, or execute anything until the owner sends the drafted message.
+- Card Edit fills the composer with an owner-readable draft command and leaves the pending card unchanged unless the owner sends/cancels separately.
 - Business Health dashboard still loads without AMM data dependencies.
 - Menu Command Center still applies its supported operations.
 - Existing project editor save flow still invalidates public cache.
@@ -562,6 +659,7 @@ Required implementation checks:
 - every protected route has auth, tenant validation, Zod validation, and rate limiting where required.
 - project writes preserve cache invalidation.
 - compact session/proposal arrays enforce max lengths.
+- deterministic command, completion, and cancel use the loaded compact session snapshot instead of extra AMM session transaction reads.
 - retry-safe command/proposal/approval paths do not duplicate writes.
 - active inbox loading does not scan historical sessions.
 - active job polling is bounded and stops on hidden/backgrounded state.

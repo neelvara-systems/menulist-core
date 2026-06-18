@@ -113,6 +113,10 @@ Frozen rules:
 
 Owner dashboard can keep `next-pwa`/Workbox behavior through `public/sw.js`, but tenant/customer origins must use the minimal customer SW.
 
+Platform public website routes do not install the owner Workbox worker, but they preserve an already-registered `public/sw.js` owner worker. Standalone platform launches are treated as owner-app context so an installed owner PWA can repair/register `public/sw.js` even if iOS opens it at `/`. This keeps a normal visit to `menulist.online/` from removing the owner PWA offline fallback for the same origin.
+
+Offline fallback requires a prior successful online service-worker registration. A first-ever offline open before Safari has registered the worker can still show a browser-native network error.
+
 ---
 
 ## Menu Freshness Contract

@@ -22,6 +22,8 @@ This checklist answers four questions for every supported owner command:
 
 This file must be updated whenever AMM gains a new action adapter or when an existing manual MenuList flow changes.
 
+Current implementation note: Mobile More/manual surfaces are recognized by a table-driven resolver and mapped to exact action-family cards, not the generic `system_manual_task_create` placeholder. Known flows include business profile, official page, social links, attributes, customer app, search/discovery, domain, business copy, SEO, analytics, locale, working hours, time slots, temporary status, locations, staff, roles, billing, transactions, Business Health, past activity, help, print/export, digital screens, POS sync, integrations, and blocked platform/reseller/Answerlattice/internal screens. Browser-local exports use dedicated actions such as `menu_share_copy_link`, `menu_qr_download`, `public_presence_link_share`, `public_presence_qr_download`, `feedback_link_share`, `feedback_qr_download`, `customer_app_install_link_share`, `digital_screen_link_share`, `pos_sync_setup_info_copy`, `pos_sync_technical_summary_copy`, and `pos_sync_sample_payload_download`. `system_manual_task_create` is reserved for true ad hoc owner tasks that do not map to a known MenuList action family.
+
 ---
 
 ## 2. Source Scan Completed
@@ -54,7 +56,7 @@ The first checklist pass was grounded in these current manual flows:
 | Project metadata DAL | `src/database/projects/index.ts:804`, `src/database/projects/index.ts:864`, `src/database/projects/index.ts:1752`, `src/database/projects/index.ts:1953` | Metadata, delete, restore, duplicate use summary-doc rules and guards. |
 | Special menu DAL | `src/hooks/useSpecialMenus.ts:1`, `src/database/projects/index.ts:2161`, `src/database/projects/index.ts:2234`, `src/database/projects/index.ts:2547` | Special menu actions are real AMM candidates and already mobile-supported. |
 | Mobile special menu | `src/components/mobile/screens/MobileSpecialMenuScreen.tsx:3` | Special menu card behavior has a mobile equivalent. |
-| Share/QR/export | `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:143`, `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:199`, `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:225`, `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:267` | AMM can prepare share/export cards; raw external posting stays manual-task only. |
+| Share/QR/export | `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:143`, `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:199`, `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:225`, `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:267` | AMM can prepare MenuList-owned share/export cards; raw external posting is unsupported. |
 | Menu card export | `src/hooks/useMenuCardExportController.ts:109`, `src/hooks/useMenuCardExportController.ts:494` | Print/export cards can reuse browser-local export flow. |
 | Menu card design advisor | `src/app/api/menu-card-export/design-advisor/route.ts:88`, `src/app/api/menu-card-export/design-advisor/route.ts:112`, `src/app/api/menu-card-export/design-advisor/route.ts:153` | Layout suggestion cards reuse existing AI accounting and plan gates. |
 | Official Business Page settings | `src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx:81`, `src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx:578`, `src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx:702` | Public presence actions are adjacent AMM actions and must save via store path. |
@@ -104,6 +106,8 @@ Every AMM action type must pass this checklist before execution is enabled:
 
 No adapter may execute only because the model is confident. The adapter, policy, and owner approval decide execution.
 
+Mobile More bridge cards are not executable adapters. They are explicit handoffs to existing owner screens. Broad fixed-choice flows such as working hours, temporary status, time slots, customer app, digital screens, and feedback can use guided option cards, but each option only drafts the next owner message. Once sent, `feedback_link_share` and `feedback_qr_download` are dedicated `browser_local_export` cards with Copy link, Open link, and Download QR controls. The suggestion launcher may show the same two-layer structure before a message is sent: first action area, then exact option. The composer Work on picker may scope a message to loaded items, one category, menu design, digital menu, official page, digital screens, feedback, or store settings. These layers are local UI state and must not be upgraded to direct writes unless a new registered action type is added with source evidence, approval level, Firebase cost class, mobile handling, and DAL/API parity.
+
 ---
 
 ## 4. Naming Convention
@@ -129,7 +133,7 @@ Action types use lowercase snake_case with a domain prefix:
 | `seo_` | Store SEO metadata actions. |
 | `analytics_` | Store analytics/tracking settings. |
 | `pos_sync_` | POS sync settings, test, secret, and setup actions. |
-| `integration_` | Read-only third-party integration status cards and manual-task handoffs. |
+| `integration_` | Read-only integration status cards and exact setup cards. No third-party posting. |
 | `compliance_` | Compliance page status, custom override, and reset actions. |
 | `communication_` | Customer communication message template generation/copy/share actions. |
 | `presence_` | Menu presence monitor status and owner confirmation actions. |
@@ -151,7 +155,7 @@ Action types use lowercase snake_case with a domain prefix:
 | `existing_api_job` | Adapter calls an existing protected API or job creator. | Extraction, link import, image generation, batch image generation. |
 | `existing_server_api` | Adapter calls an existing guarded API route. | Temp status, outlet creation, outlet save, staff management. |
 | `browser_local_export` | No Firebase mutation; browser prepares/downloads/share-sheet artifact. | PDF, QR, XLSX, JSON, menu card export. |
-| `manual_task_card` | AMM prepares instructions/export/receipt but does not perform the external action. | Unsupported external posting and off-platform actions. |
+| `manual_task_card` | AMM prepares an exact existing-screen owner task, local export, or receipt without changing live truth. | Existing MenuList screen/task-only workflows, not unsupported third-party posting. |
 | `read_only_card` | AMM answers using already-loaded or cached bounded context. | Clarification, unsupported action explanation, history receipt. |
 
 ---
@@ -165,7 +169,7 @@ Action types use lowercase snake_case with a domain prefix:
 | `bulk_confirm` | Multiple menu changes; owner must review count, scope, and examples. |
 | `high_confirm` | Public-facing price, outlet-scoped, staff/access, or billing-adjacent action. |
 | `destructive_confirm` | Delete/reset/remove/deactivate actions. Requires explicit entity name in card. |
-| `external_confirm` | Download, export, share, or external handoff. Requires destination disclosure. |
+| `external_confirm` | MenuList-owned download, export, share, import, or supported publish. Requires destination/surface disclosure. |
 
 Product approval weight mapping:
 
@@ -176,7 +180,7 @@ Product approval weight mapping:
 | Heavy price/public-scope change | `high_confirm` |
 | Heavy multi-record change | `bulk_confirm` |
 | Heavy delete/reset/archive | `destructive_confirm` |
-| Heavy external handoff/publish/share | `external_confirm` |
+| Heavy MenuList export/publish/share | `external_confirm` |
 
 Price rule: direct price changes must use `high_confirm`. The card must show old price, new price, selected store, selected project/outlet scope, public impact, and receipt expectation before approval.
 
@@ -191,7 +195,7 @@ Price rule: direct price changes must use `high_confirm`. The card must show old
 | `C2 job/storage` | Storage upload/artifact plus bounded job/proposal docs. |
 | `C3 summary/store write` | Project, store, PWA, feedback, screen, or other bounded MenuList owner-data write through an existing DAL, plus any existing summary/cache updates. |
 | `C4 guarded server mutation` | Existing API with auth, permissions, rate limits, possible billing/Auth/provider side effects. |
-| `C5 manual only` | AMM stores proposal/receipt only; external action is owner handoff. |
+| `C5 manual only` | AMM stores proposal/receipt only for exact existing-screen or owner-handoff work; no provider call or MenuList truth write. |
 
 Cost rules:
 
@@ -210,7 +214,7 @@ Cost rules:
 | `ready_adapter` | Manual flow and mutation path exist. AMM can add an adapter that reuses them. |
 | `needs_adapter_glue` | Manual flow exists, but AMM needs a wrapper, card schema, or stricter policy before enablement. |
 | `existing_api_only` | AMM may call only the existing protected API/job, never direct-write. |
-| `manual_task_only` | AMM can prepare a manual task/export/receipt, not execute the external action. |
+| `manual_task_only` | AMM can prepare an exact existing-screen task/export/receipt, not execute protected or unsupported work. |
 | `blocked` | Do not expose until a missing contract is created. |
 
 ---
@@ -417,6 +421,7 @@ Adding a new item/category/attribute key requires adding a row here and a matchi
 | `menu_design_mood_update` | "Make menu look premium" | Menu mood setting. Evidence: `src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx:75` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
 | `menu_design_layout_update` | "Use grid layout" | Menu layout setting. Evidence: `src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx:92` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
 | `menu_design_preset_apply` | "Apply clean cafe style" | Design preset apply. Evidence: `src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx:110` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
+| `menu_design_color_update` | "Set theme color to Gold" | Menu theme color setting. Evidence: `src/components/templates/main-app/projects/b2cView/designSystem/BrandColorPicker.tsx:67`, `src/components/mobile/screens/MobileDesignEditorScreen.tsx:583` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
 | `menu_design_visibility_update` | "Hide prices from public menu" | Show images/prices/tabs/icons toggles. Evidence: `src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx:131` | `client_project_mutation` | `high_confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
 | `menu_design_background_update` | "Use this background image" | Background image setting. Evidence: `src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx:195` | `client_project_mutation` | `confirm` | Card approve/edit | `C2 job/storage` plus project save | `needs_adapter_glue` |
 | `menu_special_note_update` | "Show today's note at top" | Special note setting. Evidence: `src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.tsx:211` | `client_project_mutation` | `confirm` | Fast card | `C1 single project save` | `ready_adapter` |
@@ -434,11 +439,12 @@ Adding a new item/category/attribute key requires adding a row here and a matchi
 | `menu_qr_download` | "Download QR for menu" | Share modal QR. Evidence: `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:143` | `browser_local_export` | `external_confirm` | Download card | `C0 local` | `ready_adapter` |
 | `menu_share_whatsapp` | "Share menu on WhatsApp" | Share modal social action. Evidence: `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:167` | `browser_local_export` | `external_confirm` | Share card | `C0 local` | `ready_adapter` |
 | `menu_share_copy_link` | "Copy menu link" | Copy URL action. Evidence: `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:479` | `browser_local_export` | `none` | Share card | `C0 local` | `ready_adapter` |
+| `public_presence_link_share` | "Copy official page link" | Mobile official page copy/open/share. Evidence: `src/components/mobile/screens/MobileShareScreen.tsx:1225` | `browser_local_export` | `none` | Share card | `C0 local` | `ready_adapter` |
 | `public_presence_qr_download` | "Download official page QR" | Mobile official page QR. Evidence: `src/components/mobile/screens/MobileShareScreen.tsx:1218` | `browser_local_export` | `external_confirm` | Download card | `C0 local` | `ready_adapter` |
 | `menu_pdf_download` | "Download menu PDF" | PDF generation from share modal. Evidence: `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:225` | `browser_local_export` | `external_confirm` | Download card | `C0 local` | `ready_adapter` |
 | `menu_data_export_json` | "Export menu JSON" | Structured export. Evidence: `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:199` | `browser_local_export` | `external_confirm` | Download card | `C0 local` | `ready_adapter` |
 | `menu_data_export_xlsx` | "Export menu Excel" | Structured export. Evidence: `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:199` | `browser_local_export` | `external_confirm` | Download card | `C0 local` | `ready_adapter` |
-| `menu_data_post_external` | "Send menu data to this API" | Legacy B2B share modal. Evidence: `src/components/templates/main-app/projects/ShareModal.tsx:25` | `manual_task_card` | `external_confirm` | Task card | `C5 manual only` | `manual_task_only` |
+| `menu_data_post_external` | "Send menu data to this API" | No AMM posting adapter. Use supported JSON/XLSX export instead. Evidence: `src/components/templates/main-app/projects/ShareModal.tsx:25` | `read_only_card` | `none` | Unsupported card | `C0 local plus compact session doc` | `blocked` |
 | `menu_kit_download` | "Download full menu kit" | Mobile full menu kit download. Evidence: `src/components/mobile/screens/MobileShareScreen.tsx:780` | `browser_local_export` | `external_confirm` | Download card | `C0 local` | `ready_adapter` |
 | `menu_kit_asset_download` | "Download only the QR poster" | Mobile single asset download. Evidence: `src/components/mobile/screens/MobileShareScreen.tsx:799` | `browser_local_export` | `external_confirm` | Download card | `C0 local` | `ready_adapter` |
 | `menu_kit_asset_share` | "Share the table tent file" | Mobile menu kit native share/fallback. Evidence: `src/components/mobile/screens/MobileShareScreen.tsx:810`, `src/lib/menu-kit/menuKitGenerator.ts:271` | `browser_local_export` | `external_confirm` | Share card | `C0 local` | `ready_adapter` |
@@ -535,7 +541,7 @@ These action types were added after walking feature docs folder by folder and ch
 | `review_risk_status` | "Any review I should be careful with?" | Reviews state API is built but disabled. Evidence: `src/app/api/reviews/states/route.ts:24`, `src/config/features.ts:1467` | `existing_server_api` | `none` | Status card | `C4 guarded server mutation` read/check pattern | `blocked` |
 | `review_reply_suggest` | "Suggest a calm reply to this review" | Review reply suggestion API is built but disabled. Evidence: `src/app/api/reviews/suggest/route.ts:103`, `src/config/features.ts:1477` | `existing_server_api` | `confirm` | Draft card | `C2 job/storage` | `blocked` |
 | `review_reply_copy` | "Copy the review reply" | Review reply tool copy flow. Evidence: `src/components/templates/main-app/reviews/ReviewReplyTool.tsx:56`, `src/components/templates/main-app/reviews/ReviewReplyTool.tsx:188` | `browser_local_export` | `none` | Copy card | `C0 local` | `blocked` |
-| `review_reply_post_external` | "Post this reply to Google" | No current production direct-posting route is available. | `manual_task_card` | `external_confirm` | Task card | `C5 manual only` | `manual_task_only` |
+| `review_reply_post_external` | "Post this reply to Google" | No AMM direct-posting route is available. Copy/reply draft work stays in the Feedback screen. | `read_only_card` | `none` | Unsupported card | `C0 local plus compact session doc` | `blocked` |
 
 ---
 
@@ -569,6 +575,24 @@ These actions come from owner mobile PWA screens that are not normal menu editin
 | `pos_sync_sample_payload_download` | "Download POS sample payload" | Desktop sample payload download. Evidence: `src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx:343`, `src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx:729` | `browser_local_export` | `external_confirm` | Download card | `C0 local` | `ready_adapter` |
 | `integration_status_review` | "Show integration status" | Mobile integrations status screen. Evidence: `src/components/mobile/screens/MobileIntegrationsScreen.tsx:89` | `read_only_card` | `none` | Status card | `C0 local` or bounded existing status read | `ready_adapter` |
 
+### 22.1 Exact Existing Screen Handoffs
+
+These action types are intentionally exact even when the current card is a handoff/read-only card. They prevent known MenuList owner flows from collapsing into `system_manual_task_create`.
+
+| Action type | Owner command examples | Manual equivalent | Execution mode | Approval | Mobile | Cost | State |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `menu_design_settings_open` | "Open menu design" | Existing Menu Design screen. Evidence: `src/components/mobile/components/MobileProjectSelectorSheet.tsx:1091` | `manual_task_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+| `locations_screen_open` | "Open locations" | Existing Locations screen. Evidence: `src/components/mobile/MobileShell.tsx:1` | `manual_task_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+| `staff_access_open` | "Open staff users" | Existing Staff screen. Evidence: `src/components/mobile/screens/MobileUsersScreen.tsx:1` | `manual_task_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+| `roles_permissions_open` | "Open roles and permissions" | Existing staff roles/permissions flow. Evidence: `src/app/api/staff/roles/route.ts:1` | `manual_task_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+| `billing_screen_open` | "Open billing" | Existing Billing screen. Evidence: `src/components/templates/main-app/billing/index.tsx:1` | `manual_task_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+| `transactions_screen_open` | "Open transactions" | Existing Transactions screen. Evidence: `src/components/templates/main-app/transactions/index.tsx:1` | `read_only_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+| `business_health_open` | "Open Business Health" | Existing Business Health screen. Evidence: `src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthPage.tsx:1` | `read_only_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+| `past_activity_open` | "Show past activity" | Existing activity/history surface. Evidence: `src/components/templates/main-app/today/PastActivity/index.tsx:50` | `read_only_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+| `print_assets_open` | "Open print assets" | Existing Assets/share export flow. Evidence: `src/components/mobile/screens/MobileShareScreen.tsx:608` | `manual_task_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+| `print_menu_open` | "Open print menu" | Existing Print Menu flow. Evidence: `src/hooks/useMenuCardExportController.ts:494` | `manual_task_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+| `help_screen_open` | "Open help" | Existing Help screen. Evidence: `src/components/mobile/screens/MobileMoreScreen.tsx:492` | `read_only_card` | `none` | Task card | `C5 manual only` | `manual_task_only` |
+
 ## 23. Staff And Access Actions
 
 Staff and access actions are not core menu edits. They are included because the owner may ask AMM to do existing owner tasks, but every staff action must use the guarded staff APIs.
@@ -591,9 +615,9 @@ Staff and access actions are not core menu edits. They are included because the 
 | Action type | Owner command examples | Manual equivalent | Execution mode | Approval | Mobile | Cost | State |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `system_clarification_request` | "Which tea did you mean?" | AMM-only clarification card. | `read_only_card` | `none` | Conversation card | `C0 local` plus compact session doc | `ready_adapter` |
-| `system_unsupported_action` | "Post this directly to Swiggy" when no adapter exists | Manual-task fallback. | `manual_task_card` | `none` | Task card | `C5 manual only` | `ready_adapter` |
+| `system_unsupported_action` | "Post this directly to Swiggy" | Destination-specific not-supported card; must not imply integration support, manual completion, or a generic manual-task placeholder for known external destinations. | `read_only_card` | `none` | Unsupported card | `C0 local` plus compact session doc | `ready_adapter` |
 | `system_receipt_create` | "Done" response after action | AMM-only receipt. | `read_only_card` | `none` | Receipt card | Compact proposal/session write | `ready_adapter` |
-| `system_manual_task_create` | "Ask staff to take photo" | Manual task card. | `manual_task_card` | `confirm` | Task card | Compact proposal/session write | `ready_adapter` |
+| `system_manual_task_create` | "Ask staff to take photo" | Ad hoc manual task only. Known MenuList screen/action families must use their specific action type instead. | `manual_task_card` | `confirm` | Task card | Compact proposal/session write | `ready_adapter` |
 | `system_rollback_offer` | "Undo last menu change" | Command Center local undo exists, durable AMM undo needs operation ledger. Evidence: `src/components/templates/main-app/projects/editorView/CommandCenterModal/index.tsx:101` | Adapter-specific undo only when before/after reverse patch exists; otherwise `manual_task_card` until operation ledger exists | `destructive_confirm` | Card approve/edit | `C5 manual only` or adapter-specific | `needs_adapter_glue` |
 | `rule_suggestion` | "Remind me to mark lunch unavailable daily" | New AMM rule proposal, not existing manual automation. | `read_only_card` | `confirm` | Rule card | Compact rule doc only | `needs_adapter_glue` |
 | `rule_create` | "Apply this rule automatically" | New AMM rule execution contract. | `existing_server_api` after rule registry exists | `high_confirm` | Rule card | Rule doc plus bounded execution ledger | `blocked` |
@@ -604,17 +628,18 @@ Staff and access actions are not core menu edits. They are included because the 
 
 ## 25. Explicitly Unsupported Direct Automation
 
-These owner requests must not become direct AMM actions until MenuList has a first-party adapter with auth, policy, rate limits, logging, and error recovery:
+These owner requests are not direct AMM actions in current MenuList. They resolve to unsupported cards:
 
 | Request | AMM response type | Reason |
 | --- | --- | --- |
-| Post menu changes directly to third-party delivery platforms | `manual_task_card` | No current MenuList-owned posting adapter. |
-| Post social content directly to Instagram/Facebook/Google | `manual_task_card` | Current share/export surfaces are owner handoff only. |
-| Mutate Google Business Profile directly | `manual_task_card` | No production direct-write integration contract in current MenuList flow. |
-| Post Google review replies directly | `manual_task_card` | Review reply suggestion exists only behind disabled flags; no production direct-posting adapter is available. |
+| Post menu changes directly to third-party delivery platforms | `system_unsupported_action` | No current MenuList-owned posting adapter; do not show Mark done or imply support. |
+| Post social content directly to Instagram/Facebook/Google | `system_unsupported_action` | Current MenuList share/export surfaces only copy MenuList-owned links/assets; they do not post to external platforms. |
+| Mutate Google Business Profile directly | `system_unsupported_action` | No production direct-write integration contract in current MenuList flow. |
+| Post Google review replies directly | `system_unsupported_action` | Review reply suggestion exists only behind disabled flags; no production direct-posting adapter is available. |
 | Change billing plan, payment, invoices, or reseller/platform account state | `system_unsupported_action` or existing billing screen handoff | Billing/account surfaces are not AMM mutation targets. |
 | Change owner account profile, password, session, or logout state | `system_unsupported_action` or account screen handoff | Account security flows must remain explicit user-driven UI/API actions. |
 | Mutate internal platform, reseller, Answerlattice, or cross-product screens | `system_unsupported_action` | AMM is a MenuList owner menu/store agent, not an internal admin or sibling-product agent. |
+| Ask live weather, news, sports, market, trivia, joke, poem, story, or generic chatbot questions | `system_unsupported_action` | AMM is not a generic assistant and must not perform external lookups for non-MenuList work. |
 | Bypass outlet policy because owner asked in chat | `system_unsupported_action` | Outlet policy is enforced by existing API and cannot be bypassed. |
 | Delete inherited outlet project directly | `manual_task_card` | Current DAL blocks inherited outlet project deletion. |
 | Apply generated image without owner approval | `system_unsupported_action` | Generated images are drafts until approved. |
@@ -663,34 +688,38 @@ This is the recommended adapter order because it reuses the safest existing path
 5. `decision_blocks_update`
 6. `menu_special_note_update`
 7. `menu_design_mood_update`
-8. `bulk_price_update`
-9. `bulk_availability_update`
-10. `image_item_generate`
-11. `image_item_apply_generated`
-12. `menu_file_upload`
-13. `menu_link_import`
-14. `menu_import_review_apply`
-15. `special_menu_create`
-16. `special_menu_activate`
-17. `menu_publish`
-18. `menu_qr_download`
-19. `menu_card_export_create`
-20. `public_presence_text_update`
-21. `store_business_profile_update`
-22. `store_locale_region_update`
-23. `store_working_hours_update`
-24. `feedback_link_share`
-25. `customer_app_install_link_share`
-26. `digital_screen_link_share`
-27. `feedback_inbox_list`
-28. `domain_subdomain_check`
-29. `communication_template_copy`
-30. `item_share_card_share`
-31. `presence_surface_confirm`
-32. `pos_sync_setup_info_copy`
-33. `compliance_page_status`
-34. `outlet_scope_select`
-35. `staff_create`
+8. `menu_design_layout_update`
+9. `menu_design_preset_apply`
+10. `menu_design_color_update`
+11. `menu_design_visibility_update`
+12. `bulk_price_update`
+13. `bulk_availability_update`
+14. `image_item_generate`
+15. `image_item_apply_generated`
+16. `menu_file_upload`
+17. `menu_link_import`
+18. `menu_import_review_apply`
+19. `special_menu_create`
+20. `special_menu_activate`
+21. `menu_publish`
+22. `menu_qr_download`
+23. `menu_card_export_create`
+24. `public_presence_text_update`
+25. `store_business_profile_update`
+26. `store_locale_region_update`
+27. `store_working_hours_update`
+28. `feedback_link_share`
+29. `customer_app_install_link_share`
+30. `digital_screen_link_share`
+31. `feedback_inbox_list`
+32. `domain_subdomain_check`
+33. `communication_template_copy`
+34. `item_share_card_share`
+35. `presence_surface_confirm`
+36. `pos_sync_setup_info_copy`
+37. `compliance_page_status`
+38. `outlet_scope_select`
+39. `staff_create`
 
 This order is not a staged product promise. It is an engineering checklist order for implementing adapters without losing the registry, approval, and cost discipline.
 

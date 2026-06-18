@@ -1,7 +1,7 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.2.85
-> **Last Updated:** 2026-06-10
+> **Version:** 1.2.86
+> **Last Updated:** 2026-06-18
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -44,7 +44,7 @@ Public fit and setup copy must not imply founders need existing support volume b
 **Goal:** Communicate what AnswerLattice is in < 5 seconds: a complete first support layer for founder-led SaaS and digital products. Drive to self-service setup first, with the static demo, install path, and product-suite pages as supporting proof paths.
 
 **Sections:**
-1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow may carry the complete-support-layer category claim; the headline should not repeat 24/7. The supporting copy must explain in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps without claiming outsourced support or full helpdesk replacement. The compact capability proof strip lives inside this hero until real customer proof exists.
+1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow should make the answer-order contract immediate: approved answers before fallback. The supporting copy must explain that scattered product knowledge becomes reviewed support knowledge, approved answers are served first, fallback opens only when coverage is missing, and each miss becomes review work. Keep in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps visible without claiming outsourced support, full helpdesk replacement, or autonomous support.
 2. **Support Suite** — Four compact suite cards for in-app support, hosted help, ticket fallback, and owner-approved answers. This is the homepage's clearest product-suite framing and must not turn into a helpdesk or chatbot replacement claim.
 3. **Support Surfaces in Motion** — Scroll-led product surface story showing the complete support layer: owner inputs, in-app help, hosted help, gaps/fallback, and the review loop. This section exists to make the product feel broader than Q&A or a chatbot while keeping the copy founder-readable.
 4. **Product Overview** — Feature-wise product cards for in-app widget, hosted help, tickets, FAQ, changelog, feedback, Support Board, knowledge intake, and workflow notifications.
@@ -599,6 +599,7 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-18 | 1.2.86 | Sharpened the homepage first-fold contract around approved answers before fallback, missing coverage becoming support gaps, and founder review without changing the domain/deployment setup |
 | 2026-06-10 | 1.2.85 | Added the concept-illustration requirement for abstract AnswerLattice boundaries such as safe context, install verification, source-to-answer, governance loop, and category positioning |
 | 2026-06-10 | 1.2.84 | Required stable website visual slots to use concrete product-scene assets or approved final captures rather than generic placeholders or decorative illustrations |
 | 2026-06-07 | 1.2.59 | Updated the homepage contract around product-user support, a vertical input-to-support output diagram, and a scroll-led support-surface story inspired by modern product pages while preserving helpdesk/autopilot guardrails |

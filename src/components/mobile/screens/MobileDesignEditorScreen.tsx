@@ -36,7 +36,7 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
-import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuArrowLeft, LuCheck, LuChevronDown, LuEye, LuLink2, LuPalette, LuX } from 'react-icons/lu';
 import { ProjectSelectorTrigger } from '../../shared/ProjectSelector';
 import { Button, Card, DotLoading, Flex, List, NavBar, Popup, Switch, Tag, Text, TextArea, Toast } from '../antd';
@@ -54,6 +54,10 @@ const MobileMenuDesignPreviewSheet = dynamic(() => import('../sheets/MobileMenuD
 const SERVICE_CHARGE_MAX_LENGTH = 140;
 
 interface MobileDesignEditorScreenProps {
+    embedded?: boolean;
+    embeddedProjectData?: any;
+    embeddedStoreDetails?: any;
+    onEmbeddedProjectDataChange?: (projectData: any) => void;
     onBack: () => void;
 }
 
@@ -61,7 +65,13 @@ function cloneProjectData<T>(value: T): T {
     return JSON.parse(JSON.stringify(value));
 }
 
-export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorScreenProps) {
+export default function MobileDesignEditorScreen({
+    embedded = false,
+    embeddedProjectData,
+    embeddedStoreDetails,
+    onEmbeddedProjectDataChange,
+    onBack,
+}: MobileDesignEditorScreenProps) {
     const t = useTranslations('MobileDesignEditor');
     const tSettings = useTranslations('Settings');
     const tShare = useTranslations('MobileShare');
@@ -69,16 +79,33 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const labels = useOfferingLabels();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
-    const {
-        isLoading: loadingProjects,
-        projectsList,
-        selectedProject,
-        selectedProjectId,
-        selectedProjectSummary,
-        selectProject,
-        upsertCachedProject,
-    } = useMobileProjects();
+    const { storeDetails: contextStoreDetails } = useContext(PlatformGlobalDataContext);
+    const storeDetails = embeddedStoreDetails || contextStoreDetails;
+    const mobileProjects = useMobileProjects();
+    const loadingProjects = embedded ? false : mobileProjects.isLoading;
+    const projectsList = embedded ? [] : mobileProjects.projectsList;
+    const selectedProject = embedded ? embeddedProjectData : mobileProjects.selectedProject;
+    const selectedProjectId = embedded
+        ? (embeddedProjectData?.projectId || embeddedProjectData?.id || null)
+        : mobileProjects.selectedProjectId;
+    const selectedProjectSummary = embedded
+        ? (embeddedProjectData ? {
+            active: embeddedProjectData.active,
+            deleted: embeddedProjectData.deleted,
+            isDefault: embeddedProjectData.isDefault,
+            isSpecialMenu: embeddedProjectData.isSpecialMenu,
+            name: embeddedProjectData.name,
+            projectId: embeddedProjectData.projectId || embeddedProjectData.id || 'current',
+            projectImage: embeddedProjectData.projectImage || null,
+            specialMenuBaseProjectId: embeddedProjectData.specialMenuBaseProjectId,
+            specialMenuEndsAt: embeddedProjectData.specialMenuEndsAt,
+            specialMenuStatus: embeddedProjectData.specialMenuStatus,
+        } : null)
+        : mobileProjects.selectedProjectSummary;
+    const selectProject = mobileProjects.selectProject;
+    const upsertCachedProject = embedded
+        ? (project: any) => onEmbeddedProjectDataChange?.(cloneProjectData(project))
+        : mobileProjects.upsertCachedProject;
 
     const [draftProjectData, setDraftProjectData] = useState<any>(null);
     const [savedProjectData, setSavedProjectData] = useState<any>(null);
@@ -96,6 +123,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         sourceDataUrl?: string;
     } | null>(null);
     const [isBackgroundAdjustOpen, setIsBackgroundAdjustOpen] = useState(false);
+    const lastEmbeddedSyncKeyRef = useRef('');
 
     const menuDesign = resolveMenuDesignConfig(draftProjectData?.config?.design?.menu);
     const menuMood = menuDesign.mood;
@@ -162,11 +190,22 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
         }
 
         const cloned = cloneProjectData(selectedProject);
+        if (embedded) {
+            lastEmbeddedSyncKeyRef.current = JSON.stringify(cloned);
+        }
         setDraftProjectData(cloned);
         setSavedProjectData(cloneProjectData(cloned));
         setBackgroundImageDraft(null);
         setIsBackgroundAdjustOpen(false);
-    }, [selectedProject]);
+    }, [embedded, selectedProject]);
+
+    useEffect(() => {
+        if (!embedded || !draftProjectData || !onEmbeddedProjectDataChange) return;
+        const nextKey = JSON.stringify(draftProjectData);
+        if (nextKey === lastEmbeddedSyncKeyRef.current) return;
+        lastEmbeddedSyncKeyRef.current = nextKey;
+        onEmbeddedProjectDataChange(cloneProjectData(draftProjectData));
+    }, [draftProjectData, embedded, onEmbeddedProjectDataChange]);
 
     useEffect(() => {
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
@@ -380,14 +419,24 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
 
     return (
         <Flex style={{ height: '100%' }} vertical>
-            <MobileSettingsScreenHeader
-                description={t('subtitle')}
-                onBack={onBack}
-                title={t('title')}
-            />
+            {!embedded ? (
+                <MobileSettingsScreenHeader
+                    description={t('subtitle')}
+                    onBack={onBack}
+                    title={t('title')}
+                />
+            ) : null}
 
-            <Flex gap={16} style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 190px' }} vertical>
-                {projectsList.length > 1 ? (
+            <Flex
+                gap={16}
+                style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: embedded ? '0 0 24px' : '16px 16px 190px',
+                }}
+                vertical
+            >
+                {!embedded && projectsList.length > 1 ? (
                     <ProjectSelectorTrigger
                         clickable={isProjectSelectorClickable}
                         currentProject={{
@@ -409,7 +458,7 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                         onClick={isProjectSelectorClickable ? () => setIsProjectSelectorOpen(true) : undefined}
                     />
                 ) : null}
-                {menuUrl ? (
+                {!embedded && menuUrl ? (
                     <MobileLinkCard
                         compact={isCompactHandheld}
                         description={tShare('directOfferingLinkDesc', { offering: labels.offeringLower })}
@@ -708,44 +757,46 @@ export default function MobileDesignEditorScreen({ onBack }: MobileDesignEditorS
                 </SectionCard>
             </Flex>
 
-            <Flex
-                gap={8}
-                style={{
-                    backdropFilter: 'blur(10px)',
-                    backgroundColor: token.colorBgContainer,
-                    borderTop: `1px solid ${token.colorBorderSecondary}`,
-                    bottom: 0,
-                    padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
-                    position: 'sticky',
-                    zIndex: 20,
-                }}
-                vertical
-            >
-                <Button
-                    block
-                    color="primary"
-                    disabled={isPublishing}
-                    fill="outline"
-                    icon={<LuEye size={18} />}
-                    onClick={() => setIsPreviewSheetOpen(true)}
-                    size="large"
+            {!embedded ? (
+                <Flex
+                    gap={8}
+                    style={{
+                        backdropFilter: 'blur(10px)',
+                        backgroundColor: token.colorBgContainer,
+                        borderTop: `1px solid ${token.colorBorderSecondary}`,
+                        bottom: 0,
+                        padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+                        position: 'sticky',
+                        zIndex: 20,
+                    }}
+                    vertical
                 >
-                    {hasChanges ? t('previewChanges') : t('previewMenu')}
-                </Button>
-                {hasChanges ? (
-                    <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35, textAlign: 'center' }}>
-                        {t('previewUnsavedHint')}
-                    </Text>
-                ) : null}
-                <Flex gap={12}>
-                    <Button block disabled={!hasChanges || isPublishing} fill="outline" onClick={handleReset} size="large">
-                        {tSettings('reset')}
+                    <Button
+                        block
+                        color="primary"
+                        disabled={isPublishing}
+                        fill="outline"
+                        icon={<LuEye size={18} />}
+                        onClick={() => setIsPreviewSheetOpen(true)}
+                        size="large"
+                    >
+                        {hasChanges ? t('previewChanges') : t('previewMenu')}
                     </Button>
-                    <Button block color="primary" disabled={!hasChanges || isPublishing} loading={isPublishing} onClick={() => void handleSave()} size="large">
-                        {tSettings('saveChanges')}
-                    </Button>
+                    {hasChanges ? (
+                        <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.35, textAlign: 'center' }}>
+                            {t('previewUnsavedHint')}
+                        </Text>
+                    ) : null}
+                    <Flex gap={12}>
+                        <Button block disabled={!hasChanges || isPublishing} fill="outline" onClick={handleReset} size="large">
+                            {tSettings('reset')}
+                        </Button>
+                        <Button block color="primary" disabled={!hasChanges || isPublishing} loading={isPublishing} onClick={() => void handleSave()} size="large">
+                            {tSettings('saveChanges')}
+                        </Button>
+                    </Flex>
                 </Flex>
-            </Flex>
+            ) : null}
 
             <ColorPickerSheet
                 businessBrandColor={storeDetails?.publicPresence?.accentColor}

@@ -102,6 +102,34 @@ service cloud.firestore {
         && isValidCreativeEditorTemplateIndex(request.resource.data, docId, tId, sId);
       allow delete: if false;
     }
+
+    // AI Menu Manager compact daily sessions.
+    // Deterministic selected-project cards are stored here by the client DAL.
+    // Live menu truth still writes through /projects/{tId}/{sId}/{projectId}.
+    match /aiMenuManagerSessions/{sessionId} {
+      allow get: if isAuthenticated()
+        && (
+          !exists(/databases/$(database)/documents/aiMenuManagerSessions/$(sessionId))
+          || canWriteAiMenuManagerSession(resource.data.tId, resource.data.sId)
+        );
+      allow list: if false;
+      allow create: if isAuthenticated()
+        && isValidAiMenuManagerSessionDoc(request.resource.data, sessionId);
+      allow update: if isAuthenticated()
+        && canWriteAiMenuManagerSession(resource.data.tId, resource.data.sId)
+        && isValidAiMenuManagerSessionDoc(request.resource.data, sessionId)
+        && isAiMenuManagerSessionScopeUnchanged(resource.data, request.resource.data);
+      allow delete: if false;
+    }
+
+    // Server/Admin-only operation ledgers for future server-backed adapters.
+    match /aiMenuManagerProposals/{proposalId} {
+      allow read, write: if false;
+    }
+
+    match /aiMenuManagerRules/{ruleId} {
+      allow read, write: if false;
+    }
     
     // ═══════════════════════════════════════════════════════════
     // PAYMENT & ONBOARDING SECURITY (Phase 1-3 Implementation)
@@ -1134,6 +1162,60 @@ service cloud.firestore {
       return isAuthenticated()
         && belongsToTenantById(tId)
         && belongsToStoreById(sId);
+    }
+
+    function canWriteAiMenuManagerSession(tId, sId) {
+      return isPlatformAdmin()
+        || (request.auth != null && request.auth.token.role == 'PLATFORM')
+        || isTenantAdmin(tId, sId);
+    }
+
+    function isValidAiMenuManagerSessionDoc(data, sessionId) {
+      return data.keys().hasOnly([
+          'sessionId',
+          'tId',
+          'sId',
+          'projectId',
+          'sessionDate',
+          'storageMode',
+          'status',
+          'compactMessages',
+          'pendingCardSummaries',
+          'pendingOperations',
+          'recentReceiptSummaries',
+          'counters',
+          'artifactRefs',
+          'createdAt',
+          'updatedAt',
+          'expiresAt'
+        ])
+        && data.keys().hasAll([
+          'sessionId',
+          'tId',
+          'sId',
+          'projectId'
+        ])
+        && data.sessionId == sessionId
+        && canWriteAiMenuManagerSession(data.tId, data.sId)
+        && data.projectId is string
+        && (!data.keys().hasAny(['sessionDate']) || data.sessionDate is string)
+        && (!data.keys().hasAny(['storageMode']) || data.storageMode in ['daily_compact', 'detailed'])
+        && (!data.keys().hasAny(['status']) || data.status in ['active', 'closed'])
+        && (!data.keys().hasAny(['compactMessages']) || (data.compactMessages is list && data.compactMessages.size() <= 20))
+        && (!data.keys().hasAny(['pendingCardSummaries']) || (data.pendingCardSummaries is list && data.pendingCardSummaries.size() <= 25))
+        && (!data.keys().hasAny(['pendingOperations']) || (data.pendingOperations is list && data.pendingOperations.size() <= 25))
+        && (!data.keys().hasAny(['recentReceiptSummaries']) || (data.recentReceiptSummaries is list && data.recentReceiptSummaries.size() <= 20))
+        && (!data.keys().hasAny(['artifactRefs']) || (data.artifactRefs is list && data.artifactRefs.size() <= 20))
+        && (!data.keys().hasAny(['counters']) || data.counters is map)
+        && (!data.keys().hasAny(['expiresAt']) || data.expiresAt is timestamp);
+    }
+
+    function isAiMenuManagerSessionScopeUnchanged(before, after) {
+      return after.sessionId == before.sessionId
+        && after.tId == before.tId
+        && after.sId == before.sId
+        && after.projectId == before.projectId
+        && (!before.keys().hasAny(['sessionDate']) || after.sessionDate == before.sessionDate);
     }
 
     function isValidCreativeEditorPlatformTemplateCatalog(data, businessCategory) {

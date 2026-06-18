@@ -69,6 +69,7 @@ Each feature folder follows the repo doc-set pattern: `README.md`, `_spec.md`, `
 | Firebase | Separate project ids selected in deployment matrix: `campaigncue-qa` and `campaigncue`; CampaignCue config/rules/storage/index files now exist. |
 | Website | Separate public site under `src/app/sites/campaigncue`, local `/__campaigncue`, preview `campaigncue.menulist.online`, production `campaigncue.ai`. |
 | Owner workspace route | Owner app files live under `src/app/(campaigncue)/campaigncue`; `/__campaigncue/app` locally and `/app` on the CampaignCue product domain rewrite to `/campaigncue/app`. Do not place owner routes under `src/app/sites/campaigncue`. |
+| Dashboard shell | CampaignCue uses the same MenuList authenticated app foundation, dark/light theme persistence, language/settings drawer, shared top header, shared sidebar shell, and profile menu. CampaignCue does not use MenuList store/subscription bootstrap just to render its chrome; CampaignCue APIs own workspace data access. |
 
 ## Day-One Rule
 
@@ -81,6 +82,7 @@ Docs are written for a complete launch architecture, but the active day-one prod
 | Product routing | Added to shared deployment and product-domain registries. |
 | Public shell | Added under `src/app/sites/campaigncue`. |
 | Owner workspace route | Added under `src/app/(campaigncue)/campaigncue/app`; `src/app/sites/campaigncue` remains public website only. |
+| Owner dashboard shell | CampaignCue route group now mounts the same auth/localization/theme/settings foundation as MenuList and maps CampaignCue tabs into the shared dashboard sidebar/header components. |
 | Product constants | CampaignCue-specific identity, database, channels, domains, routes, Firebase env/app names, errors, website metadata, workspace defaults, and navigation live under `src/constants/campaigncue/`; do not recreate a flat `src/constants/campaigncue.ts`. |
 | Runtime modules | App shell, deterministic Campaign Decision Engine, Daily Campaign Desk, store-profile source context, owner source facts, evidence-backed cues, vertical recipes, structured Campaign Pack Output ZIPs, manual delivery tasks, trust gates, asset rights metadata, schedule tasks, approval logging, quick owner-reported outcomes, launch-readiness checks, and analytics summaries are enabled. |
 | Firebase | Dedicated CampaignCue Admin client, Firestore rules, Storage rules, indexes, and deploy config added; deploy still requires external credentials. |

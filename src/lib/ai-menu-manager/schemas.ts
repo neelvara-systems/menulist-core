@@ -8,6 +8,20 @@ const actionTypeSchema = z.string()
     .min(1)
     .max(120)
     .refine((value) => knownActionTypes.has(value));
+const commandContextTargetSchema = z.enum([
+    'item',
+    'category',
+    'menu_design',
+    'digital_menu',
+    'official_page',
+    'digital_screens',
+    'feedback',
+    'store_settings',
+]);
+const commandContextSchema = z.object({
+    target: commandContextTargetSchema.nullable(),
+    selectedEntityIds: z.array(idSchema).max(50).optional(),
+});
 
 export const AiMenuManagerCommandRequestSchema = z.object({
     sessionId: z.string().trim().min(1).max(180).optional(),
@@ -20,6 +34,7 @@ export const AiMenuManagerCommandRequestSchema = z.object({
         mimeType: z.string().trim().min(1).max(120),
         size: z.number().int().nonnegative().max(30_000_000),
     })).max(5).optional(),
+    composerContext: commandContextSchema.optional(),
     clientContextVersion: z.string().trim().max(80).optional(),
     idempotencyKey: idSchema,
 });
@@ -27,7 +42,7 @@ export const AiMenuManagerCommandRequestSchema = z.object({
 export const AiMenuManagerInboxRequestSchema = z.object({
     sessionId: z.string().trim().min(1).max(180).optional(),
     storeId: z.union([z.string(), z.number()]).optional().transform((value) => value === undefined ? undefined : String(value)),
-    projectId: z.string().trim().min(1).max(160).optional(),
+    projectId: idSchema,
     sessionDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 

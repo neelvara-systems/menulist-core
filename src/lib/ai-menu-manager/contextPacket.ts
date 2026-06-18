@@ -1,4 +1,10 @@
 import type { Project } from '@template/main-app/projects/types';
+import {
+    buildAiMenuManagerCustomerAppInstallUrl,
+    buildAiMenuManagerDigitalScreenUrl,
+    buildAiMenuManagerProjectMenuUrl,
+    buildAiMenuManagerTenantBaseUrl,
+} from './localExportUrls';
 import { hashStableValue } from './idempotency';
 
 export interface AiMenuManagerContextItem {
@@ -38,10 +44,21 @@ export interface AiMenuManagerContextPacket {
     projectName: string;
     storeName: string;
     businessType?: string;
+    publicLinks?: {
+        customerAppInstallUrl?: string;
+        digitalScreenHighlightsUrl?: string;
+        digitalScreenUrl?: string;
+        menuUrl?: string;
+        officialPageUrl?: string;
+        tenantBaseUrl?: string;
+    };
     menuDesign: {
+        accentColor?: string;
         mood?: string;
         layout?: string;
         presetKey?: string;
+        showCategoryIcons?: boolean;
+        showCategoryTabs?: boolean;
         showImages?: boolean;
         showItemPrices?: boolean;
     };
@@ -100,6 +117,11 @@ function normalizePinnedItemId(value: unknown): string | undefined {
 
 export function buildAiMenuManagerContextPacket(params: {
     project: Project;
+    storePublicContext?: {
+        customDomain?: string;
+        screenToken?: string;
+        subdomain?: string;
+    };
     storeName: string;
     businessType?: string;
 }): AiMenuManagerContextPacket {
@@ -165,18 +187,46 @@ export function buildAiMenuManagerContextPacket(params: {
 
     const design = (project.config as any)?.design;
     const menu = design?.menu || {};
+    const projectName = readLocalized(project.name, defaultLanguage, 'Current menu');
     const decisionBlocks = project.menuSettings?.decisionBlocks || {};
+    const tenantBaseUrl = params.storePublicContext
+        ? buildAiMenuManagerTenantBaseUrl(params.storePublicContext)
+        : '';
+    const customerAppInstallUrl = params.storePublicContext
+        ? buildAiMenuManagerCustomerAppInstallUrl(params.storePublicContext)
+        : '';
+    const menuUrl = params.storePublicContext
+        ? buildAiMenuManagerProjectMenuUrl({
+            ...params.storePublicContext,
+            projectName,
+        })
+        : '';
+    const digitalScreenUrl = buildAiMenuManagerDigitalScreenUrl({
+        publicBaseUrl: tenantBaseUrl,
+        screenToken: params.storePublicContext?.screenToken,
+    });
 
     return {
         projectId,
         projectUpdatedAt: String((project as any).modifiedOn || (project as any).updatedAt || ''),
         defaultLanguage,
-        projectName: readLocalized(project.name, defaultLanguage, 'Current menu'),
+        projectName,
         storeName: params.storeName,
         businessType: params.businessType,
+        publicLinks: {
+            customerAppInstallUrl: customerAppInstallUrl || undefined,
+            digitalScreenHighlightsUrl: digitalScreenUrl ? `${digitalScreenUrl}?mode=highlights` : undefined,
+            digitalScreenUrl: digitalScreenUrl || undefined,
+            menuUrl: menuUrl || undefined,
+            officialPageUrl: tenantBaseUrl || undefined,
+            tenantBaseUrl: tenantBaseUrl || undefined,
+        },
         menuDesign: {
+            accentColor: (project.config?.design?.brand as any)?.accentColor,
             mood: menu.mood,
             layout: menu.layout,
+            showCategoryIcons: menu.showCategoryIcons,
+            showCategoryTabs: menu.showCategoryTabs,
             showImages: menu.showImages,
             showItemPrices: menu.showItemPrices,
         },

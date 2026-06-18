@@ -27,6 +27,11 @@ function assertNotIncludes(content, needle, label) {
   assert(!content.includes(needle), `${label} does not include ${needle}`);
 }
 
+function assertOccurrenceCount(content, needle, expectedCount, label) {
+  const count = content.split(needle).length - 1;
+  assert(count === expectedCount, `${label} occurrence count is ${expectedCount}`);
+}
+
 function verifyFeatureFlags() {
   const flags = read("src/config/features.ts");
 
@@ -350,6 +355,9 @@ function verifyServerRuntime() {
 function verifyClientRuntime() {
   const app = read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx");
   const styles = read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.module.scss");
+  const layout = read("src/app/(campaigncue)/layout.tsx");
+  const enLocale = read("public/locales/menulist.ai/en-US.json");
+  const hiLocale = read("public/locales/menulist.ai/hi-IN.json");
   const schemas = read("src/lib/validation/campaigncueSchemas.ts");
   const delivery = read("src/constants/campaigncue/delivery.ts");
   const workspaceConstants = read("src/constants/campaigncue/workspace.ts");
@@ -394,9 +402,17 @@ function verifyClientRuntime() {
   assertNotIncludes(app, "CAMPAIGNCUE_API_ROUTES.INTEGRATIONS", "CampaignCue owner UI has no day-one integration mutation call");
   assertIncludes(app, "CAMPAIGNCUE_API_ROUTES.LOCATIONS", "CampaignCue locations UI API call");
   assertIncludes(app, "getCampaignCueCampaignActionApiPath", "CampaignCue campaign action API path helper");
-  assertIncludes(app, "parseDateTimeLocal(sourceDraft.expiresAt)", "CampaignCue source expiry converts local input at submit time");
+  assertIncludes(app, "useFormatter()", "CampaignCue workspace uses shared next-intl formatter");
+  assertIncludes(app, "formatDateTime(value as DateLike", "CampaignCue owner dates use shared date/time formatter");
+  assertIncludes(app, "fromNativeDateTimeInputValue(normalized", "CampaignCue source expiry converts native input through timezone-aware helper");
+  assertIncludes(app, "parseDateTimeLocal(sourceDraft.expiresAt, businessDraft.timezone)", "CampaignCue source expiry converts local input with workspace timezone");
   assertIncludes(app, "value={sourceDraft.expiresAt}", "CampaignCue source expiry input keeps local datetime value");
   assertNotIncludes(app, "new Date(event.target.value).toISOString()", "CampaignCue source expiry input avoids timezone drift while typing");
+  assertNotIncludes(app, ".toLocaleDateString()", "CampaignCue workspace avoids browser-default date display");
+  assertNotIncludes(app, ".toLocaleTimeString()", "CampaignCue workspace avoids browser-default time display");
+  assertNotIncludes(app, ".toLocaleString()", "CampaignCue workspace avoids browser-default date/time display");
+  assertIncludes(schemas, "timeZoneSchema", "CampaignCue workspace timezone validation schema");
+  assertIncludes(schemas, "Intl.DateTimeFormat(\"en-US\", { timeZone: value })", "CampaignCue timezone validation uses Intl");
   assertIncludes(app, "No owner action is needed", "CampaignCue setup blocker uses owner-safe copy");
   assertIncludes(app, "Download campaign pack ZIP", "CampaignCue owner can download full campaign pack ZIP");
   assertIncludes(app, "buildCampaignPackZipBlob", "CampaignCue owner export builds the ZIP before recording export");
@@ -468,6 +484,21 @@ function verifyClientRuntime() {
   assertIncludes(app, "getCampaignCueAssetDownloadApiPath", "CampaignCue Asset Library uses scoped download API");
   assertIncludes(app, "asset-download:${asset.id}", "CampaignCue Asset Library has bounded asset download action");
   assertIncludes(app, "withFreshDailyDesk", "CampaignCue owner UI recomputes Daily Desk after local mutations");
+  assertIncludes(app, "DashboardSidebarShell", "CampaignCue owner UI uses shared dashboard sidebar shell");
+  assertIncludes(app, "DashboardHeaderShell", "CampaignCue owner UI uses shared dashboard header shell");
+  assertIncludes(app, "AppSettingsPanel", "CampaignCue owner UI mounts shared app settings panel");
+  assertIncludes(app, "ProfileActionsModal", "CampaignCue owner UI uses shared profile menu");
+  assertIncludes(app, "toggleDarkMode", "CampaignCue owner UI shares MenuList dark/light theme state");
+  assertIncludes(app, "toggleAppSettingsPanel", "CampaignCue owner UI opens shared settings drawer");
+  assertIncludes(app, "getRTLDirectionState", "CampaignCue owner UI consumes shared RTL direction state");
+  assertIncludes(app, "dir={isRTLDirection ? \"rtl\" : \"ltr\"}", "CampaignCue owner UI applies shared RTL direction to the dashboard frame");
+  assertIncludes(app, "useTranslations(\"CampaignCue.Navigation\")", "CampaignCue owner UI translates dashboard chrome with shared i18n");
+  assertIncludes(app, "tChrome(`tabs.${item.key}` as any)", "CampaignCue sidebar tab labels use translations");
+  assertIncludes(enLocale, "\"CampaignCue\"", "CampaignCue English locale namespace");
+  assertIncludes(enLocale, "\"Daily desk\"", "CampaignCue English chrome locale labels");
+  assertIncludes(hiLocale, "\"CampaignCue\"", "CampaignCue Hindi locale namespace");
+  assertIncludes(hiLocale, "\"डेली डेस्क\"", "CampaignCue Hindi chrome locale labels");
+  assertOccurrenceCount(app, "dailyDesk.summary.blockerCount ? \"Needs detail\"", 1, "CampaignCue Daily Desk readiness chip");
   assertIncludes(app, "Daily campaign desk", "CampaignCue owner home starts on Daily Campaign Desk");
   assertIncludes(app, "Finish today&apos;s campaign path", "CampaignCue owner home shows the daily cue workflow");
   assertIncludes(app, "Campaign pack", "CampaignCue owner home shows multi-format campaign pack workflow");
@@ -493,7 +524,20 @@ function verifyClientRuntime() {
   assertIncludes(styles, ".toggleRow", "CampaignCue settings toggle style");
   assertIncludes(styles, ".stepGrid", "CampaignCue owner-first checklist grid");
   assertIncludes(styles, ".handoffField", "CampaignCue manual delivery card field styling");
-  assertIncludes(styles, ".navGroupLabel", "CampaignCue grouped navigation styling");
+  assertIncludes(styles, ".dashboardFrame", "CampaignCue shared dashboard frame styling");
+  assertIncludes(styles, ".dashboardBody", "CampaignCue shared dashboard body offset styling");
+  assertIncludes(styles, ".sidebarBrandMark", "CampaignCue product mark in shared sidebar");
+  assertNotIncludes(styles, ".navGroupLabel", "CampaignCue no longer keeps stale private sidebar group styling");
+  assertIncludes(styles, "var(--cc-bg", "CampaignCue workspace styles consume shared theme variables");
+  assertIncludes(layout, "LocalisationProvider", "CampaignCue protected layout uses shared localization provider");
+  assertIncludes(layout, "ReduxStoreProvider", "CampaignCue protected layout uses shared Redux theme persistence");
+  assertIncludes(layout, "NextAuthSessionProvider", "CampaignCue protected layout uses same NextAuth session provider");
+  assertIncludes(layout, "AntdThemeProvider", "CampaignCue protected layout uses shared Ant Design theme provider");
+  assertIncludes(layout, "SessionExpiryMonitor", "CampaignCue protected layout uses shared session expiry monitor");
+  assertIncludes(layout, "GlobalKeyboardShortcutsProvider", "CampaignCue protected layout uses shared keyboard shortcut provider");
+  assertIncludes(layout, "NetworkStatusProvider", "CampaignCue protected layout uses shared network status provider");
+  assertIncludes(layout, "isPlatformEntityBlocked", "CampaignCue protected layout blocks platform-blocked accounts");
+  assertNotIncludes(layout, "@providers/sessionProvider", "CampaignCue shell avoids MenuList store/subscription bootstrap reads");
   assertIncludes(styles, "@media (max-width: 640px)", "CampaignCue mobile responsive breakpoint");
   assertIncludes(schemas, "const optionalUrl", "CampaignCue optional URL fields can be blank");
   assertIncludes(schemas, "return trimmed ? trimmed : null", "CampaignCue blank URL normalization");
@@ -1155,9 +1199,26 @@ function verifyDocsAlignment() {
 
   assertIncludes(publicSite, "Print and staff pack", "CampaignCue public site exposes print and staff pack output");
   assertIncludes(publicSite, "Email, SMS, and QR brief", "CampaignCue public site exposes email/SMS/QR handoff output");
+  assertIncludes(publicSite, "CampaignCueCatalog", "CampaignCue public site exposes Seesaw-inspired pack index");
+  assertIncludes(publicSite, "Pack index", "CampaignCue public site labels the pack index");
+  assertIncludes(publicSite, "No direct post", "CampaignCue pack index preserves export-first boundary");
   assertIncludes(publicSite, "Do owners only get social posts?", "CampaignCue public FAQ rejects social-only positioning");
-  assertIncludes(websiteDoc, "print/staff", "CampaignCue website doc lists print/staff output card");
-  assertIncludes(websiteDoc, "email/SMS/QR", "CampaignCue website doc lists email/SMS/QR output card");
+  assertIncludes(publicSite, "campaigncue-output-ledger", "CampaignCue public site uses output ledger instead of output cards");
+  assertIncludes(publicSite, "campaigncue-real-work-ledger", "CampaignCue public site uses proof ledger instead of proof cards");
+  assertIncludes(publicSite, "campaigncue-owner-path-intro", "CampaignCue public site uses connected owner path intro");
+  assertIncludes(publicSite, "campaigncue-capability-ledger", "CampaignCue public site uses capability ledger");
+  assertNotIncludes(publicSite, "campaigncue-card-grid", "CampaignCue public site avoids generic card grid class");
+  assertNotIncludes(publicSite, "campaigncue-output-grid", "CampaignCue public site avoids old output grid class");
+  assertIncludes(websiteDoc, "print/staff", "CampaignCue website doc lists print/staff output ledger item");
+  assertIncludes(websiteDoc, "email/SMS/QR", "CampaignCue website doc lists email/SMS/QR output ledger item");
+  assertIncludes(websiteDoc, "Pack index", "CampaignCue website doc lists pack index section");
+  assertIncludes(websiteDoc, "Seesaw", "CampaignCue website doc captures Seesaw reference decision");
+  assertIncludes(websiteDoc, "Blank", "CampaignCue website doc captures Blank production-polish reference");
+  assertIncludes(websiteDoc, "Ploy", "CampaignCue website doc captures Ploy proof/activity reference");
+  assertIncludes(websiteDoc, "Linear", "CampaignCue website doc captures Linear editorial rhythm reference");
+  assertIncludes(websiteDoc, "Genie Studio", "CampaignCue website doc captures Genie creative-tool reference");
+  assertIncludes(websiteDoc, "ledgers instead of repeated card grids", "CampaignCue website doc preserves anti-card-grid layout rule");
+  assertIncludes(websiteDoc, "collage", "CampaignCue website doc preserves anti-collage design guardrail");
   assertIncludes(websiteDoc, "Do owners only get social posts?", "CampaignCue website doc FAQ covers full output pack");
   assertIncludes(audit, "CAMPAIGNCUE_FIREBASE_UNAVAILABLE", "CampaignCue audit setup-blocked code");
   assertIncludes(audit, "src/app/(campaigncue)/campaigncue/app", "CampaignCue audit owner route-group path");

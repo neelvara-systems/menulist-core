@@ -1,8 +1,8 @@
 # AI Menu Manager - Implementation Plan
 
-**Status:** Initial implementation validated - feature flagged off by default
+**Status:** Initial implementation validated - enabled behind AMM feature flags in current config
 **Audience:** Engineering / implementation maintainers
-**Last Updated:** June 17, 2026
+**Last Updated:** June 18, 2026
 
 ---
 
@@ -131,12 +131,12 @@ Implementation note, June 17, 2026: the initial foundation uses the shared regis
 Add to `src/config/features.ts`:
 
 ```ts
-ENABLE_AI_MENU_MANAGER: false,
-ENABLE_AI_MENU_MANAGER_MOBILE: false,
-ENABLE_AI_MENU_MANAGER_VOICE_INPUT: false,
-ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS: false,
-ENABLE_AI_MENU_MANAGER_RULES: false,
-ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES: false,
+ENABLE_AI_MENU_MANAGER: true,
+ENABLE_AI_MENU_MANAGER_MOBILE: true,
+ENABLE_AI_MENU_MANAGER_VOICE_INPUT: true,
+ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS: true,
+ENABLE_AI_MENU_MANAGER_RULES: true,
+ENABLE_AI_MENU_MANAGER_CONFIRMED_WRITES: true,
 ENABLE_AI_MENU_MANAGER_DEBUG_ARTIFACTS: false,
 AI_MENU_MANAGER_SESSION_STORAGE_MODE: "daily_compact" as "daily_compact" | "detailed",
 ```
@@ -291,9 +291,11 @@ If more than one interpretation is plausible, `system_clarification_request` is 
 
 ## 8. API Contracts
 
+Default path rule: normal deterministic selected-project cards should use the client DAL compact-session path when the AMM screen already has the selected project context. The API routes below remain required for server-backed adapters, missing client context fallback, provider-backed jobs, imports/uploads, external integration policy, and durable proposal-ledger work. Do not route ordinary price, availability, visibility, featured, menu note, or design preset edits through AMM proposal APIs unless a server-only invariant is required and documented.
+
 ### `POST /api/ai-menu-manager/command`
 
-Purpose: convert owner input into card-ready proposals.
+Purpose: convert owner input into card-ready proposals when client context is unavailable or the requested adapter requires server-side authority.
 
 Input:
 
@@ -336,23 +338,31 @@ Security:
 
 Purpose: return compact pending cards and recent receipts.
 
+Input:
+
+```ts
+{
+  storeId: string; // selected store context
+  projectId: string; // selected project context; required
+  sessionId?: string;
+  sessionDate?: "YYYY-MM-DD";
+}
+```
+
 Reads:
 
 - one current session/day summary doc when possible.
-- proposal detail docs only when summaries are stale or missing.
+- proposal detail docs only when a compact summary explicitly points to server-backed durable detail.
+- session/project mismatch returns an empty inbox instead of showing cards from another selected menu.
 
 ### `POST /api/ai-menu-manager/proposals/{proposalId}/actions`
 
 Supported actions:
 
 - `approve`
-- `edit`
 - `cancel`
 - `reject`
-- `ignore`
-- `change_scope`
-- `change_time`
-- `select_items`
+- `mark_done`
 - `approve_all`
 - `review_one_by_one`
 - `publish`
@@ -383,17 +393,13 @@ Input:
 
 ```ts
 {
+  storeId: string;
   executionId: string;
   result: "executed" | "failed";
-  projectId?: string;
+  projectId: string;
   actionType: AiMenuManagerActionType;
-  patchHash?: string;
-  baseProjectUpdatedAt?: string;
-  baseProjectHash?: string;
-  resultingProjectUpdatedAt?: string;
-  resultingProjectHash?: string;
-  receiptSummary?: string;
-  errorCode?: string;
+  patchHash: string;
+  message?: string;
   idempotencyKey: string;
 }
 ```
@@ -413,12 +419,13 @@ Compact session/day doc.
   sessionId: string;
   tId: number;
   sId: number;
-  projectId?: string; // selected project when the session is project-scoped
+  projectId: string; // selected project; inbox reads reject mismatched sessions
   sessionDate: "YYYY-MM-DD";
   storageMode: "daily_compact" | "detailed";
   status: "active" | "closed";
   compactMessages: CompactMessage[];
   pendingCardSummaries: CardSummary[];
+  pendingOperations: PendingOperation[]; // full current cards plus approved patch metadata, capped
   recentReceiptSummaries: ReceiptSummary[];
   counters: {
     commands: number;
@@ -437,15 +444,24 @@ Required caps:
 
 - `compactMessages` max target: 20 recent summaries.
 - `pendingCardSummaries` max target: 25 active summaries.
+- `pendingOperations` max target: 25 active cards with exact patch/hash/base-project metadata.
 - `recentReceiptSummaries` max target: 20 recent receipts.
 - `artifactRefs` max target: 20 current pointers.
 - larger transcripts, manifests, and debug payloads move to Storage.
 
 Use a deterministic session id where safe, derived from tenant, store, project, and `sessionDate`, so retrying command submit does not create duplicate session docs.
 
+Deterministic selected-project actions such as price, availability, visibility, featured section, menu note, and design preset do not create a separate proposal document by default. The client DAL stores the pending operation in this capped session doc, applies the exact stored patch through the existing `updateProject()` path after approval, then moves the card to `recentReceiptSummaries` in the same session doc.
+
+Command submit, completion, and cancel use the current compact session already loaded by the AMM screen. Desktop and mobile pass that session snapshot into the client DAL, the DAL appends or removes capped pending operations locally, and then writes the daily session doc once. Completion and cancel verify the loaded session scope/card id before writing; they do not transaction-read the session again for deterministic cards.
+
+Before any direct client-DAL session read/write, AMM must reuse the existing Firebase Auth claim sync for the selected store context. This prevents platform/HQ or multi-store owners from preparing a card under one store context while the Firebase token still carries another store.
+
+AMM Firestore sanitization may remove `undefined`, but it must preserve Firebase `Timestamp` and `FieldValue` sentinel objects. Do not JSON-round-trip compact session payloads before writing them.
+
 ### `aiMenuManagerProposals/{proposalId}`
 
-Actionable card and operation record.
+Server-backed actionable card and operation record. Use this only when an adapter needs server-only authority, provider secrets, upload/import/publish jobs, external integration policy, or a durable operation ledger beyond the compact session doc.
 
 ```ts
 {
@@ -453,7 +469,7 @@ Actionable card and operation record.
   sessionId: string;
   tId: number;
   sId: number;
-  projectId?: string; // selected project when the proposal is project-scoped
+  projectId: string; // selected project for proposal scope and completion verification
   actionType: AiMenuManagerActionType;
   status: ProposalStatus;
   risk: "low" | "medium" | "high";
@@ -479,6 +495,7 @@ Required caps:
 - `idempotencyKeys` max target: 10 recent keys.
 - `artifactRefs` max target: 20 current pointers.
 - full approval trace, raw model payload, and large diff payloads use Storage refs.
+- direct client writes are not allowed.
 
 Proposal ids should be deterministic when the same idempotent command creates the same actionable card. This protects against duplicate proposal writes after client retry. The repository must also no-op inside the transaction when the deterministic proposal already exists, so retries cannot increment compact-session counters or duplicate pending-card summaries.
 
@@ -581,12 +598,29 @@ Desktop route:
 - conversation timeline.
 - card stack.
 - composer with text, upload, voice-ready button.
+- empty-state starter cards for daily draft prompts: store closed today, working-hours changes, and contextual sold-out/time-slot work. Starter cards use the same suggestion helper as the full suggestion sheet and never submit automatically.
+- separate composer tools for Work on and Suggestions below the input.
+- Work on context picker inside the composer. It uses selected-project data already loaded in the screen, supports item multi-select and single category selection, and can scope commands to menu design, digital menu, official page, digital screens, feedback, or store settings. Item/category choices render as compact selectable rows/grid cells; search is shown only for longer lists or active search text.
+- Work on selection rewrites the outgoing owner message into explicit text before resolver execution. It does not create cards, write Firestore, or bypass the resolver/action registry.
+- suggestion chooser opens as an inline tray inside the chat frame; suggestions are grouped from selected-menu context and may use a two-layer guided flow: first choose the action area, then choose the exact option. Final options fill the composer without submitting automatically.
+- Work on and Suggestions are mutually exclusive; opening either panel closes the other and clears any active nested suggestion view.
+- proposal and clarification cards can expose option rows; selecting a row drafts the next owner message and never executes by itself.
+- menu link/QR, official page link/QR, feedback link/QR, customer app install link, digital screen link, POS setup copy, POS technical summary copy, and POS sample payload requests render as exact browser-local export cards with Copy, Open, Download QR, or Download text controls as appropriate. They use already-loaded selected project/store context, do not mutate menu truth, and do not store generated QR image or text export data in Firestore.
+- known Mobile More/manual surfaces resolve to exact action-family cards such as `store_working_hours_update`, `menu_temp_status_set`, `digital_screen_status_card`, `billing_screen_open`, and `print_menu_open`. `system_manual_task_create` remains only for true ad hoc owner tasks that do not map to a known MenuList flow.
+- theme, layout, color, and display-option cards reuse the existing Menu design tone/layout/color/display settings and show those choices before preparing specific changes.
+- card Edit drafts an owner-readable command back into the composer instead of mutating the pending card silently.
 - inbox/history side panel.
 
 Mobile:
 
 - `MobileShell` sub-screen.
 - bottom composer.
+- empty-state starter cards above the composer for common daily drafts, including closed today, working hours, and sold-out/time-slot work.
+- Work on context picker opens as a MobileShell-friendly bottom sheet with large target rows. Item/category choices use the same selected-project context as desktop, render as compact 44px selectable rows, and only affect the next message sent.
+- suggestion chooser opens as a bottom sheet; suggestions are grouped from selected-menu context and may use a two-layer guided flow: first choose the action area, then choose the exact option. Final options fill the composer without submitting automatically.
+- Work on and Suggestions are mutually exclusive MobileShell sheets; opening either sheet closes the other and clears any active nested suggestion view.
+- clarification option rows and card Edit use the same draft-first composer behavior.
+- theme, layout, color, and display-option clarification cards use the same choices already shown in Mobile More > Menu design.
 - card stack.
 - approval-first view.
 - no heavy dashboard.
@@ -620,13 +654,13 @@ Implementation must preserve these controls:
 - no one-document-per-message default.
 - no real-time listener for the whole AMM history.
 - session doc loads before proposal details.
-- proposal docs only for cards.
+- proposal docs only for server-backed cards that need provider secrets, jobs, external policy, or durable ledger detail.
 - Storage for large artifacts.
 - cache menu context packets.
 - use existing project summary/cache patterns where possible.
 - no new scheduled function outside existing scheduler discipline.
 - explicit array caps on compact session and proposal docs.
-- deterministic IDs or idempotency keys for retry-safe session/proposal creation.
+- deterministic IDs or idempotency keys for retry-safe compact session operations and server-backed proposal creation.
 - active pending cards available without scanning old daily sessions.
 - safe approve-all flows merge related project patches into one `updateProject()` call.
 - active job polling backs off and stops when hidden, backgrounded, or terminal.
@@ -675,6 +709,10 @@ The first executable adapters should follow the priority order in the checklist,
 - `category_visibility_update`
 - `menu_special_note_update`
 - `menu_design_mood_update`
+- `menu_design_layout_update`
+- `menu_design_preset_apply`
+- `menu_design_color_update`
+- `menu_design_visibility_update`
 - `bulk_price_update`
 - `bulk_availability_update`
 - `image_item_generate`

@@ -215,9 +215,15 @@ export async function getAiMenuManagerInbox(params: {
     sessionId: string;
     tId: string | number;
     sId: string | number;
+    projectId: string;
 }) {
     const session = await getAiMenuManagerSession(params.sessionId);
-    if (!session || String(session.tId) !== String(params.tId) || String(session.sId) !== String(params.sId)) {
+    if (
+        !session
+        || String(session.tId) !== String(params.tId)
+        || String(session.sId) !== String(params.sId)
+        || String(session.projectId) !== String(params.projectId)
+    ) {
         return { session: null, cards: [], receipts: [] };
     }
 

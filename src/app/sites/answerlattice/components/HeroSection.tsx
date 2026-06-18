@@ -7,13 +7,13 @@ import {
 } from 'react-icons/lu';
 
 const HERO_CHIPS = [
-    'In-app help widget',
     'Approved answers first',
+    'Fallback when missing',
+    'Owner review loop',
+    'In-app help widget',
     'Hosted help and FAQs',
-    'Ticket fallback',
-    'Feedback review',
-    'Pre-Onboarding Kit',
     'Safe context',
+    'Pre-Onboarding Kit',
 ];
 
 export default function HeroSection({ basePath = '' }: { basePath?: string }) {
@@ -36,7 +36,7 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                     </h1>
 
                     <p className="al-page-hero__description relative mx-auto w-full lg:mx-0">
-                        Your product knowledge already exists, but it is scattered across docs, tickets, releases, screenshots, recordings, notes, and repeated replies. AnswerLattice turns it into approved answers for your help widget, help center, and future AI agents.
+                        Turn scattered docs, tickets, releases, screenshots, notes, and repeated replies into reviewed support knowledge. AnswerLattice serves approved answers first, opens fallback when coverage is missing, and turns every miss into review work.
                     </p>
 
                     <div className="al-page-hero__actions relative mx-auto w-full sm:max-w-none lg:mx-0 lg:justify-start">

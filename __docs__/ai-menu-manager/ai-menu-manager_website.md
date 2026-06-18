@@ -56,7 +56,7 @@ Avoid:
 - "AI runs your menu"
 - "never manage your menu again"
 - "updates everywhere automatically"
-- claims that Google, Instagram, Zomato, Swiggy, or any external system updates directly unless a supported adapter exists
+- claims that Google, Instagram, Zomato, Swiggy, or any external system updates directly from AI Menu Manager
 
 ---
 
@@ -74,7 +74,7 @@ AI Menu Manager appears in these website surfaces:
 | Features page | Add AI Menu Manager as the first Operations card. |
 | How It Works | Update step 04 to "Tell MenuList what changed." |
 | Pricing | Show AI Menu Manager as a Pro/Premium value driver. |
-| FAQ | Add safety questions around approval, chatbot boundary, staff access, and external publishing. |
+| FAQ | Add safety questions around approval, chatbot boundary, staff access, and unsupported external platforms. |
 | Sitemap / LLM files | Include `/ai-menu-manager` in discovery files. |
 
 ---
@@ -166,7 +166,7 @@ Staff access depends on the permissions the owner gives them. High-risk work sti
 
 ### Can it update Zomato, Swiggy, Google, or Instagram directly?
 
-Only when a supported first-party adapter exists. Otherwise MenuList prepares a manual task, export, or copy/share card so the external step is clear.
+No. MenuList does not support direct Zomato, Swiggy, Google Business Profile, Instagram, or Facebook posting from AI Menu Manager. If an owner asks for it, AI Menu Manager must say that destination is not supported and leave MenuList truth unchanged.
 
 ---
 
@@ -179,5 +179,5 @@ Only when a supported first-party adapter exists. Otherwise MenuList prepares a 
 | Sold out | Availability card with restore time. |
 | Generated image | Masala tea draft image card with Use on menu. |
 | Theme update | Menu design preset preview card. |
-| Manual task | External listing handoff card that does not claim completion. |
+| Unsupported external request | Destination-specific not-supported card that does not claim integration support or completion. |
 | Receipt | Completed update with undo wording only when that adapter supports safe reversal. |

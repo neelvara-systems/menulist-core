@@ -6,6 +6,46 @@
 
 ---
 
+## June 18, 2026 - CampaignCue Date And Time Handling
+
+### Changed
+
+- **CampaignCue owner dates now follow app settings** - Reuse timestamps and posting reminders render through the shared app formatter, so selected timezone, date format, time format, language, and RTL settings apply.
+- **Source expiry handling tightened** - The Valid until input is converted through the CampaignCue workspace timezone before storage, and invalid workspace timezone values are rejected by the API schema.
+
+### Cost
+
+- **No Firebase cost added** - These changes reuse existing client formatting and existing source/workspace writes. They add no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, or indexes.
+
+## June 18, 2026 - Website SEO Metadata Parity
+
+### Changed
+
+- **MenuList website metadata constants added** - Root fallback metadata, website-layout metadata, homepage JSON-LD, and page-level JSON-LD now use a shared MenuList website source backed by the production `https://menulist.ai` deployment target.
+- **Post-setup success page noindexed** - `/create-menu/success` now keeps the existing client success UI behind a server metadata wrapper that emits `noindex, nofollow, nocache` robots metadata plus a self canonical to the non-query success path.
+- **Agent-readiness verifier hardened** - `npm run verify:agent-readiness` now checks the MenuList canonical metadata constants, schema URL source, stale fallback title removal, and success-page noindex wrapper.
+
+### Cost
+
+- **No runtime cost added** - These are static website metadata, verification, and documentation updates only. They add no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, indexes, or Vercel deploy.
+
+## June 18, 2026 - Menu Manager Guided Suggestions
+
+### Changed
+
+- **Menu Manager composer context added** - The composer now has an optional Work on picker for Item, Category, Menu design, Digital menu, Official page, Digital screens, Feedback, and Store settings.
+- **Selected-item commands supported** - Owners can select multiple items, then send a short command such as "increase price by 10" and receive one approval card for only those selected items.
+- **Menu Manager suggestions now use guided choices** - The suggestion launcher now supports a first-level area and second-level option flow for menu style, presentation tone, item layout, theme color, display options, daily operations, customer app, digital screens, feedback, print/export, and store settings.
+- **Suggestion choices stay draft-first** - Choosing a final suggestion places the command in the composer. The owner still sends the message before Menu Manager prepares a card.
+- **Desktop and mobile suggestion surfaces aligned** - Desktop suggestions stay inside the Menu Manager chat frame, while mobile suggestions stay inside the MobileShell bottom sheet.
+
+### Cost
+
+- **No Firebase cost for suggestion browsing** - Opening suggestion groups, moving between levels, and choosing a final suggestion are local UI state only.
+- **No Firebase cost for Work on browsing** - Choosing a target, searching loaded items/categories, and selecting context are local UI state only.
+- **Normal deterministic cards stay compact** - Selected-project price, availability, visibility, featured, menu note, and design cards use the compact `aiMenuManagerSessions` document by default. Proposal documents remain reserved for server-backed jobs, external policy, provider work, imports/uploads, or durable ledger needs.
+- **Completion uses the loaded compact session** - Deterministic card completion and cancel now reuse the session already loaded in Menu Manager, so normal cards do not add a second AMM session read before writing the receipt.
+
 ## June 17, 2026 - Business Health AI Diagnostic Positioning
 
 ### Changed

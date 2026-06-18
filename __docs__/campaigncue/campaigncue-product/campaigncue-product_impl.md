@@ -6,7 +6,7 @@ CampaignCue should live in the same repo with a separate product boundary. Imple
 
 ## Implementation Status
 
-CampaignCue now has a repo-level public shell and a protected export/download-first runtime. The runtime adds CampaignCue workspace APIs, a dedicated Firebase Admin client, CampaignCue Firebase rules/config files, Business Brain bootstrap, source snapshots, source facts, evidence-backed opportunity cues, deterministic Campaign Decision Engine scoring, structured campaign packs, first-class pack reviews, canonical Campaign Pack Output ZIPs, manual delivery cards, local visibility cues, trust reports, asset rights metadata, manual schedule records, approval request logging, compact owner-reported result memory, launch-readiness checks, and bounded analytics summaries.
+CampaignCue now has a repo-level public shell and a protected export/download-first runtime. The runtime adds CampaignCue workspace APIs, a dedicated Firebase Admin client, CampaignCue Firebase rules/config files, Business Brain bootstrap, source snapshots, source facts, evidence-backed opportunity cues, deterministic Campaign Decision Engine scoring, structured campaign packs, first-class pack reviews, canonical Campaign Pack Output ZIPs, manual delivery cards, local visibility cues, trust reports, asset rights metadata, manual schedule records, approval request logging, compact owner-reported result memory, launch-readiness checks, bounded analytics summaries, and a CampaignCue dashboard shell that reuses the same MenuList authenticated app foundation, theme settings, language settings, shared dashboard sidebar, shared top header, profile menu, and settings drawer.
 
 It still does not create direct provider calls, billing checkout, ad spend mutations, WhatsApp direct sends, rendered video provider calls, or MenuList write-back.
 
@@ -16,11 +16,12 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | --- | --- |
 | Public website | `src/app/sites/campaigncue` and local `/__campaigncue` route. |
 | Workspace app | `src/app/(campaigncue)/campaigncue/app`; local `/__campaigncue/app` and product-domain `/app` rewrite to `/campaigncue/app`. |
+| Dashboard shell | CampaignCue uses the same `LocalisationProvider`, Redux persisted theme state, `AntdThemeProvider`, global shortcuts, network status provider, shared dashboard header/sidebar primitives, profile menu, and App Settings drawer as MenuList. The shell applies shared dark/light, RTL, language, timezone, profile, and settings behavior. Sidebar/header chrome labels live in the shared locale files under `CampaignCue.Navigation`; the inner workspace content remains CampaignCue-specific. |
 | Product id | `campaigncue` added to product/domain/deployment registries. |
 | Firebase | Separate project ids selected: `campaigncue-qa` and `campaigncue`; config/rules files added through `firebase-campaigncue.json`. |
 | Functions | No CampaignCue Cloud Function is required for the current export/download-first runtime. Scheduled/provider workers remain disabled until external credentials, consent, quotas, idempotency, and leases are configured. |
 | Billing | Product-aware billing with `productId: "campaigncue"` or approved short code. |
-| Auth | Shared account bridge allowed; CampaignCue workspace scope required. |
+| Auth | Same NextAuth login/session guard as MenuList; inactive, deleted, unverified, or platform-blocked accounts redirect before workspace render. The shell intentionally avoids MenuList store/subscription bootstrap reads just to draw CampaignCue chrome. CampaignCue APIs still require tenant/store workspace scope. |
 | Data access | Server-side product APIs for source, generation, publishing, billing, and trust actions. |
 
 ## Core Services
@@ -54,6 +55,8 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Trust | Critical blockers and channel warnings enforced before export, handoff, and any future connected publish/direct send. |
 | Cost | Deterministic generation costs zero credits; paid generation remains disabled. |
 | Mobile | Owner critical actions remain within the responsive CampaignCue workspace; download/export, schedule, mark used, source input, asset metadata, and result recording use 44px touch targets. |
+| Theme/i18n shell | CampaignCue route group must keep the shared MenuList dark/light, color, RTL, timezone, date/time, and language settings available through the same App Settings panel. CampaignCue dashboard chrome uses shared `next-intl` locale files. CampaignCue owner-page body copy can remain product-specific, but shell behavior must not fork from MenuList. |
+| Date/time handling | Durable timestamps stay as Firestore `Timestamp` or UTC ISO strings. Owner-facing dates and times render through the shared `next-intl` formatter from `LocalisationProvider`, so selected timezone, date format, time format, language, and RTL settings apply. Native datetime inputs are converted with the workspace timezone before persistence; invalid workspace timezone values are rejected at the API schema boundary. |
 | Campaign pack review | Latest campaign review is derived from already-loaded source facts, outputs, trust state, missing inputs, and visibility cues; no separate pack collection is added. |
 | Campaign Pack Output | `CampaignCueOutputPack` is derived from the same overview and downloaded as a browser-local ZIP containing summary, JSON, channel files, trust notes, reuse notes, and result prompt. |
 | Campaign decision object | Created campaigns store the selected deterministic `campaign.pack.decision` plus `recipeId` so later exports can show why the pack was recommended without re-running a model. |
@@ -82,6 +85,7 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | `src/middleware.ts` | Product-routing documentation comments. |
 | `src/app/sites/campaigncue/*` | Static public CampaignCue shell, styles, robots, and sitemap. Public website only; do not add owner dashboard pages here. |
 | `src/app/(campaigncue)/campaigncue/app/page.tsx` | Protected CampaignCue workspace app route. |
+| `src/app/(campaigncue)/layout.tsx` | CampaignCue protected layout. Mirrors MenuList app providers for auth, localization, Redux theme persistence, Ant Design theme, shortcuts, network status, session expiry, and app-update prompts without loading MenuList store/subscription context. |
 | `src/components/templates/campaigncue/*` | Workspace UI and responsive styles. |
 | `src/app/api/campaigncue/*` | Protected CampaignCue API routes. |
 | `src/lib/campaigncue/*` | Runtime guards and server services. |

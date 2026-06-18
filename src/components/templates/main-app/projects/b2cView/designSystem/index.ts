@@ -38,6 +38,20 @@ export function normalizeHexColor(color?: string): string | null {
     return lower;
 }
 
+export function hexToRgba(color: string, alpha: number): string {
+    const normalized = normalizeHexColor(color);
+    if (!normalized) {
+        return color;
+    }
+
+    const red = parseInt(normalized.slice(1, 3), 16);
+    const green = parseInt(normalized.slice(3, 5), 16);
+    const blue = parseInt(normalized.slice(5, 7), 16);
+    const safeAlpha = Math.max(0, Math.min(1, alpha));
+
+    return `rgba(${red}, ${green}, ${blue}, ${safeAlpha})`;
+}
+
 // ============================================
 // MENU PAGE STYLES
 // ============================================
@@ -581,14 +595,14 @@ export function getMoodWithBrandColor(mood: MenuMood, brandAccentColor?: string)
         priceColor: normalizedSafePriceColor,
         categoryStyle: {
             ...moodConfig.categoryStyle,
-            borderColor: `${normalizedSafeAccent}20`, // 20% opacity
-            dividerColor: `${normalizedSafeAccent}30`, // 30% opacity
+            borderColor: hexToRgba(normalizedSafeAccent, 0.12),
+            dividerColor: hexToRgba(normalizedSafeAccent, 0.18),
         },
         itemStyle: {
             ...moodConfig.itemStyle,
-            borderColor: `${normalizedSafeAccent}15`, // 15% opacity
+            borderColor: hexToRgba(normalizedSafeAccent, 0.08),
             priceBadgeColor: moodConfig.itemStyle.priceStyle === 'badge'
-                ? `${normalizedSafeAccent}15`
+                ? hexToRgba(normalizedSafeAccent, 0.08)
                 : undefined,
         },
     };

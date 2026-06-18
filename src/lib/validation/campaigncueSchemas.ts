@@ -13,6 +13,21 @@ const optionalUrl = (maxLength: number): z.ZodEffects<z.ZodNullable<z.ZodOptiona
     z.string().trim().url().max(maxLength).optional().nullable(),
 );
 
+const isValidTimeZone = (value: string) => {
+    try {
+        new Intl.DateTimeFormat("en-US", { timeZone: value });
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+const timeZoneSchema = z.string()
+    .trim()
+    .min(2)
+    .max(80)
+    .refine(isValidTimeZone, "Invalid timezone");
+
 export const CampaignCueIdSchema = z.string().regex(idPattern).min(3).max(120);
 
 export const CampaignCueChannelSchema = z.enum(CAMPAIGNCUE_CHANNELS);
@@ -77,7 +92,7 @@ export const CampaignCueBusinessPatchSchema = z.object({
     primaryColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
     voice: z.enum(["calm", "friendly", "premium", "direct"]).optional(),
     locale: z.string().trim().min(2).max(12).optional(),
-    timezone: z.string().trim().min(2).max(80).optional(),
+    timezone: timeZoneSchema.optional(),
     agencyMode: z.boolean().optional(),
     multiLocationMode: z.boolean().optional(),
 });

@@ -53,13 +53,13 @@ function getBasePath(): string {
 }
 
 const HERO_CHIPS = [
+    'Approved answers first',
+    'Fallback when missing',
+    'Owner review loop',
     'In-app widget',
     'Hosted help center',
-    'FAQ',
-    'Changelog',
-    'Ticket fallback',
-    'Feedback review',
-    'Approved answers',
+    'FAQ and changelog',
+    'Safe page context',
 ];
 
 const HERO_TITLE_LINES = [
@@ -70,10 +70,10 @@ const HERO_TITLE_LINES = [
 const HERO_TITLE_TEXT = HERO_TITLE_LINES.map((line) => line.join(' ')).join(' ');
 
 const CAPABILITY_PROOF = [
-    { label: 'In-app help', value: 'Users get support where they are stuck.' },
-    { label: 'Hosted help', value: 'Docs, FAQs, and changelog live in one support layer.' },
-    { label: 'Fallback path', value: 'Missing answers create tickets and support gaps.' },
+    { label: 'Answer order', value: 'Approved answers come before fallback.' },
+    { label: 'Missing coverage', value: 'Fallback creates tickets and support gaps.' },
     { label: 'Founder review', value: 'You approve what becomes official support.' },
+    { label: 'Support surfaces', value: 'Widget, hosted help, FAQs, and changelog share one layer.' },
 ];
 
 const SUITE_BUILD_STEPS = [
@@ -466,7 +466,7 @@ function HomepageHero({ basePath }: { basePath: string }) {
             <div className="mx-auto max-w-7xl">
                 <div className="mx-auto max-w-6xl text-center">
                     <p className="al-home-hero__eyebrow mb-4 text-xs font-semibold uppercase tracking-widest text-teal-300">
-                        A complete support layer for founder-led SaaS
+                        Approved answers before fallback
                     </p>
                     <h1
                         className="al-home-hero-title mx-auto max-w-6xl text-4xl font-extrabold leading-[1.14] tracking-normal text-white sm:text-5xl lg:text-6xl xl:text-[4.2rem]"
@@ -503,7 +503,7 @@ function HomepageHero({ basePath }: { basePath: string }) {
                         ))}
                     </h1>
                     <p className="al-home-hero__subtitle mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-[#a0a0c0] sm:text-xl">
-                        Your product knowledge already exists, but it is scattered across docs, tickets, releases, screenshots, recordings, notes, and repeated replies. AnswerLattice turns it into a standard support knowledge structure: approved answers for your widget, help center, FAQs, and future AI agents.
+                        Turn scattered docs, tickets, releases, screenshots, notes, and repeated replies into reviewed support knowledge. AnswerLattice serves approved answers first, opens fallback when coverage is missing, and turns every miss into review work.
                     </p>
                     <div className="al-home-hero__actions mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
@@ -560,7 +560,7 @@ function SupportSuiteSection({ basePath }: { basePath: string }) {
                 <SectionHeader
                     eyebrow="One support suite"
                     title="Widget, help center, tickets, and approved answers in one layer."
-                    description="The familiar support surfaces are generated from one standard support knowledge structure instead of scattered founder notes, docs, tickets, and release updates."
+                    description="The familiar support surfaces share one reviewed support layer: approved answers first, fallback only when coverage is missing, and visible gaps for founder review."
                 />
 
                 <div className="mt-10 grid gap-4 lg:grid-cols-4">

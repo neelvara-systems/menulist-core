@@ -16,6 +16,7 @@ import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
 import { Button, Divider, Flex, Form, Input, Space, theme, Typography } from "antd";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import Image from 'next/image';
 import { getSession, signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from "react";
@@ -75,6 +76,49 @@ const LOGIN_ERRORS = {
   "UNREGISTRED": "email-not-registred",
 }
 const { Text } = Typography;
+
+const publicSurfaceSlides = [
+  {
+    alt: 'MenuList public surfaces overview',
+    eyebrow: 'Public surfaces',
+    height: 1000,
+    src: '/images/website/menulist-public-surfaces-matrix.webp',
+    title: 'One menu source, many outputs',
+    width: 1600,
+  },
+  {
+    alt: 'MenuList public menu on a mobile screen',
+    eyebrow: 'Customer menu',
+    height: 1400,
+    src: '/images/website/menulist-public-menu-mobile.webp',
+    title: 'Fast menu browsing on phones',
+    width: 900,
+  },
+  {
+    alt: 'MenuList official business page in a browser',
+    eyebrow: 'Official page',
+    height: 900,
+    src: '/images/website/menulist-obp-browser.webp',
+    title: 'Business details stay consistent',
+    width: 1400,
+  },
+  {
+    alt: 'MenuList QR and share kit',
+    eyebrow: 'QR and sharing',
+    height: 690,
+    src: '/images/website/features/qr-menu-links/share-kit.webp',
+    title: 'Links and QR assets ready to use',
+    width: 1045,
+  },
+  {
+    alt: 'MenuList customer feedback form',
+    eyebrow: 'Feedback',
+    height: 710,
+    src: '/images/website/features/customer-feedback-loop/public-feedback-form.webp',
+    title: 'Customer input returns to the owner',
+    width: 745,
+  },
+];
 
 function LoginPage() {
   const router = useRouter();
@@ -498,20 +542,13 @@ function LoginPage() {
   );
 
   return <div className={`${styles.loginPageWrap} ${isDarkMode ? styles.loginPageDark : styles.loginPageLight}`}>
-    <div className={styles.staticBackdrop} aria-hidden="true">
-      <div className={styles.backdropVisual}>
-        <span className={styles.backdropTopRule} />
-        <span className={styles.backdropLinePrimary} />
-        <span className={styles.backdropLineSecondary} />
-        <span className={styles.backdropLineTertiary} />
-        <span className={styles.backdropQrBlock} />
-        <span className={styles.backdropReceipt} />
-      </div>
-    </div>
+    <div className={styles.staticBackdrop} aria-hidden="true" />
     <Space className={styles.headerWrap} align="center">
       <Button
+        aria-label={isDarkMode ? 'Use light theme' : 'Use dark theme'}
         icon={isDarkMode ? <LuSun /> : <LuMoon />}
         size="large"
+        title={isDarkMode ? 'Use light theme' : 'Use dark theme'}
         onClick={() => {
           console.log("Toggling dark mode from", isDarkMode, "to", !isDarkMode);
           dispatch(toggleDarkMode(!isDarkMode));
@@ -806,15 +843,45 @@ function LoginPage() {
                   ) : null}
                   <Divider />
                   <Flex align="center" justify='center' style={{ width: "100%" }} gap={2}>
-                    <Text>Dont have an account?</Text>
+                    <Text>Don&apos;t have an account?</Text>
                     <Button type="link" onClick={() => router.push(`/pricing`)}>Sign up</Button>
                   </Flex>
-                  <Space direction="vertical" align="center" style={{ width: "100%", marginTop: 20 }} >
-                    <Button type="text" className="login-form-button" style={{ color: token.colorTextLabel }}>Not able to login please contact owner</Button>
+                  <Space direction="vertical" align="center" style={{ width: "100%", marginTop: 8 }} >
+                    <Button type="text" className="login-form-button" style={{ color: token.colorTextLabel }}>Need help? Contact the owner.</Button>
                   </Space>
                 </Form>
               </>
             )}
+          </div>
+        </div>
+        <div className={styles.proofPanel} aria-hidden="true">
+          <div className={styles.carouselChrome}>
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className={styles.surfaceCarousel}>
+            {publicSurfaceSlides.map((slide) => (
+              <div className={styles.surfaceSlide} key={slide.src}>
+                <Image
+                  alt={slide.alt}
+                  className={styles.surfaceImage}
+                  height={slide.height}
+                  priority={slide.src === publicSurfaceSlides[0].src}
+                  sizes="(min-width: 1120px) 470px, 0px"
+                  src={slide.src}
+                  width={slide.width}
+                />
+                <div className={styles.surfaceCaption}>
+                  <span>{slide.eyebrow}</span>
+                  <strong>{slide.title}</strong>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className={styles.carouselSummary}>
+            <span>Owner source</span>
+            <strong>Public menu, QR links, official page, feedback, and assets.</strong>
           </div>
         </div>
       </div>

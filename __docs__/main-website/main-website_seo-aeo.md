@@ -1,7 +1,7 @@
 # SEO & AEO Strategy — MenuList Main Website
 
 **Status:** ✅ IMPLEMENTED  
-**Last Updated:** June 8, 2026
+**Last Updated:** June 18, 2026
 
 > May 18, 2026 update: the homepage now includes a search/AI discovery proof section. It is grounded in existing owner SEO/AEO settings, Business Copy Setup, schema.org output, sitemap/robots policy, and LLM discovery files. The public wording must stay conservative: MenuList prepares a clearer official source for search engines and AI systems to read; it does not promise rankings, AI citations, Google Maps updates, or external-platform placement.
 
@@ -29,6 +29,8 @@
 
 > June 10, 2026 customer-feedback-loop note: `/features/customer-feedback-loop` is now part of the canonical feature discovery set. Public copy must frame feedback as private customer issue reports that help owners correct the approved source. Do not frame it as review management, sentiment analysis, testimonials, reputation automation, or public review gating.
 
+> June 18, 2026 metadata parity note: shared MenuList website metadata now reads from `src/constants/menulist/website.ts`, which uses the production `https://menulist.ai` deployment target for canonical metadata and schema URLs. Root fallback metadata no longer uses the old "Upload Your Menu Online" title. `/create-menu/success` is intentionally `noindex, nofollow, nocache` with a self canonical to the non-query success path because it is a post-setup state page that can include query-string menu URLs. `npm run verify:agent-readiness` now checks the canonical constants, schema URL source, stale fallback removal, and success-page noindex wrapper.
+
 ---
 
 ## 1. SEO Foundation
@@ -37,6 +39,7 @@
 
 | Page             | Title                                                                 | Source File                           |
 | ---------------- | --------------------------------------------------------------------- | ------------------------------------- |
+| Global Fallback  | MenuList - One Official Menu Source for Customers                     | `src/app/layout.tsx` via `src/constants/menulist/website.ts` |
 | Homepage         | MenuList - One Official Menu Source for Customers                     | `(website)/layout.tsx`                |
 | Features         | Features — MenuList \| No Extra Work for Your Menu                    | `(website)/features/page.tsx`         |
 | Menu Import      | Menu Import - MenuList \| Upload the Menu You Already Have            | `(website)/features/menu-import/page.tsx` |
@@ -57,6 +60,7 @@
 | Contact          | Contact Us — MenuList \| Get in Touch                                 | `(website)/contact/page.tsx`          |
 | Get Started      | Get Started — Create Your Official Menu Source                        | `(website)/get-started/page.tsx`      |
 | Create Menu      | Create Your Official Menu Source — MenuList                           | `(website)/create-menu/page.tsx`      |
+| Create Menu Success | Menu Published - MenuList                                         | `(website)/create-menu/success/page.tsx` (`noindex`) |
 | Resources        | Resources — MenuList \| Keep One Public Menu Current                  | `(website)/resources/page.tsx`        |
 | Resource Article | Dynamic per article from `src/content/websiteResources/en-US.ts` and reviewed locale packs | `(website)/resources/[slug]/page.tsx`, `(website)/[locale]/resources/[slug]/page.tsx` |
 | Industry Pages   | Dynamic per industry from `src/content/websiteIndustries.ts`          | `(website)/industries/*/page.tsx`     |
@@ -70,6 +74,7 @@
 | Page           | Description                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Homepage       | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
+| Global fallback | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
 | Features       | Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place. |
 | Business Health | Business Health is an AI health check for your menu and public presence. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows. |
 | Customer Feedback Loop | Let customers send private feedback from the menu, Official Business Page, QR, or direct link so owners can review issues and keep the public source correct. |
@@ -80,6 +85,7 @@
 | Contact        | Have questions about MenuList? Reach out to our team. We are here to help you get your menu online.                                                                 |
 | Get Started    | Start with your current menu and create the owner-approved source for the customer-facing version of your business.             |
 | Create Menu    | Start with your current menu and create the owner-approved source for the customer-facing version of your business.                      |
+| Create Menu Success | Share the published MenuList menu link and next steps after setup. This route is intentionally `noindex, nofollow, nocache` with a self canonical to the non-query success path. |
 
 ### 1.3 Heading Hierarchy
 
@@ -313,18 +319,18 @@ Agent boundaries:
 | Robots.txt            | ✅         | Named search/AI crawlers and the generic crawler group allowed for public pages, with protected app paths excluded in both rule groups and non-www sitemap/LLM links |
 | llms.txt              | ✅         | Platform agent context with public fact boundaries, action boundaries, preferred description, and claim limits |
 | llms-full.txt         | ✅         | Extended agent-readable schema, URL, freshness, resource inventory, preferred positioning, and boundary docs |
-| Canonical URLs        | ✅         | Self-referencing on active platform pages                   |
+| Canonical URLs        | ✅         | Self-referencing on active platform pages; shared fallback/schema URL source uses production `https://menulist.ai` |
 | Schema.org            | ✅         | Homepage Organization/WebSite/SoftwareApplication/WebPage/BreadcrumbList plus page-level WebPage/BreadcrumbList |
 | OG tags               | ✅         | Per-page titles + descriptions on active platform pages     |
 | Twitter cards         | ✅         | Summary card with large image (layout-level)                |
-| Per-page metadata     | ✅         | Unique title, description, OG for active platform pages     |
+| Per-page metadata     | ✅         | Unique title, description, OG for active platform pages; post-setup success state is explicitly noindex     |
 | Favicon               | ✅         | Implemented                                                 |
 | 404 page              | 🔵 Planned | Custom branded 404                                          |
 | Alt text on images    | 🔵 Planned | Descriptive, keyword-relevant                               |
 | Internal linking      | ✅         | Cross-page links in navigation                              |
 | hreflang              | 🔵 Future  | When multi-locale SEO needed                                |
 | i18n                  | ✅         | 8 languages supported via next-intl                         |
-| Agent-readiness verifier | ✅      | `npm run verify:agent-readiness` checks route registries, robots, sitemap, LLM files, and JSON-LD wrappers |
+| Agent-readiness verifier | ✅      | `npm run verify:agent-readiness` checks route registries, robots, sitemap, LLM files, JSON-LD wrappers, canonical constants, and post-setup noindex guard |
 
 ---
 
@@ -336,7 +342,7 @@ Agent boundaries:
 <!-- Homepage (from layout.tsx default metadata) -->
 <meta
   property="og:title"
-  content="MenuList — The Official Source for What Customers See"
+  content="MenuList - One Official Menu Source for Customers"
 />
 <meta
   property="og:description"
