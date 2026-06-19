@@ -44,7 +44,7 @@ export default function AnswerlatticeDemoPage() {
                                 items={[
                                     { label: 'Shows', value: 'Same question, different approved support path' },
                                     { label: 'Proves', value: 'Approved source before fallback' },
-                                    { label: 'Costs', value: 'Static demo with no Firebase or AI call' },
+                                    { label: 'Demo mode', value: 'Product simulation with sample support content' },
                                 ]}
                             />
                         </div>
@@ -52,7 +52,7 @@ export default function AnswerlatticeDemoPage() {
                         <div className="mx-auto mb-8 max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 text-center">
                             <h2 className="text-lg font-semibold text-white">What to notice</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">
-                                The generic answer stays broad. AnswerLattice uses the product page, links related help, and marks uncovered questions as gaps. This static demo does not call Firebase or an AI provider.
+                                The generic answer stays broad. AnswerLattice uses the product page, links related help, and marks uncovered questions as gaps. This product simulation uses sample content and does not call Firebase or an AI provider.
                             </p>
                         </div>
 
@@ -79,10 +79,10 @@ export default function AnswerlatticeDemoPage() {
                             basePath={basePath}
                             href="/get-started"
                             data-answerlattice-event="demo_cta_clicked"
-                            data-answerlattice-label="start_support_setup"
+                            data-answerlattice-label="create_workspace"
                             className="rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                         >
-                            Start support setup
+                            Create workspace
                         </AnswerlatticeLink>
                     </div>
                 </section>

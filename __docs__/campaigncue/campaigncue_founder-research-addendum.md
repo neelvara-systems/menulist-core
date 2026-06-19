@@ -38,6 +38,29 @@ That means CampaignCue wins only if it does what generic tools do not do well:
 | Multi-location/agency | Cross-client and cross-location mistakes are product-killing. | Agency and multi-location flows must scope every campaign, metric, approval, asset, and source snapshot by client/location. |
 | Name/domain | `campaigncue.ai` still returned `Domain not found` in WHOIS on June 11, 2026, but registrar checkout is still required. | Keep CampaignCue.ai as working name and treat domain purchase as an immediate founder task. |
 
+## June 19, 2026 Platform And Market Refresh
+
+This refresh was added after reviewing the Growth Kits, KitStamp, and CampaignCue product boundaries together. It does not change CampaignCue into MenuList Growth Kits or KitStamp.
+
+| Evidence | CampaignCue addition |
+| --- | --- |
+| Google Business Profile supports owner posts for updates, offers, and events, and posts can include text, photos/videos, links, dates, coupon details, and terms. Source: https://support.google.com/business/answer/7342169 | Google Local Studio should keep structured manual drafts for Update, Offer, and Event style posts, with preflight fields for dates, terms, phone-number rejection risk, and source links. |
+| The Google Business Profile Local Posts API can create posts through `accounts/*/locations/*/localPosts` with `LocalPost` request bodies and OAuth scopes. Source: https://developers.google.com/my-business/reference/rest/v4/accounts.locations.localPosts/create | Direct GBP publishing is technically possible but must be a separate provider layer with OAuth, location scope, idempotency, quota handling, approval, and export fallback. |
+| The Business Profile Performance API exposes daily/monthly metrics, but Google notes that accounts with quota 0 after enabling must request GBP API access. Source: https://developers.google.com/my-business/reference/performance/rest | CampaignCue analytics must keep provider metrics optional and confidence-labeled. Do not promise Google performance import until access is approved and tested. |
+| WhatsApp requires opt-in before business messaging, requires approved templates to initiate conversations outside the 24-hour window, and requires opt-out handling. Source: https://whatsappbusiness.com/policy/ | WhatsApp Sales Studio must stay manual/export-first until consent proof, template category, opt-out, suppression, and escalation paths exist. |
+| WhatsApp Platform pricing is charged per delivered message and varies by recipient country and message category: marketing, utility, authentication, and service. Source: https://whatsappbusiness.com/products/platform-pricing/ | Direct WhatsApp send needs category-aware cost preview, delivery-charge accounting, and owner approval before any provider send job. |
+| Google Pomelli and Canva AI 2.0 confirm broad SMB campaign generation and multi-channel creative tooling are active markets. Sources: https://blog.google/innovation-and-ai/models-and-research/google-labs/pomelli/ and https://www.canva.com/newsroom/news/canva-create-2026-ai/ | CampaignCue must avoid generic campaign generation volume. Its wedge stays Business Brain, deterministic decision engine, trust checks, manual handoff, and compact result memory. |
+
+## June 19, 2026 Boundary Decision
+
+| Product | Decision |
+| --- | --- |
+| MenuList Growth Kits | Do not merge. Growth Kits is a paid MenuList owner add-on for one immediate action from live menu truth. |
+| KitStamp | Do not merge. KitStamp is deliberate content readiness and Final Content Kit export. |
+| CampaignCue | Keep as separate local-business campaign workspace with export/download-first runtime and disabled provider mutation. |
+
+Cost impact: no Firebase cost change. This refresh changes documentation only and does not add reads, writes, Storage, Cloud Functions, provider calls, schedulers, rules, indexes, or routes.
+
 ## Required Product Principles
 
 1. **Export-first is not a weakness.** Manual download/export/share is a core product path because local channels and APIs are inconsistent.

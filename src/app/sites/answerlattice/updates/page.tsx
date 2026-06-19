@@ -311,7 +311,7 @@ export default function AnswerlatticeUpdatesPage() {
                 <section className="border-t border-white/[0.06] px-6 py-20 text-center">
                     <h2 className="text-3xl font-bold">Want to see the product instead?</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg text-[#a0a0c0]">
-                        The static demo shows how AnswerLattice changes support by product page without using production data.
+                        The product simulation shows how AnswerLattice changes support by product page without using production data.
                     </p>
                     <AnswerlatticeLink
                         basePath={basePath}
@@ -319,9 +319,7 @@ export default function AnswerlatticeUpdatesPage() {
                         data-answerlattice-event="updates_cta_clicked"
                         data-answerlattice-label="try_demo"
                         className="mt-8 inline-block rounded-xl border border-white/[0.1] bg-white/[0.03] px-8 py-3.5 text-sm font-semibold text-[#d6d6ef] transition-all hover:border-white/[0.2] hover:text-white"
-                    >
-                        See demo
-                    </AnswerlatticeLink>
+                    >See 60-sec demo</AnswerlatticeLink>
                 </section>
             </main>
             <AnswerlatticeFooter basePath={basePath} />

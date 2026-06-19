@@ -101,7 +101,7 @@ src/app/sites/answerlattice/
 ├── hosted-help-center-for-saas/page.tsx    # SEO page for hosted help-center search intent
 ├── support-widget-for-solo-founders/page.tsx # SEO page for solo-founder support intent
 ├── demo/page.tsx                  # Static interactive demo page
-├── demo/AnswerlatticePublicDemo.tsx    # Account-free page-aware support demo
+├── demo/AnswerlatticePublicDemo.tsx    # No sign-in required page-aware support demo
 ├── install/page.tsx               # Agent install overview generated from AnswerLattice Widget Contract v1
 ├── install/InstallContractPage.tsx # Shared install/contract/framework page renderer
 ├── install/markdownRoute.ts       # Shared Markdown response helper for install .md mirrors
@@ -226,7 +226,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - `/integrations` now explains the supported Slack/email workflow notification path, including test delivery and compact delivery health, while keeping broader adapters controlled rollout
 - header links include `/demo` and `/install`, the desktop Product dropdown uses compact title-only rows for product areas and features, and the desktop Resources navigation now uses the same compact title-only overview-plus-guides pattern for high-priority resource articles plus the resources hub
 - header mobile navigation is client-gated to confirmed sub-1280px viewports so the hamburger trigger does not appear beside desktop navigation on wide screens
-- `/demo` is static and account-free; it does not call Firebase or an AI provider
+- `/demo` is static and no sign-in required; it does not call Firebase or an AI provider
 - pricing exposes Starter, Growth, and Studio INR packaging
 - `/security` uses a trust-page shape of facts, controls, and disclosure while keeping AnswerLattice-specific claims around widget context, tenant-scoped rules, owner-approved answers, rate-limited runtime endpoints, compact summaries, and separate product infrastructure
 - `/faq` answers founder objections and includes FAQ structured data
@@ -257,7 +257,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 24 AI-built SaaS pass changed the homepage hero to "You shipped the app. Now users need correct answers.", moved the page-aware demo directly after the hero, and teaches approved answers before advanced AnswerLattice vocabulary.
 - May 24 AI-built SaaS pass added `/use-cases/ai-built-saas` and `/use-cases/vibe-coded-saas` as a canonicalized alias for campaign/search traffic.
 - May 22 conversion pass changed the homepage hero to outcome-first buyer language while keeping "governed answer infrastructure" as secondary category language.
-- Homepage links to the static demo from the buying path; the deeper generic-answer vs AnswerLattice-answer walkthrough stays on `/demo` so the homepage remains shorter.
+- Homepage links to the product simulation from the buying path; the deeper generic-answer vs AnswerLattice-answer walkthrough stays on `/demo` so the homepage remains shorter.
 - Homepage keeps a compact pricing checkpoint and top buyer objections; detailed fit qualification, setup sequence, and security controls stay on Product, Install, Pricing, Security, and resource routes.
 - `/pricing` now defines support credits in plain language and gives plan-fit guidance for Starter, Growth, and Studio.
 - `/install` now includes developer handoff examples and a runtime verification mock so technical founders can see the implementation path.
@@ -289,7 +289,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - May 25 widget image-support pass updated existing buyer paths instead of adding a standalone screenshot page: homepage widget proof, `/product/page-aware-widget`, `/install`, `/quickstarts`, `/security`, `/security-one-pager`, FAQ, widget SEO pages, route metadata, LLM context, and updates now describe user-initiated screenshot upload/paste and reject automatic host-app screen capture or DOM scraping.
 - May 23 product-feature theme pass removed the light proof band from those feature pages, aligned the shared feature template with AnswerLattice's dark surface and Verdigris primary-token theme, and set the AnswerLattice route stylesheet background so white body bleed does not appear around dark pages.
 - May 23 product-feature route hardening replaced the dynamic `[feature]` route with four explicit product-feature page files backed by `ProductFeatureRoutePage`, avoiding fragile Next dev static-path worker failures while keeping shared feature data and sitemap registry coverage.
-- May 23 dark-theme consistency pass removed remaining light-mode product mockups from the account-free demo, product capability landing template, and homepage widget section so newly added public pages stay visually consistent with AnswerLattice's dark infrastructure theme.
+- May 23 dark-theme consistency pass removed remaining light-mode product mockups from the no sign-in required demo, product capability landing template, and homepage widget section so newly added public pages stay visually consistent with AnswerLattice's dark infrastructure theme.
 - May 23 resources layout pass changed grouped resources from four tall category columns to stacked horizontal decision rows so each group title and its three linked subcards read together on desktop while remaining stacked on mobile.
 - May 23 resources polish removed the outer row cards from the decision-path rows so the resources hub reads as clean rows of links instead of nested boxes.
 - May 23 product capability bento pass changed five-card capability sections to a 2-card first row and 3-card second row, improving visual balance and moving the third card, such as Support Control's Changelog support, into the second row.
@@ -407,7 +407,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 - `page.tsx` also owns the homepage-only support-suite, support-surface story, install-surface, AI-built SaaS fit, and positioning-boundary sections as server-rendered static content. Founder-pressure, product-overview, trust/fallback, founder-review, setup-path, and category-comparison detail remains available through Product, feature, resource, security, and comparison routes instead of rendering as separate homepage sections.
 
 ### Client Components (`'use client'`)
-- `demo/AnswerlatticePublicDemo.tsx` — Account-free demo state
+- `demo/AnswerlatticePublicDemo.tsx` — No sign-in required demo state
 - `contact/ContactForm.tsx` — Contact form state, submission handling, success/error states, and privacy/terms links
 - `get-started/OnboardingForm.tsx` — Self-service onboarding form state, signed-in account switching, and existing-workspace dashboard handoff
 - `components/AnswerlatticeAnalytics.tsx` — Optional GA script plus delegated click tracking for `data-answerlattice-event` elements

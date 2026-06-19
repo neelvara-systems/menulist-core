@@ -615,6 +615,7 @@ Staff and access actions are not core menu edits. They are included because the 
 | Action type | Owner command examples | Manual equivalent | Execution mode | Approval | Mobile | Cost | State |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `system_clarification_request` | "Which tea did you mean?" | AMM-only clarification card. | `read_only_card` | `none` | Conversation card | `C0 local` plus compact session doc | `ready_adapter` |
+| `system_context_answer` | "What should I fix today?", "Which items have no photos?", "Is my menu ready to share?" | Read-only selected menu context answer. No provider calls, no extra Firestore reads, no mutations. | `read_only_card` | `none` | Answer card | `C0 local plus compact session doc` | `ready_adapter` |
 | `system_unsupported_action` | "Post this directly to Swiggy" | Destination-specific not-supported card; must not imply integration support, manual completion, or a generic manual-task placeholder for known external destinations. | `read_only_card` | `none` | Unsupported card | `C0 local` plus compact session doc | `ready_adapter` |
 | `system_receipt_create` | "Done" response after action | AMM-only receipt. | `read_only_card` | `none` | Receipt card | Compact proposal/session write | `ready_adapter` |
 | `system_manual_task_create` | "Ask staff to take photo" | Ad hoc manual task only. Known MenuList screen/action families must use their specific action type instead. | `manual_task_card` | `confirm` | Task card | Compact proposal/session write | `ready_adapter` |

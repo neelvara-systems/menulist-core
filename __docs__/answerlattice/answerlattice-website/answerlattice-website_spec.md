@@ -41,7 +41,7 @@ Public fit and setup copy must not imply founders need existing support volume b
 ## Pages & Content Architecture
 
 ### 1. Homepage (`/`)
-**Goal:** Communicate what AnswerLattice is in < 5 seconds: a complete first support layer for founder-led SaaS and digital products. Drive to self-service setup first, with the static demo, install path, and product-suite pages as supporting proof paths.
+**Goal:** Communicate what AnswerLattice is in < 5 seconds: a complete first support layer for founder-led SaaS and digital products. Drive to self-service setup first, with the product simulation, install path, and product-suite pages as supporting proof paths.
 
 **Sections:**
 1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow should make the answer-order contract immediate: approved answers before fallback. The supporting copy must explain that scattered product knowledge becomes reviewed support knowledge, approved answers are served first, fallback opens only when coverage is missing, and each miss becomes review work. Keep in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps visible without claiming outsourced support, full helpdesk replacement, or autonomous support.
@@ -54,7 +54,7 @@ Public fit and setup copy must not imply founders need existing support volume b
 8. **Positioning Boundary** — Three-card boundary: not a chatbot, not static docs, not a full helpdesk.
 9. **Pricing Preview** — Starter/Growth/Studio guidance and beta setup note.
 10. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
-11. **CTA** — Final conversion panel with `Start support setup` as primary and demo as secondary.
+11. **CTA** — Final conversion panel with `Create workspace` as primary and demo as secondary.
 
 The homepage must stay compressed, diagram-controlled, and product-led: one hero product scene with capability proof, one support-suite section, the sticky support-surface story, one feature-wise product overview card section, one large support-improvement loop diagram, one install-confidence section, concise fit/positioning/pricing/FAQ sections, and final CTA. Detailed setup path, trust cards, founder review proof, and category comparison belong on Product, feature, resource, security, and comparison pages instead of returning as separate homepage sections. Pre-Onboarding/source-preparation content stays available through Resources, Get Started, footer, and its dedicated route, but should not add another homepage section unless the primary funnel becomes too thin.
 
@@ -93,7 +93,7 @@ Product-area subpages:
 
 Each subpage must feel like its own landing page, not a thin documentation page: hero, horizontal product-area tabs, connected support-suite framing, compact proof strip, large browser-style product canvas, bento benefit grid, animated workflow sequence, evaluation strip for setup/security/category-fit checks, and CTA. These pages stay static and may only claim implemented AnswerLattice behavior.
 
-Each product-area subpage must include the same proof-and-action treatment above the product canvas: Start support setup, demo, source-preparation CTA, and proof items for page context, approved-answer authority, owner review, and connected runtime surfaces.
+Each product-area subpage must include the same proof-and-action treatment above the product canvas: Create workspace, demo, source-preparation CTA, and proof items for page context, approved-answer authority, owner review, and connected runtime surfaces.
 
 Product-feature subpages:
 - `/product/team-access`
@@ -314,7 +314,7 @@ Rules:
 **Goal:** Let visitors understand AnswerLattice without creating an account.
 
 **Rules:**
-- Static demo data only
+- Product simulation data only
 - No Firebase reads
 - No AI calls
 - Show approved answer, fallback answer, and support gap states
@@ -472,7 +472,7 @@ Comparable support platforms commonly expose product depth, pricing, demo/start 
 
 Final product-suite polish follows the observed pattern from product-led sites where the main nav exposes product families, each family can stand as its own landing page, and resource/use-case/developer/comparison pages cross-link back into those families. AnswerLattice applies that pattern without adding runtime reads, unimplemented integrations, unsupported public API claims, or unsupported public docs routes.
 
-The desktop header should stay product-led and high-intent: Product, Demo, Install, Use Cases, Resources, Pricing, and the primary `Start support setup` CTA. Demo and Install are top-level because the buyer needs to see the product and implementation path quickly. The desktop Product nav item should use the same compact title-only navigation treatment as the Resources dropdown: a Product overview row, a Support areas section, a Support tools section, small icon tiles, and tight two-column rows rather than a full-width mega panel. Support areas should use founder-readable labels: Set up support, In-app support widget, Help center, FAQ and tickets, and Review approved answers. Support tools should expose the concrete terms founders understand: Team access, Import support knowledge, Docs / Knowledge Base, FAQ, Changelog, Tickets, Support Board, Feedback review, Slack/email notifications, and Proactive help. Avoid navigation terms such as governance, ontology, canonical, retrieval, and control plane.
+The desktop header should stay product-led and high-intent: Product, Demo, Install, Use Cases, Resources, Pricing, and the primary `Create workspace` CTA. Demo and Install are top-level because the buyer needs to see the product and implementation path quickly. The desktop Product nav item should use the same compact title-only navigation treatment as the Resources dropdown: a Product overview row, a Support areas section, a Support tools section, small icon tiles, and tight two-column rows rather than a full-width mega panel. Support areas should use founder-readable labels: Set up support, In-app support widget, Help center, FAQ and tickets, and Review approved answers. Support tools should expose the concrete terms founders understand: Team access, Import support knowledge, Docs / Knowledge Base, FAQ, Changelog, Tickets, Support Board, Feedback review, Slack/email notifications, and Proactive help. Avoid navigation terms such as governance, ontology, canonical, retrieval, and control plane.
 
 The desktop Resources nav item should use the same compact title-only navigation treatment as the Product dropdown: a Resources overview row, a Resource guides section, small icon tiles, and rows for the highest-priority public resource articles: launch proof checklist, pre-onboarding source package, safe page context, widget verification, approved answers, hosted help setup, runtime safety, and all resources. It must not link to private dashboard, widget runtime, or API routes.
 
@@ -584,7 +584,7 @@ AnswerLattice public routes emit server-rendered Organization/WebSite/SoftwareAp
 ```
 Visitor lands on homepage
   ↓
-Reads launch-ready support hero + embedded demo -> "Start support setup" or "View demo"
+Reads launch-ready support hero + embedded demo -> "Create workspace" or "See 60-sec demo"
   ↓
 Demo page → understands approved answer vs fallback vs support gap
   ↓

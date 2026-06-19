@@ -19,7 +19,7 @@ import type {
     AiMenuManagerScope,
     AiMenuManagerSuggestedReply,
 } from '@type/aiMenuManager';
-import { buildClarificationCard, buildLocalExportCard, buildManualTaskCard, buildProposalCard, buildUnsupportedCard } from './cardBuilder';
+import { buildAnswerCard, buildClarificationCard, buildLocalExportCard, buildManualTaskCard, buildProposalCard, buildUnsupportedCard } from './cardBuilder';
 import {
     findAiMenuManagerCategoryByName,
     findAiMenuManagerItemByName,
@@ -34,6 +34,7 @@ import {
     buildAiMenuManagerPosSetupInfo,
     withAiMenuManagerShareSource,
 } from './localExportUrls';
+import { resolveDomainConversationCommand } from './domainConversationRouter';
 
 export interface AiMenuManagerResolvedCommand {
     actionType: AiMenuManagerActionType;
@@ -45,7 +46,7 @@ export interface AiMenuManagerResolvedCommand {
     patch?: AiMenuManagerProjectPatch;
     patchHash?: string;
     executionMode: AiMenuManagerExecutionMode;
-    cardKind?: 'proposal' | 'manual_task' | 'local_export' | 'clarification' | 'unsupported';
+    cardKind?: 'proposal' | 'manual_task' | 'local_export' | 'answer' | 'clarification' | 'unsupported';
     suggestedReplies?: AiMenuManagerSuggestedReply[];
     localActions?: AiMenuManagerCardPayload['localActions'];
 }
@@ -1130,7 +1131,7 @@ function resolveBulkPriceCommand(text: string, context: AiMenuManagerContextPack
     if (!match) return null;
 
     const direction = /^(increase|raise)$/.test(match[1]) ? 1 : -1;
-    const categoryName = stripCommandWords(match[2], /\b(?:items|item|prices|price|category|section|menu)\b/g);
+    const categoryName = stripCommandWords(match[2], /\b(?:items|item|prices|price|rates|rate|category|section|menu|by)\b/g);
     const category = findAiMenuManagerCategoryByName(context, categoryName);
     if (!category) return null;
 
@@ -1297,7 +1298,9 @@ function resolveDesignCommand(text: string, context: AiMenuManagerContextPacket)
     const color = pickBrandColor(text);
     const mentionsBackground = /\b(background|backdrop|cover image|banner image)\b/.test(normalized);
     const mentionsColor = /\b(theme color|menu color|brand color|accent color|highlight color|color)\b/.test(normalized);
-    const mentionsDisplay = /\b(display option|display options|show|hide|prices|price|images|photos|pictures|category icons|category tabs)\b/.test(normalized);
+    const mentionsDisplay = /\b(display option|display options|category icons|category tabs)\b/.test(normalized)
+        || /\b(show|hide|display|turn on|turn off|enable|disable)\b.*\b(prices?|rates?|images?|photos?|pictures?)\b/.test(normalized)
+        || /\b(prices?|rates?|images?|photos?|pictures?)\b.*\b(show|hide|display|turn on|turn off|enable|disable)\b/.test(normalized);
     const mentionsLayout = /\b(layout|arrangement|list layout|grid layout|card layout)\b/.test(normalized);
     const mentionsTone = /\b(theme|tone|mood|presentation|appearance)\b/.test(normalized);
     const mentionsDesignSurface = /\b(menu|theme|style|design|look|mood|appearance|layout|display|presentation)\b/.test(normalized);
@@ -2428,6 +2431,12 @@ function resolveMobileMoreFlowCommand(text: string, context: AiMenuManagerContex
 function resolveMenuShareExportCommand(text: string, context: AiMenuManagerContextPacket): AiMenuManagerResolvedCommand | null {
     const normalized = normalizeText(text);
     if (/\b(import|extract|fetch|publish|make live|go live)\b/.test(normalized)) return null;
+    if (
+        /\b(ready|safe|ok|okay|can i|should i|is my|working|live|updated|old|stale)\b/.test(normalized)
+        && /\b(share|qr|link|public|customer)\b/.test(normalized)
+    ) {
+        return null;
+    }
 
     const mentionsMenuShare = /\b(menu link|menu url|digital menu link|copy menu|share menu|menu qr|qr for menu|download menu qr|download qr code|open menu link)\b/.test(normalized)
         || (/\b(menu|digital menu)\b/.test(normalized) && /\b(copy|share|link|url|qr)\b/.test(normalized));
@@ -2665,7 +2674,7 @@ export function resolveAiMenuManagerCommand(params: {
     composerContext?: AiMenuManagerCommandContextSelection;
     cardId: string;
     createdAt: string;
-}) {
+}): { resolved: AiMenuManagerResolvedCommand | null; card: AiMenuManagerCardPayload } {
     const scope = scopeForContext(params);
     const menuShareExport = resolveMenuShareExportCommand(params.text, params.context);
     const officialPageExport = resolveOfficialPageExportCommand(params.text, params.context);
@@ -2675,6 +2684,7 @@ export function resolveAiMenuManagerCommand(params: {
     const posSyncExport = resolvePosSyncExportCommand(params.text, params.context);
     const moreFlow = resolveMobileMoreFlowCommand(params.text, params.context);
     const external = resolveExternalUnsupportedCommand(params.text, scope);
+    const domainConversation = resolveDomainConversationCommand(params.text, params.context);
     const generalOutOfScope = resolveGeneralOutOfScopeCommand(params.text, scope);
     const resolved = menuShareExport
         || officialPageExport
@@ -2686,6 +2696,7 @@ export function resolveAiMenuManagerCommand(params: {
         || external
         || resolveSelectedItemsCommand(params.text, params.context, params.composerContext)
         || resolveSelectedCategoryCommand(params.text, params.context, params.composerContext)
+        || domainConversation
         || resolveMenuPublishCommand(params.text, params.context)
         || resolveMenuImportCommand(params.text, params.context)
         || resolveSpecialMenuCommand(params.text, params.context)
@@ -2769,6 +2780,18 @@ export function resolveAiMenuManagerCommand(params: {
                 createdAt: params.createdAt,
                 suggestedReplies: resolved.suggestedReplies,
                 localActions: resolved.localActions || [],
+            })
+        : resolved.cardKind === 'answer'
+            ? buildAnswerCard({
+                cardId: params.cardId,
+                definition: resolved.definition,
+                title: resolved.title,
+                message: resolved.message,
+                scope,
+                entityRefs: resolved.entityRefs,
+                beforeAfterSummary: resolved.beforeAfterSummary,
+                createdAt: params.createdAt,
+                suggestedReplies: resolved.suggestedReplies,
             })
         : resolved.cardKind === 'clarification'
             ? buildClarificationCard({

@@ -5,7 +5,7 @@
 **Internal feature name:** AI Menu Manager
 **Public launch name:** AI Menu Manager
 **In-app owner label:** Menu Manager, with AI badge where useful
-**Last Updated:** June 18, 2026
+**Last Updated:** June 19, 2026
 
 ---
 
@@ -16,6 +16,8 @@ AI Menu Manager lets an owner tell MenuList what changed and receive a prepared 
 The owner should not need to remember whether the work lives in editor, settings, image generation, menu import, special menus, sharing, or publishing. AMM resolves the request, shows what will change, asks for approval when needed, and applies approved work through existing MenuList systems.
 
 The product is not a chatbot. It is a controlled, proposal-driven, approval-safe menu operations layer.
+
+It can answer MenuList-domain questions only from the loaded selected menu context. Those answers are read-only `system_context_answer` cards for menu readiness, missing photos/descriptions, unavailable or hidden entries, share readiness, and price-change guidance. They do not perform provider calls, external lookups, Firestore scans, or mutations.
 
 Core loop:
 
@@ -34,6 +36,7 @@ Owner intent
 ### In Scope
 
 - Chat-like owner input for menu operations.
+- Read-only selected-menu answers for operational questions such as missing photos, unavailable items, menu readiness, and share readiness.
 - Card-based proposals and receipts.
 - Text, upload, click, and voice-input-ready command intake.
 - Action registry for supported MenuList operations.
@@ -48,6 +51,7 @@ Owner intent
 
 - A generic "ask anything" chatbot.
 - Live weather, news, sports, stock, trivia, or general web-answering questions.
+- Provider-backed open-ended consulting answers without a registered read-only or action adapter.
 - A second menu data model.
 - Always-on full transcript storage.
 - Hidden AI writes to live public menu truth.
@@ -220,6 +224,7 @@ This table is the product-level catalog. Exact action IDs, readiness states, sou
 
 | Action type | Owner command example | Manual equivalent | Approval |
 | --- | --- | --- | --- |
+| `system_context_answer` | "What should I fix today?" | Read current selected menu context | None |
 | `item_price_update` | "Tea is 20 now" | Item editor / Command Center | Heavy |
 | `bulk_price_update` | "Increase all dosa by 10" | Command Center bulk pricing | Heavy |
 | `item_availability_update` | "Cold coffee over" | Availability toggle | Normal or manager-permitted |

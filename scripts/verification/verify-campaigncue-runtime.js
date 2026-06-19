@@ -128,6 +128,28 @@ function verifyApiRoutes() {
   assertIncludes(assetDownloadRoute, "requireCampaignCueSessionScope", "CampaignCue asset download route scope guard");
   assertIncludes(assetDownloadRoute, "applyCampaignCueRateLimit", "CampaignCue asset download route rate limit");
   assertIncludes(assetDownloadRoute, "createCampaignCueAssetDownloadServer", "CampaignCue asset download server handoff");
+
+  const apiGuards = read("src/lib/campaigncue/apiGuards.ts");
+  assertIncludes(apiGuards, "parseCampaignCueJsonBody", "CampaignCue shared invalid JSON parser");
+  assertIncludes(apiGuards, "Invalid JSON - CampaignCue API", "CampaignCue invalid JSON security log");
+  assertIncludes(apiGuards, "NextResponse.json({ error: \"Invalid JSON\" }, { status: 400 })", "CampaignCue invalid JSON returns 400");
+  [
+    "src/app/api/campaigncue/workspace/route.ts",
+    "src/app/api/campaigncue/campaigns/route.ts",
+    "src/app/api/campaigncue/campaigns/[campaignId]/actions/route.ts",
+    "src/app/api/campaigncue/assets/route.ts",
+    "src/app/api/campaigncue/design-cue/turns/route.ts",
+    "src/app/api/campaigncue/sources/route.ts",
+    "src/app/api/campaigncue/locations/route.ts",
+    "src/app/api/campaigncue/cue-layers/uploads/route.ts",
+    "src/app/api/campaigncue/cue-layers/designs/[designId]/autosave/route.ts",
+    "src/app/api/campaigncue/cue-layers/designs/[designId]/repair/route.ts",
+    "src/app/api/campaigncue/cue-layers/designs/[designId]/exports/route.ts",
+  ].forEach((relPath) => {
+    const content = read(relPath);
+    assertIncludes(content, "parseCampaignCueJsonBody", `${relPath} parses JSON with shared malformed-body guard`);
+    assertNotIncludes(content, "await request.json()", `${relPath} avoids raw JSON parsing`);
+  });
 }
 
 function verifyServerRuntime() {

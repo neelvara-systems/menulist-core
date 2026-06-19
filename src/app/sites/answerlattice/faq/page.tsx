@@ -169,7 +169,7 @@ const FAQS = [
     },
     {
         question: 'Is pricing per resolved question?',
-        answer: 'No. Public packaging is predictable monthly pricing in INR. Beta setup can start free, paid plans and support-credit top-ups live in AnswerLattice Billing, and usage limits protect infrastructure without punishing support deflection.',
+        answer: 'No. Public packaging is predictable monthly pricing in INR. Beta setup starts with a controlled workspace path, paid plans and support-credit top-ups live in AnswerLattice Billing, and usage limits protect infrastructure without punishing support deflection.',
     },
     {
         question: 'Does widget context decide workspace identity?',
@@ -233,9 +233,7 @@ export default function AnswerlatticeFaqPage() {
                                 basePath={basePath}
                                 href="/demo"
                                 className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
-                            >
-                                See demo
-                            </AnswerlatticeLink>
+                            >See 60-sec demo</AnswerlatticeLink>
                             <AnswerlatticeLink
                                 basePath={basePath}
                                 href="/security-one-pager"
@@ -248,7 +246,7 @@ export default function AnswerlatticeFaqPage() {
                                 href="/get-started"
                                 className="rounded-xl border border-teal-300/20 bg-teal-400/[0.055] px-6 py-3 text-sm font-semibold text-teal-100 transition hover:border-teal-300/35 hover:bg-teal-400/[0.08]"
                             >
-                                Start support setup
+                                Create workspace
                             </AnswerlatticeLink>
                         </div>
                     </div>

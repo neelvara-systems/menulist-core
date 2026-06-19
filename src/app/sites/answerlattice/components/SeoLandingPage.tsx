@@ -55,7 +55,7 @@ export default function SeoLandingPage({
                         event: 'seo_page_cta_clicked',
                     },
                     {
-                        label: secondaryCta || 'See demo',
+                        label: secondaryCta || 'See 60-sec demo',
                         href: '/demo',
                         variant: 'secondary',
                         event: 'seo_page_cta_clicked',
@@ -193,7 +193,7 @@ export default function SeoLandingPage({
                         href="/get-started"
                         className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                     >
-                        Start support setup
+                        Create workspace
                     </AnswerlatticeLink>
                 </div>
             </section>

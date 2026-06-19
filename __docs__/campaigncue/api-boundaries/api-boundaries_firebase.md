@@ -12,6 +12,7 @@
 
 ## Cost Guardrails
 
+- Reject malformed JSON before schema validation or any Firestore read/write path.
 - Store webhook receipts compactly and dedupe by provider event id.
 - Avoid storing raw provider payloads unless needed for short retention diagnostics.
 - Summarize API usage by day/workspace/provider.
@@ -24,4 +25,3 @@
 - All protected APIs require workspace role checks.
 - Partner API keys require rotation, scopes, rate limits, and audit logs.
 - Logs must not include tokens, secrets, raw contact data, or payment payloads.
-

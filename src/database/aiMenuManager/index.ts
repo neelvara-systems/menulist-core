@@ -192,7 +192,7 @@ function normalizeOperations(session: AiMenuManagerSessionDoc | null, projectId:
             operation
             && operation.operationId
             && normalizeId(operation.projectId) === normalizeId(projectId)
-            && ['pending_approval', 'manual_task'].includes(operation.card?.status)
+            && ['pending_approval', 'manual_task', 'answered'].includes(operation.card?.status)
         ))
         .slice(0, MAX_PENDING_OPERATIONS);
 }
@@ -403,7 +403,11 @@ export async function sendAiMenuManagerCommand(
         cards: [operation.card],
         operations: pendingOperations,
         session: nextSession,
-        nextRequiredAction: operation.card.kind === 'clarification' ? 'clarification' : 'owner_approval',
+        nextRequiredAction: operation.card.kind === 'clarification'
+            ? 'clarification'
+            : operation.card.status === 'pending_approval'
+                ? 'owner_approval'
+                : 'none',
     };
 }
 

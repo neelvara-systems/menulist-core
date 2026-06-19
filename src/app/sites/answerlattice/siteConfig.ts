@@ -5,12 +5,13 @@ import {
     ANSWERLATTICE_RESOURCE_ARTICLES,
 } from './publicContent';
 import { ANSWERLATTICE_INSTALL_DOCS } from '@lib/answerlattice/installContract/contract';
+import { getProductDeploymentTarget } from '@constant/deploymentTargets';
 
-export const ANSWERLATTICE_SITE_URL = 'https://answerlattice.com';
+export const ANSWERLATTICE_SITE_URL = getProductDeploymentTarget('answerlattice').url.replace(/\/$/, '');
 export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - 24/7 Support Layer for Founder-Led SaaS';
 
 export const ANSWERLATTICE_SITE_DESCRIPTION =
-    'AnswerLattice turns scattered product knowledge into reviewed support knowledge: approved answers first, fallback when coverage is missing, and visible support gaps for founder review.';
+    'AnswerLattice turns scattered docs, tickets, releases, product context, screenshots, recordings, notes, and repeated replies into approved answers for your help widget, help center, and future AI agents.';
 
 export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     path: string;

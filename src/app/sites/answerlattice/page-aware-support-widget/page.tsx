@@ -43,7 +43,7 @@ export default function PageAwareSupportWidgetPage() {
                     'Let users attach screenshots only when visual context helps.',
                     'Review fallback gaps and approve better answers.',
                 ]}
-                primaryCta="Start support setup"
+                primaryCta="Create workspace"
             />
             <AnswerlatticeFooter basePath={basePath} />
         </>

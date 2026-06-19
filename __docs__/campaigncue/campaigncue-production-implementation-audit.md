@@ -90,6 +90,13 @@ Production readiness depends on external environment setup:
 | Multi-location Center | `src/app/api/campaigncue/locations/route.ts`, types, workspace model, rules, Locations UI | No location-variant runtime or location screen existed. | Added location draft API, locations subcollection, rules/indexes, and Multi-location Center screen. | Server scope prevents cross-store access; writes are server-owned. | Overview reads bounded location list; add-location writes one location and one event. | Owner can add active/draft location records. | Existing docs mark location-specific outputs as required for group campaigns. | Type check passed. | implementation_done, audit_done, docs_aligned, prod_ready for location records; external group automation still blocked |
 | Permissions and Billing | guards, feature flags, workspace role fields, Billing UI | Billing provider was not configured; no owner-facing billing/permissions posture screen existed. | Added role fields, server scope, billing-disabled posture, env validation, and Plan/Access screen. | Spend/direct actions blocked server-side. | No checkout/credit writes. | Owner sees billing status, role, feature flags, and members without hidden spend. | Product docs updated. | Type check passed. | implementation_done for permissions posture; billing checkout blocked externally |
 
+## June 19, 2026 API Body Guard Pass
+
+- Protected body-reading CampaignCue routes now use `parseCampaignCueJsonBody()` from `src/lib/campaigncue/apiGuards.ts` before Zod validation: workspace PATCH, campaign create/action, asset registration, source input save, location create, Design Cue turns, and CueLayers upload/autosave/repair/export.
+- Malformed JSON now returns `400 Invalid JSON` with CampaignCue security logging instead of reaching the generic runtime error mapper.
+- `npm run verify:campaigncue` now enforces the shared parser and rejects direct `await request.json()` usage in those route files.
+- Firebase cost impact: no new reads, writes, listeners, collections, indexes, Storage objects, Cloud Functions, provider calls, schedulers, or deploys. The guard runs before Firestore work.
+
 ## Commands Run
 
 - Current CampaignCue Firebase cost hardening pass on June 14, 2026: `node scripts/verification/verify-campaigncue-runtime.js` with 749 checks, `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, and `git diff --check` passed. `npm run build` was not run because production builds are opt-in for this repo.

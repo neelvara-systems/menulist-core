@@ -97,10 +97,10 @@ export default function AnswerlatticeAboutPage() {
                             basePath={basePath}
                             href="/get-started"
                             data-answerlattice-event="about_cta_clicked"
-                            data-answerlattice-label="start_support_setup"
+                            data-answerlattice-label="create_workspace"
                             className="inline-block rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                         >
-                            Start support setup
+                            Create workspace
                         </AnswerlatticeLink>
                     </div>
                 </section>

@@ -108,6 +108,7 @@ export type AiMenuManagerActionType =
     | "print_menu_open"
     | "help_screen_open"
     | "system_manual_task_create"
+    | "system_context_answer"
     | "system_clarification_request"
     | "system_unsupported_action";
 
@@ -140,6 +141,7 @@ export type AiMenuManagerProposalStatus =
     | "failed"
     | "cancelled"
     | "rejected"
+    | "answered"
     | "manual_task";
 
 export type AiMenuManagerExecutionStatus = "not_started" | "locked" | "executed" | "failed";
@@ -147,6 +149,7 @@ export type AiMenuManagerExecutionStatus = "not_started" | "locked" | "executed"
 export type AiMenuManagerCardKind =
     | "proposal"
     | "receipt"
+    | "answer"
     | "manual_task"
     | "clarification"
     | "unsupported";

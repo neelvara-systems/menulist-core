@@ -70,6 +70,7 @@
 | Wrong tenant/store | Route rejects and logs security event. |
 | Valid session with another store's project ID | Route rejects or returns no eligible kit before generation/export. |
 | Invalid body | Zod validation rejects. |
+| Malformed JSON body | Route returns `400 Invalid JSON` and logs a security event instead of generic `500`. |
 | Rate limit exceeded | Route rejects before expensive work. |
 | Safe Mode on | Provider calls are blocked. |
 | Insufficient AI capacity | Provider call is not made. |

@@ -44,20 +44,18 @@ export default function HeroSection({ basePath = '' }: { basePath?: string }) {
                             basePath={basePath}
                             href="/get-started"
                             data-answerlattice-event="hero_cta_clicked"
-                            data-answerlattice-label="start_support_setup"
+                            data-answerlattice-label="create_workspace"
                             className="al-page-hero__button al-page-hero__button--primary"
                         >
-                            Start support setup
+                            Create workspace
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
                             href="/demo"
                             data-answerlattice-event="hero_cta_clicked"
-                            data-answerlattice-label="see_demo"
+                            data-answerlattice-label="see_60_sec_demo"
                             className="al-page-hero__button al-page-hero__button--secondary"
-                        >
-                            See demo
-                        </AnswerlatticeLink>
+                        >See 60-sec demo</AnswerlatticeLink>
                     </div>
 
                     <AnswerlatticeLink

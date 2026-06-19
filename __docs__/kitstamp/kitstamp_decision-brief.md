@@ -59,6 +59,20 @@ KitStamp should own this narrower job:
 
 > turn source material into a controlled, approved content kit.
 
+## June 19, 2026 Web Research Refresh
+
+Current platform research strengthens the narrow KitStamp decision. It does not justify turning KitStamp into a design suite, publisher, PIM, DAM, or campaign system.
+
+| Source signal | KitStamp decision |
+| --- | --- |
+| Adobe Firefly Services targets enterprise-scale content production, batch workflows, custom models, video, 3D, and repetitive creative-production automation. Source: https://news.adobe.com/news/2025/03/adobe-firefly-services-custom-models-unlock-on-brand-content-production | Do not compete with Adobe on enterprise creative supply chain or production volume. KitStamp should serve smaller operators that need source-backed readiness and handoff. |
+| Photoroom API focuses on background removal/replacement, flat lays, consistent catalog output, and product-photo processing at scale. Source: https://www.photoroom.com/api | Do not reduce KitStamp to product-photo automation. Images are one approved asset type inside a broader kit with text, translations, notes, source facts, and manifest. |
+| C2PA describes Content Credentials as an open standard for content provenance and edit history. Source: https://c2pa.org/ | Keep source hash, asset/text hash, review events, manifest hash, and provenance report as first-class architecture. Treat C2PA as a future export/provenance direction, not a v1 dependency. |
+| Shopify CSV import can fail on missing headers, wrong case, encoding issues, file size, and included-column overwrite behavior. Source: https://help.shopify.com/en/manual/products/import-export/import-products | Export adapters must be file-only, versioned, preflighted, and honest. No downstream acceptance guarantee, no silent API push, and no credential storage in first implementation. |
+| Public search shows existing `Visual Meta` usage around Visual Meta GmbH / LadenZeile / ShopAlike. Source: https://www.creative-city-berlin.de/en/network/member/visual_meta_2/ | Keep the existing naming lock: KitStamp / `kitstamp` / `KS`. Do not reintroduce VisualMeta, visual-meta, or `VM` into active implementation. |
+
+Cost impact: no Firebase cost change. This is documentation-only market validation.
+
 ## Target Buyer
 
 Best-fit buyers:

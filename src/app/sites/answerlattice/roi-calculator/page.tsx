@@ -56,14 +56,14 @@ export default function AnswerlatticeRoiCalculatorPage() {
                 <section className="border-t border-white/[0.06] px-6 py-16 text-center">
                     <h2 className="text-3xl font-bold text-white">Prove the loop before upgrading.</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Start free, map the first pages, import starter knowledge, install the widget, and watch which questions become approved answers or review work.
+                        Create the workspace, map the first pages, import starter knowledge, install the widget, and watch which questions become approved answers or review work.
                     </p>
                     <div className="mt-8 flex flex-wrap justify-center gap-3">
                         <AnswerlatticeLink basePath={basePath} href="/pricing" className="rounded-xl border border-white/[0.12] px-6 py-3 text-sm font-semibold text-[#d6d6ef] hover:border-white/[0.24]">
                             View pricing
                         </AnswerlatticeLink>
                         <AnswerlatticeLink basePath={basePath} href="/get-started" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800">
-                            Start support setup
+                            Create workspace
                         </AnswerlatticeLink>
                     </div>
                 </section>

@@ -220,6 +220,9 @@ export default function AiMenuManagerRoute() {
         projectSelectorItems.find((project) => project.id === selectedProjectId) || null
     ), [projectSelectorItems, selectedProjectId]);
     const cards = useMemo(() => operations.map((operation) => operation.card), [operations]);
+    const pendingSummaryCards = useMemo(() => (
+        cards.filter((card) => card.kind === 'proposal' || card.kind === 'manual_task')
+    ), [cards]);
 
     const loadProjects = useCallback(async () => {
         if (!storeId) return;
@@ -1225,9 +1228,9 @@ export default function AiMenuManagerRoute() {
                 <div style={{ height: '100%', minHeight: 0, overflowY: 'auto', paddingRight: 4 }}>
                     <Space direction="vertical" size={16} style={{ width: '100%' }}>
                         <Card title="Pending cards" style={{ borderRadius: 8 }}>
-                            {cards.length ? (
+                            {pendingSummaryCards.length ? (
                                 <Space direction="vertical" size={8} style={{ width: '100%' }}>
-                                    {cards.map((card) => (
+                                    {pendingSummaryCards.map((card) => (
                                         <div key={`summary_${card.cardId}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                                             <Text>{card.title}</Text>
                                             <Tag color={card.risk === 'high' ? 'red' : 'blue'}>{card.status}</Tag>

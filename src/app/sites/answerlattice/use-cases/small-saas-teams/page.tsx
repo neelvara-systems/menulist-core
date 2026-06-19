@@ -36,8 +36,8 @@ export default function SmallSaasTeamsUseCasePage() {
                 'Install the widget and publish hosted help from the same reviewed knowledge.',
                 'Review support gaps weekly before they become official answers.',
             ]}
-            primaryCta="Start support setup"
-            secondaryCta="See demo"
+            primaryCta="Create workspace"
+            secondaryCta="See 60-sec demo"
         />
     );
 }

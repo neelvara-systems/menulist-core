@@ -36,8 +36,8 @@ export default function VibeCodedSaasUseCasePage() {
                 'Install the in-app widget and pass safe page context.',
                 'Review repeated misses before publishing official answers.',
             ]}
-            primaryCta="Start support setup"
-            secondaryCta="See demo"
+            primaryCta="Create workspace"
+            secondaryCta="See 60-sec demo"
         />
     );
 }

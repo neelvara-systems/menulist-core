@@ -3,6 +3,17 @@ import { z } from "zod";
 
 const growthOSActionTypeSchema = z.enum(GROWTHOS_ALLOWED_ACTION_TYPES as [string, ...string[]]);
 
+export async function parseGrowthOSJsonBody(request: Request): Promise<
+    | { data: unknown; success: true }
+    | { success: false }
+> {
+    try {
+        return { data: await request.json(), success: true };
+    } catch {
+        return { success: false };
+    }
+}
+
 export const GrowthOSRefreshRequestSchema = z.object({
     projectId: z.string().min(1).max(100),
     forceRefresh: z.boolean().optional().default(false),

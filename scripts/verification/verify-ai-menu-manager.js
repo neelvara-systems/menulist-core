@@ -14,6 +14,7 @@ const requiredFiles = [
   'src/lib/ai-menu-manager/approvalPolicy.ts',
   'src/lib/ai-menu-manager/composerContext.ts',
   'src/lib/ai-menu-manager/commandResolver.ts',
+  'src/lib/ai-menu-manager/domainConversationRouter.ts',
   'src/lib/ai-menu-manager/actions/projectPatches.ts',
   'src/database/aiMenuManager/server.ts',
   'src/database/aiMenuManager/index.ts',
@@ -68,6 +69,7 @@ const requiredActionTypes = [
   'billing_screen_open',
   'feedback_link_share',
   'feedback_qr_download',
+  'system_context_answer',
   'system_unsupported_action',
 ];
 
@@ -144,6 +146,7 @@ const sendCommandBlock = (clientDal.split('export async function sendAiMenuManag
 const completionBlock = (clientDal.split('export async function completeAiMenuManagerClientOperation')[1] || '').split('export async function submitAiMenuManagerProposalAction')[0] || '';
 assert(sendCommandBlock.includes('sessionSnapshot'), 'AMM command submit must accept the loaded compact session snapshot');
 assert(sendCommandBlock.includes('setDoc(sessionRef, sessionPayload, { merge: true })'), 'AMM command submit must write the compact session without a transaction read');
+assert(clientDal.includes("'answered'"), 'AMM compact session must keep read-only answer cards without proposal docs');
 assert(!sendCommandBlock.includes('runTransaction'), 'AMM command submit must not transaction-read the compact session');
 assert(completionBlock.includes('sessionSnapshot'), 'AMM completion/cancel must accept the loaded compact session snapshot');
 assert(completionBlock.includes('getMatchingOperationSessionSnapshot'), 'AMM completion/cancel must verify the loaded compact session scope before writing');
@@ -183,7 +186,11 @@ assert(contextPacket.includes('exactMatches.length > 1') && contextPacket.includ
 assert(contextPacket.includes('findAiMenuManagerCategoryByName'), 'Category name resolver missing');
 
 const commandResolver = read('src/lib/ai-menu-manager/commandResolver.ts');
+const domainConversationRouter = read('src/lib/ai-menu-manager/domainConversationRouter.ts');
 assert(commandResolver.includes('khatam'), 'Mixed-language availability commands must include khatam handling');
+assert(commandResolver.includes('resolveDomainConversationCommand'), 'AMM command resolver must support read-only MenuList-domain answers');
+assert(domainConversationRouter.includes('system_context_answer') && domainConversationRouter.includes('Menu truth'), 'Domain conversation answers must use explicit read-only context cards');
+assert(domainConversationRouter.includes('missingImageItems') && domainConversationRouter.includes('missingDescriptionItems') && domainConversationRouter.includes('unavailableItems'), 'Domain conversation answers must cover menu content and availability checks');
 assert(commandResolver.includes('resolveFeaturedSectionCommand'), 'Featured section commands must resolve through a registered adapter');
 assert(commandResolver.includes('decision_blocks_update'), 'Featured section commands must use the decision block project patch');
 assert(commandResolver.includes('resolveCategoryVisibilityCommand'), 'Category visibility commands must resolve through a registered adapter');
@@ -241,6 +248,7 @@ const resolverFixtures = [
   ['mark Cold coffee as bestseller', 'item_bestseller_update', 'proposal'],
   ['set Cold coffee prep time to 10 minutes', 'item_prep_time_update', 'proposal'],
   ['increase all drinks by 10', 'bulk_price_update', 'proposal'],
+  ['increase all drinks price by 10', 'bulk_price_update', 'proposal'],
   ['increase all drinks by 10 percent', 'bulk_price_update', 'proposal'],
   ['mark all drinks unavailable', 'bulk_availability_update', 'proposal'],
   ['Selected items: Masala Tea, Cold coffee. increase price by 10', 'bulk_price_update', 'proposal'],
@@ -297,6 +305,12 @@ const resolverFixtures = [
   ['Publish this menu', 'menu_publish', 'manual_task'],
   ['Update this on Zomato', 'system_unsupported_action', 'unsupported'],
   ['Post this on Instagram', 'system_unsupported_action', 'unsupported'],
+  ['What should I fix today?', 'system_context_answer', 'answer'],
+  ['Which items have no photos?', 'system_context_answer', 'answer'],
+  ['Which items are missing descriptions?', 'system_context_answer', 'answer'],
+  ['What items are unavailable?', 'system_context_answer', 'answer'],
+  ['Is my menu ready to share?', 'system_context_answer', 'answer'],
+  ['Can I increase Masala Tea price?', 'system_context_answer', 'answer'],
   ["What is today's weather?", 'system_unsupported_action', 'unsupported'],
   ['Tell me cricket score', 'system_unsupported_action', 'unsupported'],
 ];
@@ -313,6 +327,30 @@ for (const [text, expectedActionType, expectedKind] of resolverFixtures) {
   assert(
     result.card.actionType === expectedActionType && result.card.kind === expectedKind,
     `Resolver fixture failed for "${text}": expected ${expectedActionType}/${expectedKind}, got ${result.card.actionType}/${result.card.kind}`,
+  );
+}
+for (const text of [
+  'What should I fix today?',
+  'Which items have no photos?',
+  'Is my menu ready to share?',
+]) {
+  const result = resolveAiMenuManagerCommand({
+    text,
+    tId: 't1',
+    sId: 's1',
+    projectId: 'project-1',
+    context: resolverFixtureContext,
+    cardId: `domain-answer-${text}`,
+    createdAt: '2026-06-18T00:00:00.000Z',
+  });
+  assert(
+    result.card.kind === 'answer'
+      && result.card.actionType === 'system_context_answer'
+      && result.card.status === 'answered'
+      && !result.card.actions.includes('approve')
+      && !result.card.actions.includes('mark_done')
+      && !result.resolved?.patch,
+    `Domain answer fixture failed for "${text}": answers must be read-only cards without approval or patch writes`,
   );
 }
 for (const text of ['Update this on Zomato', 'Post this on Instagram']) {

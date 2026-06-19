@@ -30,6 +30,19 @@ Future provider work must not reuse the export/download action path silently. It
 - provider result imports,
 - manual export fallback.
 
+## June 19, 2026 Provider Preconditions
+
+Current platform research confirms that direct provider work is not a small follow-up to export/download. Each provider needs its own approval, policy, cost, and retry model.
+
+| Provider surface | Preconditions before activation |
+| --- | --- |
+| Google Business Profile posts | OAuth scopes, location ownership, post type mapping, media source URL handling, offer/event date validation, idempotent post jobs, quota and API-access proof, owner approval, and manual export fallback. |
+| Google Business Profile performance import | Approved GBP API access, non-zero quota, metric confidence labels, and no sales/ROI claims unless the provider metric directly supports the statement. |
+| WhatsApp direct send | Recipient opt-in proof, message-category selection, approved templates for outbound messages outside the 24-hour window, opt-out/suppression handling, category-aware delivered-message cost preview, human escalation path, and quality-tier monitoring. |
+| Meta/Instagram/Facebook posting or ads | Account authorization, policy preflight, media rights proof, owner spend approval for ads, idempotent mutate jobs, and manual pack fallback. |
+
+If these preconditions are missing, CampaignCue must continue to produce download/export/manual handoff outputs only.
+
 ## Day-One Non-Goals
 
 - No direct WhatsApp send.

@@ -16,20 +16,20 @@ export default function CTASection({ basePath = '' }: { basePath?: string }) {
                         basePath={basePath}
                         href="/get-started"
                         data-answerlattice-event="final_cta_clicked"
-                        data-answerlattice-label="start_support_setup"
+                        data-answerlattice-label="create_workspace"
                         className="al-final-cta__button al-final-cta__button--primary"
                     >
-                        Start support setup
+                        Create workspace
                         <LuArrowRight aria-hidden size={16} />
                     </AnswerlatticeLink>
                     <AnswerlatticeLink
                         basePath={basePath}
                         href="/demo"
                         data-answerlattice-event="final_cta_clicked"
-                        data-answerlattice-label="see_demo"
+                        data-answerlattice-label="see_60_sec_demo"
                         className="al-final-cta__button al-final-cta__button--secondary"
                     >
-                        View demo
+                        See 60-sec demo
                         <LuArrowRight aria-hidden size={16} />
                     </AnswerlatticeLink>
                 </div>

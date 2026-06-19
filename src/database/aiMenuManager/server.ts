@@ -237,7 +237,7 @@ export async function getAiMenuManagerInbox(params: {
     const cards = proposalSnaps
         .filter((snap) => snap.exists)
         .map((snap) => snap.data() as AiMenuManagerProposalDoc)
-        .filter((proposal) => ['pending_approval', 'manual_task'].includes(proposal.status))
+        .filter((proposal) => ['pending_approval', 'manual_task', 'answered'].includes(proposal.status))
         .map((proposal) => proposal.cardPayload);
 
     return {

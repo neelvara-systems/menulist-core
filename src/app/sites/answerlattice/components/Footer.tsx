@@ -34,7 +34,7 @@ const FOOTER_LINKS = {
         { label: 'Engineering Teams', href: '/use-cases/engineering' },
         { label: 'Demo', href: '/demo' },
         { label: 'Pricing', href: '/pricing' },
-        { label: 'Start support setup', href: '/get-started' },
+        { label: 'Create workspace', href: '/get-started' },
         { label: 'Page-Aware Widget', href: '/page-aware-support-widget' },
         { label: 'Hosted Help Center', href: '/hosted-help-center-for-saas' },
     ],
@@ -78,12 +78,10 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                         </p>
                         <div className="al-site-footer__actions">
                             <AnswerlatticeLink basePath={basePath} href="/get-started" className="al-site-footer__cta">
-                                Start support setup
+                                Create workspace
                                 <LuArrowRight aria-hidden size={16} />
                             </AnswerlatticeLink>
-                            <AnswerlatticeLink basePath={basePath} href="/demo" className="al-site-footer__plain-link">
-                                See demo
-                            </AnswerlatticeLink>
+                            <AnswerlatticeLink basePath={basePath} href="/demo" className="al-site-footer__plain-link">See 60-sec demo</AnswerlatticeLink>
                         </div>
                     </div>
 

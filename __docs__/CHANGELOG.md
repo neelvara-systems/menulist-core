@@ -6,6 +6,55 @@
 
 ---
 
+## June 20, 2026 - Menu Manager Context Answers
+
+### Changed
+
+- **Menu Manager can answer selected-menu checks** - Owners can ask questions such as "What should I fix today?", "Which items have no photos?", and "Is my menu ready to share?". Menu Manager answers from the loaded selected menu context only.
+- **Direct menu updates keep priority** - Commands such as "increase all drinks price by 10" still create the matching proposal card instead of a read-only answer.
+
+### Fixed
+
+- **Read-only cards no longer appear as pending work** - Context answers and unsupported out-of-scope questions stay in the chat timeline and do not appear in the desktop Pending cards summary.
+
+### Cost
+
+- **Compact session write only** - These read-only answers use the selected project context already loaded in the owner screen. They add no provider calls, external lookups, proposal docs, project/store writes, or extra Firestore reads.
+
+## June 19, 2026 - Product Research Boundary Addenda
+
+### Changed
+
+- **Growth Kits market evidence updated** - Current SMB marketing, Google Pomelli, Canva AI 2.0, and local-review research now supports the existing `Today's Sales Pack` boundary without turning GrowthOS into a standalone product.
+- **CampaignCue provider boundary tightened** - Google Business Profile and WhatsApp platform research now documents the required preconditions before direct posting, direct send, provider metrics, or provider mutation can move beyond export/download.
+- **KitStamp market validation refreshed** - Adobe Firefly Services, Photoroom API, C2PA, Shopify CSV, and Visual Meta naming research now reinforce KitStamp as a separate source-backed content readiness product using `KS`, not `VM`.
+
+### Cost
+
+- **No runtime cost added** - These are documentation and research updates only. They add no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, indexes, routes, app code, or deploys.
+
+## June 19, 2026 - Growth Kits API Hardening
+
+### Fixed
+
+- **Growth Kits invalid requests handled cleanly** - Refresh, kit generation, kit export, and review-reply APIs now return `400 Invalid JSON` for malformed request bodies instead of falling through to a generic server error.
+- **Growth Kits verifier expanded** - `npm run verify:growthos` now checks that GrowthOS API routes keep the invalid-JSON guard in place.
+
+### Cost
+
+- **No runtime cost added** - This is request-validation hardening only. It adds no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, indexes, new routes, or deploys.
+
+## June 19, 2026 - CampaignCue API Hardening
+
+### Fixed
+
+- **CampaignCue malformed request bodies handled cleanly** - Workspace PATCH, campaign create/action, asset, source, location, Design Cue, and CueLayers upload/autosave/repair/export routes now use a shared CampaignCue JSON parser that returns `400 Invalid JSON` before schema validation.
+- **CampaignCue verifier expanded** - `npm run verify:campaigncue` now checks that body-reading CampaignCue routes use the shared malformed-body guard and do not call `request.json()` directly.
+
+### Cost
+
+- **No runtime cost added** - This is request-validation and security-logging hardening only. It adds no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, indexes, new routes, or deploys.
+
 ## June 18, 2026 - CampaignCue Date And Time Handling
 
 ### Changed

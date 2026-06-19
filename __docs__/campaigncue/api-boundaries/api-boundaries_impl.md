@@ -19,6 +19,7 @@ Current runtime exposes only the internal app APIs listed below. Provider adapte
 ## Required Patterns
 
 - Zod validation at request boundaries.
+- Malformed JSON body handling before Zod validation for every body-reading route.
 - `withAuth` or product-equivalent auth wrapper for protected routes.
 - Workspace membership and role checks before data access.
 - Idempotency keys for mutations and provider callbacks.
@@ -63,6 +64,7 @@ Protected endpoints return safe owner/operator codes:
 | `Unauthorized` response from auth middleware | `401` | The user is not signed in. |
 | `CampaignCue workspace requires an onboarded account` | `400` | The signed-in session does not carry tenant, store, or user scope. |
 | `Forbidden` | `403` | The signed-in user failed tenant/store isolation checks. |
+| `Invalid JSON` | `400` | The request body could not be parsed as JSON. Body-reading routes return this before schema validation and before any Firestore write path. |
 | `CAMPAIGNCUE_FIREBASE_UNAVAILABLE` | `503` | The dedicated CampaignCue Firebase project is missing, unreachable, or denied for the current environment. |
 | `CAMPAIGNCUE_IDEMPOTENCY_CONFLICT` | `409` | A duplicate request is still running or the idempotency key was reused for another action/campaign. |
 | `CAMPAIGNCUE_RUNTIME_ERROR` | `500` | Unexpected server failure after auth/scope validation. |

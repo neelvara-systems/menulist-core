@@ -73,7 +73,7 @@ const CAPABILITY_PROOF = [
     { label: 'Answer order', value: 'Approved answers come before fallback.' },
     { label: 'Missing coverage', value: 'Fallback creates tickets and support gaps.' },
     { label: 'Founder review', value: 'You approve what becomes official support.' },
-    { label: 'Support surfaces', value: 'Widget, hosted help, FAQs, and changelog share one layer.' },
+    { label: 'User questions', value: 'Billing, onboarding, settings, releases, and errors stay covered.' },
 ];
 
 const SUITE_BUILD_STEPS = [
@@ -503,26 +503,26 @@ function HomepageHero({ basePath }: { basePath: string }) {
                         ))}
                     </h1>
                     <p className="al-home-hero__subtitle mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-[#a0a0c0] sm:text-xl">
-                        Turn scattered docs, tickets, releases, screenshots, notes, and repeated replies into reviewed support knowledge. AnswerLattice serves approved answers first, opens fallback when coverage is missing, and turns every miss into review work.
+                        AnswerLattice turns scattered docs, tickets, releases, product context, screenshots, recordings, notes, and repeated replies into approved answers for your help widget, help center, and future AI agents.
                     </p>
                     <div className="al-home-hero__actions mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
                             basePath={basePath}
                             href="/get-started"
                             data-answerlattice-event="hero_cta_clicked"
-                            data-answerlattice-label="start_support_setup"
+                            data-answerlattice-label="create_workspace"
                             className="al-page-hero__button al-page-hero__button--primary"
                         >
-                            Start support setup
+                            Create workspace
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
                             href="/demo"
                             data-answerlattice-event="hero_cta_clicked"
-                            data-answerlattice-label="see_how_it_works"
+                            data-answerlattice-label="see_60_sec_demo"
                             className="al-page-hero__button al-page-hero__button--secondary"
                         >
-                            See how it works
+                            See 60-sec demo
                         </AnswerlatticeLink>
                     </div>
                 </div>

@@ -42,7 +42,7 @@ export default function HostedHelpCenterForSaasPage() {
                     'Configure hosted help domain settings.',
                     'Publish reviewed help content and keep answer gaps visible.',
                 ]}
-                primaryCta="Start support setup"
+                primaryCta="Create workspace"
             />
             <AnswerlatticeFooter basePath={basePath} />
         </>

@@ -32,6 +32,20 @@ Not allowed first:
 - downstream API push
 - billing-enabled provider calls
 
+## June 19, 2026 Research-Informed Lock Addendum
+
+Current external platform research does not change the foundation-first implementation order. It adds these engineering constraints before any future expansion:
+
+| Area | Lock decision |
+| --- | --- |
+| Adobe/enterprise creative production | Do not design v1 around high-volume creative automation, custom model management, or broad production workflow builders. Those are Adobe-class surfaces, not the KitStamp wedge. |
+| Product-photo APIs | Do not make background removal or image enhancement the primary product model. Candidate images must stay bound to source snapshots, review state, and export eligibility. |
+| Content provenance | Preserve source hash, asset hash, text hash, review event references, export kit references, and manifest hash from v1. C2PA/Content Credentials may be added later as sidecar or embedded credentials, but v1 must not depend on external credential adoption. |
+| Shopify/catalog exports | Any export adapter must be file-only, versioned, preflighted, and explicit about downstream acceptance risk. Do not store Shopify/PIM/DAM credentials or perform API push in the first implementation. |
+| Naming | Active implementation must use `KitStamp`, `kitstamp`, and `KS` only. `VisualMeta`, `visual-meta`, `visualmeta`, `visual_meta`, and `VM` remain retired. |
+
+Cost impact: no Firebase, Storage, Functions, provider, scheduler, rules, index, or route change. This lock addendum is documentation-only.
+
 ## 2. Environment Matrix
 
 | Environment | Route/domain | Firebase target | Status |

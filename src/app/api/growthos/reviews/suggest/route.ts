@@ -8,7 +8,7 @@ import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
-import { GrowthOSReviewSuggestRequestSchema } from "@lib/validation/growthosSchemas";
+import { GrowthOSReviewSuggestRequestSchema, parseGrowthOSJsonBody } from "@lib/validation/growthosSchemas";
 import { NextResponse } from "next/server";
 import { verifyTenantAccess, withAuth } from "../../../../../middleware/auth";
 
@@ -31,7 +31,16 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Rate limit exceeded. Please try again in a minute." }, { status: 429 });
         }
 
-        const validation = validateAPIInput(GrowthOSReviewSuggestRequestSchema, await request.json());
+        const jsonBody = await parseGrowthOSJsonBody(request);
+        if (!jsonBody.success) {
+            logger.security("Invalid JSON - GrowthOS Review Guard API", {
+                ...buildSecurityContext(session, request),
+                endpoint: "/api/growthos/reviews/suggest",
+            }, "medium");
+            return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+        }
+
+        const validation = validateAPIInput(GrowthOSReviewSuggestRequestSchema, jsonBody.data);
         if (!validation.success) {
             const errorMsg = "error" in validation ? validation.error : "Invalid input";
             logger.security("GrowthOS Review Guard Input Validation Failed", {

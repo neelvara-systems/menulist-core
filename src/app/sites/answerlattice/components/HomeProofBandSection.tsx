@@ -50,7 +50,7 @@ const PROOF_POINTS: ProofPoint[] = [
 ];
 
 const PROOF_LINKS = [
-    { href: '/demo', label: 'Static demo' },
+    { href: '/demo', label: 'Product simulation' },
     { href: '/proof', label: 'Proof pack' },
     { href: '/roi-calculator', label: 'ROI calculator' },
     { href: '/security-one-pager', label: 'Security one-pager' },

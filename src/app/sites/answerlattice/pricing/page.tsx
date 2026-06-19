@@ -72,6 +72,21 @@ const SHARED_INCLUDED = [
 
 const supportCreditPack = ANSWERLATTICE_CREDIT_PACKS_LIST[0];
 
+const CREDIT_EXAMPLES = [
+    {
+        title: 'Starter setup month',
+        description: 'Use credits for first answer drafts, support-gap review, and selected screenshot or recording extraction while normal widget loading and help browsing stay outside credit usage.',
+    },
+    {
+        title: 'Launch week spike',
+        description: 'When onboarding, billing, and setup questions arrive together, credits keep fallback handling and review work bounded without changing the plan immediately.',
+    },
+    {
+        title: 'Media-heavy intake',
+        description: 'If your best support truth lives inside screenshots, short recordings, or messy notes, credits cover the paid extraction work that turns those sources into reviewed support knowledge.',
+    },
+];
+
 export default function AnswerlatticePricingPage() {
     const basePath = getBasePath();
 
@@ -82,14 +97,14 @@ export default function AnswerlatticePricingPage() {
             <main className="al-page-flow">
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Pricing</p>
-                    <h1 className="text-4xl font-bold sm:text-5xl">Start free. Upgrade when support volume grows.</h1>
+                    <h1 className="text-4xl font-bold sm:text-5xl">Choose capacity when support volume is real.</h1>
                     <p className="mx-auto mt-4 max-w-lg text-lg text-[#a0a0c0]">
-                        Create the beta workspace, install the widget, and prove the support loop before choosing monthly capacity.
+                        Create the workspace, install the widget, and prove the support loop before choosing monthly capacity.
                     </p>
                     <PageProofStrip
                         className="mx-auto mt-8 max-w-6xl text-left"
                         items={[
-                            { label: 'Free setup', value: 'Create workspace and verify the first support layer' },
+                            { label: 'Setup path', value: 'Create the workspace and verify the first support layer' },
                             { label: 'Paid capacity', value: 'Plans add monthly support credits and higher support volume' },
                             { label: 'Credit use', value: 'AI-assisted answers, fallback, review work, and media extraction stay bounded' },
                             { label: 'Not charged for', value: 'Normal widget loading, selected text import, and public help browsing' },
@@ -101,7 +116,7 @@ export default function AnswerlatticePricingPage() {
                     <div className="mx-auto max-w-6xl rounded-2xl border border-teal-500/25 bg-teal-500/[0.07] p-6">
                         <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr] md:items-center">
                             <div>
-                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Beta setup</p>
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-teal-200">Controlled setup</p>
                                 <h2 className="text-2xl font-bold text-white">Create the workspace first. Upgrade when the support layer is ready.</h2>
                                 <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
                                     Public onboarding currently creates the AnswerLattice beta workspace, product account bridge, subscription summary, and one-time widget key. Paid plans and top-ups run through the AnswerLattice Billing screen with product-scoped Razorpay requests.
@@ -111,10 +126,10 @@ export default function AnswerlatticePricingPage() {
                                 basePath={basePath}
                                 href="/get-started"
                                 data-answerlattice-event="pricing_beta_setup_clicked"
-                                data-answerlattice-label="beta_setup_banner"
+                                data-answerlattice-label="controlled_setup_banner"
                                 className="rounded-xl bg-teal-700 px-6 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                             >
-                                Start support setup
+                                Create workspace
                             </AnswerlatticeLink>
                         </div>
                     </div>
@@ -159,7 +174,7 @@ export default function AnswerlatticePricingPage() {
                                             : 'border border-white/[0.12] bg-white/[0.03] text-[#d6d6ef] hover:border-white/[0.24]'
                                     }`}
                                 >
-                                    Start support setup
+                                    Create workspace
                                 </AnswerlatticeLink>
 
                                 <ul className="space-y-3">
@@ -215,6 +230,14 @@ export default function AnswerlatticePricingPage() {
                                 </span>
                             </div>
                         </div>
+                        <div className="mt-6 grid gap-3 md:grid-cols-3">
+                            {CREDIT_EXAMPLES.map((example) => (
+                                <article key={example.title} className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5">
+                                    <h3 className="text-base font-semibold text-white">{example.title}</h3>
+                                    <p className="mt-3 text-sm leading-relaxed text-[#8f8faa]">{example.description}</p>
+                                </article>
+                            ))}
+                        </div>
                     </div>
                     <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-[#6b6b8a]">
                         Public packaging stays monthly and INR-first. Usage limits protect infrastructure, but AnswerLattice is not priced as a punishment for successful support deflection.
@@ -223,16 +246,16 @@ export default function AnswerlatticePricingPage() {
                 <section className="border-b border-white/[0.06] px-6 py-16 text-center">
                     <h2 className="text-3xl font-bold">Not sure which plan fits?</h2>
                     <p className="mx-auto mt-4 max-w-2xl text-lg text-[#a0a0c0]">
-                        Start with the free setup before launch or early support volume. Upgrade when users, pages, and support questions grow.
+                        Start with the setup path before launch or early support volume. Upgrade when users, pages, and support questions grow.
                     </p>
                     <AnswerlatticeLink
                         basePath={basePath}
                         href="/get-started"
                         data-answerlattice-event="pricing_final_cta_clicked"
-                        data-answerlattice-label="start_support_setup"
+                        data-answerlattice-label="create_workspace"
                         className="mt-8 inline-block rounded-xl bg-teal-700 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-800"
                     >
-                        Start support setup
+                        Create workspace
                     </AnswerlatticeLink>
                 </section>
             </main>

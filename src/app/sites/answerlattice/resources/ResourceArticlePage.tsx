@@ -83,7 +83,7 @@ export default function AnswerlatticeResourceArticlePage({ articlePath }: { arti
                                 data-answerlattice-label={article.title}
                                 className="al-page-hero__button al-page-hero__button--secondary"
                             >
-                                Start setup
+                                Create workspace
                             </AnswerlatticeLink>
                         </div>
                     </div>

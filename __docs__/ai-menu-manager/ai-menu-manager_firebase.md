@@ -2,7 +2,7 @@
 
 **Status:** Initial implementation validated - cost model active for implemented foundation
 **Cost posture:** Firestore cost is the top constraint
-**Last Updated:** June 18, 2026
+**Last Updated:** June 19, 2026
 
 ---
 
@@ -18,6 +18,7 @@ Estimated default cost at 1,000 stores with 10 AMM commands per store per month:
 - Proposal writes: zero for normal deterministic cards; proportional only to server-backed/durable cards.
 - Project writes: same cost as manual action because AMM uses existing project update path.
 - AI/provider accounting: existing AI operation accounting where reused.
+- Read-only domain answers: no provider call and no extra Firestore read; one compact session write when the owner sends the question.
 - Storage: low unless generated images/import artifacts are used heavily.
 
 ---
@@ -165,6 +166,7 @@ Cost rule: AMM context packets are built for the selected store and selected pro
 | Pick starter card | none | Empty-state contextual starter | 0 | 0 | Starter cards are derived from the selected project already loaded in memory and only draft text or open the second suggestion layer. |
 | Browse suggestion groups | none | Opening desktop inline tray or mobile sheet | 0 | 0 | Suggestions and second-layer guided choices are derived from the selected project already loaded in memory. Selecting a final option only fills the composer. |
 | Pick clarification option | none | Card option row click | 0 | 0 | Option rows draft the next owner message locally and do not create a new card until the owner sends it. |
+| Answer selected-menu question | selected project already loaded | Questions like "What should I fix today?" or "Which items have no photos?" | 0 additional | included in compact session write | Uses `system_context_answer` from the loaded context packet; no provider call, no proposal doc, no external lookup. |
 | Store pending operation | `aiMenuManagerSessions` | Actionable card | included above | included above | Full card plus exact patch/hash/base-project marker is capped in `pendingOperations`. |
 | Create proposal doc | `aiMenuManagerProposals` | Server-backed adapters only | 0 | N | Only when secrets/jobs/external policy/durable ledger require the server path. |
 

@@ -381,7 +381,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                                                 href="/get-started"
                                                 className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-teal-600 px-4 text-sm font-semibold text-white transition hover:bg-teal-500"
                                             >
-                                                Start setup
+                                                Create workspace
                                             </L>
                                         </div>
                                     </div>
@@ -515,10 +515,10 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                         <L
                             href="/get-started"
                             data-answerlattice-event="header_cta_clicked"
-                            data-answerlattice-label="start_support_setup"
+                            data-answerlattice-label="create_workspace"
                             className="rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                         >
-                            Start support setup
+                            Create workspace
                         </L>
                     </div>
 
@@ -650,12 +650,12 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                             <L
                                 href="/get-started"
                                 data-answerlattice-event="mobile_header_cta_clicked"
-                                data-answerlattice-label="start_support_setup"
+                                data-answerlattice-label="create_workspace"
                                 className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-teal-800"
                                 onClick={closeDrawer}
                             >
                                 <LuRocket size={16} aria-hidden />
-                                Start support setup
+                                Create workspace
                             </L>
                         </div>
                     </aside>

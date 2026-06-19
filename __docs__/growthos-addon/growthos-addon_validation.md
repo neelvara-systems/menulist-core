@@ -202,6 +202,48 @@ Focused Chrome QA:
 | Mobile | Docs now point to the implemented mobile card and Today host screen. |
 | Public copy | No public website copy was published; candidate copy remains gated. |
 
+## June 19, 2026 Research Parity
+
+Current SMB marketing and local-review research was added to the documentation hub. The research supports the existing implementation boundary and does not add runtime scope.
+
+| Evidence class | Validation decision |
+| --- | --- |
+| SMBs expect to spend more marketing time and budget in 2026 while adopting AI/automation for workload relief. | Keep GrowthOS as practical paid owner help inside MenuList, not as public acquisition positioning. |
+| Google Pomelli and Canva AI 2.0 confirm generic SMB campaign generation is crowded and moving fast. | Keep GrowthOS output-first, source-fact-first, and non-canvas. No scheduler, creative suite, or prompt workspace enters V1. |
+| BrightLocal 2026 review data shows review freshness, high star expectations, and AI review summaries matter for local choice. | Review Reply Guard remains manual-paste, deterministic, owner-reviewed, and no-ingestion. Fake reviews, fake testimonials, and generic reply spam remain out of scope. |
+| External `GrowthOS` naming usage is active in the market. | `GrowthOS` stays internal terminology; owner-facing surfaces remain `Growth Kits` and `Today's Sales Pack`. |
+
+Cost impact: no Firebase, Storage, Cloud Functions, provider, scheduler, rules, indexes, route, or runtime change. This is documentation-only.
+
+## June 19, 2026 Production-Readiness Hardening
+
+GrowthOS API routes now parse JSON through the shared GrowthOS validation helper before Zod validation. Malformed JSON returns `400 Invalid JSON` and logs a security event instead of falling through to the generic `500` error handler.
+
+Affected routes:
+
+- `/api/growthos/actions/refresh`
+- `/api/growthos/kits/generate`
+- `/api/growthos/kits/export`
+- `/api/growthos/reviews/suggest`
+
+Verifier coverage was expanded so `npm run verify:growthos` fails if those routes reintroduce raw `request.json()` parsing without the invalid-JSON guard.
+
+Commands run:
+
+```txt
+npm run verify:growthos
+```
+
+Result: passed with 39 checks, including the invalid-JSON guard check.
+
+```txt
+npx tsc --noEmit --incremental false
+```
+
+Result: passed.
+
+Cost impact: no Firebase, Storage, Cloud Functions, provider, scheduler, rules, indexes, route, or deploy change. This is request-validation hardening only.
+
 ## Remaining Rollout Checks
 
 Do not widen beyond the Pro/Premium paid gate until:

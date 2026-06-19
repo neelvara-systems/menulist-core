@@ -5,6 +5,7 @@ import { CAMPAIGNCUE_API_ROUTES } from "@constant/campaigncue/routes";
 import {
     applyCampaignCueRateLimit,
     getCampaignCueSessionScope,
+    parseCampaignCueJsonBody,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
 } from "@lib/campaigncue/apiGuards";
@@ -39,18 +40,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         if (rateLimit) return rateLimit;
 
-        let body: unknown;
-        try {
-            body = await request.json();
-        } catch {
-            logger.security("Invalid JSON - CampaignCue Design Cue", {
-                ...buildSecurityContext(session, request),
-                endpoint: CAMPAIGNCUE_API_ROUTES.DESIGN_CUE_TURNS,
-            }, "medium");
-            return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-        }
+        const body = await parseCampaignCueJsonBody({
+            endpoint: CAMPAIGNCUE_API_ROUTES.DESIGN_CUE_TURNS,
+            logLabel: "Invalid JSON - CampaignCue Design Cue",
+            request,
+            session,
+        });
+        if (!body.success) return body.response;
 
-        const validation = validateAPIInput(CampaignCueDesignCueTurnSchema, body);
+        const validation = validateAPIInput(CampaignCueDesignCueTurnSchema, body.data);
         if ("error" in validation) {
             logger.security("Input Validation Failed - CampaignCue Design Cue", {
                 ...buildSecurityContext(session, request),

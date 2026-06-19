@@ -16,7 +16,7 @@ import { logger } from "@lib/monitoring/logger";
 import { checkDataWriteLimit } from "@lib/rateLimit/helpers";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { buildSecurityContext } from "@lib/security/securityContext";
-import { GrowthOSExportRequestSchema } from "@lib/validation/growthosSchemas";
+import { GrowthOSExportRequestSchema, parseGrowthOSJsonBody } from "@lib/validation/growthosSchemas";
 import { NextResponse } from "next/server";
 import { verifyTenantAccess, withAuth } from "../../../../../middleware/auth";
 
@@ -29,7 +29,16 @@ export const POST = withAuth(async (request, session) => {
         const rateLimitResponse = await checkDataWriteLimit();
         if (rateLimitResponse) return rateLimitResponse;
 
-        const validation = validateAPIInput(GrowthOSExportRequestSchema, await request.json());
+        const jsonBody = await parseGrowthOSJsonBody(request);
+        if (!jsonBody.success) {
+            logger.security("Invalid JSON - GrowthOS Export API", {
+                ...buildSecurityContext(session, request),
+                endpoint: "/api/growthos/kits/export",
+            }, "medium");
+            return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+        }
+
+        const validation = validateAPIInput(GrowthOSExportRequestSchema, jsonBody.data);
         if (!validation.success) {
             const errorMsg = "error" in validation ? validation.error : "Invalid input";
             logger.security("GrowthOS Export Input Validation Failed", {

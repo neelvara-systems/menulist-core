@@ -36,8 +36,8 @@ export default function ProductTeamsUseCasePage() {
                 'Approve proposed answer updates.',
                 'Track which surfaces still need support.',
             ]}
-            primaryCta="Start support setup"
-            secondaryCta="See demo"
+            primaryCta="Create workspace"
+            secondaryCta="See 60-sec demo"
         />
     );
 }

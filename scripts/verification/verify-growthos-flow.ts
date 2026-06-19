@@ -144,6 +144,30 @@ function scanRetiredCampaignDalExports(): string[] {
         .map((token) => `${file}:${token}`);
 }
 
+function scanGrowthOSApiJsonGuards(): string[] {
+    const routeFiles = [
+        "src/app/api/growthos/actions/refresh/route.ts",
+        "src/app/api/growthos/kits/generate/route.ts",
+        "src/app/api/growthos/kits/export/route.ts",
+        "src/app/api/growthos/reviews/suggest/route.ts",
+    ];
+
+    return routeFiles.flatMap((file) => {
+        const text = fs.readFileSync(path.resolve(file), "utf8");
+        const failures: string[] = [];
+        if (!text.includes("parseGrowthOSJsonBody")) {
+            failures.push(`${file}:missing-parseGrowthOSJsonBody`);
+        }
+        if (!text.includes("Invalid JSON")) {
+            failures.push(`${file}:missing-invalid-json-response`);
+        }
+        if (text.includes("await request.json()")) {
+            failures.push(`${file}:raw-request-json`);
+        }
+        return failures;
+    });
+}
+
 
 const storeData = {
     currencySymbol: "₹",
@@ -340,6 +364,7 @@ const retiredTodayPromptMatches = scanRetiredTodayActionPrompts();
 const deletedTodayGenerationFiles = scanDeletedTodayGenerationFiles();
 const retiredGlobalTodayPollingMatches = scanRetiredGlobalTodayPolling();
 const retiredCampaignDalExports = scanRetiredCampaignDalExports();
+const growthOSApiJsonGuardFailures = scanGrowthOSApiJsonGuards();
 
 assertCheck(FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON === true, "GrowthOS master flag is enabled");
 assertCheck(FEATURE_FLAGS.GROWTHOS_ADDON_ACCESS === "paid", "GrowthOS access defaults to paid plan gate");
@@ -435,6 +460,7 @@ assertCheck(retiredTodayPromptMatches.length === 0, "retired Today Action genera
 assertCheck(deletedTodayGenerationFiles.length === 0, "retired Today generation code files are deleted", deletedTodayGenerationFiles.join(", "));
 assertCheck(retiredGlobalTodayPollingMatches.length === 0, "retired global Today polling provider is absent", retiredGlobalTodayPollingMatches.join(", "));
 assertCheck(retiredCampaignDalExports.length === 0, "retired campaign generation DAL exports are absent", retiredCampaignDalExports.join(", "));
+assertCheck(growthOSApiJsonGuardFailures.length === 0, "GrowthOS APIs return 400 for invalid JSON instead of generic 500", growthOSApiJsonGuardFailures.join(", "));
 assertCheck(deferredMatches.length === 0, "deferred GrowthOS scope has no provider, posting, offer, order, or ROI hooks", deferredMatches.join(", "));
 
 console.log(JSON.stringify({

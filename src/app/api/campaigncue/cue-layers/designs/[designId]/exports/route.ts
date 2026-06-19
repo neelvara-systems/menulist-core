@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import {
     applyCampaignCueRateLimit,
+    parseCampaignCueJsonBody,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
 } from "@lib/campaigncue/apiGuards";
@@ -43,7 +44,10 @@ export const POST = withAuth(async (
         });
         if (rateLimit) return rateLimit;
 
-        const validation = validateAPIInput(CampaignCueCueLayerExportSchema, await request.json());
+        const body = await parseCampaignCueJsonBody({ request, session });
+        if (!body.success) return body.response;
+
+        const validation = validateAPIInput(CampaignCueCueLayerExportSchema, body.data);
         if (!validation.success) {
             const details = "error" in validation ? validation.error : "Invalid input";
             return NextResponse.json({ error: "Invalid input", details }, { status: 400 });

@@ -108,6 +108,7 @@ export const AI_MENU_MANAGER_ACTION_TYPES = {
     PRINT_MENU_OPEN: 'print_menu_open',
     HELP_SCREEN_OPEN: 'help_screen_open',
     SYSTEM_MANUAL_TASK_CREATE: 'system_manual_task_create',
+    SYSTEM_CONTEXT_ANSWER: 'system_context_answer',
     SYSTEM_CLARIFICATION_REQUEST: 'system_clarification_request',
     SYSTEM_UNSUPPORTED_ACTION: 'system_unsupported_action',
 } as const satisfies Record<string, AiMenuManagerActionType>;
@@ -1554,6 +1555,18 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         mobileBehavior: 'Task card',
         sourceEvidence: ['src/lib/ai-menu-manager/cardBuilder.ts'],
         readiness: 'manual_task_only',
+    },
+    {
+        actionType: AI_MENU_MANAGER_ACTION_TYPES.SYSTEM_CONTEXT_ANSWER,
+        ownerLabel: 'Answer from MenuList context',
+        manualEquivalent: 'Read current selected menu context',
+        executionMode: 'read_only_card',
+        approvalLevel: 'none',
+        risk: 'low',
+        costClass: 'C0 local plus compact session doc',
+        mobileBehavior: 'Answer card',
+        sourceEvidence: ['src/lib/ai-menu-manager/domainConversationRouter.ts'],
+        readiness: 'ready_adapter',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.SYSTEM_CLARIFICATION_REQUEST,

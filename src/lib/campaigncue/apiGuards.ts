@@ -103,3 +103,26 @@ export const applyCampaignCueRateLimit = async (params: {
         },
     );
 };
+
+export const parseCampaignCueJsonBody = async (params: {
+    endpoint?: string;
+    logLabel?: string;
+    request: NextRequest;
+    session: any;
+}) => {
+    try {
+        return {
+            data: await params.request.json(),
+            success: true as const,
+        };
+    } catch {
+        logger.security(params.logLabel || "Invalid JSON - CampaignCue API", {
+            ...buildSecurityContext(params.session, params.request),
+            endpoint: params.endpoint || params.request.nextUrl.pathname,
+        }, "medium");
+        return {
+            response: NextResponse.json({ error: "Invalid JSON" }, { status: 400 }),
+            success: false as const,
+        };
+    }
+};

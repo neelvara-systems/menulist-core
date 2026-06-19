@@ -45,9 +45,7 @@ export default function AnswerlatticeComparisonDetailPage({ comparisonPath }: { 
                             data-answerlattice-event="comparison_demo_clicked"
                             data-answerlattice-label={comparison.title}
                             className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
-                        >
-                            See demo
-                        </AnswerlatticeLink>
+                        >See 60-sec demo</AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
                             href="/comparisons"

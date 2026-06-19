@@ -36,8 +36,8 @@ export default function FoundersUseCasePage() {
                 'Install the widget and verify page context.',
                 'Approve the first answers from the review queue.',
             ]}
-            primaryCta="Start support setup"
-            secondaryCta="See demo"
+            primaryCta="Create workspace"
+            secondaryCta="See 60-sec demo"
         />
     );
 }

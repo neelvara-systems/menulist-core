@@ -36,8 +36,8 @@ export default function EngineeringUseCasePage() {
                 'Verify the runtime status from the AnswerLattice dashboard.',
                 'Review fallback signals before publishing new approved answers.',
             ]}
-            primaryCta="Start support setup"
-            secondaryCta="See demo"
+            primaryCta="Create workspace"
+            secondaryCta="See 60-sec demo"
         />
     );
 }

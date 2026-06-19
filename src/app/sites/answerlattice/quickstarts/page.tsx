@@ -158,7 +158,7 @@ export default function AnswerlatticeQuickstartsPage() {
                             View install guide
                         </AnswerlatticeLink>
                         <AnswerlatticeLink basePath={basePath} href="/get-started" className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white hover:bg-teal-800">
-                            Start support setup
+                            Create workspace
                         </AnswerlatticeLink>
                     </div>
                 </section>

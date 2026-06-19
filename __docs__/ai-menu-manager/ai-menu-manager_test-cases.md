@@ -347,6 +347,21 @@ The parity matrix must be generated from [ai-menu-manager_action-type-checklist.
 **And** the drafted command resolves to the exact registered action-family card that names the existing Mobile More path.
 **And** no store, screen, feedback, PWA, or temporary-status truth is mutated by the guided choice itself.
 
+### AMM-DOMAIN-ANSWER-001: Selected Menu Read-Only Answers
+
+**When** the owner asks "What should I fix today?", "Which items have no photos?", "Which items are missing descriptions?", "What items are unavailable?", or "Is my menu ready to share?".
+**Then** AMM creates a `system_context_answer` card.
+**And** the card is `read_only_card` with no approve or mark-done action.
+**And** the answer is built from the loaded selected project context packet only.
+**And** there is no provider call, external lookup, proposal doc write, project/store mutation, or extra Firestore read.
+**And** any suggested reply only drafts the next owner command; the owner must send it before a proposal card is prepared.
+
+### AMM-DOMAIN-ANSWER-002: Domain Answers Do Not Capture Direct Commands
+
+**When** the owner sends direct commands such as "Selected items: Masala Tea, Cold coffee. increase price by 10", "increase all drinks price by 10", "Cold coffee sold out", or "Generate image for Masala Tea".
+**Then** the matching registered action resolver wins before `system_context_answer`.
+**And** risky work still creates proposal/manual-task cards according to the action registry.
+
 ### AMM-MOBILE-MORE-005: Exact Local Export Cards
 
 **When** the owner says "Copy menu link" or "Download menu QR".

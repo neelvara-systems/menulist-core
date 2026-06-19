@@ -43,7 +43,7 @@ export default function SupportWidgetForSoloFoundersPage() {
                     'Keep screenshots explicit: upload or paste only.',
                     'Approve the first answers before relying on fallback.',
                 ]}
-                primaryCta="Start support setup"
+                primaryCta="Create workspace"
             />
             <AnswerlatticeFooter basePath={basePath} />
         </>

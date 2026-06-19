@@ -17,6 +17,19 @@
 
 ## Active Items
 
+### June 19 Product Activation And Release Scope
+
+| #   | Task                                                                 | Why                                                                                                              | Priority                    | Status |
+| --- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------- | ------ |
+| 1   | Decide the release scope for the current dirty worktree               | Growth Kits and CampaignCue hardening are validated, but the workspace also contains AI Menu Manager read-only answer changes and an untracked `routes-manifest.json`. Decide whether these ship together, split into separate commits, or the unrelated items are handled separately. | P0 (before commit/deploy)   | ⬜     |
+| 2   | Provision or grant access to the dedicated CampaignCue Firebase project | CampaignCue protected owner workspace testing and Firebase deploy remain blocked until the dedicated project/Admin credentials are available to this repo. | P0 (before CampaignCue owner testing) | ⬜     |
+| 3   | Set CampaignCue environment variables and Admin credentials in local/Vercel/Firebase targets | The export/download runtime is code-ready, but real workspace bootstrap, saves, campaign creation, asset registration, and CueLayers Storage paths need real CampaignCue Firebase credentials. | P0 (before CampaignCue owner testing) | ⬜     |
+| 4   | Deploy CampaignCue Firebase rules, indexes, and Storage rules after project access is ready | Existing CampaignCue Firebase deploy attempts are blocked by `campaigncue-qa` access/availability. Deploying the Firebase target is required before real owner writes. | P0 (after task 2)           | ⬜     |
+| 5   | Confirm CampaignCue domain and auth launch behavior                   | `campaigncue.ai/app` needs a final sign-in/domain decision before public owner testing or a production Vercel deploy. | P0 (before public CampaignCue traffic) | ⬜     |
+| 6   | Decide when to authorize the Vercel deploy for the verified app changes | Codex did not run Vercel deploy or production build by default. A deploy needs explicit owner approval after release scope is clear. | P0 (before public traffic)  | ⬜     |
+| 7   | Keep direct provider activation separate from the current CampaignCue export/download release | Google Business Profile OAuth/API access, WhatsApp WABA/templates/opt-in/pricing, provider metrics, billing, and direct posting/sending remain future provider-layer work. | P1 (before provider launch) | ⬜     |
+| 8   | Keep KitStamp as a separate product decision, not a MenuList/CampaignCue merge | KitStamp remains foundation/planning only. Before implementation, decide domain, Firebase targets, billing package, initial ICP, export schema, and public claims. | P2 (only if KitStamp is activated) | ⬜     |
+
 ### Public Starter Menu Entry Launch
 
 | #   | Task                                                                 | Why                                                                                                              | Priority                    | Status |
@@ -197,8 +210,11 @@ _Move items here when done. Keep as history._
 | `__docs__/answerlattice/doctrine/10-implementation-action-items.md` | Detailed Answerlattice manual setup steps        |
 | `__docs__/messaging-onboarding/messaging-onboarding_runbook.md` | WhatsApp Cloud API provider stance, secrets, monitoring, and non-actions |
 | `__docs__/messaging-onboarding/messaging-onboarding_validation.md` | Messaging onboarding enable/test checklist |
+| `__docs__/campaigncue/campaigncue-production-implementation-audit.md` | CampaignCue current export/download runtime status and external blockers |
+| `__docs__/growthos-addon/growthos-addon_validation.md` | Growth Kits verification and production-readiness hardening notes |
+| `__docs__/kitstamp/kitstamp_implementation-lock-v1.md` | KitStamp separate-product implementation lock and activation gates |
 
 ---
 
-_Last Updated: May 17, 2026_
-_Updated By: Codex (WhatsApp Cloud API / Messaging Onboarding Action Items)_
+_Last Updated: June 19, 2026_
+_Updated By: Codex (Product activation and release-scope action items)_

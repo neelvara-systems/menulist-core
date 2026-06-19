@@ -36,8 +36,8 @@ export default function StudiosAgenciesUseCasePage() {
                 'Publish hosted help, FAQ, and changelog from reviewed support knowledge.',
                 'Give the owner a review queue for gaps, repeated questions, and stale answers.',
             ]}
-            primaryCta="Start support setup"
-            secondaryCta="See demo"
+            primaryCta="Create workspace"
+            secondaryCta="See 60-sec demo"
         />
     );
 }

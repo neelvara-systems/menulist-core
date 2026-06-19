@@ -118,6 +118,39 @@ export function buildLocalExportCard(params: {
     };
 }
 
+export function buildAnswerCard(params: {
+    cardId: string;
+    definition: AiMenuManagerActionDefinition;
+    title: string;
+    message: string;
+    scope: AiMenuManagerScope;
+    entityRefs: AiMenuManagerEntityRef[];
+    beforeAfterSummary: AiMenuManagerBeforeAfterSummary;
+    createdAt: string;
+    suggestedReplies?: AiMenuManagerCardPayload['suggestedReplies'];
+}): AiMenuManagerCardPayload {
+    return {
+        cardId: params.cardId,
+        kind: 'answer',
+        actionType: params.definition.actionType,
+        title: params.title,
+        message: params.message,
+        status: 'answered',
+        risk: params.definition.risk,
+        approvalPolicy: {
+            level: 'none',
+            requiresApproval: false,
+            reason: 'Answered from the loaded MenuList context. No menu truth changed.',
+        },
+        scope: params.scope,
+        entityRefs: params.entityRefs,
+        beforeAfterSummary: params.beforeAfterSummary,
+        suggestedReplies: params.suggestedReplies,
+        actions: ['cancel'],
+        createdAt: params.createdAt,
+    };
+}
+
 export function buildClarificationCard(params: {
     cardId: string;
     scope: AiMenuManagerScope;

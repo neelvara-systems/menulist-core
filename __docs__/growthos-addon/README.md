@@ -174,8 +174,21 @@ Implementation evidence:
 | Canva AI 2.0 is moving toward conversational, agentic, multi-channel campaign creation, scheduling, web research, and brand intelligence. Source: https://www.canva.com/newsroom/news/canva-create-2026-ai/ | GrowthOS should not become a creative agent, scheduler, brand workspace, or campaign suite. |
 | Canva Visual Suite 2.0 emphasizes cross-format campaign creation and Magic Studio scale. Source: https://www.canva.com/newsroom/news/canva-create-2025/ | Broad creative suites are moving fast. GrowthOS should avoid canvas/design workflows and stay output-first. |
 | Constant Contact reported 68 percent of surveyed SMBs expected to increase marketing budgets and 74 percent expected to spend more time on marketing in 2026. Source: https://www.constantcontact.com/news/2026-02-11-small-businesses-double-down-for-2026-majority-plan-to-increase-marketing-budgets-to-combat-inflation | SMBs are willing to spend, but they need efficiency and usable output, not more dashboards. |
+| Constant Contact reported U.S. SMB adoption of AI tools rising from 26 percent in 2023 to 87 percent by April 2026, with 40 percent leaning on AI and automation to manage marketing workload. Source: https://www.constantcontact.com/blog/small-business-marketing-statistics/ | Owners are already using automation to save time. GrowthOS should stay practical workload relief, not a novelty or prompt playground. |
 | BrightLocal reported AI local recommendations rising from 6 percent in 2025 to 45 percent in 2026, with consumers still fact-checking reviews and source material. Source: https://www.brightlocal.com/research/lcrs-ai-trust/ | Local truth consistency matters more, not less. GrowthOS should amplify accurate, current business facts. |
+| BrightLocal's 2026 review survey reported that 74 percent of consumers seek reviews from the last three months, 31 percent will only use a business with 4.5 stars or more, and 82 percent read AI-generated review summaries. Source: https://www.brightlocal.com/research/local-consumer-review-survey/ | Review freshness and careful reply handling can support GrowthOS, but only through manual owner-pasted review guardrails. Do not ingest reviews, fake sentiment, or produce generic reply spam. |
 | Google Business Profile supports owner posts for updates, offers, events, photos, and links, but posts are reviewed and can be rejected. Source: https://support.google.com/business/answer/7342169?hl=en | GrowthOS can prepare compliant drafts, but direct posting must stay disabled until policy and API paths are proven. |
+
+## June 19, 2026 Web Research Addendum
+
+The current market evidence strengthens the active MenuList add-on decision rather than creating a new product mandate.
+
+| Research signal | Product decision |
+| --- | --- |
+| SMBs are increasing marketing spend/time while using automation to reduce workload. | Keep GrowthOS framed as `Today's Sales Pack`: one current action, one customer line, one staff line, one counter line. |
+| Google Pomelli and Canva AI 2.0 validate SMB campaign generation and multi-channel creation as active markets. | Do not compete with them as a creative suite. The MenuList wedge is live menu truth, availability, prices, hours, and public links. |
+| Local discovery is increasingly mediated by reviews, recent source material, and AI summaries. | GrowthOS should protect source facts and review safety. Any review feature stays manual-paste, no raw review logging, no fake reviews, no review ingestion without GBP access. |
+| `GrowthOS` has active external brand usage in marketing/growth tools. | Keep `GrowthOS` internal and keep owner-facing naming as `Growth Kits` / `Today's Sales Pack`. Do not launch a standalone GrowthOS site or domain from this module. |
 
 ## Current Repo Evidence
 

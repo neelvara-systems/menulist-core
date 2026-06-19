@@ -52,15 +52,13 @@ export default function AnswerlatticeResourcesPage() {
                             href="/get-started"
                             className="rounded-xl bg-teal-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-500/25 transition hover:bg-teal-800"
                         >
-                            Start setup
+                            Create workspace
                         </AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
                             href="/demo"
                             className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
-                        >
-                            See demo
-                        </AnswerlatticeLink>
+                        >See 60-sec demo</AnswerlatticeLink>
                         <AnswerlatticeLink
                             basePath={basePath}
                             href="/pre-onboarding"

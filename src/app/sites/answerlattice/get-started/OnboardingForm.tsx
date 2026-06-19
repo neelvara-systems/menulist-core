@@ -169,7 +169,7 @@ function OnboardingFormInner() {
             {step === 'auth' && (
                 <div style={styles.card}>
                     <h2 style={styles.cardTitle}>Create your AnswerLattice account</h2>
-                    <p style={styles.cardSubtext}>Sign in with Google to get started. Free during beta.</p>
+                    <p style={styles.cardSubtext}>Sign in with Google to create your workspace and continue setup.</p>
                     <button
                         onClick={handleGoogleSignIn}
                         style={styles.googleBtn}
@@ -322,7 +322,7 @@ function OnboardingFormInner() {
                             <option value="subscription">Subscription</option>
                             <option value="usage">Usage based</option>
                             <option value="one_time">One-time payment</option>
-                            <option value="free">Free product</option>
+                            <option value="free">No paid plan yet</option>
                             <option value="not_sure">Not sure yet</option>
                         </select>
                     </div>
@@ -345,8 +345,8 @@ function OnboardingFormInner() {
                     </div>
 
                     <div style={styles.planBadge}>
-                        <span style={styles.planLabel}>Beta Plan</span>
-                        <span style={styles.planPrice}>Free during beta</span>
+                        <span style={styles.planLabel}>Beta access</span>
+                        <span style={styles.planPrice}>Controlled setup access</span>
                         <span style={styles.planDesc}>Creates the workspace, product account bridge, beta subscription, product surfaces, and one-time widget key.</span>
                     </div>
 
@@ -358,7 +358,7 @@ function OnboardingFormInner() {
                         data-answerlattice-event="onboarding_create_clicked"
                         data-answerlattice-label="beta_workspace"
                     >
-                        Create Account
+                        Create workspace
                     </button>
                 </div>
             )}
@@ -382,7 +382,7 @@ function OnboardingFormInner() {
                     <div style={styles.detailsGrid}>
                         <div style={styles.detailItem}>
                             <span style={styles.detailLabel}>Plan</span>
-                            <span style={styles.detailValue}>{result.plan.name}{result.plan.isBeta ? ' (Free)' : ''}</span>
+                            <span style={styles.detailValue}>{result.plan.name}{result.plan.isBeta ? ' (Beta access)' : ''}</span>
                         </div>
                         <div style={{ ...styles.detailItem, gridColumn: '1 / -1' }}>
                             <span style={styles.detailLabel}>Widget key</span>

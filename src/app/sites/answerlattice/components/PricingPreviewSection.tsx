@@ -65,7 +65,7 @@ export default function PricingPreviewSection({ basePath = '' }: { basePath?: st
                         data-answerlattice-label="start_beta_from_pricing_preview"
                         className="al-pricing-preview__button al-pricing-preview__button--primary"
                     >
-                        Start support setup
+                        Create workspace
                         <LuArrowRight aria-hidden size={15} />
                     </AnswerlatticeLink>
                 </div>

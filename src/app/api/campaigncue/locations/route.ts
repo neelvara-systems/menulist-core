@@ -4,6 +4,7 @@ import { CAMPAIGNCUE_API_ROUTES } from "@constant/campaigncue/routes";
 import {
     applyCampaignCueRateLimit,
     getCampaignCueSessionScope,
+    parseCampaignCueJsonBody,
     requireCampaignCueRuntime,
     requireCampaignCueSessionScope,
 } from "@lib/campaigncue/apiGuards";
@@ -62,7 +63,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         if (rateLimit) return rateLimit;
 
-        const validation = validateAPIInput(CampaignCueLocationSchema, await request.json());
+        const body = await parseCampaignCueJsonBody({
+            endpoint: CAMPAIGNCUE_API_ROUTES.LOCATIONS,
+            request,
+            session,
+        });
+        if (!body.success) return body.response;
+
+        const validation = validateAPIInput(CampaignCueLocationSchema, body.data);
         if (!validation.success) {
             const details = "error" in validation ? validation.error : "Invalid input";
             return NextResponse.json({ error: "Invalid input", details }, { status: 400 });

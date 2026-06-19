@@ -563,7 +563,7 @@ function DifferenceAndSignupSections({ basePath }: { basePath: string }) {
                             href="/get-started"
                             className="al-page-hero__button al-page-hero__button--primary"
                         >
-                            Start support setup
+                            Create workspace
                         </AnswerlatticeLink>
                     </div>
                 </div>
@@ -588,19 +588,19 @@ function FinalCta({ basePath }: { basePath: string }) {
                         basePath={basePath}
                         href="/get-started"
                         data-answerlattice-event="product_final_cta_clicked"
-                        data-answerlattice-label="start_setup"
+                        data-answerlattice-label="create_workspace"
                         className="al-page-hero__button al-page-hero__button--primary"
                     >
-                        Start support setup
+                        Create workspace
                     </AnswerlatticeLink>
                     <AnswerlatticeLink
                         basePath={basePath}
                         href="/demo"
                         data-answerlattice-event="product_final_cta_clicked"
-                        data-answerlattice-label="view_demo"
+                        data-answerlattice-label="see_60_sec_demo"
                         className="al-page-hero__button al-page-hero__button--secondary"
                     >
-                        View demo
+                        See 60-sec demo
                     </AnswerlatticeLink>
                 </div>
             </div>
@@ -624,18 +624,18 @@ export default function AnswerlatticeProductPage() {
                     align="left"
                     actions={[
                         {
-                            label: 'Start support setup',
+                            label: 'Create workspace',
                             href: '/get-started',
                             variant: 'primary',
                             event: 'product_hero_cta_clicked',
-                            eventLabel: 'start_support_setup',
+                            eventLabel: 'create_workspace',
                         },
                         {
-                            label: 'View demo',
+                            label: 'See 60-sec demo',
                             href: '/demo',
                             variant: 'secondary',
                             event: 'product_hero_cta_clicked',
-                            eventLabel: 'demo',
+                            eventLabel: 'see_60_sec_demo',
                         },
                     ]}
                     proofItems={[

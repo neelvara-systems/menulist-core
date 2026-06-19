@@ -34,6 +34,8 @@ AI Menu Manager is the owner-facing menu operations layer where owners can tell 
 
 It is a conversational shortcut over real MenuList actions, not a separate menu system. AMM understands owner input, creates proposal cards, gets approval when needed, and applies approved work through registered MenuList action adapters.
 
+AMM can also answer MenuList-domain questions from the loaded selected menu context. These read-only answers use `system_context_answer` cards, do not call an AI provider, do not read extra Firestore documents, and do not mutate menu truth. Examples include "What should I fix today?", "Which items have no photos?", "Is my menu ready to share?", and "What items are unavailable?"
+
 One-sentence product definition:
 
 > Tell MenuList what changed. It prepares the update. You approve. The menu stays correct.
@@ -47,6 +49,7 @@ AI Menu Manager is:
 - a standalone MenuList feature, separate from Business Health.
 - a chat-first work surface with card-native execution.
 - an action registry over existing menu operations.
+- a selected-context answer surface for menu readiness, content gaps, visibility, and share-readiness checks.
 - an approval-safe route for price, availability, import, design, photo, image, special menu, publish, adapter-supported undo/rollback, staff, and rule actions.
 - a voice-ready input surface because voice enters the same command pipeline as text.
 
@@ -57,6 +60,7 @@ AI Menu Manager is not:
 - a renamed Menu Command Center.
 - a new menu data model.
 - an analytics dashboard.
+- a live weather, news, sports, market, or general web-answering assistant.
 - a hidden AI write path.
 
 ---
@@ -68,12 +72,15 @@ Owner text / voice / upload / suggested action
   -> selected store and selected project context
   -> AMM command intake
   -> intent and entity resolution
-  -> registered action adapter
-  -> proposal card
-  -> owner approval, edit, scope change, or cancel
-  -> existing MenuList mutation path
-  -> public cache, MOL, snapshots, publish/verification side effects
-  -> receipt and compact history
+  -> if read-only MenuList question:
+       context answer card -> compact session
+  -> if MenuList operation:
+       registered action adapter
+       -> proposal card
+       -> owner approval, edit, scope change, or cancel
+       -> existing MenuList mutation path
+       -> public cache, MOL, snapshots, publish/verification side effects
+       -> receipt and compact history
 ```
 
 The most important rule:
@@ -85,6 +92,10 @@ Suggestion prompts are draft helpers only. The empty chat state should lead with
 The composer exposes **Work on** and **Suggestions** as separate tools. Opening one closes the other, so the owner never has two guidance panels competing for the composer. **Work on** scopes the next message to an item, multiple items, one category, menu design, digital menu, official page, digital screens, feedback, or store settings. Item/category choices use compact selectable rows; search appears only for longer lists or active search text. Picking context does not create a card or write Firestore. AMM keeps the owner-visible text explicit, such as `Selected items: Masala Tea, Cold coffee. increase price by 10`, and passes the selected entity IDs into the resolver so duplicate item/category names still resolve to exactly what the owner picked. The normal resolver, action registry, approval card, existing mutation path, and receipt flow still apply.
 
 Clarification cards can also show option rows. Choosing an option only drafts the next owner message; it does not approve or execute a card.
+
+Read-only answer cards are different from clarification and manual-task cards. They summarize what MenuList can see in the selected menu context, such as missing photos, missing descriptions, unavailable items, hidden categories, or share readiness. They can offer suggested replies, but those replies only draft the next command. Any resulting change still becomes a registered proposal card and follows approval.
+
+Direct operation commands take precedence over read-only answers. For example, "increase all drinks price by 10" must create a bulk price proposal, while "Can I increase drinks prices?" may create a read-only guidance card.
 
 Feedback link and feedback QR requests are dedicated browser-local export cards, not generic manual tasks. When the owner sends "Copy feedback link" or "Show feedback QR", AMM prepares the selected menu's feedback URL with Copy link, Open link, and Download QR controls. These controls do not mutate menu truth and do not store QR base64 in Firestore.
 
@@ -168,6 +179,7 @@ The production checklist for exact action types is [ai-menu-manager_action-type-
 - review/reputation guard and reply-assist cards only while the reviews feature flags and production adapters allow them
 - new item metadata and image-editing draft cards through existing accounted AI APIs
 - POS setup details, secret copy, instructions draft, technical summary copy, and sample payload download
+- selected-menu context answers for readiness, missing content, availability/visibility, share readiness, and price-change guidance
 - staff and access requests through guarded APIs
 - low-confidence clarification
 - mixed-language command

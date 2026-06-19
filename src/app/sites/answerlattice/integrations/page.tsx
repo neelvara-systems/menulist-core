@@ -120,10 +120,10 @@ export default function AnswerlatticeIntegrationsPage() {
                                     basePath={basePath}
                                     href="/get-started"
                                     data-answerlattice-event="integrations_cta_clicked"
-                                    data-answerlattice-label="start_setup"
+                                    data-answerlattice-label="create_workspace"
                                     className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
                                 >
-                                    Start support setup
+                                    Create workspace
                                 </AnswerlatticeLink>
                             </div>
                         </div>
@@ -257,9 +257,7 @@ export default function AnswerlatticeIntegrationsPage() {
                             basePath={basePath}
                             href="/demo"
                             className="rounded-xl border border-white/[0.1] bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
-                        >
-                            See demo
-                        </AnswerlatticeLink>
+                        >See 60-sec demo</AnswerlatticeLink>
                     </div>
                 </section>
             </main>

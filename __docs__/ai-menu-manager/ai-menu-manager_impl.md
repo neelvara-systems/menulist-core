@@ -2,7 +2,7 @@
 
 **Status:** Initial implementation validated - enabled behind AMM feature flags in current config
 **Audience:** Engineering / implementation maintainers
-**Last Updated:** June 18, 2026
+**Last Updated:** June 19, 2026
 
 ---
 
@@ -19,6 +19,8 @@ The model may help resolve intent, but the registered action adapter owns:
 - what receipt and rollback behavior are allowed.
 
 No AMM code may write live menu truth outside registered adapters.
+
+AMM also has a read-only domain conversation layer. It answers selected-menu questions from the current context packet with `system_context_answer` cards. This layer must not call AI providers, perform external lookups, read additional Firestore documents, or create project/store mutations. Suggested replies from these cards only draft the next owner command.
 
 ---
 
@@ -91,6 +93,7 @@ src/
     cardBuilder.ts
     commandResolver.ts
     contextPacket.ts
+    domainConversationRouter.ts
     entityResolver.ts
     idempotency.ts
     proposalState.ts
@@ -158,6 +161,18 @@ Flags are kill switches, not product scope reducers.
 ---
 
 ## 5. Action Adapter Contract
+
+Read-only domain answers are not execution adapters, but they still use the registry contract:
+
+- action type: `system_context_answer`.
+- execution mode: `read_only_card`.
+- approval: `none`.
+- cost: `C0 local plus compact session doc`.
+- source of truth: selected `AiMenuManagerContextPacket`.
+- allowed topics: menu readiness, missing prices/photos/descriptions, hidden/unavailable entries, share readiness, and price-change guidance.
+- forbidden topics: live weather, news, sports, markets, jokes, poems, stories, or any non-MenuList general assistant behavior.
+- resolver precedence: direct operation commands must win before this layer; imperative edits such as "increase all drinks price by 10" must create the matching proposal card instead of an answer card.
+- suggested replies: draft-only; sending a reply must re-enter the normal command resolver and action-card flow.
 
 Every action adapter implements:
 
