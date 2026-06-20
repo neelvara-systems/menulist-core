@@ -201,7 +201,8 @@ export async function extractEntitiesFromArticles(
     tId: number,
     sId: number,
     callGemini: (systemPrompt: string, userPrompt: string) => Promise<string | null>,
-    existingEntities?: ExistingEntityContext[]
+    existingEntities?: ExistingEntityContext[],
+    persistCandidate: (candidate: Omit<AnswerlatticeEntityCandidate, 'id'>) => Promise<unknown> = addEntityCandidate,
 ): Promise<ExtractionResult> {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ONTOLOGY) {
         return { candidates: [], articlesProcessed: 0, extractionTimestamp: new Date() };
@@ -249,7 +250,7 @@ export async function extractEntitiesFromArticles(
     // Store only genuinely new entities as candidates (pending human review)
     for (const entity of newCandidates) {
         try {
-            await addEntityCandidate({
+            await persistCandidate({
                 tId,
                 sId,
                 name: entity.name,
@@ -353,7 +354,7 @@ function shouldExtractForArticle(articleId: string): boolean {
  * Extract plain text from TipTap JSON content for entity extraction.
  * Traverses the TipTap node tree and concatenates text content.
  */
-function extractPlainTextFromTipTap(content: any): string {
+export function extractPlainTextFromTipTap(content: any): string {
     if (!content) return '';
     if (typeof content === 'string') return content;
 

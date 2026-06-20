@@ -13,9 +13,9 @@ import {
     approveMutationProposal,
     getPendingMutationProposals,
     markMutationImplemented,
+    regenerateMutationProposalDraft,
     rejectMutationProposal,
 } from '@database/answerlattice/mutationProposals';
-import { regenerateDraftForProposal } from '@lib/answerlattice/draftGenerator';
 import { getAnswerlatticeUiErrorMessage } from '@lib/answerlattice/uiErrors';
 import { AnswerlatticeMutationProposal } from '@type/answerlattice';
 import { message } from 'antd';
@@ -113,17 +113,7 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
         }
 
         try {
-            const { callGeminiChat } = await import('@lib/vectorEmbeddings');
-            const result = await regenerateDraftForProposal(
-                proposalId,
-                tId,
-                sId,
-                async (systemPrompt: string, userPrompt: string) => {
-                    const combinedPrompt = `${systemPrompt}\n\n${userPrompt}`;
-                    return callGeminiChat(combinedPrompt, []);
-                },
-                regeneratedBy
-            );
+            const result = await regenerateMutationProposalDraft(proposalId, regeneratedBy);
 
             if (!result.success) {
                 throw new Error(result.error || 'Draft generation failed');

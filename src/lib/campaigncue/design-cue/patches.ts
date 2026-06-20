@@ -293,6 +293,7 @@ export const buildCampaignCueDesignCueBrandCheckPatch = (
     const hasBrandName = includesLoose(context.documentText, context.businessName);
     const hasBrandColor = JSON.stringify(context.selectedElement || {}).toLowerCase().includes(context.brandColor.toLowerCase())
         || context.documentText.toLowerCase().includes(context.brandColor.toLowerCase());
+    const avoidedTerm = context.brandAvoidList.find((term) => includesLoose(context.documentText, term));
     return findingPatchSet({
         actionId: CAMPAIGNCUE_DESIGN_CUE_ACTION_IDS.CHECK_BRAND,
         findings: [
@@ -303,6 +304,15 @@ export const buildCampaignCueDesignCueBrandCheckPatch = (
                 ? finding("brand-color-present", "ready", `Brand color is visible: ${context.brandColor}.`)
                 : finding("brand-color-missing", "review", `Brand color is not obvious in editable layers: ${context.brandColor}.`),
             finding("brand-voice", "note", `Use a ${context.brandVoice} tone for final copy.`),
+            context.brandFeel.length
+                ? finding("brand-feel", "note", `Brand feel: ${context.brandFeel.join(", ")}.`)
+                : finding("brand-feel-missing", "review", "Brand feel is not set in Business details."),
+            context.brandVisualMotifs.length
+                ? finding("brand-visual-motifs", "note", `Visual motifs: ${context.brandVisualMotifs.join(", ")}.`)
+                : finding("brand-visual-motifs-missing", "review", "Visual motifs are not set in Business details."),
+            avoidedTerm
+                ? finding("brand-avoid-term", "review", `Document text uses avoid-list wording: ${avoidedTerm}.`)
+                : finding("brand-avoid-list", "note", "Check the Brand Playbook avoid list before export."),
         ],
         summary: "Design Cue will show brand checks without changing the design.",
         target,

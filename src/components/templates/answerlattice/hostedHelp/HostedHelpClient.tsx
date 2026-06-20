@@ -59,6 +59,16 @@ type HostedHelpClientProps = {
 
 const pathFor = (path: string) => path;
 
+function normalizeArticleSlug(value?: string | null) {
+    const normalized = String(value || '')
+        .trim()
+        .replace(/[?#].*$/, '')
+        .replace(/^\/+|\/+$/g, '');
+    return normalized
+        .replace(/^(articles|help|docs)\//, '')
+        .replace(/^\/+|\/+$/g, '');
+}
+
 function getArticles(categories: KnowledgeBaseCategoriesType | null): ArticleSearchItem[] {
     if (!categories?.categories) return [];
 
@@ -79,7 +89,8 @@ function getArticles(categories: KnowledgeBaseCategoriesType | null): ArticleSea
 }
 
 function articleHref(article: Pick<KnowledgeBaseArticleMeta, 'id' | 'url'>) {
-    return pathFor(`/articles/${article.url || article.id}`);
+    const slug = normalizeArticleSlug(article.url || article.id) || article.id;
+    return pathFor(`/articles/${encodeURIComponent(slug)}`);
 }
 
 function entryText(entry: HostedHelpChangelogEntry) {

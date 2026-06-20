@@ -4,7 +4,7 @@
  * Feature #3: Time-Based Categories
  * 
  * Handles time-based visibility logic for menu categories.
- * Uses browser timezone for comparison.
+ * Uses store timezone when provided, falling back to browser timezone.
  * 
  * FORMAT: timeSlots?: CategoryTimeSlot[] with presetId support
  * 
@@ -79,22 +79,51 @@ export function validateTimeSlots(timeSlots?: CategoryTimeSlot[]): {
     return { valid: true };
 }
 
+function getCurrentMinutesForTimeZone(timeZone?: string, now = new Date()): number {
+    if (timeZone) {
+        try {
+            const parts = new Intl.DateTimeFormat('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                hourCycle: 'h23',
+                timeZone,
+            }).formatToParts(now);
+            const hour = Number(parts.find((part) => part.type === 'hour')?.value);
+            const minute = Number(parts.find((part) => part.type === 'minute')?.value);
+            if (Number.isFinite(hour) && Number.isFinite(minute)) {
+                return hour * 60 + minute;
+            }
+        } catch {
+            // Fall back to browser/server local time.
+        }
+    }
+
+    return now.getHours() * 60 + now.getMinutes();
+}
+
 /**
  * Check if current time is within ANY of the time slots (new format)
  * @param timeSlots - Array of CategoryTimeSlot objects
  * @returns boolean - true if current time is within any slot
  */
-export function isWithinTimeSlot(timeSlots?: CategoryTimeSlot[]): boolean {
+export function isWithinTimeSlot(
+    timeSlots?: CategoryTimeSlot[],
+    timeZone?: string,
+    now = new Date(),
+): boolean {
     if (!timeSlots || timeSlots.length === 0) return true;
 
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentMinutes = getCurrentMinutesForTimeZone(timeZone, now);
 
     return timeSlots.some(slot => {
+        if (!slot.startTime || !slot.endTime) return false;
         const [sh, sm] = slot.startTime.split(':').map(Number);
         const [eh, em] = slot.endTime.split(':').map(Number);
+        if (![sh, sm, eh, em].every(Number.isFinite)) return false;
         const startMinutes = sh * 60 + sm;
         const endMinutes = eh * 60 + em;
+        if (startMinutes >= endMinutes) return false;
         return currentMinutes >= startMinutes && currentMinutes < endMinutes;
     });
 }
@@ -102,17 +131,21 @@ export function isWithinTimeSlot(timeSlots?: CategoryTimeSlot[]): boolean {
 /**
  * Get the next time slot start time (for "starts at X" message)
  */
-export function getNextSlotStart(category: ExtractedDataCategory): string | null {
+export function getNextSlotStart(
+    category: ExtractedDataCategory,
+    timeZone?: string,
+): string | null {
     // Try new format first
     if (category.timeSlots?.length) {
-        const now = new Date();
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const currentMinutes = getCurrentMinutesForTimeZone(timeZone);
 
         let nextStart: string | null = null;
         let minFutureMinutes = Infinity;
 
         for (const slot of category.timeSlots) {
+            if (!slot.startTime) continue;
             const [sh, sm] = slot.startTime.split(':').map(Number);
+            if (![sh, sm].every(Number.isFinite)) continue;
             const startMinutes = sh * 60 + sm;
 
             if (startMinutes > currentMinutes && startMinutes < minFutureMinutes) {
@@ -134,16 +167,19 @@ export function getNextSlotStart(category: ExtractedDataCategory): string | null
 /**
  * Check if a category is visible based on time
  */
-export function isCategoryVisibleByTime(category: ExtractedDataCategory): boolean {
+export function isCategoryVisibleByTime(
+    category: ExtractedDataCategory,
+    timeZone?: string,
+): boolean {
     if (!category.timeSlots?.length) return true; // No restriction = always visible
-    return isWithinTimeSlot(category.timeSlots);
+    return isWithinTimeSlot(category.timeSlots, timeZone);
 }
 
 /**
  * Hook to manage time-based category visibility
  * Updates visibility every minute
  */
-export function useTimedCategories(categories: ExtractedDataCategory[]) {
+export function useTimedCategories(categories: ExtractedDataCategory[], timeZone?: string) {
     const [currentTime, setCurrentTime] = useState(new Date());
 
     // Update current time every minute
@@ -159,18 +195,18 @@ export function useTimedCategories(categories: ExtractedDataCategory[]) {
     const visibleCategories = useMemo(() => {
         return categories.filter(category => {
             if (!category.active) return false;
-            return isCategoryVisibleByTime(category);
+            return isCategoryVisibleByTime(category, timeZone);
         });
-    }, [categories, currentTime]);
+    }, [categories, currentTime, timeZone]);
 
     // Get hidden categories (for showing "starts at X" messages)
     const hiddenByTimeCategories = useMemo(() => {
         return categories.filter(category => {
             if (!category.active) return false;
             if (!category.timeSlots?.length) return false;
-            return !isCategoryVisibleByTime(category);
+            return !isCategoryVisibleByTime(category, timeZone);
         });
-    }, [categories, currentTime]);
+    }, [categories, currentTime, timeZone]);
 
     return {
         visibleCategories,
@@ -187,12 +223,13 @@ export function useTimedCategories(categories: ExtractedDataCategory[]) {
  */
 export function getHiddenCategoryMessage(
     category: ExtractedDataCategory,
-    lang: string
+    lang: string,
+    timeZone?: string,
 ): string | null {
     if (!category.timeSlots?.length) return null;
 
     const categoryName = category.name?.[lang] || 'Menu';
-    const nextStart = getNextSlotStart(category);
+    const nextStart = getNextSlotStart(category, timeZone);
 
     if (!nextStart) return null;
 

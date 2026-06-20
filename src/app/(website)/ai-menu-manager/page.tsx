@@ -7,7 +7,7 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 const title = 'AI Menu Manager for Restaurants | MenuList';
-const description = 'Update prices, sold-out items, specials, photos, imports, design, and publishing from simple messages. AI prepares the card; you approve before it goes live.';
+const description = 'Prepare price, sold-out, special, photo, import, design, and publishing cards from simple messages. AI prepares the card; you approve before supported changes go live.';
 
 export const metadata: Metadata = {
   title,

@@ -109,7 +109,7 @@ export default function SeoLandingPage({
                 <div className="mx-auto max-w-7xl">
                     <SectionHeader
                         eyebrow="Setup path"
-                        title="Reviewed support stays the authority."
+                        title="Reviewed support stays official."
                         description="The setup path turns scattered product material, page context, and owner approval into official answers only after review."
                     />
                     <div className="al-linear-proof__grid al-linear-proof__grid--compact">

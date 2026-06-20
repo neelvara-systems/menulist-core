@@ -57,6 +57,7 @@ export type CampaignCueDecisionOutputType =
     | "ad_handoff_copy"
     | "creator_script"
     | "reel_brief"
+    | "campaign_proof_deck_pdf"
     | "manual_task";
 
 export type CampaignCueActionType = typeof CAMPAIGNCUE_EXPORT_ACTIONS[number];
@@ -101,6 +102,16 @@ export interface CampaignCueLocation extends CampaignCueTimestamped {
     sourceRefs: string[];
 }
 
+export interface CampaignCueBrandPlaybook {
+    targetAudience?: string;
+    brandFeel: string[];
+    inspirationNotes: string[];
+    visualMotifs: string[];
+    avoidList: string[];
+    productFocus: string[];
+    typographyNotes?: string;
+}
+
 export interface CampaignCueBusinessBrain extends CampaignCueTimestamped {
     id: string;
     workspaceId: string;
@@ -119,6 +130,7 @@ export interface CampaignCueBusinessBrain extends CampaignCueTimestamped {
         primaryColor?: string;
         logoUrl?: string;
         voice: "calm" | "friendly" | "premium" | "direct";
+        playbook: CampaignCueBrandPlaybook;
     };
     locale: string;
     timezone: string;
@@ -521,6 +533,7 @@ export type CampaignCueOutputPackCopyChannel =
     | "email_sms"
     | "staff"
     | "mini_page"
+    | "proof_deck"
     | "instructions"
     | "trust"
     | "result_memory";
@@ -577,6 +590,14 @@ export interface CampaignCueOutputPackDeliveryCard {
     status: CampaignCueOutputPackStatus;
 }
 
+export interface CampaignCueOutputPackProofDeck {
+    status: CampaignCueOutputPackStatus;
+    title: string;
+    sections: CampaignCueOutputPackCopyBlock[];
+    filePath: string;
+    manualNote: string;
+}
+
 export interface CampaignCueOutputPack {
     packId: string;
     campaignId: string;
@@ -628,6 +649,7 @@ export interface CampaignCueOutputPack {
         qrCodeStatus: CampaignCueOutputPackStatus;
         manualNote: string;
     };
+    proofDeck: CampaignCueOutputPackProofDeck;
     calendar: {
         suggestedUse: string;
         followUp: string;

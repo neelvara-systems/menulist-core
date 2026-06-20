@@ -6,6 +6,47 @@
 
 ---
 
+## June 20, 2026 - Growth Kits And KitStamp Documentation Cleanup
+
+### Changed
+
+- **Growth Kits docs now keep only the active standard set** - Removed stale standalone strategy, command-center, raw review, decision-brief, redirect, and archive docs from the GrowthOS documentation area.
+- **KitStamp docs now keep only the active standard set** - Removed extra strategy, review, doctrine, naming-lock, decision-brief, implementation-lock, raw transcript, and archive docs. The remaining README/spec/impl/firebase/mobile/marketing/website/helpdoc/test docs now carry the required naming and activation gates.
+
+### Cost
+
+- **No runtime cost added** - This is documentation cleanup only. It adds no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, indexes, routes, app code, or deploys.
+
+---
+
+## June 20, 2026 - CampaignCue UGC Brief Guardrails
+
+### Changed
+
+- **CampaignCue UGC and reel outputs now use structured brief fields** - Creator/script outputs include persona, phone-camera plan, product-placement note, dialogue/action beats, disclosure, consent, and CTA. Reel outputs include phone-camera plan, B-roll checklist, product-placement note, consent, and final-frame guidance.
+- **CampaignCue Trust Center now flags risky first-person UGC wording** - UGC and video outputs with unsourced usage, recommendation, or personal-result wording are marked for fix before handoff.
+- **Campaign Pack Proof Deck now names the UGC/reel brief structure** - The proof deck keeps UGC/reel content as dialogue/action, shot-plan, product-placement, B-roll, and review references only.
+
+### Boundaries
+
+- **No AI-avatar generator added** - CampaignCue still does not render avatars, voiceover, MP4 video, or fake customer experience. UGC remains a source-backed creator/staff brief workflow.
+
+## June 20, 2026 - CampaignCue Brand Playbook And Proof Deck
+
+### Changed
+
+- **CampaignCue Business Brain now stores a Brand Playbook** - Owner-edited audience, brand feel, style references, visual motifs, product/service focus, typography notes, and avoid-list fields are saved under the existing Business Brain brand kit.
+- **Campaign Pack Output now includes a Campaign Proof Deck brief** - The ZIP bundle includes `proof-deck/campaign-proof-deck.md` with brand system, campaign/social creative set, product/service focus, UGC/reel reference, review checklist, and source trace.
+- **Creative review uses the same brand source** - Creative briefs, editor placeholders, Design Cue brand checks, CueLayers source packages, saved template tags, and Trust Center warnings now reference the saved Brand Playbook where available.
+
+### Boundaries
+
+- **No fake UGC or generated website flow added** - UGC/reel entries remain script, shot-list, and brief references only. The proof deck is a review brief, not a claimed final rendered PDF, website, social post, or generated video.
+
+### Cost
+
+- **No new Firebase collection or provider cost** - Brand Playbook updates use the existing Business Brain PATCH write. Proof deck content is derived from the loaded overview and exported in the browser-local Campaign Pack ZIP.
+
 ## June 20, 2026 - Menu Manager Context Answers
 
 ### Changed
@@ -16,10 +57,12 @@
 ### Fixed
 
 - **Read-only cards no longer appear as pending work** - Context answers and unsupported out-of-scope questions stay in the chat timeline and do not appear in the desktop Pending cards summary.
+- **AI Menu Manager launch copy no longer overclaims unfinished adapters** - Today-special and new-item examples now describe draft/review card behavior until the create-item adapter is connected, and public copy uses supported-change wording for adapter families that are not fully executable yet.
 
 ### Cost
 
 - **Compact session write only** - These read-only answers use the selected project context already loaded in the owner screen. They add no provider calls, external lookups, proposal docs, project/store writes, or extra Firestore reads.
+- **No runtime cost for copy/doc claim fixes** - This wording update changes docs, website metadata, and locale text only. It adds no Firestore reads/writes, Storage writes, provider calls, routes, schedulers, rules, indexes, or Cloud Functions.
 
 ## June 19, 2026 - Product Research Boundary Addenda
 
@@ -27,7 +70,7 @@
 
 - **Growth Kits market evidence updated** - Current SMB marketing, Google Pomelli, Canva AI 2.0, and local-review research now supports the existing `Today's Sales Pack` boundary without turning GrowthOS into a standalone product.
 - **CampaignCue provider boundary tightened** - Google Business Profile and WhatsApp platform research now documents the required preconditions before direct posting, direct send, provider metrics, or provider mutation can move beyond export/download.
-- **KitStamp market validation refreshed** - Adobe Firefly Services, Photoroom API, C2PA, Shopify CSV, and Visual Meta naming research now reinforce KitStamp as a separate source-backed content readiness product using `KS`, not `VM`.
+- **KitStamp market validation refreshed** - Adobe Firefly Services, Photoroom API, C2PA, Shopify CSV, and naming research now reinforce KitStamp as a separate source-backed content readiness product using `KS`.
 
 ### Cost
 
@@ -2411,11 +2454,11 @@
 
 ### Changed
 
-- **KitStamp name locked** - Retired the previous VisualMeta planning name and made KitStamp the permanent product brand, slug, product code, and documentation namespace.
-- **Docs renamed** - Moved the active documentation set from `__docs__/visual-meta/` to `__docs__/kitstamp/` and renamed active files to the `kitstamp_*` convention.
+- **KitStamp name locked** - Made KitStamp the permanent product brand, slug, product code, and documentation namespace.
+- **Docs renamed** - Moved the active documentation set to `__docs__/kitstamp/` and renamed active files to the `kitstamp_*` convention.
 - **Product constants aligned** - Updated the disabled product-domain placeholder to use `kitstamp`, `/__kitstamp`, `/sites/kitstamp`, and `kitstamp.com` as the primary host.
-- **Product code aligned** - Updated product identity references from `VM` to `KS` for KitStamp planning and multi-product doctrine.
-- **Naming lock added** - Added `__docs__/kitstamp/kitstamp_naming-lock.md` covering the permanent brand, rejected names, legal-name candidate, MCA/trademark caveats, and implementation naming rules.
+- **Product code aligned** - Updated product identity references to `KS` for KitStamp planning and multi-product doctrine.
+- **Naming lock consolidated** - Naming rules now live in the active KitStamp standard doc set instead of a separate naming-lock file.
 
 ### Cost
 
@@ -2462,8 +2505,8 @@
 
 ### Added
 
-- **KitStamp deep ChatGPT review** — Added a line-range review for the new KitStamp discussion, treating ChatGPT proposals as suggestions and recording final accept, modify, reject, and defer decisions.
-- **KitStamp implementation lock** — Added `kitstamp_implementation-lock-v1.md` with first-implementation flags, collections, source snapshot schema, content unit schema, asset/text/review schemas, manifest schema, export kit schema, storage paths, API route contracts, MenuList snapshot rules, export template rules, adapter rules, and activation gates.
+- **KitStamp deep review consolidated** — Reviewed the KitStamp discussion as proposal material and moved the retained accept, modify, reject, and defer decisions into the active standard doc set.
+- **KitStamp implementation lock consolidated** — First-implementation flags, collections, source snapshot schema, content unit schema, asset/text/review schemas, manifest schema, export kit schema, storage paths, API route contracts, MenuList snapshot rules, export template rules, adapter rules, and activation gates now live in the active standard docs.
 
 ### Product Decision
 
@@ -2501,7 +2544,7 @@
 - **Growth Kits scope is now freeze-ready** — Reviewed the 3,606-line GrowthOS discussion and updated the active GrowthOS Add-on docs so V1 starts with Do This Now, truth readiness, owner voice basics, compliance preflight, one kit to multiple handoffs, Staff Brief Pack, basic export logging, and mobile latest-kit fallback.
 - **Pilot features are separated from launch scope** — Existing image adaptation, customer reply snippets, photo capture prompts, multi-outlet localized kits, used-history UI, advanced low-data access, offer builder, and review-triage expansion are now explicitly pilot-gated or deferred.
 - **Staff Brief Pack promoted to V1 core** — Staff guidance is now documented as a high-leverage owner workflow, while staff management, shifts, commissions, internal chat, CRM, loyalty, and auto-posting remain rejected.
-- **Conversation review archived** — Added `__docs__/growthos-addon/_archive/growthos-deep-conversation-review-2026-05-31.md` with line-range mapping and final accept/defer/reject decisions.
+- **Conversation review consolidated** — Retained Growth Kits accept/defer/reject decisions were moved into the active standard doc set.
 
 ### Cost
 
@@ -2578,13 +2621,13 @@
 ### Added
 
 - **KitStamp is now planned as a separate product** — Added a full KitStamp documentation set that treats KitStamp as product code `KS`, separate from MenuList, GrowthOS, Answerlattice, and the internal Website Asset Operating System.
-- **End-to-end Final Content Kit plan** — Documented the product spec, implementation plan, Firebase cost model, mobile review scope, marketing position, website copy candidate, helpdoc, test cases, and Answerlattice-style doctrine.
-- **Product separation doctrine** — Added KitStamp core doctrine, non-goals charter, infrastructure freeze, and product separation playbook covering routes, Firebase, Storage, billing, source snapshots, export kits, and product-boundary tests.
+- **End-to-end Final Content Kit plan** — Documented the product spec, implementation plan, Firebase cost model, mobile review scope, marketing position, website copy candidate, helpdoc, test cases, and Answerlattice-style separation model.
+- **Product separation rules** — Documented KitStamp boundaries for routes, Firebase, Storage, billing, source snapshots, export kits, and product-boundary tests in the active standard docs.
 
 ### Product Decision
 
 - **Separate product, export-only** — KitStamp prepares source-backed, human-approved Final Content Kits. It does not publish, schedule, manage live MenuList truth, run ads, replace Canva/Adobe/Photoroom, or auto-approve generated output.
-- **Old KitStamp strategy archived** — Moved the previous single-file KitStamp strategy to `__docs__/kitstamp/_archive/kitstamp-strategy-2026-05-31.md` so the new doc set is the active planning source.
+- **Old KitStamp strategy superseded** — The active standard doc set is the only current KitStamp planning source.
 
 ### Cost
 
@@ -2602,8 +2645,8 @@
 ### Product Decision
 
 - **Manual output first** — Growth Kits prepares copy/download/print materials from current MenuList truth. Direct posting, scheduling, ROI claims, standalone routing, and Google review ingestion remain out of scope.
-- **Old GrowthOS docs stay historical** — The older GrowthOS strategy and command-center docs now point to `__docs__/growthos-addon/` as the active implementation-planning source.
-- **Old GrowthOS folders archived** — Moved previous standalone GrowthOS strategy and command-center docs under `__docs__/growthos-addon/_archive/`, leaving only redirect stubs at the old paths to avoid implementation confusion.
+- **Old GrowthOS docs superseded** — `__docs__/growthos-addon/` is the active implementation-planning source.
+- **Old GrowthOS folders removed** — Previous standalone strategy, command-center, archive, and redirect docs were removed to avoid implementation confusion.
 
 ### Cost
 
@@ -4980,7 +5023,7 @@ ChatGPT conversation covering Google Pomelli (AI marketing tool), KitStamp vs Gr
 
 ### Documented
 
-1. **ChatGPT Review Archive** (`__docs__/strategy/_archive/chatgpt-review-session-pomelli-vm-gos-hardening.md`) — Full 14-topic validation. Topics: Pomelli integration (rejected — already locked), KitStamp spec (redundant — 781-line doc exists), GrowthOS spec (redundant — 776-line doc exists), product sequencing (already in Constitution 11), product connection model (already in Constitution 12), brand architecture (already in positioning map), capital allocation (already locked), GrowthOS build/launch (already implied by existing framing), OBP adoption scoring (premature — no GBP API), MenuList hardening (8/10 already built). No code or doc changes warranted.
+1. **External review consolidated** — Full 14-topic validation was later removed as a separate archive doc. Topics: Pomelli integration, KitStamp spec, GrowthOS spec, product sequencing, product connection model, brand architecture, capital allocation, GrowthOS build/launch, OBP adoption scoring, and MenuList hardening. No code or doc changes warranted.
 
 ### Key Finding
 
@@ -5621,7 +5664,7 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 ### New
 
 - **KitStamp Complete Product Strategy** — Comprehensive strategy document for KitStamp — a future commercial content preparation workspace producing Final Content Kits. Consolidates 24+ ChatGPT design topics into one master doc. Covers: canonical definition ("commercial content preparation workspace"), terminal artifact (Final Content Kit with ZIP structure), ICP lock (content operators at agencies), UI identity (workbench, not dashboard), 7 core features (Content Units, Draft Image/Text/Language, Versioning, Notes, Export), 9-category permanent kill-list, kit-based pricing, trust language (10 production-ready screens), error states, support model, audit layer, V2 expansion path, market research (TAM $36B, SAM $2.9-4.3B). Cross-checked against codebase: MenuList's existing AI Image Generation already implements ~70% of KitStamp's image capability. See [strategy](./kitstamp/README.md).
-- **AI Image Generation Code Review (via ChatGPT + Expert)** — Validated existing AI Image Gen codebase. Found: debugger in production (batch-generation/route.ts:164), transaction logging disabled (route.ts:264), no batch size limit. Expert added 18-item development checklist to impl.md, defined USP ("Inline Menu Image Creation" with 3 pillars), scope freeze rules, UI language guidelines. ChatGPT's "too many choices" claim partially validated (count wrong, cognitive concern valid). See [review](./kitstamp/_archive/chatgpt-review.md).
+- **AI Image Generation Code Review (via ChatGPT + Expert)** — Validated existing AI Image Gen codebase. Found: debugger in production (batch-generation/route.ts:164), transaction logging disabled (route.ts:264), no batch size limit. Expert added 18-item development checklist to impl.md, defined USP ("Inline Menu Image Creation" with 3 pillars), scope freeze rules, UI language guidelines. ChatGPT's "too many choices" claim partially validated (count wrong, cognitive concern valid). Retained KitStamp decisions now live in [KitStamp](./kitstamp/README.md).
 
 ---
 
@@ -5629,10 +5672,10 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 
 ### New
 
-- **GrowthOS Complete Product Strategy** — Comprehensive strategy document for GrowthOS — a future transactional execution engine that produces ready-to-use promotional content for SMBs. Consolidates 10 ChatGPT design documents into one master doc. Covers: executive intent, SMB reality model, problem taxonomy, output-first philosophy, product surfaces, 6 canonical use cases, workflow engine design, content quality rules, MenuList relationship contract, monetization (pay-per-kit), and kill criteria. Cross-checked against codebase: MenuList's existing Social Content Engine already implements ~60% of GrowthOS vision. Archived at [strategy](./growthos-addon/_archive/growth-execution-strategy-2026-05-31/README.md).
+- **GrowthOS Complete Product Strategy** — Comprehensive strategy document for GrowthOS — a future transactional execution engine that produces ready-to-use promotional content for SMBs. Consolidates 10 ChatGPT design documents into one master doc. Covers: executive intent, SMB reality model, problem taxonomy, output-first philosophy, product surfaces, 6 canonical use cases, workflow engine design, content quality rules, MenuList relationship contract, monetization, and kill criteria. Cross-checked against codebase: MenuList's existing Social Content Engine already implements ~60% of GrowthOS vision. Retained decisions now live in [Growth Kits](./growthos-addon/README.md).
 - **Product Separation Doctrine (Constitution 12)** — New governance document permanently locking the separation between MenuList, GrowthOS, and KitStamp. Ten rules: (1) Product identity lock — each answers exactly one question. (2) AI posture rules — Authority (MenuList), Delegate (GrowthOS), Assistant (KitStamp). (3) Time horizon lock — Continuous/Immediate/Deliberate. (4) Dependency direction — one-way read-only from MenuList outward. (5) Surface & UI firewall — no shared components. (6) Monetization separation — subscription/per-kit/per-project. (7) Language separation. (8) Failure isolation. (9) Priority order locked: MenuList #1, GrowthOS #2, KitStamp #3. (10) Red-Flag Test for feature assignment. See [doctrine](./constitution/12-product-separation-doctrine.md).
 - **Product Positioning Map** — One-page strategic reference showing how MenuList (infrastructure), GrowthOS (execution), and KitStamp (preparation) form a vertical stack with separate jobs, time horizons, AI postures, surfaces, and monetization. Includes Red-Flag Test: "If it's a bit of all three → kill it." See [positioning map](./strategy/product-positioning-map.md).
-- **AgentKits Marketing Repo Analysis** — Assessment of [aitytech/agentkits-marketing](https://github.com/aitytech/agentkits-marketing) (18 agents, 93 commands, 28 skills). Only ~15% relevant to SMB context. Extractable: copywriting frameworks, workflow structure patterns, brand safety rules. Not useful: enterprise marketing (lead scoring, CRO, email funnels, programmatic SEO). Archived at [analysis](./growthos-addon/_archive/growth-execution-strategy-2026-05-31/agentkits-repo-analysis.md).
+- **AgentKits Marketing Repo Analysis** — Assessment of [aitytech/agentkits-marketing](https://github.com/aitytech/agentkits-marketing) (18 agents, 93 commands, 28 skills). Only ~15% relevant to SMB context. Extractable: copywriting frameworks, workflow structure patterns, brand safety rules. Not useful: enterprise marketing (lead scoring, CRO, email funnels, programmatic SEO). Retained Growth Kits decisions now live in [Growth Kits](./growthos-addon/README.md).
 
 ---
 
@@ -5642,7 +5685,7 @@ ChatGPT conversation covered AI agents article, vertical expansion, 5-layer cont
 
 - **Product Evolution Doctrine (Constitution 11)** — New governance document locking MenuList's 3-year product direction. Six rules: (1) Product sequence lock: MenuList → Control Layer inside → GrowthOS → KitStamp optional. (2) Customer-facing only boundary — PERMANENT: never POS/CRM/inventory/payroll. (3) "5-Minute Understanding" rule — non-tech SMB must understand purpose in 5 minutes without training. (4) "Calm, elite infrastructure" identity — simple surface, deep underneath, locked 3 years. (5) Silent autopilot design principle — owner updates once, correct everywhere. (6) Kill-switch philosophy for anything that adds complexity. See [doctrine](./constitution/11-product-evolution-doctrine.md).
 - **Control Layer Strategy** — Comprehensive strategic framework documenting how MenuList evolves from "menu infrastructure" to "business truth infrastructure." Consolidates 18 ChatGPT design documents into single master doc. Maps 5 Control Layer Pillars (Business Identity Truth, Operational Public Truth, Menu & Offering Truth, Public Communication Layer, Presence Consistency Layer) to existing 6-Pillar CFI framework. Includes data model, authority hierarchy, surface control map, conflict resolution rules, rollout phases, failure scenarios, and strategic moat analysis. Cross-checked: 60-70% of vision already exists in codebase. See [strategy](./control-layer-strategy/README.md).
-- **Growth Execution Strategy (DEFERRED)** — Future reference document for GrowthOS — the revenue execution engine that would sit on top of MenuList's truth infrastructure. Consolidates 9 ChatGPT design documents. Clearly marked as DEFERRED with explicit prerequisites (200+ active stores, >70% link adoption, founder unlock). Documents boundary rules: GrowthOS reads from truth layer, never writes. Archived at [strategy](./growthos-addon/_archive/growth-execution-strategy-2026-05-31/README.md).
+- **Growth Execution Strategy (DEFERRED)** — Future reference document for GrowthOS — the revenue execution engine that would sit on top of MenuList's truth infrastructure. Consolidates 9 ChatGPT design documents. Clearly marked as DEFERRED with explicit prerequisites (200+ active stores, >70% link adoption, founder unlock). Documents boundary rules: GrowthOS reads from truth layer, never writes. Retained decisions now live in [Growth Kits](./growthos-addon/README.md).
 
 ---
 

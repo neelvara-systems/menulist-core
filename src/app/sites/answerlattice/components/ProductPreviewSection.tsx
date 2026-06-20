@@ -18,7 +18,7 @@ const CHAPTER_COPY: Record<PreviewTab, {
     'Product setup': {
         kicker: 'Setup',
         title: 'Start with launch proof.',
-        description: 'Show buyers that AnswerLattice begins with product profile, starter knowledge, mapped surfaces, widget verification, governance summaries, and signal-source checks.',
+        description: 'Show buyers that AnswerLattice begins with product profile, starter knowledge, mapped surfaces, widget verification, review summaries, and signal-source checks.',
         proof: ['Workspace ready', 'Sources in review', 'Proof visible'],
     },
     'Key product pages': {
@@ -40,8 +40,8 @@ const CHAPTER_COPY: Record<PreviewTab, {
         proof: ['Private review', 'Board handoff', 'No auto-publish'],
     },
     'Answer review': {
-        kicker: 'Governance',
-        title: 'Approve answers before they become authority.',
+        kicker: 'Review',
+        title: 'Approve answers before users see them.',
         description: 'The final chapter reinforces the core doctrine: fallback can create draft improvements, but approved answers stay human-reviewed.',
         proof: ['Approved first', 'Stale answers visible', 'Owner approval'],
     },

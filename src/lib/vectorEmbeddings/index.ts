@@ -9,14 +9,74 @@ const CHAT_MODEL = 'gemini-2.5-flash';
 
 type VectorInstance = InstanceType<typeof Vector>;
 type EmbeddingTaskType = 'RETRIEVAL_QUERY' | 'RETRIEVAL_DOCUMENT';
+export type GeminiTokenCountSource = 'provider' | 'estimated' | 'none';
+export type GeminiUsageMetadata = {
+    candidatesTokenCount?: number;
+    promptTokenCount?: number;
+    tokenCountSource?: GeminiTokenCountSource;
+    totalTokenCount?: number;
+};
 
 const LOG_FILE = "kb.log";
 const MAX_IMAGE_CONTEXT_CHARS = 700;
 
-export async function callGeminiEmbedding(
+export const estimateGeminiTokenCount = (value: string): number => {
+    const text = String(value || '').replace(/\s+/g, ' ').trim();
+    return text ? Math.max(1, Math.ceil(text.length / 4)) : 0;
+};
+
+export const normalizeGeminiUsageMetadata = (
+    response: any,
+    fallbackInputText?: string,
+    fallbackOutputText?: string,
+): GeminiUsageMetadata => {
+    const usage = response?.usageMetadata || response?.response?.usageMetadata || {};
+    const providerPrompt = Number(usage.promptTokenCount ?? 0);
+    const providerCandidates = Number(usage.candidatesTokenCount ?? 0);
+    const providerTotal = Number(usage.totalTokenCount ?? 0);
+
+    if (providerPrompt > 0 || providerCandidates > 0 || providerTotal > 0) {
+        return {
+            promptTokenCount: providerPrompt,
+            candidatesTokenCount: providerCandidates,
+            totalTokenCount: providerTotal || providerPrompt + providerCandidates,
+            tokenCountSource: 'provider',
+        };
+    }
+
+    const estimatedPrompt = estimateGeminiTokenCount(fallbackInputText || '');
+    const estimatedCandidates = estimateGeminiTokenCount(fallbackOutputText || '');
+    const estimatedTotal = estimatedPrompt + estimatedCandidates;
+    if (estimatedTotal <= 0) {
+        return {
+            promptTokenCount: 0,
+            candidatesTokenCount: 0,
+            totalTokenCount: 0,
+            tokenCountSource: 'none',
+        };
+    }
+
+    return {
+        promptTokenCount: estimatedPrompt,
+        candidatesTokenCount: estimatedCandidates,
+        totalTokenCount: estimatedTotal,
+        tokenCountSource: 'estimated',
+    };
+};
+
+const getGeminiResponseText = (response: any): string => {
+    if (!response) return '';
+    if (typeof response.text === 'function') return String(response.text() || '');
+    if (typeof response.text === 'string') return response.text;
+    if (typeof response.response?.text === 'function') return String(response.response.text() || '');
+    if (typeof response.response?.text === 'string') return response.response.text;
+    return '';
+};
+
+export async function callGeminiEmbeddingWithMetadata(
     text: string,
     options: { taskType?: EmbeddingTaskType; title?: string } = {}
-): Promise<VectorInstance> {
+): Promise<{ vector: VectorInstance; usageMetadata: GeminiUsageMetadata }> {
     const response = await genAIClient.models.embedContent({
         model: EMBED_MODEL,
         contents: text,
@@ -32,7 +92,18 @@ export async function callGeminiEmbedding(
         throw new Error('Unexpected Gemini embedding response shape');
     }
 
-    return new Vector(embedding.values);
+    return {
+        vector: new Vector(embedding.values),
+        usageMetadata: normalizeGeminiUsageMetadata(response, text),
+    };
+}
+
+export async function callGeminiEmbedding(
+    text: string,
+    options: { taskType?: EmbeddingTaskType; title?: string } = {}
+): Promise<VectorInstance> {
+    const result = await callGeminiEmbeddingWithMetadata(text, options);
+    return result.vector;
 }
 
 /**
@@ -44,11 +115,11 @@ export async function callGeminiEmbedding(
  * @param mimeType - Image MIME type (e.g., 'image/png', 'image/jpeg')
  * @returns AI-generated search query text
  */
-export async function generateSearchQueryFromImage(
+export async function generateSearchQueryFromImageWithMetadata(
     userPrompt: string,
     imageBase64: string,
     mimeType: string
-): Promise<string> {
+): Promise<{ text: string; usageMetadata: GeminiUsageMetadata }> {
     try {
         const prompt = `Based on the user's question and the provided image, generate a concise, factual, keyword-rich support search context for a technical knowledge base. Focus on visible page labels, UI state, error messages, empty states, form fields, selected plan/role labels, and concepts visible in the image.
 
@@ -71,7 +142,8 @@ User Question: "${userPrompt}"`;
             contents: contentParts,
         });
 
-        const text = sanitizeImageSearchContext(response.text || userPrompt);
+        const rawText = getGeminiResponseText(response);
+        const text = sanitizeImageSearchContext(rawText || userPrompt);
 
         await writeLogEntry({
             logFileName: LOG_FILE,
@@ -79,7 +151,10 @@ User Question: "${userPrompt}"`;
             data: { originalPrompt: userPrompt, generatedQuery: text }
         });
 
-        return text;
+        return {
+            text,
+            usageMetadata: normalizeGeminiUsageMetadata(response, prompt, rawText),
+        };
     } catch (error: any) {
         await writeLogEntry({
             logFileName: LOG_FILE,
@@ -88,6 +163,15 @@ User Question: "${userPrompt}"`;
         });
         throw new Error(`Failed to generate search query from image: ${error.message}`);
     }
+}
+
+export async function generateSearchQueryFromImage(
+    userPrompt: string,
+    imageBase64: string,
+    mimeType: string
+): Promise<string> {
+    const result = await generateSearchQueryFromImageWithMetadata(userPrompt, imageBase64, mimeType);
+    return result.text;
 }
 
 function sanitizeImageSearchContext(value: string): string {
@@ -240,13 +324,13 @@ SUGGESTED QUESTIONS - CRITICAL RULES:
     return { contentParts, generationConfig };
 }
 
-export async function callGeminiChat(
+export async function callGeminiChatWithMetadata(
     userPrompt: string,
     docs: Array<{ docId: string; category: string; section: string; title?: string; content: string; }>,
     image?: { imageBase64: string; mimeType: string },
     conversationHistory?: Array<{ role: 'user' | 'assistant'; content?: string; craftedAnswer?: string }>,
     imageContext?: string,
-): Promise<string> {
+): Promise<{ text: string; usageMetadata: GeminiUsageMetadata }> {
     const { contentParts, generationConfig } = buildGeminiPromptConfig(
         userPrompt,
         docs,
@@ -261,5 +345,25 @@ export async function callGeminiChat(
         config: generationConfig,
     });
 
-    return response.text;
+    const text = getGeminiResponseText(response);
+    const fallbackInputText = contentParts
+        .map((part) => typeof part?.text === 'string' ? part.text : '')
+        .filter(Boolean)
+        .join('\n\n');
+
+    return {
+        text,
+        usageMetadata: normalizeGeminiUsageMetadata(response, fallbackInputText, text),
+    };
+}
+
+export async function callGeminiChat(
+    userPrompt: string,
+    docs: Array<{ docId: string; category: string; section: string; title?: string; content: string; }>,
+    image?: { imageBase64: string; mimeType: string },
+    conversationHistory?: Array<{ role: 'user' | 'assistant'; content?: string; craftedAnswer?: string }>,
+    imageContext?: string,
+): Promise<string> {
+    const result = await callGeminiChatWithMetadata(userPrompt, docs, image, conversationHistory, imageContext);
+    return result.text;
 }

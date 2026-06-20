@@ -544,6 +544,7 @@ const buildBusinessProtectedFacts = (overview: CampaignCueOverview): CampaignCue
         || "";
     const primaryItem = business.catalog.items.find((item) => item.available)
         || business.catalog.services.find((item) => item.available);
+    const playbook = business.brandKit.playbook;
     return dedupeEditorProtectedFacts([
         {
             id: "business-name",
@@ -574,6 +575,24 @@ const buildBusinessProtectedFacts = (overview: CampaignCueOverview): CampaignCue
             label: "Price",
             status: primaryItem?.priceLabel ? "ready" : "needs_review",
             value: primaryItem?.priceLabel || "",
+        },
+        {
+            id: "brand-feel",
+            label: "Brand feel",
+            status: playbook.brandFeel.length ? "ready" : "needs_review",
+            value: playbook.brandFeel.join(", "),
+        },
+        {
+            id: "brand-visual-motifs",
+            label: "Brand visual motifs",
+            status: playbook.visualMotifs.length ? "ready" : "needs_review",
+            value: playbook.visualMotifs.join(", "),
+        },
+        {
+            id: "brand-avoid-list",
+            label: "Brand avoid list",
+            status: playbook.avoidList.length ? "ready" : "needs_review",
+            value: playbook.avoidList.join(", "),
         },
     ]);
 };
@@ -1226,6 +1245,13 @@ function OutputPackSummary({
                     </span>
                 </div>
                 <div className={styles.noteBox}>
+                    <strong>Campaign proof deck</strong>
+                    <p>{outputPack.proofDeck.manualNote}</p>
+                    <span className={styles.chip} data-tone={ownerStatusTone(outputPack.proofDeck.status)}>
+                        {ownerStatusLabel(outputPack.proofDeck.status)}
+                    </span>
+                </div>
+                <div className={styles.noteBox}>
                     <strong>Result memory</strong>
                     <p>{outputPack.resultMemory.question}</p>
                 </div>
@@ -1322,8 +1348,11 @@ export default function CampaignCueWorkspaceApp() {
     const [publicSiteHref, setPublicSiteHref] = useState("/");
     const [businessDraft, setBusinessDraft] = useState({
         agencyMode: false,
+        avoidList: "",
         bookingUrl: "",
+        brandFeel: "",
         businessType: "restaurant",
+        inspirationNotes: "",
         locale: CAMPAIGNCUE_DEFAULT_LOCALE,
         locality: "",
         logoUrl: "",
@@ -1331,8 +1360,12 @@ export default function CampaignCueWorkspaceApp() {
         name: "",
         phone: "",
         primaryColor: CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR,
+        productFocus: "",
         publicMenuUrl: "",
+        targetAudience: "",
         timezone: CAMPAIGNCUE_DEFAULT_TIMEZONE,
+        typographyNotes: "",
+        visualMotifs: "",
         voice: "friendly",
         website: "",
         whatsapp: "",
@@ -1688,10 +1721,14 @@ export default function CampaignCueWorkspaceApp() {
 
     useEffect(() => {
         if (!data) return;
+        const playbook = data.businessBrain.brandKit.playbook;
         setBusinessDraft({
             agencyMode: data.workspace.agencyMode,
+            avoidList: playbook.avoidList.join(", "),
             bookingUrl: data.businessBrain.contacts.bookingUrl || "",
+            brandFeel: playbook.brandFeel.join(", "),
             businessType: data.businessBrain.businessType,
+            inspirationNotes: playbook.inspirationNotes.join(", "),
             locale: data.workspace.settings.locale || data.businessBrain.locale || CAMPAIGNCUE_DEFAULT_LOCALE,
             locality: data.businessBrain.locality || "",
             logoUrl: data.businessBrain.brandKit.logoUrl || "",
@@ -1699,8 +1736,12 @@ export default function CampaignCueWorkspaceApp() {
             name: data.businessBrain.name,
             phone: data.businessBrain.contacts.phone || "",
             primaryColor: data.businessBrain.brandKit.primaryColor || CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR,
+            productFocus: playbook.productFocus.join(", "),
             publicMenuUrl: data.businessBrain.contacts.publicMenuUrl || "",
+            targetAudience: playbook.targetAudience || "",
             timezone: data.workspace.settings.timezone || data.businessBrain.timezone || CAMPAIGNCUE_DEFAULT_TIMEZONE,
+            typographyNotes: playbook.typographyNotes || "",
+            visualMotifs: playbook.visualMotifs.join(", "),
             voice: data.businessBrain.brandKit.voice,
             website: data.businessBrain.contacts.website || "",
             whatsapp: data.businessBrain.contacts.whatsapp || "",
@@ -3208,6 +3249,34 @@ export default function CampaignCueWorkspaceApp() {
                                             <option value="premium">Premium</option>
                                             <option value="direct">Direct</option>
                                         </select>
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="business-target-audience">Target audience</label>
+                                        <input className={styles.input} id="business-target-audience" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, targetAudience: event.target.value }))} placeholder="Example: nearby young professionals" value={businessDraft.targetAudience} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="business-brand-feel">Brand feel</label>
+                                        <textarea className={styles.textarea} id="business-brand-feel" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, brandFeel: event.target.value }))} placeholder="friendly, polished, local, energetic" rows={3} value={businessDraft.brandFeel} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="business-inspiration">Style references</label>
+                                        <textarea className={styles.textarea} id="business-inspiration" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, inspirationNotes: event.target.value }))} placeholder="editorial food photos, clean salon reels, storefront-first posts" rows={3} value={businessDraft.inspirationNotes} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="business-visual-motifs">Visual motifs</label>
+                                        <textarea className={styles.textarea} id="business-visual-motifs" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, visualMotifs: event.target.value }))} placeholder="menu closeups, real staff, warm counter light" rows={3} value={businessDraft.visualMotifs} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="business-product-focus">Product or service focus</label>
+                                        <textarea className={styles.textarea} id="business-product-focus" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, productFocus: event.target.value }))} placeholder="weekday lunch, bridal hair, new arrivals" rows={3} value={businessDraft.productFocus} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="business-typography">Typography notes</label>
+                                        <input className={styles.input} id="business-typography" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, typographyNotes: event.target.value }))} placeholder="Example: clean sans, bold short headings" value={businessDraft.typographyNotes} />
+                                    </div>
+                                    <div className={styles.field}>
+                                        <label htmlFor="business-avoid-list">Avoid list</label>
+                                        <textarea className={styles.textarea} id="business-avoid-list" onChange={(event) => setBusinessDraft((draft) => ({ ...draft, avoidList: event.target.value }))} placeholder="fake reviews, cartoon graphics, heavy discounts, result promises" rows={3} value={businessDraft.avoidList} />
                                     </div>
                                 </div>
                             </div>

@@ -21,6 +21,10 @@ import {
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
+    if (process.env.NODE_ENV !== 'development') {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const limitType = searchParams.get('type') || 'ai';
     

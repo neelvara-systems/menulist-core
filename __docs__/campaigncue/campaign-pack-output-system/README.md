@@ -4,7 +4,7 @@
 **Owner promise:** one campaign pack, not scattered generated posts
 **Code truth:** `src/types/campaigncue.ts`, `src/lib/campaigncue/dailyDesk.ts`, `src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx`
 
-Campaign Pack Output System is the owner-facing output layer for CampaignCue. It packages the current campaign decision, missing inputs, channel copy, manual handoff fields, trust report, reuse notes, mini-page/QR brief, result memory prompt, and ZIP bundle manifest into one typed `CampaignCueOutputPack`.
+Campaign Pack Output System is the owner-facing output layer for CampaignCue. It packages the current campaign decision, missing inputs, channel copy, manual handoff fields, trust report, reuse notes, mini-page/QR brief, Campaign Proof Deck brief, result memory prompt, and ZIP bundle manifest into one typed `CampaignCueOutputPack`.
 
 It does not post, send, publish, connect provider accounts, start ad spend, or create a hosted offer page in the current runtime.
 
@@ -33,9 +33,10 @@ The current output is a structured ZIP bundle with:
 - WhatsApp, Google, creative, ads, video, UGC, calendar, staff, email/SMS, and instruction text files when data exists
 - print/offline brief
 - mini-page and QR content brief
+- `proof-deck/campaign-proof-deck.md` with brand snapshot, campaign/social creative set, product/service focus, UGC/reel dialogue/action and shot-plan reference, review checklist, and source trace
 - language handoff note with preferred locale and protected facts that must not change during manual translation
 - trust summary
 - reuse notes
 - result memory prompt
 
-Rendered PNG/PDF assets appear only when the editor/export pipeline produces them. The ZIP never fabricates a binary file that does not exist.
+Rendered PNG/PDF assets appear only when the editor/export pipeline produces them. The proof deck is a markdown/PDF brief for review, not a claimed final rendered PDF. The ZIP never fabricates a binary file that does not exist.

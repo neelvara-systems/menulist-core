@@ -25,7 +25,13 @@ import { addAiSearchHistoryServer, findCachedSearchByCacheKeyServer } from '@dat
 import { getCachedEmbedding, saveCachedEmbedding } from '@database/queryEmbeddings';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { normalizeQuery } from '@lib/string';
-import { EMBEDDING_CACHE_VERSION, callGeminiChat, callGeminiEmbedding, generateSearchQueryFromImage } from '@lib/vectorEmbeddings';
+import {
+    EMBEDDING_CACHE_VERSION,
+    callGeminiChatWithMetadata,
+    callGeminiEmbeddingWithMetadata,
+    generateSearchQueryFromImageWithMetadata,
+} from '@lib/vectorEmbeddings';
+import type { GeminiUsageMetadata } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
 import { getAnswerlatticeTimestampMillis, isCachedSearchResultFresh } from '@lib/answerlattice/cacheFreshness';
 import { ANSWERLATTICE_CACHE_SOURCES, AnswerlatticeCacheSourceVersions } from '@lib/answerlattice/cacheVersionManifest';
@@ -367,6 +373,12 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const perfStart = Date.now();
     const perfMetrics: SearchPerfMetrics = {};
     const aiProviderOperations = new Set<string>();
+    const aiProviderTokenUsage: NonNullable<CoreSearchResult['aiProviderTokenUsage']> = {
+        candidatesTokenCount: 0,
+        promptTokenCount: 0,
+        tokenCountSource: 'none',
+        totalTokenCount: 0,
+    };
 
     let imageProcessed = false;
     let generatedQueryFromImage: string | undefined;
@@ -388,12 +400,38 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         requestMetadata,
     } = input;
 
-    const withAiProviderUsage = <T extends CoreSearchResult>(result: T): T => ({
-        ...(relatedContent && !result.relatedContent ? { relatedContent } : {}),
-        ...result,
-        aiProviderOperations: Array.from(aiProviderOperations),
-        aiProviderUsed: aiProviderOperations.size > 0,
-    });
+    const addAiProviderTokenUsage = (usage?: GeminiUsageMetadata | null) => {
+        if (!usage) return;
+        const promptTokenCount = Number(usage.promptTokenCount || 0);
+        const candidatesTokenCount = Number(usage.candidatesTokenCount || 0);
+        const totalTokenCount = Number(usage.totalTokenCount || 0) || promptTokenCount + candidatesTokenCount;
+        if (promptTokenCount <= 0 && candidatesTokenCount <= 0 && totalTokenCount <= 0) return;
+
+        aiProviderTokenUsage.promptTokenCount += promptTokenCount;
+        aiProviderTokenUsage.candidatesTokenCount += candidatesTokenCount;
+        aiProviderTokenUsage.totalTokenCount += totalTokenCount;
+
+        const source = usage.tokenCountSource || 'none';
+        if (source === 'none') return;
+        if (aiProviderTokenUsage.tokenCountSource === 'none') {
+            aiProviderTokenUsage.tokenCountSource = source;
+        } else if (aiProviderTokenUsage.tokenCountSource !== source) {
+            aiProviderTokenUsage.tokenCountSource = 'mixed';
+        }
+    };
+
+    const withAiProviderUsage = <T extends CoreSearchResult>(result: T): T => {
+        const hasTokenUsage = aiProviderTokenUsage.totalTokenCount > 0
+            || aiProviderTokenUsage.promptTokenCount > 0
+            || aiProviderTokenUsage.candidatesTokenCount > 0;
+        return {
+            ...(relatedContent && !result.relatedContent ? { relatedContent } : {}),
+            ...result,
+            aiProviderOperations: Array.from(aiProviderOperations),
+            ...(hasTokenUsage ? { aiProviderTokenUsage } : {}),
+            aiProviderUsed: aiProviderOperations.size > 0,
+        };
+    };
     const hasConversationHistory = Array.isArray(conversationHistory) && conversationHistory.length > 0;
 
     if (!Number.isFinite(Number(tId)) || !Number.isFinite(Number(sId)) || Number(tId) <= 0 || Number(sId) <= 0) {
@@ -513,12 +551,14 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             imageProcessed = true;
 
             // Generate search query from image
-            generatedQueryFromImage = await generateSearchQueryFromImage(
+            const imageQueryResult = await generateSearchQueryFromImageWithMetadata(
                 searchQuery,
                 imageBufferForAi.imageBase64,
                 imageBufferForAi.mimeType
             );
+            generatedQueryFromImage = imageQueryResult.text;
             aiProviderOperations.add('image_query_generation');
+            addAiProviderTokenUsage(imageQueryResult.usageMetadata);
 
         } catch (imageError: any) {
             // Graceful degradation: fallback to text-only search
@@ -1065,8 +1105,10 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     let queryVector = await getCachedEmbedding(effectiveCacheKey);
 
     if (!queryVector) {
-        queryVector = await callGeminiEmbedding(queryForEmbedding, { taskType: 'RETRIEVAL_QUERY' });
+        const embeddingResult = await callGeminiEmbeddingWithMetadata(queryForEmbedding, { taskType: 'RETRIEVAL_QUERY' });
+        queryVector = embeddingResult.vector;
         aiProviderOperations.add('embedding_generation');
+        addAiProviderTokenUsage(embeddingResult.usageMetadata);
         await saveCachedEmbedding(effectiveCacheKey, queryForEmbedding, queryVector);
     }
 
@@ -1193,14 +1235,16 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     // ===== STAGE 7: FINAL ANSWER GENERATION =====
     const answerStart = Date.now();
 
-    const geminiAnswer = await callGeminiChat(
+    const geminiAnswerResult = await callGeminiChatWithMetadata(
         searchQuery,
         payloadToGemini,
         undefined,
         conversationHistory,
         generatedQueryFromImage
     );
+    const geminiAnswer = geminiAnswerResult.text;
     aiProviderOperations.add('answer_generation');
+    addAiProviderTokenUsage(geminiAnswerResult.usageMetadata);
     perfMetrics.answerGeneration = Date.now() - answerStart;
 
     if (geminiAnswer) {

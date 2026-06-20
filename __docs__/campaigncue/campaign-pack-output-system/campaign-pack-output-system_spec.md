@@ -13,6 +13,8 @@ The owner should leave the pack knowing:
 - what to copy or download per channel
 - how to use it manually
 - what can be reused later
+- what brand/playbook direction the pack follows
+- what agency/client proof deck should be reviewed
 - which preferred language/locale applies and which protected facts must stay unchanged if copy is translated manually
 - what result to record
 
@@ -30,6 +32,7 @@ It contains:
 - trust report
 - reuse notes
 - mini-page and QR brief
+- Campaign Proof Deck brief
 - calendar/reminder note
 - language handoff note
 - result memory prompt
@@ -59,6 +62,7 @@ It contains:
 | Ads / agency | headline, ad copy, destination, budget approval note, UTM when available. |
 | Staff | staff share message, counter script, owner instruction. |
 | Mini-page / QR | title, details, CTA, destination, terms, and hosted-page-disabled note. |
+| Campaign Proof Deck | brand system, campaign/social creative set, product/service focus, UGC/reel dialogue-action reference, shot-plan reference, review checklist, and source trace as a review brief. |
 | Language handoff | preferred locale, local-language boundary, and protected fact list for manual translation. |
 
 ## Hard Boundaries
@@ -69,6 +73,8 @@ It contains:
 - No ad-spend mutation.
 - No hosted public offer page in the current runtime.
 - No fake PNG/PDF output if the renderer has not produced a binary file.
+- No claim that the proof deck is a final rendered PDF, website, social post, or generated video.
+- No fake AI-avatar or fictional-customer UGC experience treated as a real testimonial.
 - No model-owned campaign decision.
 - No automatic translation claim in the active export/download runtime.
 - No invented price, date, phone, location, claim, or offer.

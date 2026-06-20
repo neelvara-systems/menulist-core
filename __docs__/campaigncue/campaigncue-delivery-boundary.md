@@ -61,7 +61,7 @@ If these preconditions are missing, CampaignCue must continue to produce downloa
 - `/api/campaigncue/integrations` is read-only in the active runtime and only reports future-disabled provider posture.
 - The workspace overview returns `deliveryPolicy` so owner screens can display the active mode without reading provider connection records.
 - `providerConnections` remains a reserved future data shape, but the active overview returns an empty list and does not read the collection.
-- `CampaignCueOutputPack` is response-derived state. The browser-local ZIP includes channel text/brief files, a readable summary, and a JSON contract; it does not persist ZIPs to Storage.
+- `CampaignCueOutputPack` is response-derived state. The browser-local ZIP includes channel text/brief files, Campaign Proof Deck brief, a readable summary, and a JSON contract; it does not persist ZIPs to Storage or claim final rendered files that do not exist.
 - Mini-page and QR output is brief-only in the active runtime. Hosted public pages need a separate route, approval, tracking, and Firebase cost contract.
 
 ## Firebase Cost Posture

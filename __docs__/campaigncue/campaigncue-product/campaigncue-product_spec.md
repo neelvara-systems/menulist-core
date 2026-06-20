@@ -8,16 +8,16 @@ The product exists because SMB owners usually do not know what to post, what to 
 
 ## Current Runtime Boundary
 
-The implemented runtime is export/download-first. It creates source-backed campaign packs, first-class pack reviews, structured manual delivery cards, trust reports, local visibility cues, schedule/manual-task records, approval requests, asset metadata, location records, read-only future provider posture, compact result memory, and dashboard summaries. Social account connection, direct provider publishing, WhatsApp direct send, paid generation, rendered video, billing checkout, provider metric import, and MenuList write-back remain disabled until a separate future provider layer is explicitly built.
+The implemented runtime is export/download-first. It creates source-backed campaign packs, first-class pack reviews, Campaign Proof Deck briefs, structured manual delivery cards, trust reports, local visibility cues, schedule/manual-task records, approval requests, asset metadata, location records, read-only future provider posture, compact result memory, and dashboard summaries. Social account connection, direct provider publishing, WhatsApp direct send, paid generation, rendered video, billing checkout, provider metric import, and MenuList write-back remain disabled until a separate future provider layer is explicitly built.
 
 ## Scope
 
 | In scope | Out of scope |
 | --- | --- |
-| Business profile and brand kit | Generic blank-canvas design tool |
+| Business profile, brand kit, and Brand Playbook | Generic blank-canvas design tool |
 | Restaurant, salon, retail, service, fitness, clinic, and generic local-business recipes | MenuList menu editing |
 | Campaign cues and packs | Answerlattice support answers |
-| Static creatives, scripts, videos | Fake testimonials or fake review cards |
+| Static creative briefs, proof decks, scripts, and video/UGC briefs | Fake testimonials or fake review cards |
 | WhatsApp, Google, ads, calendar outputs | Ranking, sales, ROI guarantees |
 | Agency and multi-location workflows | Cross-client or cross-outlet data access |
 | Credits, jobs, trust checks, export fallback | Hidden generation cost |
@@ -38,7 +38,7 @@ The implemented runtime is export/download-first. It creates source-backed campa
 2. Campaign Decision Engine ranks campaign recipes from facts, readiness, timing, trust risk, owner effort, repetition, and compact result memory.
 3. Daily Campaign Desk shows what is worth promoting, why it is recommended, what is missing, and what pack will be prepared.
 4. User creates or opens a campaign pack.
-5. Outputs are generated and grouped by channel.
+5. Outputs are generated and grouped by channel, with a Campaign Proof Deck brief when review/handoff needs a visual proof sheet.
 6. Creative Trust Center checks facts, claims, source freshness, consent, and rights.
 7. User reviews manual delivery cards for WhatsApp, Google/local, social creative, ad handoff, video/script, calendar, print, or staff use.
 8. User exports, copies, follows manual delivery steps, schedules a manual task, hands off, or sends for approval.
@@ -50,6 +50,7 @@ The implemented runtime is export/download-first. It creates source-backed campa
 | --- | --- |
 | Separate product identity | CampaignCue has its own docs, route/domain plan, flags, Firebase project-id boundary, and billing model. |
 | Source-aware generation | Every generated output stores source references when source data was used. |
+| Brand Playbook source | Saved audience, feel, references, visual motifs, focus, typography, and avoid list guide creative briefs, editor context, proof deck, template tags, and trust review. |
 | MenuList connector | Read-only by default, scoped by workspace/store/tenant, source snapshots required. |
 | Trust checks | Export, handoff, and manual-use actions are blocked when critical issues exist. |
 | Export/download delivery | Download/export remains the active delivery path without social account connections. |

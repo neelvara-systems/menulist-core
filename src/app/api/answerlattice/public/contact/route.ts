@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { secureError, secureLog } from '@lib/security/secureLogger';
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
         const now = admin.firestore.Timestamp.now();
         const ip = getClientIp(request);
         const docRef = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES).add({
-            pId: 'AL',
+            pId: PRODUCT_IDS.ANSWERLATTICE,
             source: 'answerlattice_public_contact',
             status: 'new',
             name: clean(body.name, 120),

@@ -146,6 +146,10 @@ export const promoteCandidate = async (candidateId: string, tId: number, sId: nu
             }
             const candidate = candidateSnap.data() as AnswerlatticeEntityCandidate;
 
+            if (Number(candidate.tId) !== Number(tId) || Number(candidate.sId) !== Number(sId)) {
+                throw new Error('Candidate is outside the current Answerlattice workspace');
+            }
+
             if (candidate.status !== 'approved' && candidate.status !== 'pending') {
                 throw new Error(`Cannot promote candidate in '${candidate.status}' state`);
             }

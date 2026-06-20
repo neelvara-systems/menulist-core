@@ -11,8 +11,8 @@
 | ----------------------------- | -------------------- | -------------------------------------- | ----------- |
 | Business endpoint             | External GET request | 1 (store query by apiKeyHash)          | Per request |
 | Business endpoint (migration) | Pre-hash keys        | 2 (hash miss + raw key fallback)       | Temporary   |
-| Menu endpoint                 | External GET request | 2 (store query + project query)        | Per request |
-| Menu endpoint (migration)     | Pre-hash keys        | 3 (hash miss + raw fallback + project) | Temporary   |
+| Menu endpoint                 | External GET request | 3 (store query + projects summary + project document) | Per request |
+| Menu endpoint (migration)     | Pre-hash keys        | 4 (hash miss + raw fallback + projects summary + project document) | Temporary   |
 | Key generate/revoke           | Owner action         | 1 (store update)                       | Rare        |
 
 ## Writes
@@ -25,14 +25,14 @@
 ## Cost Estimate
 
 - Rate limit: 60 req/min per key
-- Worst case per store: 60 × 2 = 120 reads/min = 7,200 reads/hour
-- At $0.06 per 100K reads: 7,200/hour = ~$0.004/hour per active store
-- 100 active stores: ~$0.40/hour = ~$10/day at maximum sustained load
+- Worst case per store: 60 × 3 = 180 reads/min = 10,800 reads/hour
+- At $0.06 per 100K reads: 10,800/hour = ~$0.006/hour per active store
+- 100 active stores: ~$0.60/hour = ~$15/day at maximum sustained load
 - Reality: External systems poll far less often. Expected: <100 reads/day per store.
 - **ETag savings:** 304 responses skip payload construction but still require 1 store read for key validation + ETag check. Saves bandwidth, not reads.
 
-**Verdict:** Acceptable. Feature flag OFF by default. Rate limiting provides cost ceiling.
+**Verdict:** Acceptable. Feature flag OFF by default. Rate limiting provides cost ceiling. The additional projects-summary read is required because `isDefault` is summary truth for public menu selection.
 
 ---
 
-**Last Updated:** March 14, 2026
+**Last Updated:** June 20, 2026

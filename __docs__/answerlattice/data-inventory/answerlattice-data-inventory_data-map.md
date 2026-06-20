@@ -3,6 +3,7 @@
 **Status:** Audit map
 **Product scope:** Answerlattice only
 **Created:** 2026-06-15
+**Last Updated:** 2026-06-20
 
 ## 1. Scope
 
@@ -96,14 +97,14 @@ Cloud Functions live in `functions-answerlattice/` and use separate Firebase Adm
 | `answerlattice_knowledgeIntakeJobs` | Intake job title, description, source/review counts, default category/section, product URLs, audience, usage summary, status, timestamps, actor fields. | Job create/update/analyze/publish. | Intake Command Center and scheduler summary. | Structured import workflow. | Durable; no TTL found. |
 | `answerlattice_knowledgeSources` | Source type, title, origin URL, file name, MIME, redacted `contentText`, excerpt, content hash, tags, context keys, entity ids, metadata, error state, timestamps. | Add source, repeated-reply import, public page fetch, media extraction output. | Intake analysis and review item generation. | Source evidence for support knowledge. | Durable source text; no compaction found. |
 | `answerlattice_intakeReviewItems` | Generated/reviewable article/FAQ/surface/proposal candidates, status, target, body/answer/question/context/entity fields. | Intake analysis and update-review-item route. | Human review and publish. | No direct auto-publish into authoritative layers. | Durable; no TTL found. |
-| `answerlattice_intakeUsageLedger` | Reserved/finalized/refunded usage units, action, provider/model, byte size, tokens, metadata, subscription/store balance effects. | Media extraction reserve/finalize/refund. | Billing/credit accountability. | Paid intake usage control. | Durable ledger; no TTL found. |
+| `answerlattice_intakeUsageLedger` | Reserved/finalized/refunded usage units, action, provider/model, byte size, token counts, token count source, metadata, monthly-vs-top-up debit source, and subscription/store balance effects. | Media extraction reserve/finalize/refund. | Billing/credit accountability. | Paid intake usage control. | Durable ledger; no TTL found. |
 | `platformSummary/knowledgeIntakeSummary_*` | Compact active/recent job/readiness counts and last-published fields. | Job creation and nightly summary builder. | Dashboard/readiness summary. | Avoid raw intake scans in owner surfaces. | Durable summary. |
 
 ### 4.6 AI/accounting
 
 | Storage target | What is stored | When written | How used | Why it exists | Current retention |
 | --- | --- | --- | --- | --- | --- |
-| `answerlattice_aiOperations/{tId}/{sId}/{docId}` | AI action, billing mode, token counts, units, model/provider context, source, timing, accounting fields, optional serialized provider response in detailed mode, `detailExpiresAt` in detailed mode. | AI calls such as Knowledge Intake OCR/transcription, help search provider use, article embedding. | Cost accounting, provider usage trace, billing/support. | AI cost control and audit. | Default is accounting-only. Detailed payloads get `detailExpiresAt`, but no Answerlattice TTL field override for `detailExpiresAt` was found. |
+| `answerlattice_aiOperations/{tId}/{sId}/{docId}` | AI action, billing mode, token counts, token count source, units, model/provider context, source, timing, compact client response, support-credit `creditConsumption` when present, accounting fields, optional serialized provider response in detailed mode, `detailExpiresAt` in detailed mode. | Provider-backed Answerlattice calls such as Knowledge Intake OCR/transcription/embedding, widget/help search, article translation, FAQ generation, article embedding, manual and scheduled draft generation, article entity extraction, ticket-knowledge extraction, onboarding bootstrap, friction insight, and Cloud Function KB embedding. | Platform cost accounting and owner billing/support-credit usage through sanitized API responses; direct tenant Firestore reads are not allowed. | AI cost control and audit without raw prompt/provider payload exposure in accounting-only mode. | Default is accounting-only. Detailed payloads get `detailExpiresAt`, but no Answerlattice TTL field override for `detailExpiresAt` was found. |
 
 ### 4.7 Support, tickets, chat, and feedback
 

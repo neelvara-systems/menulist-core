@@ -27,12 +27,17 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { ImageResponse } from 'next/og';
+import { NextRequest } from 'next/server';
+import { getClientIp } from 'src/middleware/publicApi';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const SCREENSHOT_CACHE_CONTROL = 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800';
+const STORE_ID_PATTERN = /^\d{1,20}$/;
 
 type FormFactor = 'narrow' | 'wide';
 
@@ -143,8 +148,19 @@ function renderScreenshot(
     );
 }
 
+async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Promise<boolean> {
+    if (!STORE_ID_PATTERN.test(storeId)) return true;
+
+    const config = getRateLimitForFeature('PUBLIC_DYNAMIC_ASSET');
+    const limit = await checkRateLimit({
+        key: `public-dynamic-asset:screenshot:${getClientIp(request)}`,
+        ...config,
+    });
+    return !limit.allowed;
+}
+
 export async function GET(
-    _request: Request,
+    request: NextRequest,
     { params }: { params: { storeId: string; formFactor: string } },
 ) {
     const form = parseFormFactor(params.formFactor);
@@ -153,6 +169,14 @@ export async function GET(
     const height = form === 'narrow' ? 1920 : 1080;
 
     try {
+        if (await shouldUseFallbackAsset(request, storeId)) {
+            return new ImageResponse(renderScreenshot(form, 'Menu', 'Tap to explore', 'M', '#0f172a'), {
+                width,
+                height,
+                headers: { 'Cache-Control': SCREENSHOT_CACHE_CONTROL },
+            });
+        }
+
         const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
         const store = snap.exists ? snap.data() : null;
 

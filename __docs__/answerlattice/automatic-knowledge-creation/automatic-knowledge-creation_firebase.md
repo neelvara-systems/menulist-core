@@ -1,9 +1,9 @@
 # Automatic Knowledge Creation — Firebase Operations
 
-> **Status:** DOCUMENTED — Ready for Implementation
-> **Version:** 1.0.0
+> **Status:** IMPLEMENTED — operations contract updated
+> **Version:** 1.1.0
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-03-09
+> **Last Updated:** 2026-06-20
 > **Audience:** Developers
 
 ---
@@ -21,6 +21,7 @@
 | `answerlattice_entity_search_index` | Create search index for approved answers | W |
 | `answerlattice_audit_logs` | Log draft generation + approval events | W |
 | `kb_articles` | Read KB articles for prompt grounding (optional) | R |
+| `answerlattice_aiOperations/{tId}/{sId}` | Compact AI operation/token accounting rows for draft, entity-extraction, ticket-knowledge, onboarding, friction-insight, and embedding provider calls | W |
 
 ---
 
@@ -36,8 +37,9 @@
 | Read KB articles | `kb_articles` | R | 1 query (optional) | Additional grounding context |
 | Update proposal | `answerlattice_mutation_proposals` | W | 1 | Store draft on suggestedChange |
 | Write audit log | `answerlattice_audit_logs` | W | 1 | Log draft generation event |
+| Write AI operation | `answerlattice_aiOperations/{tId}/{sId}` | W | 1 | Log model, token counts, processing time, source, and zero-unit internal usage |
 
-**Total per draft: 4-5 reads + 2 writes**
+**Total per draft: 4-5 reads + 3 writes**
 
 ### §2.2 — Draft Approval (Client-side — per approval)
 
@@ -51,7 +53,7 @@
 
 **Total per approval: 1 read + 4 writes**
 
-### §2.3 — Draft Regeneration (Client-side — manual trigger)
+### §2.3 — Draft Regeneration (API route — manual trigger)
 
 | Operation | Collection | Type | Count | Purpose |
 |-----------|-----------|------|-------|---------|
@@ -61,8 +63,24 @@
 | Read existing answers | `answerlattice_canonical_answers` | R | 1 query | Grounding |
 | Update proposal | `answerlattice_mutation_proposals` | W | 1 | Store new draft |
 | Write audit log | `answerlattice_audit_logs` | W | 1 | Record explicit regeneration |
+| Write AI operation | `answerlattice_aiOperations/{tId}/{sId}` | W | 1 through `/api/answerlattice/mutation-proposals/regenerate-draft` | Log model, token counts, processing time, source, and zero-unit internal usage |
 
-**Total per regeneration: 4 reads/queries + 2 writes**
+**Total per regeneration: 4 reads/queries + 3 writes**
+
+### §2.4 — Related Scheduled AI Operations
+
+The same `answerlattice_aiOperations/{tId}/{sId}` accounting path is used by adjacent Answerlattice Cloud Function AI calls:
+
+| Operation | Source | Write |
+|-----------|--------|-------|
+| Ticket resolution extraction | `functions-answerlattice/src/answerlattice/resolutionExtractor.ts` | 1 AI operation row per provider call |
+| Founder onboarding entity extraction | `functions-answerlattice/src/answerlattice/onboardingBootstrap.ts` | 1 AI operation row per entity-extraction batch |
+| Founder onboarding draft generation | `functions-answerlattice/src/answerlattice/onboardingBootstrap.ts` | 1 AI operation row per draft provider call |
+| Article save entity extraction | `src/database/knowledgeBase/articles.ts` | 1 AI operation row per extraction batch through the sanitized API route |
+| Weekly friction insight | `functions-answerlattice/src/answerlattice/frictionInsight.ts` | 1 AI operation row per generated insight |
+| KB embedding worker/callable | `functions-answerlattice/src/utils/aiUtils.ts` | 1 AI operation row per embedding call with tenant/store scope |
+
+These rows are internal/accounting-only and do not charge Answerlattice support credits unless a future action is explicitly assigned a non-zero unit cost.
 
 ---
 
@@ -86,7 +104,9 @@
 | Medium | 50 | ~200 | ~800 | ~$0.001 | $0.05 |
 | Large | 500 | ~200 | ~800 | ~$0.001 | $0.50 |
 
-**Gemini cost: <$1/month even at 100-tenant scale.**
+**Gemini cost: <$1/month even at 100-tenant scale.** Token counts are now logged per provider call. When the SDK response omits provider usage metadata, the row is marked with `tokenCountSource='estimated'`.
+
+Scheduled Answerlattice Cloud Functions use the Answerlattice Firebase project's Vertex AI client for Gemini calls. They do not depend on the app-side `@google/genai` gateway or an undeclared `@google/generative-ai` package inside `functions-answerlattice`.
 
 ### §3.3 — Total Monthly Cost
 
@@ -116,6 +136,7 @@ All queries use existing indexes:
 - **Approved drafts → canonical answers:** Permanent (governed knowledge)
 - **Signal events used for context:** 12-month TTL through the Answerlattice nightly Admin SDK cleanup (`archiveExpiredSignals`)
 - **Audit logs:** Permanent (append-only, existing policy)
+- **AI operation rows:** Retained under the shared Answerlattice AI operation retention policy; accounting-only rows do not store raw prompts or provider payloads.
 
 ---
 
@@ -169,3 +190,11 @@ After creating proposals, these functions now also call `generateDraftForProposa
 | `__docs__/answerlattice/doctrine/05-architecture-evolution.md` | Architecture freeze rules |
 | `__docs__/answerlattice/doctrine/01-core-doctrine.md` | "Signals propose mutations. Humans approve." |
 | `__docs__/answerlattice/answerlattice-expansion-tracker.md` | Expansion Item #4 tracking |
+
+## §9 — Version History
+
+| Date | Version | Change |
+|------|---------|--------|
+| 2026-06-20 | 1.1.1 | Added manual draft regeneration and article entity-extraction AI operation accounting notes |
+| 2026-06-20 | 1.1.0 | Added AI operation/token accounting writes for scheduled Answerlattice provider calls |
+| 2026-03-09 | 1.0.0 | Initial Automatic Knowledge Creation Firebase operations contract |

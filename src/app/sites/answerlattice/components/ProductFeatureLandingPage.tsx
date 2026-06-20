@@ -53,7 +53,7 @@ const FEATURE_EVALUATION_ITEMS = [
     },
     {
         title: 'Security boundary',
-        description: 'Review safe page context, blocked private data, owner roles, fallback behavior, and approved-answer authority.',
+        description: 'Review safe page context, blocked private data, owner roles, fallback behavior, and approved-answer review.',
         href: '/security',
         cta: 'Review security',
     },

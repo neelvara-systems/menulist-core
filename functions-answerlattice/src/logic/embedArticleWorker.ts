@@ -37,7 +37,10 @@ export const embedArticleWorkerLogic = async (articleData: EmbedArticleType, job
             categoryTitle: articleData.categoryTitle,
             sectionTitle: articleData.sectionTitle ?? "",
             title: article.title,
-            content: article.content
+            content: article.content,
+            tId: tenantId,
+            sId: storeId,
+            source: "answerlattice_embed_article_worker",
         }
         const embeddingVector = await genrateEmbedding(articleToEmbed);
 

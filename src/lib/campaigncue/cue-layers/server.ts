@@ -293,11 +293,13 @@ function businessTruthSnapshot(businessBrain: CampaignCueBusinessBrain) {
         contacts: businessBrain.contacts,
         catalog,
         brandVoice: businessBrain.brandKit.voice,
+        brandPlaybook: businessBrain.brandKit.playbook,
         sourceSnapshotId: businessBrain.sourceSnapshotId,
         snapshotHash: stableJsonHash({
             name: businessBrain.name,
             contacts: businessBrain.contacts,
             catalog,
+            brandKit: businessBrain.brandKit,
         }),
     };
 }
@@ -322,6 +324,7 @@ function brandSnapshot(businessBrain: CampaignCueBusinessBrain) {
         primaryColor: businessBrain.brandKit.primaryColor,
         logoUrl: businessBrain.brandKit.logoUrl,
         voice: businessBrain.brandKit.voice,
+        playbook: businessBrain.brandKit.playbook,
     };
 }
 

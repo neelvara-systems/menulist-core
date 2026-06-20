@@ -212,7 +212,7 @@ _Move items here when done. Keep as history._
 | `__docs__/messaging-onboarding/messaging-onboarding_validation.md` | Messaging onboarding enable/test checklist |
 | `__docs__/campaigncue/campaigncue-production-implementation-audit.md` | CampaignCue current export/download runtime status and external blockers |
 | `__docs__/growthos-addon/growthos-addon_validation.md` | Growth Kits verification and production-readiness hardening notes |
-| `__docs__/kitstamp/kitstamp_implementation-lock-v1.md` | KitStamp separate-product implementation lock and activation gates |
+| `__docs__/kitstamp/kitstamp_impl.md` | KitStamp separate-product implementation plan and activation gates |
 
 ---
 

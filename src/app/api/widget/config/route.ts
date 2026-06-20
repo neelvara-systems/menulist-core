@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import {
     buildWidgetRuntimeStatusWrite,
     getWidgetRuntimeStatusFromStoreData,
@@ -214,10 +215,10 @@ export async function GET(request: NextRequest) {
         }
 
         const credential = authResult.credential || {};
-        if (credential.productId && credential.productId !== 'AL') {
+        if (credential.productId && credential.productId !== PRODUCT_IDS.ANSWERLATTICE) {
             return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
         }
-        if (credential.purpose && !String(credential.purpose).startsWith('answerlattice')) {
+        if (credential.purpose && credential.purpose !== 'answerlattice_widget') {
             return withPublicApiCors(NextResponse.json({ error: 'Invalid API key' }, { status: 401 }), request);
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:config')) {

@@ -58,6 +58,8 @@ assertIncludes("src/config/features.ts", "ENABLE_CAMPAIGNCUE_OUTPUT_PICKER");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "CAMPAIGNCUE_OUTPUT_PICKER_ITEMS");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "CAMPAIGNCUE_OUTPUT_PICKER_GROUPS");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaignCueOutputItemMatchesTemplate");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaign_proof_deck");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaign_proof_deck_pdf");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "custom_size");
 assertIncludes("src/constants/campaigncue/index.ts", "outputPicker");
 assertIncludes("src/constants/campaigncue/database.ts", "PLATFORM_PACK_TEMPLATES");
@@ -76,6 +78,8 @@ assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "kind: \"pack_template\"");
 assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "Reusable campaign pack and editor layout saved.");
 assertIncludes("src/lib/campaigncue/pack-templates/applyTemplate.ts", "editorDocument: input.editorDocument");
+assertIncludes("src/lib/campaigncue/pack-templates/applyTemplate.ts", "input.outputPack?.proofDeck");
+assertIncludes("src/lib/campaigncue/pack-templates/applyTemplate.ts", "input.businessBrain.brandKit.playbook");
 assertIncludes("src/lib/campaigncue/pack-templates/category.ts", "resolveBusinessCategory");
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadPlatformTemplates");
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadWorkspaceTemplates");

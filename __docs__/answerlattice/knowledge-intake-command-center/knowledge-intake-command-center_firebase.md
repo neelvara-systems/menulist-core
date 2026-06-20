@@ -1,8 +1,9 @@
 # Knowledge Intake Command Center — Firebase Cost & Operations Contract
 
 > **Status:** IMPLEMENTED — day-one cost-first contract
-> **Version:** 2.0.0
+> **Version:** 2.1.1
 > **Created:** 2026-05-31
+> **Last Updated:** 2026-06-20
 > **Audience:** Engineering / Firebase / Ops
 
 ---
@@ -44,6 +45,7 @@ The repeated-reply entity selector is search-gated. It does not load the ontolog
 | `answerlattice_knowledgeSources` | One compact source doc per selected source. | Bounded by plan/source caps. |
 | `answerlattice_intakeReviewItems` | One doc per owner decision, not per fact. | Capped per job; query paginated. |
 | `answerlattice_intakeUsageLedger` | Immutable support-credit reservation, settlement, and refund ledger for paid intake OCR/transcription. | Low/medium; one row per paid media extraction attempt. Client read-only; admin writes only. |
+| `answerlattice_aiOperations/{tId}/{sId}` | AI operation accounting rows for media extraction and publish-time embedding. | Low/medium; one row per provider-backed intake call. Owner reads are through the billing usage page. |
 
 ### Existing Destination Collections
 
@@ -148,6 +150,13 @@ Implemented in the existing Answerlattice nightly scheduler:
 Published intake output flows through the existing KB, FAQ, product-surface, and mutation-proposal destinations. Runtime search records store matched entity IDs and fallback reason even when the final answer comes from FAQ, RAG, or the empty-response path. Widget feedback and escalation-ticket signals bind the first matched entity when available, so nightly mutation can skip unnecessary unresolved-signal update work.
 
 Intake source metadata and usage-ledger metadata are bounded before write. Usage-ledger reservations fail closed unless the action is one of the supported Answerlattice intake actions (`answerlattice_intake_ocr`, `answerlattice_intake_transcription`, or `answerlattice_intake_embedding`), so a future caller cannot accidentally process paid intake work as a zero-unit unknown action. Active-license checks read the store subscription mirror first, then use a direct subscription doc or capped tenant/store subscription query only when the mirror is missing/stale. Canonical answer proposal review items must carry at least one related entity before acceptance/publish so downstream governance approval is never blocked by an entity-less proposal.
+
+Paid media extraction now writes both ledgers:
+
+- `answerlattice_intakeUsageLedger` remains the support-credit reservation, settlement, and refund source of truth, including monthly-vs-top-up debit source, before/after balances, token counts, and token count source.
+- `answerlattice_aiOperations/{tId}/{sId}` records action, model, processing time, units, support-credit debit breakdown, provider/estimated token counts, and token count source for billing visibility and ops cost tracking.
+
+Publish-time embedding logs a zero-unit internal `answerlattice_intake_embedding` operation with token metadata. It does not charge support credits separately.
 
 This gives activation/dashboard analytics without hidden processing or source/review scans.
 
@@ -601,6 +610,7 @@ When implemented with this contract:
 
 | Date | Version | Change |
 | --- | --- | --- |
+| 2026-06-20 | 2.1.1 | Added token count source and support-credit debit breakdown to media extraction accounting notes. |
 | 2026-05-31 | 1.0.0 | Initial Firebase/cost contract for Knowledge Intake Command Center. |
 | 2026-05-31 | 1.1.0 | Added website link discovery cost model, selected-source Firestore rules, and unchanged-link refresh skip rules. |
 | 2026-05-31 | 1.2.0 | Added lease/concurrency, credit reservation/settlement, and privacy-filter cost controls. |

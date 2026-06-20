@@ -6,7 +6,7 @@ Current runtime:
 
 | Collection | Reads | Writes | Cost guard |
 | --- | --- | --- | --- |
-| `campaigncueWorkspaces/{workspaceId}/businessBrains/default` | Workspace overview and campaign creation | Owner profile updates through `PATCH /api/campaigncue/workspace` | One compact default Business Brain per workspace. |
+| `campaigncueWorkspaces/{workspaceId}/businessBrains/default` | Workspace overview and campaign creation | Owner profile and Brand Playbook updates through `PATCH /api/campaigncue/workspace` | One compact default Business Brain per workspace. |
 
 Logical expansion:
 
@@ -28,4 +28,5 @@ Current runtime adds CampaignCue Business Brain writes through the dedicated Cam
 - First authenticated workspace load may read one MenuList `stores/{sId}` source doc, then create one CampaignCue workspace doc, one default Business Brain doc, one source snapshot doc, and one dashboard summary doc.
 - Later workspace loads read the Business Brain through `GET /api/campaigncue/workspace`; no realtime listener is used.
 - `PATCH /api/campaigncue/workspace` updates the default Business Brain and source snapshot only after owner action.
+- Brand Playbook fields live inside `brandKit.playbook`; they add no collection, listener, Storage path, Cloud Function, provider call, or model call.
 - CampaignCue does not write back to MenuList source collections in the current runtime.

@@ -18,6 +18,7 @@ import { computeIntelligenceState, fetchCurrentIntelligence, setAuditLogRunConte
 import { AggregatedAnalytics, fetch7DayAnalytics } from './intelligence/shared/analyticsAggregator';
 import { extractActiveItems } from './intelligence/shared/itemExtractor';
 import { DEFAULT_DURATIONS, normalize, QUICK_PICK_THRESHOLDS, WEIGHTS } from './intelligence/shared/scoreNormalizer';
+import { revalidatePublicClientCacheForStore } from './logic/publicCacheRevalidation';
 import { resolveBusinessCategoryOrFallback } from './sharedData/businessTypes';
 import { addDaysToAnalyticsDateKey, getAnalyticsDateRange } from './utils/analyticsDate';
 import { getBusinessAnalyticsDateKey, isAnalyticsSettlementDue, resolveBusinessDayEndTime } from './utils/businessDay';
@@ -1689,6 +1690,7 @@ export const computeDecisionBlocksScores = onSchedule({
                                     await summaryDoc.ref.set({
                                         [`projects.${projectId}.specialMenuStatus`]: 'active',
                                     }, { merge: true });
+                                    await revalidatePublicClientCacheForStore(sId, 'specialMenuSwitching:activate');
 
                                     logger.info(`  ✓ Activated special menu "${projData.specialMenuDisplayName}" for store ${sId}`);
                                     smResult.activated++;
@@ -1723,6 +1725,7 @@ export const computeDecisionBlocksScores = onSchedule({
                                     await summaryDoc.ref.set({
                                         [`projects.${projectId}.specialMenuStatus`]: 'expired',
                                     }, { merge: true });
+                                    await revalidatePublicClientCacheForStore(sId, 'specialMenuSwitching:deactivate');
 
                                     logger.info(`  ✓ Deactivated special menu "${projData.specialMenuDisplayName}" for store ${sId}`);
                                     smResult.deactivated++;

@@ -194,7 +194,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 },
                 model: 'coreSearch',
                 processingTime: Date.now() - operationStart,
+                promptTokenCount: result.aiProviderTokenUsage?.promptTokenCount || 0,
                 source: 'help_center_search',
+                totalTokenCount: result.aiProviderTokenUsage?.totalTokenCount || 0,
+                candidatesTokenCount: result.aiProviderTokenUsage?.candidatesTokenCount || 0,
+                tokenCountSource: result.aiProviderTokenUsage?.tokenCountSource || 'none',
             }).catch((error) => {
                 void writeLogEntry({
                     logFileName: PERF_LOG,

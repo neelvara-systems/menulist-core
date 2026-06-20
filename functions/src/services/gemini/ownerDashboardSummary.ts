@@ -239,8 +239,6 @@ export async function generateOwnerDashboardSummary(
         const text = geminiResult.text;
         if (!text) throw new Error('Empty response from Gemini');
 
-        console.log('[Gemini] Raw response:', text.substring(0, 200) + '...');
-
         // Parse JSON response
         const parsed = parseGeminiResponse(text);
 
@@ -270,7 +268,7 @@ export async function generateOwnerDashboardSummary(
 
 /**
  * Parse Gemini's JSON response with error handling
- * @param text - Raw text from Gemini
+ * @param text - Gemini response body
  * @param maxBullets - Maximum number of bullet points (default: 5)
  */
 function parseGeminiResponse(text: string, maxBullets: number = 5): { bulletPoints: string[] } {
@@ -297,7 +295,6 @@ function parseGeminiResponse(text: string, maxBullets: number = 5): { bulletPoin
 
     } catch (error) {
         console.error('[Gemini] Failed to parse response:', error);
-        console.error('[Gemini] Raw text:', text);
 
         throw new Error(`Failed to parse Gemini response: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

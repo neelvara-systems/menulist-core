@@ -1,12 +1,14 @@
 'use client';
 
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
+import { getPaginatedAnswerlatticeAiOperations } from '@database/answerlattice/aiOperations';
 import { getAnswerlatticeBillingHistoryForStore } from '@database/answerlattice/billing';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary, getAiOperationTone } from '@lib/ai/operationPresentation';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
 import { logger } from '@lib/monitoring/logger';
 import type { BillingHistoryItem } from '@type/razorpay';
-import { Alert, Button, Card, Flex, Grid, Spin, Typography, message } from 'antd';
+import { Alert, Button, Card, Flex, Grid, Space, Spin, Table, Tag, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -15,8 +17,32 @@ import { LuArrowLeft, LuRefreshCw } from 'react-icons/lu';
 import BillingHistory from '@/components/templates/main-app/billing/BillingHistory';
 
 const { Title, Text } = Typography;
+const AI_OPERATIONS_PAGE_SIZE = 12;
 
 const getCurrentHostname = () => (typeof window === 'undefined' ? undefined : window.location.hostname);
+
+const getActionTagColor = (action?: string | null) => {
+    const tone = getAiOperationTone(action);
+    if (tone === 'content') return 'blue';
+    if (tone === 'extraction') return 'geekblue';
+    if (tone === 'image') return 'purple';
+    if (tone === 'language') return 'cyan';
+    return 'default';
+};
+
+const formatSourceLabel = (source?: string | null) => (
+    String(source || 'answerlattice')
+        .replace(/^answerlattice_/, '')
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, char => char.toUpperCase())
+);
+
+const formatTokens = (value?: number | null) => {
+    const tokens = Number(value || 0);
+    return tokens > 0 ? `${tokens.toLocaleString()} tokens` : 'No tokens';
+};
 
 export default function AnswerlatticeTransactions() {
     const { data: session, status } = useSession();
@@ -28,6 +54,10 @@ export default function AnswerlatticeTransactions() {
     const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const currentHostname = getCurrentHostname();
+    const [aiOperations, setAiOperations] = useState<any[]>([]);
+    const [aiOperationsCursor, setAiOperationsCursor] = useState<{ id?: string } | null>(null);
+    const [hasMoreAiOperations, setHasMoreAiOperations] = useState(false);
+    const [isLoadingMoreAiOperations, setIsLoadingMoreAiOperations] = useState(false);
 
     const fetchBillingHistory = useCallback(async () => {
         if (!scope?.tenantId || !scope?.storeId) {
@@ -37,22 +67,136 @@ export default function AnswerlatticeTransactions() {
 
         setIsLoading(true);
         try {
-            const rawHistory = await getAnswerlatticeBillingHistoryForStore(scope.tenantId, scope.storeId);
-            setBillingHistory(formatBillingHistoryEvents(rawHistory, {
-                formatBillingCycle: (startSeconds, endSeconds) => {
-                    if (!startSeconds || !endSeconds) return undefined;
-                    const startDate = formatter.dateTime(new Date(startSeconds * 1000), { year: 'numeric', month: 'short', day: 'numeric' });
-                    const endDate = formatter.dateTime(new Date(endSeconds * 1000), { year: 'numeric', month: 'short', day: 'numeric' });
-                    return `${startDate}-${endDate}`;
-                },
-            }));
-        } catch (error) {
-            logger.error('Failed to load Answerlattice transactions', error);
-            message.error('Could not load Answerlattice transactions.');
+            const [billingResult, aiOperationsResult] = await Promise.allSettled([
+                getAnswerlatticeBillingHistoryForStore(scope.tenantId, scope.storeId),
+                getPaginatedAnswerlatticeAiOperations({
+                    pageNumber: 1,
+                    pageSize: AI_OPERATIONS_PAGE_SIZE,
+                }),
+            ]);
+
+            if (billingResult.status === 'fulfilled') {
+                setBillingHistory(formatBillingHistoryEvents(billingResult.value, {
+                    formatBillingCycle: (startSeconds, endSeconds) => {
+                        if (!startSeconds || !endSeconds) return undefined;
+                        const startDate = formatter.dateTime(new Date(startSeconds * 1000), { year: 'numeric', month: 'short', day: 'numeric' });
+                        const endDate = formatter.dateTime(new Date(endSeconds * 1000), { year: 'numeric', month: 'short', day: 'numeric' });
+                        return `${startDate}-${endDate}`;
+                    },
+                }));
+            } else {
+                setBillingHistory([]);
+                logger.error('Failed to load Answerlattice billing history', billingResult.reason);
+                message.error('Could not load Answerlattice transactions.');
+            }
+
+            if (aiOperationsResult.status === 'fulfilled') {
+                setAiOperations(aiOperationsResult.value.data);
+                setAiOperationsCursor(aiOperationsResult.value.lastVisibleDoc);
+                setHasMoreAiOperations(aiOperationsResult.value.hasMore);
+            } else {
+                setAiOperations([]);
+                setAiOperationsCursor(null);
+                setHasMoreAiOperations(false);
+                logger.error('Failed to load Answerlattice support credit usage', aiOperationsResult.reason);
+                message.error('Could not load support credit usage.');
+            }
         } finally {
             setIsLoading(false);
         }
     }, [formatter, scope?.tenantId, scope?.storeId]);
+
+    const loadMoreAiOperations = useCallback(async () => {
+        if (!scope?.tenantId || !scope?.storeId || !hasMoreAiOperations || isLoadingMoreAiOperations) return;
+        setIsLoadingMoreAiOperations(true);
+        try {
+            const response = await getPaginatedAnswerlatticeAiOperations({
+                pageNumber: Math.floor(aiOperations.length / AI_OPERATIONS_PAGE_SIZE) + 1,
+                pageSize: AI_OPERATIONS_PAGE_SIZE,
+                lastVisibleDoc: aiOperationsCursor,
+            });
+            setAiOperations(prev => [...prev, ...response.data]);
+            setAiOperationsCursor(response.lastVisibleDoc);
+            setHasMoreAiOperations(response.hasMore);
+        } catch (error) {
+            logger.error('Failed to load more Answerlattice AI operations', error);
+            message.error('Could not load more support credit usage.');
+        } finally {
+            setIsLoadingMoreAiOperations(false);
+        }
+    }, [aiOperations.length, aiOperationsCursor, hasMoreAiOperations, isLoadingMoreAiOperations, scope?.tenantId, scope?.storeId]);
+
+    const aiOperationSummary = useMemo(() => (
+        aiOperations.reduce((summary, operation) => {
+            summary.credits += Number(operation.unitsConsumed || 0);
+            summary.tokens += Number(operation.totalTokenCount || 0);
+            return summary;
+        }, { credits: 0, tokens: 0 })
+    ), [aiOperations]);
+
+    const aiOperationColumns = useMemo(() => [
+        {
+            title: 'Date',
+            dataIndex: 'createdOn',
+            key: 'createdOn',
+            width: 150,
+            render: (value: string) => {
+                const date = value ? new Date(value) : null;
+                return date && Number.isFinite(date.getTime())
+                    ? formatter.dateTime(date, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                    : '-';
+            },
+        },
+        {
+            title: 'Action',
+            dataIndex: 'action',
+            key: 'action',
+            width: 210,
+            render: (action: string) => <Tag color={getActionTagColor(action)}>{formatAiOperationActionLabel(action)}</Tag>,
+        },
+        {
+            title: 'Result',
+            key: 'result',
+            render: (_: unknown, record: any) => (
+                <Flex vertical gap={2}>
+                    <Text>{getAiOperationOwnerSummary(record)}</Text>
+                    <Text type="secondary">{formatSourceLabel(record.source)}</Text>
+                </Flex>
+            ),
+        },
+        {
+            title: 'Credits',
+            dataIndex: 'unitsConsumed',
+            key: 'unitsConsumed',
+            width: 120,
+            align: 'right' as const,
+            render: (value: number) => <Text>{formatAiOperationCredits(Number(value || 0))}</Text>,
+        },
+        {
+            title: 'Tokens',
+            dataIndex: 'totalTokenCount',
+            key: 'totalTokenCount',
+            width: 150,
+            align: 'right' as const,
+            render: (value: number, record: any) => (
+                <Space size={4}>
+                    <Text>{formatTokens(value)}</Text>
+                    {record.tokenCountSource === 'estimated' ? <Tag color="default">est.</Tag> : null}
+                </Space>
+            ),
+        },
+        {
+            title: 'Time',
+            dataIndex: 'processingTime',
+            key: 'processingTime',
+            width: 100,
+            align: 'right' as const,
+            render: (value: number) => {
+                const ms = Number(value || 0);
+                return ms > 0 ? `${(ms / 1000).toFixed(1)}s` : '-';
+            },
+        },
+    ], [formatter]);
 
     useEffect(() => {
         if (status === 'loading') return;
@@ -88,7 +232,36 @@ export default function AnswerlatticeTransactions() {
                     </Flex>
                 </Card>
             ) : (
-                <BillingHistory billingHistory={billingHistory} fetchBillingHistory={fetchBillingHistory} />
+                <Flex vertical gap={16}>
+                    <Card>
+                        <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={16} vertical={isMobile}>
+                            <Flex vertical gap={4}>
+                                <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>Support credit usage</Title>
+                                <Text type="secondary">
+                                    {formatAiOperationCredits(aiOperationSummary.credits)} / {formatTokens(aiOperationSummary.tokens)}
+                                </Text>
+                            </Flex>
+                            <Button
+                                disabled={!hasMoreAiOperations}
+                                loading={isLoadingMoreAiOperations}
+                                onClick={() => void loadMoreAiOperations()}
+                            >
+                                Load more
+                            </Button>
+                        </Flex>
+                        <Table
+                            columns={aiOperationColumns}
+                            dataSource={aiOperations}
+                            locale={{ emptyText: 'No support credit usage yet.' }}
+                            pagination={false}
+                            rowKey={(record) => record.id}
+                            scroll={{ x: 760 }}
+                            size={isMobile ? 'small' : 'middle'}
+                            style={{ marginTop: 16 }}
+                        />
+                    </Card>
+                    <BillingHistory billingHistory={billingHistory} fetchBillingHistory={fetchBillingHistory} />
+                </Flex>
             )}
         </Flex>
     );

@@ -8,10 +8,14 @@ UGC Script Studio is a script and brief workflow, not a creator marketplace. It 
 
 1. Load campaign cue and approved business facts.
 2. Select creator role and channel.
-3. Generate script pack with disclosure and prohibited-claim notes.
+3. Generate script pack with persona, phone-camera plan, product-placement note, dialogue/action beats, disclosure, and prohibited-claim notes.
 4. Run claim and source checks.
 5. Store draft version.
 6. Let owner approve, regenerate, export, or send to agency workspace.
+
+## Active Export Runtime
+
+The current CampaignCue runtime emits UGC brief structure through existing `CampaignCueOutput.fields.handoffFields` and the Campaign Pack Output ZIP. It does not create a new UGC provider call, avatar render, voiceover render, creator marketplace record, or video file. The generated handoff fields are deterministic: persona, camera plan, product placement, dialogue/action beats, brand direction, disclosure, consent, and CTA.
 
 ## Data Objects
 
@@ -27,6 +31,7 @@ UGC Script Studio is a script and brief workflow, not a creator marketplace. It 
 - Customer-style scripts cannot claim a real experience unless a source-approved testimonial exists.
 - Result claims require explicit evidence.
 - Sponsorship or creator disclosure text must be included where relevant.
+- First-person usage or recommendation wording such as long-term use, personal results, or "I recommend this" requires source proof, consent, and disclosure before handoff.
 - Owner edits must trigger a new trust check before external handoff.
 
 ## Acceptance

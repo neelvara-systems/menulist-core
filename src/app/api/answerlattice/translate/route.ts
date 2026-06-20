@@ -19,9 +19,9 @@ import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
-import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
@@ -240,7 +240,10 @@ Respond in this exact JSON format:
             },
         });
 
-        recordAiOperationForSession(session, {
+        recordAnswerlatticeAiOperation({
+            tId: sessionScope.tenantId,
+            sId: sessionScope.storeId,
+        }, {
             action: AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION,
             articleId,
             billingMode: 'internal',
@@ -253,6 +256,10 @@ Respond in this exact JSON format:
             model: 'gemini-2.0-flash',
             processingTime: Date.now() - operationStart,
             source: 'answerlattice_translate',
+        }, {
+            id: session.user?.id,
+            name: session.user?.name,
+            email: session.user?.email,
         }).catch((logError) => {
             secureError('[Answerlattice Translate] Operation log failed', logError as Error, { articleId, targetLocale });
         });

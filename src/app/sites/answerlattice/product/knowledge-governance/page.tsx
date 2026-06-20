@@ -7,7 +7,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'Review Approved Answers',
-    description: 'Review approved answers, stale support, repeated misses, coverage KPI, and trust/readiness metrics.',
+    description: 'Review approved answers, stale support, repeated misses, coverage signals, and launch readiness.',
     alternates: { canonical: '/product/knowledge-governance' },
 };
 
@@ -36,11 +36,11 @@ export default function KnowledgeGovernanceProductPage() {
                 bentoTitle="Known truth stays stable. Missing truth becomes visible."
                 bentoDescription="The point is not to let AI answer everything. The point is to keep known answers stable, stale answers visible, and missing answers reviewable."
                 bentoCards={[
-                    { title: 'Product structure', description: 'Features, plans, roles, workflows, states, integrations, and errors can be treated as first-class support concepts.' },
-                    { title: 'Approved before authority', description: 'Drafts and proposals do not become official answers until a human approves them.' },
+                    { title: 'Product pages and states', description: 'Features, plans, roles, workflows, integrations, and errors can be mapped to the support topics users ask about.' },
+                    { title: 'Approve before users see it', description: 'Drafts and proposals do not become official answers until a human approves them.' },
                     { title: 'Stale-answer review', description: 'AnswerLattice makes stale answers visible after releases, scope conflicts, or deprecated product behavior.' },
-                    { title: 'Coverage metrics', description: 'Owners can see whether important surfaces have enough approved answers.' },
-                    { title: 'Trust readiness', description: 'Summary-backed metrics help the owner understand readiness without scanning raw logs.' },
+                    { title: 'Coverage view', description: 'Owners can see whether important product areas have enough approved answers.' },
+                    { title: 'Readiness summary', description: 'Simple summaries help the owner understand launch readiness without scanning raw logs.' },
                 ]}
                 workflowTitle="Turn support misses into approved product knowledge."
                 workflowDescription="The review loop is simple: approved answer first, fallback when needed, signal when weak, owner review, then a better answer for the next user."

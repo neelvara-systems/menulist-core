@@ -28,7 +28,7 @@ export default function ProductTeamsUseCasePage() {
             question="Did usage limits change?"
             genericAnswer="Read the latest release notes for usage limits."
             answerlatticeAnswer="The usage-limits release affected plan quota answers. AnswerLattice flags stale-answer risk until the related approved answer is reviewed."
-            ownerReview="Product changes become support-review work through stale-answer checks, coverage, and signal queues. Proposals still require human approval before they become authoritative answers."
+            ownerReview="Product changes become support-review work through stale-answer checks, coverage, and signal queues. Proposals still require human approval before they become official answers."
             setupSteps={[
                 'Define surfaces for release-heavy areas such as billing, limits, and settings.',
                     'Map changelog entries to affected surfaces and answers.',

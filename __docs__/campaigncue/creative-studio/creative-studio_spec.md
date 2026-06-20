@@ -16,6 +16,7 @@ Creative Studio turns approved campaign intent into static assets for local-busi
 | Requirement | Acceptance |
 | --- | --- |
 | Source-aware asset brief | Every generation request includes selected business fact, campaign cue, channel, CTA, and trust status. |
+| Brand Playbook-aware brief | Creative briefs, editor placeholders, Design Cue brand checks, and Campaign Proof Deck notes can use saved audience, feel, visual motifs, product/service focus, typography notes, and avoid list. |
 | Channel-specific variants | Instagram post/story, WhatsApp image, Google update image, flyer, and ad creative use separate size/copy constraints. |
 | Fact lock | Price, address, offer date, opening time, service name, and menu item name cannot be changed by creative generation. |
 | Regenerate by part | User can regenerate caption, headline, image prompt, or layout variant without recreating the whole pack. |
@@ -28,6 +29,7 @@ Creative Studio turns approved campaign intent into static assets for local-busi
 
 - It is not a full design-suite replacement.
 - It does not invent discounts, inventory, service results, endorsements, or review quotes.
+- It does not create a brand identity from scratch or treat prompt references as approved brand truth unless they are saved in Business Brain.
 - It does not publish automatically without owner approval.
 
 ## Risks

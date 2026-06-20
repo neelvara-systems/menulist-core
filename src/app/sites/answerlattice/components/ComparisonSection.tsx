@@ -48,7 +48,7 @@ const COMPARISON_ROWS = [
         chatbot: 'Weak',
         helpdesk: 'Manual by agents',
         kb: 'Manual publishing',
-        answerlattice: 'Reviewed drafts and proposals before authority',
+        answerlattice: 'Reviewed drafts and proposals before official support',
     },
     {
         feature: 'Helps after releases',

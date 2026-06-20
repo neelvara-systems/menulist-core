@@ -11,9 +11,22 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { logger } from "@lib/monitoring/logger";
 import { NextRequest, NextResponse } from "next/server";
 
 const db = admin.firestore();
+
+const timestampLikeToMillis = (value: unknown): number | null => {
+  if (!value) return null;
+  if (typeof (value as any).toMillis === "function") return (value as any).toMillis();
+  if (typeof (value as any).toDate === "function") return (value as any).toDate().getTime();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,8 +60,17 @@ export async function GET(request: NextRequest) {
     const userDoc = userQuery.docs[0];
     const userData = userDoc.data();
 
-    // Token never expires — 256-bit cryptographic random, brute force impossible
-    // Expiry removed to eliminate support dependency (B4)
+    const claimTokenExpiresAtMs = timestampLikeToMillis(userData.claimTokenExpiresAt);
+    if (claimTokenExpiresAtMs && claimTokenExpiresAtMs <= Date.now()) {
+      const now = admin.firestore.Timestamp.now();
+      await userDoc.ref.update({
+        claimToken: null,
+        claimTokenExpiresAt: null,
+        claimTokenExpiredAt: now,
+        modifiedOn: now,
+      });
+      return NextResponse.json({ valid: false, error: "Claim link expired" }, { status: 410 });
+    }
 
     // Return minimal info for the login page welcome message
     return NextResponse.json({
@@ -57,7 +79,7 @@ export async function GET(request: NextRequest) {
       phone: userData.phone ? `****${(userData.phone || "").slice(-4)}` : null, // Masked for privacy
     });
   } catch (error) {
-    console.error("[validate-claim] Error:", (error as Error).message);
+    logger.error("[validate-claim] Error", error);
     return NextResponse.json({ valid: false, error: "Internal error" }, { status: 500 });
   }
 }

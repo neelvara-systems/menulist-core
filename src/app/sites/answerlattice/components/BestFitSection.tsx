@@ -21,7 +21,7 @@ const FIT_DECISIONS = [
         tone: 'good' as const,
     },
     {
-        title: 'Review before authority',
+        title: 'Review before users see it',
         detail: 'You want in-app AI help, but official answers still need owner approval.',
         label: 'fit',
         tone: 'good' as const,

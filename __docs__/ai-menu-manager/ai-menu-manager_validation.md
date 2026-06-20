@@ -2,7 +2,7 @@
 
 **Status:** Initial implementation validated; production audit hardening applied
 **Audience:** Engineering / QA
-**Last Updated:** June 18, 2026
+**Last Updated:** June 20, 2026
 
 ---
 
@@ -118,6 +118,25 @@ Registry/manual/existing-flow cards are present for broader day-one product posi
 
 ---
 
+## Post-Feedback Maturity Check - June 20, 2026
+
+External ChatGPT feedback was validated against the codebase and current AMM docs. The feedback was accurate that AMM is a verified foundation, registry, UI/control layer, and compact-session implementation, not a fully mature autonomous agent with every adapter, rollback path, rules engine, image/import flow, and long-term memory complete.
+
+Decision:
+
+- keep the current product boundary: action registry, proposal cards, approvals, existing MenuList paths, receipts.
+- keep read-only selected-menu answers through `system_context_answer`.
+- keep generic questions and unsupported external posting out of scope.
+- keep `ready_adapter`, `needs_adapter_glue`, `manual_task_only`, and `blocked` as production readiness states.
+- do not market unfinished adapter families as completed direct execution.
+
+Claim fix applied:
+
+- public website metadata, locale strings, and AMM website/marketing docs now describe today-special/new item work as draft/review card behavior unless the create-item adapter is connected.
+- broad website language now says supported changes go live after approval, so image/import/publish/rule/rollback families are not overclaimed while still visible as card-governed action families.
+
+---
+
 ## Open Implementation Follow-Ups
 
 - Connect image generation cards to the existing image generation job flow behind `ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS`.
@@ -125,3 +144,4 @@ Registry/manual/existing-flow cards are present for broader day-one product posi
 - Connect publish cards to the existing publish/share flow.
 - Add merged bulk patch execution for bulk price and availability cards.
 - Add durable adapter-specific undo only where before/after state supports reversal.
+- Connect create-item/today-special cards before demoing "Add today special Rajma Chawal 129" as an executable live-menu change.

@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { PRODUCT_IDS } from '@constant/product';
 import { evaluateTriggers } from '@lib/answerlattice/predictiveEngine';
 import { AnswerlatticeContextSchema } from '@lib/validation/contextSchema';
 import { handlePublicApiCorsPreflight, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, validatePublicApiKey, withPublicApiCors } from '@lib/publicApi/auth';
@@ -96,10 +97,10 @@ export async function POST(request: NextRequest) {
             return emptyCorsResponse(request, { status: 204 });
         }
         const credential = authResult.credential || {};
-        if (credential.productId && credential.productId !== 'AL') {
+        if (credential.productId && credential.productId !== PRODUCT_IDS.ANSWERLATTICE) {
             return emptyCorsResponse(request, { status: 204 });
         }
-        if (credential.purpose && !String(credential.purpose).startsWith('answerlattice')) {
+        if (credential.purpose && credential.purpose !== 'answerlattice_widget') {
             return emptyCorsResponse(request, { status: 204 });
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:predictive')) {

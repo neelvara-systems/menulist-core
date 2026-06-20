@@ -19,7 +19,7 @@
 - Add/update WhatsApp number.
 - Upload logo/photo.
 - Confirm a simple service/item detail.
+- Review or lightly edit Brand Playbook fields such as audience, feel, visual motifs, focus, and avoid list.
 - Continue with text-first campaign when asset is missing.
 
-Desktop remains primary for bulk menu/service import, source conflict review, and brand kit setup.
-
+Desktop remains primary for bulk menu/service import, source conflict review, and full brand kit/playbook setup.

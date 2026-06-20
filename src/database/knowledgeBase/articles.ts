@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { collection, deleteDoc, doc, documentId, getDoc, getDocs, limit, query, runTransaction, setDoc, where, writeBatch } from "@firebase/firestore";
+import { collection, deleteDoc, doc, documentId, getDoc, getDocs, limit, query, QueryConstraint, runTransaction, setDoc, where, writeBatch } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
@@ -13,6 +13,12 @@ import { addDoc } from "firebase/firestore";
 const COLLECTION = DB_COLLECTIONS.KB_ARTICLES;
 const KB_ARTICLE_LIST_LIMIT = 500;
 const KB_ARTICLE_ID_QUERY_CHUNK_SIZE = 30;
+
+type ReadableArticleScope = {
+    isPlatform: boolean;
+    tId?: number;
+    sId?: number;
+};
 
 const getCollectionRef = async () => {
     return collection(answerlatticeFirebaseClient, `${COLLECTION}`)
@@ -37,6 +43,42 @@ const resolveArticleScope = async (data?: Partial<KnowledgeBaseArticleType> | nu
     }
 
     return null;
+};
+
+const resolveReadableArticleScope = async (): Promise<ReadableArticleScope> => {
+    const session = await getActiveSession().catch(() => null);
+    const tId = Number(session?.tId);
+    const sId = Number(session?.sId);
+    return {
+        isPlatform: (session as any)?.platformRole === 'PLATFORM',
+        ...(Number.isFinite(tId) && tId > 0 ? { tId } : {}),
+        ...(Number.isFinite(sId) && sId > 0 ? { sId } : {}),
+    };
+};
+
+const getReadableScopeFilters = (scope: ReadableArticleScope): QueryConstraint[] => {
+    if (scope.isPlatform) {
+        return [];
+    }
+    if (!scope.tId || !scope.sId) {
+        return [];
+    }
+    return [
+        where("tId", "==", scope.tId),
+        where("sId", "==", scope.sId),
+    ];
+};
+
+const readableScopeAllowsArticle = (scope: ReadableArticleScope, article: Partial<KnowledgeBaseArticleType> | null | undefined) => {
+    if (scope.isPlatform) {
+        return true;
+    }
+    return Boolean(
+        scope.tId
+        && scope.sId
+        && Number(article?.tId) === scope.tId
+        && Number(article?.sId) === scope.sId
+    );
 };
 
 const bumpKnowledgeBaseVersion = async (
@@ -194,11 +236,12 @@ export const deleteMultipleArticles = async (ids: string[]) => {
 export const getArticlesByCategoryId = async (categoryId: string) => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession().catch(() => null);
-            const filters: any[] = [where("categoryId", "==", categoryId)];
-            if (session?.tId && session?.sId) {
-                filters.push(where("tId", "==", session.tId), where("sId", "==", session.sId));
+            const scope = await resolveReadableArticleScope();
+            if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
+                return [];
             }
+            const filters: any[] = [where("categoryId", "==", categoryId)];
+            filters.push(...getReadableScopeFilters(scope));
             const q = query(await getCollectionRef(), ...filters, limit(KB_ARTICLE_LIST_LIMIT));
             const querySnapshot = await getDocs(q);
             const list: KnowledgeBaseArticleType[] = [];
@@ -215,11 +258,12 @@ export const getArticlesByCategoryId = async (categoryId: string) => {
 export const getArticlesBySectionId = async (sectionId: string) => {
     return await apiCallComposer(
         async () => {
-            const session = await getActiveSession().catch(() => null);
-            const filters: any[] = [where("sectionId", "==", sectionId)];
-            if (session?.tId && session?.sId) {
-                filters.push(where("tId", "==", session.tId), where("sId", "==", session.sId));
+            const scope = await resolveReadableArticleScope();
+            if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
+                return [];
             }
+            const filters: any[] = [where("sectionId", "==", sectionId)];
+            filters.push(...getReadableScopeFilters(scope));
             const q = query(await getCollectionRef(), ...filters, limit(KB_ARTICLE_LIST_LIMIT));
             const querySnapshot = await getDocs(q);
             const list: KnowledgeBaseArticleType[] = [];
@@ -245,13 +289,21 @@ export const getArticlesByIds = async (ids: string[]) => {
                     .map(id => String(id || '').trim())
                     .filter(Boolean)
             )).slice(0, KB_ARTICLE_LIST_LIMIT);
+            const scope = await resolveReadableArticleScope();
+            if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
+                return [];
+            }
+            const scopeFilters = getReadableScopeFilters(scope);
             const articles: KnowledgeBaseArticleType[] = [];
             for (let index = 0; index < uniqueIds.length; index += KB_ARTICLE_ID_QUERY_CHUNK_SIZE) {
                 const chunk = uniqueIds.slice(index, index + KB_ARTICLE_ID_QUERY_CHUNK_SIZE);
-                const q = query(collectionRef, where(documentId(), 'in', chunk));
+                const q = query(collectionRef, where(documentId(), 'in', chunk), ...scopeFilters);
                 const querySnapshot = await getDocs(q);
                 querySnapshot.forEach((doc) => {
-                    articles.push({ id: doc.id, ...doc.data() } as KnowledgeBaseArticleType);
+                    const article = { id: doc.id, ...doc.data() } as KnowledgeBaseArticleType;
+                    if (readableScopeAllowsArticle(scope, article)) {
+                        articles.push(article);
+                    }
                 });
             }
             return articles;
@@ -264,10 +316,15 @@ export const getArticlesByIds = async (ids: string[]) => {
 export const getArticleById = async (id: string) => {
     return await apiCallComposer(
         async () => {
+            const scope = await resolveReadableArticleScope();
+            if (!scope.isPlatform && (!scope.tId || !scope.sId)) {
+                return null;
+            }
             const docRef = await getDocRef(id);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                return { ...docSnap.data(), id: docSnap.id } as KnowledgeBaseArticleType;
+                const article = { ...docSnap.data(), id: docSnap.id } as KnowledgeBaseArticleType;
+                return readableScopeAllowsArticle(scope, article) ? article : null;
             }
             return null;
         },
@@ -334,30 +391,18 @@ function _triggerEntityExtraction(article: KnowledgeBaseArticleType): void {
         const session = await getActiveSession().catch(() => null);
         if (!session?.tId || !session?.sId) return;
 
-        const { extractEntitiesForArticle } = await import('@lib/answerlattice/entityExtraction');
-        const { callGeminiChat } = await import('@lib/vectorEmbeddings');
-
-        const result = await extractEntitiesForArticle(
-            {
+        await fetch('/api/answerlattice/articles/extract-entities', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
                 id: article.id,
                 title: article.title,
                 content: article.content,
                 categoryTitle: article.categoryTitle,
-            },
-            session.tId,
-            session.sId,
-            async (systemPrompt: string, userPrompt: string) => {
-                // Combine system + user prompt since callGeminiChat doesn't take system prompt separately
-                const combinedPrompt = `${systemPrompt}\n\n${userPrompt}`;
-                return callGeminiChat(combinedPrompt, []);
-            }
-        );
-
-        // If extraction found entity matches, update article with entityIds
-        if (result && result.entityIds.length > 0) {
-            const composedData = await answerlatticeRequestBodyComposer({ entityIds: result.entityIds });
-            await setDoc(await getDocRef(article.id), composedData, { merge: true });
-        }
+            }),
+        });
     }).catch(() => {
         // Silent failure — entity extraction must never break article operations
     });

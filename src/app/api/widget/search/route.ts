@@ -170,10 +170,10 @@ export async function POST(request: NextRequest) {
 
         const { storeData, storeId } = authResult;
         const credential = authResult.credential || {};
-        if (credential.productId && credential.productId !== 'AL') {
+        if (credential.productId && credential.productId !== PRODUCT_IDS.ANSWERLATTICE) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
-        if (credential.purpose && !String(credential.purpose).startsWith('answerlattice')) {
+        if (credential.purpose && credential.purpose !== 'answerlattice_widget') {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:search')) {
@@ -326,7 +326,7 @@ export async function POST(request: NextRequest) {
 
         if (result.aiProviderUsed) {
             recordAiOperation({
-                action: AI_ACTIONS_TYPES.HELP_CENTER_SEARCH,
+                action: AI_ACTIONS_TYPES.ANSWERLATTICE_WIDGET_SEARCH,
                 billingMode: 'public',
                 clientResponse: {
                     aiProviderOperations: result.aiProviderOperations || [],
@@ -341,9 +341,13 @@ export async function POST(request: NextRequest) {
                 model: 'coreSearch',
                 pId: PRODUCT_IDS.ANSWERLATTICE,
                 processingTime: Date.now() - operationStart,
+                promptTokenCount: result.aiProviderTokenUsage?.promptTokenCount || 0,
                 sId,
                 source: 'answerlattice_widget_search',
                 tId,
+                totalTokenCount: result.aiProviderTokenUsage?.totalTokenCount || 0,
+                candidatesTokenCount: result.aiProviderTokenUsage?.candidatesTokenCount || 0,
+                tokenCountSource: result.aiProviderTokenUsage?.tokenCountSource || 'none',
                 uId: 'widget',
             }).catch((error) => {
                 secureError('[Widget Search] Operation log failed', error as Error, { tId, sId });

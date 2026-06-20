@@ -61,6 +61,12 @@ export function buildCampaignCuePackTemplatePayloadFromCampaign(input: {
         ...(input.campaign.channels || []),
     ], 16);
     const deliveryCards = compactUnique(input.outputPack?.deliveryCards.map((card) => card.title) || [], 16);
+    const printFormats = compactUnique([
+        ...(input.outputPack?.creative.visualAssets
+            .filter((asset) => asset.exportFormat === "pdf_flattened")
+            .map((asset) => asset.size) || []),
+        input.outputPack?.proofDeck ? "campaign_proof_deck_pdf" : undefined,
+    ], 16);
     const copyBlocks = compactUnique([
         ...(input.outputPack?.copy.whatsapp.map((block) => block.label) || []),
         ...(input.outputPack?.copy.googleBusinessProfile.map((block) => block.label) || []),
@@ -68,6 +74,7 @@ export function buildCampaignCuePackTemplatePayloadFromCampaign(input: {
         ...(input.outputPack?.copy.emailSms.map((block) => block.label) || []),
         ...(input.outputPack?.copy.adsHandoff.map((block) => block.label) || []),
         ...(input.outputPack?.copy.staff.map((block) => block.label) || []),
+        ...(input.outputPack?.proofDeck.sections.map((block) => block.label) || []),
     ], 24);
 
     return {
@@ -91,9 +98,7 @@ export function buildCampaignCuePackTemplatePayloadFromCampaign(input: {
             channels: outputChannels.length ? outputChannels : input.campaign.channels,
             copyBlocks,
             deliveryCards,
-            printFormats: compactUnique(input.outputPack?.creative.visualAssets
-                .filter((asset) => asset.exportFormat === "pdf_flattened")
-                .map((asset) => asset.size) || [], 16),
+            printFormats,
             resultQuestion: input.outputPack?.resultMemory.question
                 || input.campaign.pack?.resultQuestion
                 || "Did this campaign help?",
@@ -125,8 +130,10 @@ export function buildCampaignCueWorkspaceTemplateSaveInput(input: {
         campaign: input.campaign,
         outputPack: input.outputPack,
     });
-    const outputTypes = compactUnique(
-        input.campaign.outputs.map((output) => outputTypeForPostType(output.fields.postType)),
+    const outputTypes = compactUnique([
+        ...input.campaign.outputs.map((output) => outputTypeForPostType(output.fields.postType)),
+        input.outputPack?.proofDeck ? "campaign_proof_deck_pdf" : undefined,
+    ],
         20,
     ) as CampaignCueDecisionOutputType[];
     const requiredFactTypes = compactUnique(input.outputPack?.facts.missingInputs
@@ -162,11 +169,17 @@ export function buildCampaignCueWorkspaceTemplateSaveInput(input: {
                 ...input.campaign.channels,
                 ...outputTypes,
                 ...requiredFactTypes,
+                input.businessBrain.brandKit.playbook.targetAudience,
+                ...input.businessBrain.brandKit.playbook.brandFeel,
+                ...input.businessBrain.brandKit.playbook.visualMotifs,
+                ...input.businessBrain.brandKit.playbook.productFocus,
             ]),
             status: "active",
             styleTags: compactUnique([
                 input.businessBrain.brandKit.voice,
                 input.outputPack?.trustReport.status,
+                ...input.businessBrain.brandKit.playbook.brandFeel,
+                ...input.businessBrain.brandKit.playbook.visualMotifs,
             ], 20),
             supportedBusinessTypes: [input.businessBrain.businessType],
             templateId: payload.templateId,

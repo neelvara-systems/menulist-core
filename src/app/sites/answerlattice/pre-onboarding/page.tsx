@@ -243,7 +243,7 @@ export default function AnswerlatticePreOnboardingPage() {
                     <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
                         <div>
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Safety boundary</p>
-                            <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">The prompt prepares inputs. It does not publish authority.</h2>
+                            <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">The prompt prepares inputs. It does not publish official support.</h2>
                             <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
                                 Pre-onboarding makes the first AnswerLattice intake cleaner, but it only covers sources the agent can actually read. AnswerLattice still requires source review, owner approval, and production checks before answering live users.
                             </p>

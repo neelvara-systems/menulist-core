@@ -40,6 +40,7 @@ export const DB_COLLECTIONS = {
     ANSWERLATTICE_SCHEDULER_RUN_LOGS: 'answerlattice_schedulerRunLogs',
     ANSWERLATTICE_CACHE_VERSIONS: 'answerlattice_cacheVersions',
     ANSWERLATTICE_NOTIFICATION_LOGS: 'answerlattice_notificationLogs',
+    ANSWERLATTICE_AI_OPERATIONS: 'answerlattice_aiOperations',
     OWNER_NOTIFICATION_EVENTS: 'ownerNotificationEvents',
     OWNER_NOTIFICATION_DELIVERIES: 'ownerNotificationDeliveries',
     OWNER_NOTIFICATION_RATE_LIMITS: 'ownerNotificationRateLimits',

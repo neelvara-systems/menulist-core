@@ -12,7 +12,7 @@ It is derived from the existing CampaignCue overview and generated as a browser-
 | --- | --- |
 | Daily desk overview | Same existing bounded overview reads. |
 | Output pack build | 0 additional reads. |
-| Output pack UI summary | 0 additional reads. |
+| Output pack UI summary, including proof deck status | 0 additional reads. |
 | ZIP generation | 0 Firebase reads. |
 
 ## Writes
@@ -30,6 +30,7 @@ It is derived from the existing CampaignCue overview and generated as a browser-
 - No signed URLs or base64 assets are saved in output-pack state.
 - No provider connection read is needed.
 - No social posting or ad-spend API is called.
+- Campaign Proof Deck content is derived from the already-loaded output pack, Business Brain Brand Playbook, source facts, and trust summary.
 
 ## Future Boundary
 

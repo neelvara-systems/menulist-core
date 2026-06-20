@@ -84,7 +84,6 @@ export const updateTenantsCountInPlatformSummary = async () => {
             const ref = await getPlatformSummaryDocRef();
             const docSnap = await getDoc(ref);
             if (docSnap.exists()) {
-                console.log("docSnap.data()", docSnap.data())
                 await updateDoc(ref, { 'tenants.count': increment(1) });
             } else {
                 //for the first time in life
@@ -104,7 +103,6 @@ export const updateStoresCountInPlatformSummary = async () => {
             const ref = await getPlatformSummaryDocRef();
             const docSnap = await getDoc(ref);
             if (docSnap.exists()) {
-                console.log("docSnap.data()", docSnap.data())
                 await updateDoc(ref, { 'stores.count': increment(1) });
             } else {
                 //for the first time in life
@@ -124,7 +122,6 @@ export const updateStoresAndTenantsCountInPlatformSummary = async () => {
             const ref = await getPlatformSummaryDocRef();
             const docSnap = await getDoc(ref);
             if (docSnap.exists()) {
-                console.log("docSnap.data()", docSnap.data())
                 await updateDoc(ref, {
                     'stores.count': increment(1),
                     'tenants.count': increment(1),

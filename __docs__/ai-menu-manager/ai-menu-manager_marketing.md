@@ -3,7 +3,7 @@
 **Status:** Internal draft
 **Audience:** Sales, founder demos, positioning review
 **Public language note:** Public launch copy uses `AI Menu Manager` by founder decision. This is a narrow feature-level exception; MenuList itself is not repositioned as generic AI restaurant software.
-**Last Updated:** June 17, 2026
+**Last Updated:** June 20, 2026
 
 ---
 
@@ -34,8 +34,14 @@ The owner can say:
 - "Make my menu look premium."
 - "Generate image for masala tea."
 - "Add lunch thali today only."
+- "What should I fix today?"
+- "Which items have no photos?"
 
 MenuList turns that into a prepared operation card. The owner approves important changes, and MenuList applies the work through the same system that runs the public menu.
+
+When the owner asks about the selected menu instead of asking for a change, MenuList can show a read-only answer card using the menu data already loaded for that project. These answers can suggest the next message, but they do not approve, mutate, or fetch unrelated external information.
+
+Demo discipline: lead launch demos with executable daily menu ops and selected-menu answer cards. New-item today-special, image generation, import, publish, and rule/rollback flows should be described as draft, review, or handoff cards unless the matching adapter is connected and verified.
 
 ---
 
@@ -44,7 +50,7 @@ MenuList turns that into a prepared operation card. The owner approves important
 | Common market feature | MenuList position |
 | --- | --- |
 | AI menu generator | AMM manages ongoing menu operations after the menu exists. |
-| Chatbot advice | AMM prepares action cards. |
+| Chatbot advice | AMM prepares action cards and selected-menu answer cards, not freeform general chat. |
 | Design editor | AMM applies controlled menu design presets. |
 | Analytics assistant | AMM turns safe signals into menu actions; Business Health remains separate. |
 | Photo generator | AMM treats generated photos as draft assets until owner approves use. |
@@ -102,6 +108,12 @@ AMM shows generated draft image variants.
 
 Owner can use, download, regenerate, edit prompt, or reject.
 
+### Demo 5: Menu Check
+
+Owner types: "What should I fix today?"
+
+AMM shows a read-only answer card for the selected menu, such as missing photos, unavailable items, hidden categories, or readiness to share. Suggested next steps fill the composer only; the owner still sends and approves any actual change.
+
 ---
 
 ## Pitch Deck Outline
@@ -112,7 +124,7 @@ Owner can use, download, regenerate, edit prompt, or reject.
 | 2 | MenuList accepts plain owner input and prepares the update. |
 | 3 | Every important change appears as a card with preview and approval. |
 | 4 | Same menu truth, same publish path, same customer surfaces. |
-| 5 | Daily flows: price, sold out, photos, specials, style, import. |
+| 5 | Daily flows: price, sold out, selected-menu checks, style, and reviewable photo/special/import cards. |
 | 6 | Multi-outlet and staff changes stay scoped and approved. |
 | 7 | Repeated approvals can become owner-approved rules. |
 | 8 | This is not content generation. This is menu operations. |
@@ -136,6 +148,10 @@ Yes. Manual screens stay available. AMM is another entrance into the same MenuLi
 ### "Can this publish to delivery apps?"
 
 No. AI Menu Manager does not publish to delivery apps. It works on MenuList-owned menu, link, QR, design, import, image, and publish flows.
+
+### "Can owners ask normal questions?"
+
+They can ask questions about the selected MenuList menu, such as missing photos, sold-out items, or whether the menu is ready to share. General questions such as weather, news, or unrelated business advice are out of scope and do not create action cards.
 
 ### "What makes this different from menu generators?"
 

@@ -34,6 +34,26 @@ const verifyRazorpayOrderSignature = (
     return expected.length === actual.length && timingSafeEqual(expected, actual);
 };
 
+const mirrorAnswerlatticeCreditSummary = async (
+    billingDb: FirebaseFirestore.Firestore,
+    storeId: number | string,
+    subscription: any,
+    topUpCredits?: number,
+) => {
+    if (!subscription) return;
+    const serverNow = admin.firestore.FieldValue.serverTimestamp();
+    await billingDb.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).set({
+        'answerlatticeSubscription.id': subscription.id || subscription.providerSubscriptionId || null,
+        'answerlatticeSubscription.providerSubscriptionId': subscription.providerSubscriptionId || subscription.id || null,
+        'answerlatticeSubscription.monthlyCreditsAllowance': Number(subscription.monthlyCreditsAllowance ?? 0),
+        'answerlatticeSubscription.monthlyCredits': Number(subscription.monthlyCredits ?? 0),
+        'answerlatticeSubscription.topUpCredits': Number(topUpCredits ?? subscription.topUpCredits ?? 0),
+        'answerlatticeSubscription.creditsLastResetMonth': Number(subscription.creditsLastResetMonth ?? 0) || null,
+        'answerlatticeSubscription.updatedAt': serverNow,
+        answerlatticeBillingUpdatedAt: serverNow,
+    }, { merge: true });
+};
+
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
@@ -84,20 +104,21 @@ export const POST = withAuth(async (request, session) => {
         // Step A: Fetch the full order details from Razorpay before capture.
         const order = await razorpayClient.orders.fetch(razorpay_order_id);
         const productId = normalizeBillingProductId(validation.data.productId || order.notes?.productId);
+        const isAnswerlatticeProduct = isAnswerlatticeBillingProduct(productId);
         const scope = resolveBillingScopeFromSession(session, productId);
         if (!scope) {
             return NextResponse.json({ error: "Missing tenant/store data" }, { status: 400 });
         }
 
         const { tenantId, storeId } = scope;
-        if (!isAnswerlatticeBillingProduct(productId) && !verifyTenantAccess(session, tenantId, storeId, request)) {
+        if (!isAnswerlatticeProduct && !verifyTenantAccess(session, tenantId, storeId, request)) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
             );
         }
 
-        if (!isAnswerlatticeBillingProduct(productId) && !(await canManageBillingMutation(session, request, '/api/razorpay/verify-topup'))) {
+        if (!isAnswerlatticeProduct && !(await canManageBillingMutation(session, request, '/api/razorpay/verify-topup'))) {
             return NextResponse.json(
                 { error: 'Forbidden - Access denied' },
                 { status: 403 }
@@ -163,6 +184,18 @@ export const POST = withAuth(async (request, session) => {
             }
 
             const currentSub = await getActiveProductSubscriptionForStore(productId, Number(tenantId), Number(storeId));
+            if (isAnswerlatticeProduct && currentSub) {
+                try {
+                    await mirrorAnswerlatticeCreditSummary(billingDb, storeId, currentSub, currentSub.topUpCredits ?? existingTopup.creditsAdded ?? 0);
+                } catch (summaryError) {
+                    logger.error('Answerlattice top-up summary mirror failed for already verified order', summaryError, {
+                        orderId: razorpay_order_id,
+                        productId,
+                        tenantId,
+                        storeId,
+                    });
+                }
+            }
             return NextResponse.json({
                 success: true,
                 newCreditBalance: currentSub?.topUpCredits ?? existingTopup.creditsAdded ?? 0,
@@ -273,6 +306,9 @@ export const POST = withAuth(async (request, session) => {
         });
 
         const subscriptionRef = billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(internalSub.id);
+        const answerlatticeStoreRef = isAnswerlatticeProduct
+            ? billingDb.collection(DB_COLLECTIONS.STORES).doc(String(storeId))
+            : null;
         const subscriptionTenantId = Number(internalSub.tenantId ?? internalSub.tId ?? tenantId);
         const subscriptionStoreId = Number(internalSub.storeId ?? internalSub.sId ?? storeId);
         const transactionResult = await billingDb.runTransaction(async (tx) => {
@@ -300,6 +336,9 @@ export const POST = withAuth(async (request, session) => {
 
             const currentTopUpCredits = Number(subscriptionData?.topUpCredits ?? internalSub.topUpCredits ?? 0);
             const newBalance = currentTopUpCredits + creditsToAdd;
+            const monthlyCredits = Number(subscriptionData?.monthlyCredits ?? internalSub.monthlyCredits ?? 0);
+            const monthlyCreditsAllowance = Number(subscriptionData?.monthlyCreditsAllowance ?? internalSub.monthlyCreditsAllowance ?? 0);
+            const creditsLastResetMonth = Number(subscriptionData?.creditsLastResetMonth ?? internalSub.creditsLastResetMonth ?? 0) || null;
             const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
             tx.set(subscriptionRef, {
@@ -329,12 +368,25 @@ export const POST = withAuth(async (request, session) => {
                 sId: storeId,
                 uId: session.user.id,
                 packId,
-                type: isAnswerlatticeBillingProduct(productId) ? 'answerlattice_credit_pack' : 'ai_enhancement_pack',
+                type: isAnswerlatticeProduct ? 'answerlattice_credit_pack' : 'ai_enhancement_pack',
                 packName: selectedPack.name,
                 paidAt: serverNow,
                 updatedOn: serverNow,
                 createdOn: topupData?.createdOn || existingTopup?.createdOn || serverNow,
             }, { merge: true });
+
+            if (answerlatticeStoreRef) {
+                tx.set(answerlatticeStoreRef, {
+                    'answerlatticeSubscription.id': internalSub.id || internalSub.providerSubscriptionId || null,
+                    'answerlatticeSubscription.providerSubscriptionId': internalSub.providerSubscriptionId || internalSub.id || null,
+                    'answerlatticeSubscription.monthlyCreditsAllowance': monthlyCreditsAllowance,
+                    'answerlatticeSubscription.monthlyCredits': monthlyCredits,
+                    'answerlatticeSubscription.topUpCredits': newBalance,
+                    'answerlatticeSubscription.creditsLastResetMonth': creditsLastResetMonth,
+                    'answerlatticeSubscription.updatedAt': serverNow,
+                    answerlatticeBillingUpdatedAt: serverNow,
+                }, { merge: true });
+            }
 
             return { alreadyVerified: false, newBalance, paymentMismatch: false };
         });
@@ -351,6 +403,18 @@ export const POST = withAuth(async (request, session) => {
         }
 
         if (transactionResult.alreadyVerified) {
+            if (isAnswerlatticeProduct) {
+                try {
+                    await mirrorAnswerlatticeCreditSummary(billingDb, storeId, internalSub, transactionResult.newBalance);
+                } catch (summaryError) {
+                    logger.error('Answerlattice top-up summary mirror failed for transaction retry', summaryError, {
+                        orderId: razorpay_order_id,
+                        productId,
+                        tenantId,
+                        storeId,
+                    });
+                }
+            }
             return NextResponse.json({
                 success: true,
                 newCreditBalance: transactionResult.newBalance,
@@ -360,7 +424,7 @@ export const POST = withAuth(async (request, session) => {
 
         const newBalance = transactionResult.newBalance;
 
-        if (!isAnswerlatticeBillingProduct(productId)) {
+        if (!isAnswerlatticeProduct) {
             // 📧 LIFECYCLE MESSAGE: Credit purchase confirmation (fire-and-forget)
             try {
                 const { sendLifecycleMessage } = await import('@lib/messaging');

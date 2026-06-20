@@ -20,6 +20,9 @@ Creative Trust Center is the review layer that checks campaign outputs before ex
 | Channel check | Platform-specific restrictions are reported per output. |
 | Approval gate | Blocked outputs cannot be exported, scheduled, or handed off until fixed or allowed by policy. |
 | Evidence view | Owner can see which source facts support a claim. |
+| Brand Playbook check | Saved avoid-list terms, brand feel, and visual motifs are shown as review context before export or handoff. |
+| Proof deck check | Campaign Proof Deck remains a review brief with source trace; it cannot be represented as final rendered creative, website, or video output. |
+| UGC experience check | UGC/video outputs with first-person usage, recommendation, or result wording require source proof, consent, and disclosure before handoff. |
 | Version-specific | A trust result applies to a specific output version only. |
 
 ## Research-Backed Rule Families
@@ -36,6 +39,7 @@ Creative Trust Center is the review layer that checks campaign outputs before ex
 | Synthetic media/likeness | Flag synthetic voice, staff likeness, customer likeness, and creator likeness unless permission and disclosure are recorded. |
 | Rights and assets | Block unknown-rights assets from paid ads and public posts until source/permission is recorded. |
 | Attribution | Prevent reports and copy from claiming bookings, orders, revenue, leads, or ROI unless the metric source supports it. |
+| Brand avoid list | Warn when public-facing copy uses saved avoid-list wording; missing playbook details are review posture, not a blocker by themselves. |
 
 ## Hard Blockers
 

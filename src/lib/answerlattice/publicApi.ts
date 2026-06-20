@@ -1,4 +1,5 @@
 import { FEATURE_FLAGS } from '@config/features';
+import { PRODUCT_IDS } from '@constant/product';
 import { apiError, hashApiKey, hasPublicApiCredentialScope, isRequestOriginAllowed, logApiRequest, PublicApiCredentialScope, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -78,10 +79,10 @@ export async function authenticateAnswerlatticePublicApi(
 
     const { storeData, storeId } = result;
     const publicApi = result.credential || storeData.publicApi || {};
-    if (publicApi.productId && publicApi.productId !== 'AL') {
+    if (publicApi.productId && publicApi.productId !== PRODUCT_IDS.ANSWERLATTICE) {
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
     }
-    if (publicApi.purpose && !String(publicApi.purpose).startsWith('answerlattice')) {
+    if (publicApi.purpose && publicApi.purpose !== 'answerlattice_public_api') {
         return { ok: false, response: apiError('INVALID_API_KEY', 'Invalid API key', 401) };
     }
     if (!hasPublicApiCredentialScope(publicApi, requiredScope)) {

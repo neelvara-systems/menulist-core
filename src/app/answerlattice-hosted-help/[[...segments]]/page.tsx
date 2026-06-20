@@ -54,14 +54,26 @@ const getArticlesFromCategories = (categories: KnowledgeBaseCategoriesType | nul
     ]);
 };
 
+const normalizeArticleSlug = (value?: string | null): string => {
+    const normalized = decodeURIComponent(String(value || ''))
+        .trim()
+        .replace(/[?#].*$/, '')
+        .replace(/^\/+|\/+$/g, '');
+    return normalized
+        .replace(/^(articles|help|docs)\//, '')
+        .replace(/^\/+|\/+$/g, '');
+};
+
 const findArticleMeta = (
     categories: KnowledgeBaseCategoriesType | null,
-    segment?: string,
+    segment?: string | string[],
 ): KnowledgeBaseArticleMeta | null => {
-    const normalized = decodeURIComponent(segment || '').trim();
+    const normalized = normalizeArticleSlug(Array.isArray(segment) ? segment.join('/') : segment);
     if (!normalized) return null;
     return getArticlesFromCategories(categories).find(article => (
-        article.id === normalized || article.url === normalized
+        article.id === normalized
+        || normalizeArticleSlug(article.id) === normalized
+        || normalizeArticleSlug(article.url) === normalized
     )) || null;
 };
 
@@ -250,10 +262,11 @@ export default async function AnswerlatticeHostedHelpPage({ params, searchParams
     ]);
 
     if (route === 'articles') {
-        const articleMeta = findArticleMeta(categories, segments[1]);
+        const articlePath = segments.slice(1);
+        const articleMeta = findArticleMeta(categories, articlePath);
         const article = articleMeta
             ? await getCachedKnowledgeBaseArticle(scope, articleMeta.id)
-            : await getCachedKnowledgeBaseArticle(scope, decodeURIComponent(segments[1] || ''));
+            : await getCachedKnowledgeBaseArticle(scope, normalizeArticleSlug(articlePath.join('/')));
 
         if (!article) notFound();
 

@@ -297,6 +297,7 @@ function buildLocalVisibilityCues(params: {
 }
 
 function buildTrustSummary(params: {
+    businessBrain: CampaignCueBusinessBrain;
     campaign: CampaignCueCampaign;
     missingInputs: CampaignCueDailyDeskTask[];
     sourceFacts: CampaignCueSourceFact[];
@@ -307,6 +308,7 @@ function buildTrustSummary(params: {
     const blockedFacts = params.sourceFacts.filter((fact) => fact.risk === "blocked");
     const reviewFacts = params.sourceFacts.filter((fact) => fact.risk === "needs_review");
     const missingVisibility = params.localVisibilityCues.filter((cue) => cue.status === "missing");
+    const hasBrandPlaybook = hasBrandPlaybookSignal(params.businessBrain);
     return [
         {
             id: "pack_gate",
@@ -339,6 +341,14 @@ function buildTrustSummary(params: {
                     ? `${warningCount} detail${warningCount === 1 ? "" : "s"} should be checked.`
                     : "No urgent detail is waiting.",
             status: blockerCount ? "blocked" : warningCount ? "needs_review" : "ready",
+        },
+        {
+            id: "brand_playbook",
+            label: "Brand Playbook",
+            detail: hasBrandPlaybook
+                ? "Brand direction is available for campaign proof and creative checks."
+                : "Add Brand Playbook details to keep the proof deck and creative briefs from looking generic.",
+            status: hasBrandPlaybook ? "ready" : "needs_review",
         },
         {
             id: "local_visibility",
@@ -386,6 +396,36 @@ const buildLanguageHandoffNote = (businessBrain: CampaignCueBusinessBrain, sourc
     ].join("\n");
 };
 
+const hasBrandPlaybookSignal = (businessBrain: CampaignCueBusinessBrain) => {
+    const playbook = businessBrain.brandKit.playbook;
+    return Boolean(
+        playbook.targetAudience
+        || playbook.typographyNotes
+        || playbook.brandFeel.length
+        || playbook.inspirationNotes.length
+        || playbook.visualMotifs.length
+        || playbook.avoidList.length
+        || playbook.productFocus.length,
+    );
+};
+
+const brandListOrFallback = (values: string[], fallback: string) => (
+    values.length ? values.join(", ") : fallback
+);
+
+const buildBrandPlaybookSummary = (businessBrain: CampaignCueBusinessBrain) => {
+    const playbook = businessBrain.brandKit.playbook;
+    return [
+        `Target audience: ${playbook.targetAudience || "Needs owner input"}`,
+        `Brand feel: ${brandListOrFallback(playbook.brandFeel, "Needs owner input")}`,
+        `Inspiration: ${brandListOrFallback(playbook.inspirationNotes, "Not set")}`,
+        `Visual motifs: ${brandListOrFallback(playbook.visualMotifs, "Needs owner input")}`,
+        `Product or service focus: ${brandListOrFallback(playbook.productFocus, "Use the current campaign focus")}`,
+        `Typography notes: ${playbook.typographyNotes || "Not set"}`,
+        `Avoid: ${brandListOrFallback(playbook.avoidList, "Unsupported claims, fake testimonials, unavailable items, and off-brand creative")}`,
+    ].join("\n");
+};
+
 const outputPackStatusFromTrust = (
     status: CampaignCueManualDeliveryCard["status"] | CampaignCueManualDeliveryField["status"] | CampaignCueOutputPackStatus,
 ): CampaignCueOutputPackStatus => {
@@ -407,6 +447,7 @@ const outputPackChannelFolder = (channel: CampaignCueOutputPackCopyChannel) => {
     if (channel === "creative") return "instagram";
     if (channel === "email_sms") return "email-sms";
     if (channel === "mini_page") return "mini-page";
+    if (channel === "proof_deck") return "proof-deck";
     if (channel === "result_memory") return "result";
     if (channel === "ads") return "ads-handoff";
     return slugifyPackPart(channel);
@@ -614,6 +655,79 @@ function buildCampaignCueOutputPack(params: {
             value: buildLanguageHandoffNote(params.businessBrain, params.sourceFacts),
         }),
     ];
+    const proofDeckStatus: CampaignCueOutputPackStatus = hasBrandPlaybookSignal(params.businessBrain) ? "ready" : "needs_review";
+    const outputLabels = uniqueCompactStrings(
+        params.campaign.outputs.map((output) => `${output.label}: ${output.fields.postType}`),
+        10,
+    );
+    const proofDeckSections: CampaignCueOutputPackCopyBlock[] = [
+        outputPackCopyBlock({
+            channel: "proof_deck",
+            id: "proof_brand_system",
+            label: "Brand system",
+            status: proofDeckStatus,
+            value: buildBrandPlaybookSummary(params.businessBrain),
+        }),
+        outputPackCopyBlock({
+            channel: "proof_deck",
+            id: "proof_campaign_creatives",
+            label: "Campaign and social creative set",
+            value: [
+                `Campaign: ${params.campaign.title}`,
+                `Outputs: ${outputLabels.join(", ") || "Use the current campaign outputs"}`,
+                `ZIP root: ${slug}-campaign-pack`,
+                "Social creative remains source-backed and manually exported. CampaignCue does not pretend a final rendered file exists before export.",
+            ].join("\n"),
+        }),
+        outputPackCopyBlock({
+            channel: "proof_deck",
+            id: "proof_product_focus",
+            label: "Product or service focus",
+            value: [
+                `Primary headline: ${primaryOutput?.fields.headline || params.campaign.title}`,
+                `Owner CTA: ${primaryOutput?.fields.cta || destination || "Needs owner input"}`,
+                `Focus notes: ${brandListOrFallback(params.businessBrain.brandKit.playbook.productFocus, params.recipe.plainAction)}`,
+            ].join("\n"),
+        }),
+        outputPackCopyBlock({
+            channel: "proof_deck",
+            id: "proof_ugc_reel_reference",
+            label: "UGC and reel reference",
+            value: [
+                "UGC and reel entries are script, shot-list, dialogue/action beat sheet, camera-plan, product-placement, or B-roll references only.",
+                "Use real staff, owner, creator, or customer experiences only with consent.",
+                "Do not present an AI avatar, stock person, or fictional customer as a real customer experience.",
+                "Do not turn the brief into a fake testimonial, fake review, or unsupported result claim.",
+            ].join("\n"),
+        }),
+        outputPackCopyBlock({
+            channel: "proof_deck",
+            id: "proof_review_checklist",
+            label: "Review checklist",
+            value: [
+                `Trust status: ${trustBlocked.length ? "blocked" : trustWarnings.length ? "needs review" : "ready"}`,
+                "Confirm business facts, CTA, dates, prices, photo rights, brand direction, avoid list, and manual delivery boundary.",
+                "Keep hosted mini-page publishing, provider posting, WhatsApp sending, and ad spend off until their separate gates are enabled.",
+            ].join("\n"),
+        }),
+        outputPackCopyBlock({
+            channel: "proof_deck",
+            id: "proof_brief_trace",
+            label: "Brief trace",
+            value: [
+                `Decision: ${decision?.recommendationTitle || params.recipe.title}`,
+                `Why this: ${(decision?.explanation.whyThis.length ? decision.explanation.whyThis : [params.recipe.plainAction]).join(" | ")}`,
+                `Source facts: ${params.sourceFacts.map((fact) => `${fact.label}: ${fact.value}`).join(" | ") || "No source facts available"}`,
+            ].join("\n"),
+        }),
+    ];
+    const proofDeckContent = [
+        "# Campaign proof deck",
+        "",
+        "This is a review brief for agency/client approval and manual export. It is not a final rendered PDF, website, social post, or generated video.",
+        "",
+        ...proofDeckSections.map((block) => `## ${block.label}\n${block.value}`),
+    ].join("\n\n");
     const copy = {
         whatsapp: blocksFor("whatsapp"),
         googleBusinessProfile: blocksFor("google_local"),
@@ -680,6 +794,13 @@ function buildCampaignCueOutputPack(params: {
             label: "Print and offline pack",
             path: "print/print-formats-and-qr-card-brief.md",
             status: params.recipe.printFormats.length ? "ready" : "needs_review",
+        }),
+        outputPackFile({
+            content: proofDeckContent,
+            fileType: "pdf_brief",
+            label: "Campaign proof deck",
+            path: "proof-deck/campaign-proof-deck.md",
+            status: proofDeckStatus,
         }),
         outputPackFile({
             content: [
@@ -810,6 +931,13 @@ function buildCampaignCueOutputPack(params: {
             fields: miniPageBlocks,
             qrCodeStatus: destination ? "needs_review" : "needs_input",
             manualNote: "This runtime prepares the mini-page and QR content brief only. Hosted public mini-page publishing stays off until a dedicated route, approval gate, and tracking policy are enabled.",
+        },
+        proofDeck: {
+            status: proofDeckStatus,
+            title: "Campaign proof deck",
+            sections: proofDeckSections,
+            filePath: "proof-deck/campaign-proof-deck.md",
+            manualNote: "This runtime prepares a proof deck brief only. Review it with the owner or client before exporting final visuals, scripts, or handoff files.",
         },
         calendar: {
             suggestedUse: "Use at the next useful business moment from the recipe.",
@@ -1129,6 +1257,7 @@ export function buildCampaignCueDailyDesk(params: {
         ? latestCampaign.outputs.map((output) => buildManualDeliveryCard(latestCampaign, output))
         : [];
     const trustSummary = latestCampaign ? buildTrustSummary({
+        businessBrain: params.businessBrain,
         campaign: latestCampaign,
         localVisibilityCues,
         missingInputs,
@@ -1144,7 +1273,7 @@ export function buildCampaignCueDailyDesk(params: {
         missingInputs: missingInputs.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_MISSING_INPUTS),
         readyPack,
         recipe,
-        sourceFacts: sourceFacts.slice(0, 8),
+        sourceFacts: sourceFacts.slice(0, 16),
         trustSummary,
     }) : undefined;
     const packReview: CampaignCueCampaignPackReview | undefined = latestCampaign ? {
@@ -1155,7 +1284,7 @@ export function buildCampaignCueDailyDesk(params: {
         reason: params.opportunities.find((opportunity) => opportunity.id === latestCampaign.opportunityId)?.reason
             || latestCampaign.brief
             || recipe.ownerOutcome,
-        sourceFacts: sourceFacts.slice(0, 8),
+        sourceFacts: sourceFacts.slice(0, 16),
         missingInputs: missingInputs.slice(0, CAMPAIGNCUE_DAILY_DESK_MAX_MISSING_INPUTS),
         trustSummary,
         deliveryCards,

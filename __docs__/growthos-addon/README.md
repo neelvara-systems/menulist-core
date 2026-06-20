@@ -20,15 +20,9 @@ GrowthOS/Growth Kits is not the new Growth Engine acquisition product.
 
 Do not reuse GrowthOS routes, `GR` product identity, entitlement model, owner UI, or docs for Growth Engine implementation.
 
-## May 31, 2026 Deep Review Update
+## May 31, 2026 Decision Integration
 
-The large ChatGPT GrowthOS conversation was reviewed line by line and archived here:
-
-```txt
-__docs__/growthos-addon/_archive/growthos-deep-conversation-review-2026-05-31.md
-```
-
-Final decision from that review:
+The useful decisions from the external GrowthOS discussion are consolidated into this active doc set. Retained scope:
 
 | Feature/angle | Decision |
 | --- | --- |
@@ -101,13 +95,7 @@ Current decision:
 | Weekly Growth Pack | Still paused as-is; may inform GrowthOS kit templates |
 | KitStamp | Separate product decision; not part of GrowthOS |
 
-Old docs remain historical direction and are now archived under this folder:
-
-- `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/`
-- `__docs__/growthos-addon/_archive/growthos-command-center-2026-05-31/`
-- `__docs__/strategy/product-positioning-map.md`
-
-This folder is now the active GrowthOS implementation source.
+Stale standalone planning docs, redirect stubs, raw conversation reviews, and archive folders have been removed from the active documentation tree. This folder is now the active GrowthOS implementation source.
 
 ## June 1, 2026 Implementation Update
 
@@ -238,7 +226,6 @@ The first approved implementation should be a Pro/Premium-gated module inside Me
 
 | Document | Purpose |
 | --- | --- |
-| [Decision Brief](./growthos-addon_decision-brief.md) | Founder-level product decision, market gap, and recommendation. |
 | [Specification](./growthos-addon_spec.md) | What, why, who, where, how, and acceptance criteria. |
 | [Implementation Plan](./growthos-addon_impl.md) | Feature flags, data model, APIs, UI, security, and rollout contract. |
 | [Firebase Cost](./growthos-addon_firebase.md) | Firestore, Storage, AI unit, scheduler, and index cost planning. |

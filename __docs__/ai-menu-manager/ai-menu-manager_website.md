@@ -3,7 +3,7 @@
 **Status:** Public launch copy locked for website implementation  
 **Public feature name:** AI Menu Manager  
 **In-app owner label:** Menu Manager, with AI badge where useful  
-**Last Updated:** June 17, 2026
+**Last Updated:** June 20, 2026
 
 ---
 
@@ -44,6 +44,7 @@ Use:
 - update your menu by message
 - prepared update
 - approval card
+- selected-menu answer card
 - owner-approved
 - customer preview
 - manual task
@@ -94,8 +95,9 @@ Homepage section:
 Your approved menu now updates like a message.
 
 AI Menu Manager lets owners tell MenuList what changed. MenuList prepares an operation card,
-waits for approval when the change is important, then applies it through the same MenuList
-systems you already use.
+waits for approval when the change is important, then applies supported work through the same
+MenuList systems you already use. Adapter-backed review/handoff cards stay reviewable until the
+matching safe execution path is connected.
 ```
 
 Demo examples:
@@ -103,9 +105,10 @@ Demo examples:
 | Owner message | Prepared output |
 | --- | --- |
 | Cold coffee sold out | Availability card with customer-facing preview |
-| Add mango lassi 99 today special | Today Special card with price and expiry |
+| Add mango lassi 99 today special | Today Special draft card with price and placement |
 | Increase all paneer items by ₹20 | Bulk approval card with affected count |
 | Generate image for masala tea | Draft image card before it goes on the menu |
+| Which items have no photos? | Read-only answer from the selected menu |
 
 ---
 
@@ -121,7 +124,7 @@ Metadata:
 
 ```text
 Title: AI Menu Manager for Restaurants | MenuList
-Description: Update prices, sold-out items, specials, photos, imports, design, and publishing from simple messages. AI prepares the card; you approve before it goes live.
+Description: Prepare price, sold-out, special, photo, import, design, and publishing cards from simple messages. AI prepares the card; you approve before supported changes go live.
 ```
 
 Hero:
@@ -133,8 +136,8 @@ Tell MenuList what changed. Approve the prepared update.
 Subheadline:
 
 ```text
-AI Menu Manager is an approval-based AI agent for menu operations. Update prices,
-sold-out items, specials, photos, imports, design, and publishing from simple messages
+AI Menu Manager is an approval-based AI agent for menu operations. Prepare price,
+sold-out, special, photo, import, design, and publishing cards from simple messages
 while MenuList keeps you in control.
 ```
 
@@ -142,10 +145,19 @@ Core flow:
 
 ```text
 Owner intent
--> prepared card
+-> prepared card or selected-menu answer card
 -> owner approval when needed
 -> existing MenuList operation
 -> receipt
+```
+
+Selected-menu questions:
+
+```text
+Owner asks about the selected menu
+-> MenuList answers from already-loaded menu data
+-> suggested next messages may be shown
+-> no approval, mutation, provider call, or external lookup happens
 ```
 
 ---
@@ -159,6 +171,10 @@ No. AI Menu Manager prepares cards. Important work such as prices, bulk updates,
 ### Is AI Menu Manager a customer chatbot?
 
 No. It is an owner-side menu operations feature. Customers do not chat with it. Owners use it to prepare menu updates inside MenuList.
+
+### Can I ask AI Menu Manager questions?
+
+Yes, when the question is about the selected MenuList menu. For example, owners can ask what needs fixing, which items have no photos, what is sold out, or whether the menu is ready to share. General questions such as weather, news, sports, or unrelated advice are not supported inside AI Menu Manager.
 
 ### Can staff use AI Menu Manager?
 
@@ -179,5 +195,6 @@ No. MenuList does not support direct Zomato, Swiggy, Google Business Profile, In
 | Sold out | Availability card with restore time. |
 | Generated image | Masala tea draft image card with Use on menu. |
 | Theme update | Menu design preset preview card. |
+| Selected-menu answer | Read-only answer card for menu readiness, missing photos, unavailable items, or next safe actions. |
 | Unsupported external request | Destination-specific not-supported card that does not claim integration support or completion. |
 | Receipt | Completed update with undo wording only when that adapter supports safe reversal. |

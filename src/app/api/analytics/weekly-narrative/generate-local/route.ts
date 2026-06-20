@@ -11,9 +11,59 @@ import getActiveSession from '@lib/auth/getActiveSession';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
+import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { NextRequest, NextResponse } from 'next/server';
+
+type WeeklyNarrativePayload = {
+  highlights: string[];
+  narrative: string;
+  recommendations: string[];
+};
+
+const normalizeStringArray = (value: unknown, fallback: string[]): string[] => {
+  if (!Array.isArray(value)) return fallback;
+  const normalized = value
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .slice(0, 5);
+  return normalized.length ? normalized : fallback;
+};
+
+const stripJsonFence = (value: string) => {
+  let text = value.trim();
+  if (text.startsWith('```json')) {
+    text = text.replace(/^```json\n?/, '').replace(/```\n?$/, '');
+  } else if (text.startsWith('```')) {
+    text = text.replace(/^```\n?/, '').replace(/```\n?$/, '');
+  }
+  return text.trim();
+};
+
+const parseWeeklyNarrativeResponse = (
+  text: string,
+  fallback: WeeklyNarrativePayload,
+): WeeklyNarrativePayload => {
+  try {
+    const parsed = JSON.parse(stripJsonFence(text));
+    const narrative = typeof parsed?.narrative === 'string' && parsed.narrative.trim()
+      ? parsed.narrative.trim()
+      : fallback.narrative;
+
+    return {
+      narrative,
+      highlights: normalizeStringArray(parsed?.highlights, fallback.highlights),
+      recommendations: normalizeStringArray(parsed?.recommendations, fallback.recommendations),
+    };
+  } catch (error) {
+    logger.warn('[Weekly Narrative Local] AI response parse failed; using fallback narrative', {
+      reason: error instanceof Error ? error.message : 'unknown',
+    });
+    return fallback;
+  }
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,7 +105,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Weekly Narrative Local] Generating for tenant ${tId}, store ${sId}`);
+    logger.info('[Weekly Narrative Local] Generating weekly narrative', { tId, sId });
 
     // 2. Import Gemini service (uses shared client — same pattern as descriptions/route.ts)
     const { genAIClient } = await import('@lib/google/genAi');
@@ -155,6 +205,18 @@ export async function POST(request: NextRequest) {
     const currentSatRate = totalFeedback > 0 ? (totalSatisfied / totalFeedback) * 100 : 0;
     const prevSatRate = prevTotalFeedback > 0 ? (prevTotalSatisfied / prevTotalFeedback) * 100 : 0;
     const satisfactionChange = prevSatRate > 0 ? currentSatRate - prevSatRate : 0;
+    const fallbackNarrative: WeeklyNarrativePayload = {
+      narrative: `MenuList reviewed ${totalChats} customer conversations for the week ending ${weekEnd}. The main topic was ${topCategory}, with satisfaction at ${currentSatRate.toFixed(1)}%.`,
+      highlights: [
+        `${totalChats} conversations reviewed`,
+        `${currentSatRate.toFixed(1)}% satisfaction rate`,
+        `${topCategory} was the most common topic`,
+      ],
+      recommendations: [
+        'Review the most common customer questions.',
+        'Keep menu and business details up to date.',
+      ],
+    };
 
     // 6. Generate AI narrative
     const prompt = `Generate a concise weekly performance summary for a chat support system.
@@ -179,16 +241,7 @@ Generate a JSON response with:
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    let text = geminiResult.text ?? '';
-
-    // Clean markdown
-    if (text.startsWith('```json')) {
-      text = text.replace(/```json\n?/, '').replace(/```\n?$/, '');
-    } else if (text.startsWith('```')) {
-      text = text.replace(/```\n?/, '').replace(/```\n?$/, '');
-    }
-
-    const parsed = JSON.parse(text);
+    const parsed = parseWeeklyNarrativeResponse(geminiResult.text ?? '', fallbackNarrative);
 
     // 7. Save to Firestore
     const narrative = {
@@ -232,10 +285,10 @@ Generate a JSON response with:
       processingTime: Date.now() - operationStart,
       source: 'weekly_narrative_local',
     }).catch((logError) => {
-      console.error('[Weekly Narrative Local] Operation log failed:', logError);
+      logger.error('[Weekly Narrative Local] Operation log failed', logError);
     });
 
-    console.log(`[Weekly Narrative Local] Generated successfully`);
+    logger.info('[Weekly Narrative Local] Generated successfully', { tId, sId, weekEnd, weekStart });
 
     // 8. Return success
     return NextResponse.json({
@@ -250,12 +303,11 @@ Generate a JSON response with:
     });
 
   } catch (error: any) {
-    console.error('[Weekly Narrative Local] Error:', error);
+    logger.error('[Weekly Narrative Local] Error', error);
 
     return NextResponse.json(
       {
         error: 'Failed to generate weekly narrative',
-        details: error.message
       },
       { status: 500 }
     );

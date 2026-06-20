@@ -23,6 +23,8 @@ import {
 } from "@lib/domains/vercelDomains";
 import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
 import { requireAnyStorePermission } from "@lib/permissions/server";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "../../../middleware/auth";
@@ -37,6 +39,31 @@ const AddDomainSchema = z.object({
         }),
 });
 
+async function checkDomainManagementRateLimit(session: any, storeId: string | number) {
+    const config = getRateLimitForFeature('DOMAIN_MANAGEMENT');
+    const userId = session?.uId || session?.user?.id || session?.userId || 'unknown';
+    const result = await checkRateLimit({
+        key: `domain-management:${userId}:${storeId}`,
+        ...config,
+    });
+
+    if (result.allowed) return null;
+
+    const waitSeconds = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000));
+    return NextResponse.json(
+        { error: "Too many domain requests. Please try again later.", retryAfter: waitSeconds },
+        {
+            status: 429,
+            headers: {
+                'Retry-After': String(waitSeconds),
+                'X-RateLimit-Limit': String(config.limit),
+                'X-RateLimit-Remaining': '0',
+                'X-RateLimit-Reset': String(result.resetAt),
+            },
+        },
+    );
+}
+
 /**
  * POST /api/domain — Add custom domain to Vercel project + store in Firestore
  */
@@ -48,6 +75,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (!tenantId || !storeId) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
+
+    const rateLimitResponse = await checkDomainManagementRateLimit(session, storeId);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
     const validation = AddDomainSchema.safeParse(body);
@@ -72,7 +102,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     if (!existingStore.empty) {
         const existingStoreId = existingStore.docs[0].data().storeId;
-        if (existingStoreId !== storeId) {
+        if (String(existingStoreId) !== String(storeId)) {
             return NextResponse.json(
                 { error: "This domain is already linked to another store" },
                 { status: 409 }
@@ -135,6 +165,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
 
+    const rateLimitResponse = await checkDomainManagementRateLimit(session, storeId);
+    if (rateLimitResponse) return rateLimitResponse;
+
     // Get current store's custom domain
     const db = admin.firestore();
     const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
@@ -191,6 +224,9 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
     if (!tenantId || !storeId) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
+
+    const rateLimitResponse = await checkDomainManagementRateLimit(session, storeId);
+    if (rateLimitResponse) return rateLimitResponse;
 
     const db = admin.firestore();
     const storeDoc = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();

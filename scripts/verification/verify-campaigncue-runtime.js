@@ -225,6 +225,22 @@ function verifyServerRuntime() {
   assertIncludes(businessPatchBlock, "readSourceSnapshot(workspaceId)", "CampaignCue business patch reads compact source snapshot");
   assertIncludes(businessPatchBlock, "buildSourceSnapshotFromExistingSnapshot", "CampaignCue business patch rebuilds facts from snapshot");
   assertNotIncludes(businessPatchBlock, "listSubcollection<CampaignCueSourceInput>", "CampaignCue business patch avoids source input collection scan");
+  assertIncludes(server, "normalizeBrandPlaybook", "CampaignCue server normalizes Brand Playbook for existing Business Brain docs");
+  assertIncludes(server, "brand_playbook", "CampaignCue server emits Brand Playbook source facts");
+  assertIncludes(server, "brandPlaybookSourceRefs", "CampaignCue source snapshots track Brand Playbook source refs only when present");
+  assertIncludes(server, "...brandPlaybookSourceRefs(businessBrain)", "CampaignCue initial source snapshot records Brand Playbook provenance");
+  assertIncludes(server, "...brandPlaybookSourceRefs(params.businessBrain)", "CampaignCue merged source snapshot records Brand Playbook provenance");
+  assertIncludes(server, "isCampaignSourceInputRef", "CampaignCue has a shared campaign-source predicate");
+  assertIncludes(server, "const hasManualSourceInput = sourceRefs.some(isCampaignSourceInputRef)", "CampaignCue merged source snapshot does not treat Brand Playbook as a manual campaign input");
+  assertIncludes(server, "sourceSnapshot.sourceRefs.filter(isCampaignSourceInputRef)", "CampaignCue opportunity source refs do not treat Brand Playbook as current campaign input");
+  assertIncludes(server, "brand_playbook_avoid_term", "CampaignCue trust report warns on Brand Playbook avoid-list terms");
+  assertIncludes(businessPatchBlock, "mergeBrandPlaybookPatch", "CampaignCue business patch stores Brand Playbook through existing profile save");
+  assertIncludes(server, "buildUgcDialogueActionBrief", "CampaignCue server builds structured UGC dialogue/action briefs");
+  assertIncludes(server, "cameraPlanForChannel", "CampaignCue server builds phone-camera guidance for UGC and video briefs");
+  assertIncludes(server, "productPlacementBrief", "CampaignCue server builds product-placement guidance from source facts");
+  assertIncludes(server, "fake_personal_experience", "CampaignCue trust report flags unsourced first-person UGC/video claims");
+  assertIncludes(server, "i absolutely love", "CampaignCue UGC trust rule catches first-person love/recommendation testimonial wording");
+  assertIncludes(server, "Do not present synthetic or fictional people as real customers", "CampaignCue UGC output rejects fake customer posture");
   assertIncludes(server, "sourceSnapshot?: CampaignCueSourceSnapshot", "CampaignCue opportunity builder accepts compact source snapshot");
   assertIncludes(server, "enqueueDashboardSummaryIncrement", "CampaignCue summary increments can be batched with primary writes");
   assertIncludes(server, "enqueueIdempotencyCompletion", "CampaignCue idempotency completion can be batched with primary writes");
@@ -269,6 +285,11 @@ function verifyServerRuntime() {
   assertIncludes(dailyDesk, "buildCampaignCueOutputPack", "CampaignCue Daily Desk builds canonical campaign output packs");
   assertIncludes(dailyDesk, "downloadBundle", "CampaignCue output pack exposes structured download bundle files");
   assertIncludes(dailyDesk, "miniPage", "CampaignCue output pack includes mini-page and QR brief contract");
+  assertIncludes(dailyDesk, "proofDeck", "CampaignCue output pack includes Campaign Proof Deck contract");
+  assertIncludes(dailyDesk, "proof-deck/campaign-proof-deck.md", "CampaignCue output pack writes proof deck brief file");
+  assertIncludes(dailyDesk, "This is a review brief", "CampaignCue proof deck preserves brief-only boundary");
+  assertIncludes(dailyDesk, "dialogue/action beat sheet", "CampaignCue proof deck captures UGC dialogue/action reference");
+  assertIncludes(dailyDesk, "B-roll references only", "CampaignCue proof deck captures video B-roll reference boundary");
   assertIncludes(dailyDesk, "emailSms", "CampaignCue output pack includes email and SMS copy blocks");
   assertIncludes(dailyDesk, "staff", "CampaignCue output pack includes staff sharing copy blocks");
   assertIncludes(dailyDesk, "buildLanguageHandoffNote", "CampaignCue output pack includes deterministic language handoff helper");
@@ -310,6 +331,8 @@ function verifyServerRuntime() {
   assertIncludes(campaigncueTypes, "CampaignCueOutputPack", "CampaignCue output pack type exists");
   assertIncludes(campaigncueTypes, "CampaignCueOutputPackFile", "CampaignCue output pack file contract exists");
   assertIncludes(campaigncueTypes, "CampaignCueOutputPackCopyBlock", "CampaignCue output pack copy block contract exists");
+  assertIncludes(campaigncueTypes, "CampaignCueBrandPlaybook", "CampaignCue Brand Playbook type exists");
+  assertIncludes(campaigncueTypes, "CampaignCueOutputPackProofDeck", "CampaignCue Proof Deck type exists");
 
   const cueLayersServer = read("src/lib/campaigncue/cue-layers/server.ts");
   const cueLayersProjection = read("src/lib/campaigncue/cue-layers/editorProjection.ts");
@@ -346,6 +369,7 @@ function verifyServerRuntime() {
   assertIncludes(cueLayersServer, "businessTruthSnapshot", "CueLayers snapshots business truth");
   assertIncludes(cueLayersServer, "protectedTextSnapshot", "CueLayers snapshots protected text truth");
   assertIncludes(cueLayersServer, "brandSnapshot", "CueLayers snapshots brand truth");
+  assertIncludes(cueLayersServer, "brandPlaybook", "CueLayers source packages snapshot Brand Playbook truth");
   assertIncludes(cueLayersServer, "rightsSnapshot", "CueLayers snapshots rights truth");
   assertIncludes(cueLayersServer, "getSignedUrl", "CueLayers hydrates signed URLs only at boot");
   assertIncludes(cueLayersServer, "url: await signedUrlForAsset(asset)", "CueLayers signed URL is runtime hydration only");
@@ -392,6 +416,12 @@ function verifyClientRuntime() {
   assertNotIncludes(app, "await load();", "CampaignCue successful mutations avoid full overview reloads");
   assertIncludes(app, "state.status === 401", "CampaignCue signed-out state");
   assertIncludes(app, "CAMPAIGNCUE_ERROR_CODES.FIREBASE_UNAVAILABLE", "CampaignCue setup-blocked client mapping");
+  assertIncludes(app, "business-brand-feel", "CampaignCue Business details exposes Brand Playbook feel field");
+  assertIncludes(app, "business-avoid-list", "CampaignCue Business details exposes Brand Playbook avoid-list field");
+  assertIncludes(app, "Campaign proof deck", "CampaignCue OutputPackSummary shows proof deck status");
+  assertIncludes(app, "brand-avoid-list", "CampaignCue editor protected facts include Brand Playbook avoid list");
+  assertIncludes(schemas, "optionalTextList", "CampaignCue business patch schema accepts bounded Brand Playbook lists");
+  assertIncludes(schemas, "visualMotifs", "CampaignCue business patch schema validates Brand Playbook visual motifs");
   [
     "Daily campaign desk",
     "Business details",
@@ -587,11 +617,13 @@ function verifyClientRuntime() {
   assertIncludes(designCueConstants, "Ready for print", "Design Cue has print readiness command");
   assertIncludes(designCueContext, "hasLocality", "Design Cue context tracks confirmed locality");
   assertIncludes(designCueContext, "hasContactLine", "Design Cue context tracks confirmed contact");
+  assertIncludes(designCueContext, "brandAvoidList", "Design Cue context tracks Brand Playbook avoid list");
   assertIncludes(designCueIntent, "resolveFreeTextAction", "Design Cue deterministic free-text resolver");
   assertIncludes(designCueIntent, "buildCampaignCueDesignCueUnsupportedPatch", "Design Cue unknown requests fail closed");
   assertIncludes(designCuePatches, "missing-location", "Design Cue missing location creates review finding");
   assertIncludes(designCuePatches, "missing-contact", "Design Cue missing contact creates review finding");
   assertIncludes(designCuePatches, "buildCampaignCueDesignCueChannelReadyPatch", "Design Cue channel readiness checks are deterministic findings");
+  assertIncludes(designCuePatches, "brand-avoid-term", "Design Cue brand check warns on Brand Playbook avoid-list wording");
   assertIncludes(designCueApply, "validateCampaignCueDesignCuePatchSet", "Design Cue apply validates before mutation");
   assertIncludes(designCueApply, "buildCreativeEditorTextElement", "Design Cue added text remains editable");
   assertIncludes(designCueValidate, "CAMPAIGNCUE_DESIGN_CUE_ALLOWED_LAYER_PATCH_KEYS", "Design Cue patch allowlist enforced");
@@ -931,6 +963,7 @@ function verifySharedCreativeEditor() {
   assertNotIncludes(exporter, "campaigncue.ai", "Shared editor export layer has no CampaignCue fallback URL");
   assertNotIncludes(templates, "campaigncue.ai", "Shared editor templates have no CampaignCue fallback URL");
   assertIncludes(campaigncueProvider, "buildCampaignCueTextPlaceholders", "CampaignCue adapter supplies editor text placeholders from loaded overview");
+  assertIncludes(campaigncueProvider, "brand-visual-motifs", "CampaignCue adapter supplies Brand Playbook placeholders");
   assertIncludes(campaigncueProvider, "fontFamily: \"Inter, Arial, sans-serif\"", "CampaignCue adapter supplies brand font metadata");
   assertIncludes(campaigncueProvider, "accentColor: \"#f6d365\"", "CampaignCue adapter supplies brand accent color metadata");
   assertIncludes(sharedReadme, "JSON/raster-image import", "Shared editor README documents safe image import boundary");
@@ -1204,9 +1237,20 @@ function verifyDocsAlignment() {
   const expansionDoc = read("__docs__/campaigncue/campaigncue-next-expansion-list.md");
   const deliveryDoc = read("__docs__/campaigncue/campaigncue-delivery-boundary.md");
   const coverageAudit = read("__docs__/campaigncue/campaigncue_chatgpt-coverage-audit.md");
+  const businessBrainSpec = read("__docs__/campaigncue/business-brain/business-brain_spec.md");
+  const businessBrainImpl = read("__docs__/campaigncue/business-brain/business-brain_impl.md");
   const outputPackReadme = read("__docs__/campaigncue/campaign-pack-output-system/README.md");
   const outputPackSpec = read("__docs__/campaigncue/campaign-pack-output-system/campaign-pack-output-system_spec.md");
   const outputPackImpl = read("__docs__/campaigncue/campaign-pack-output-system/campaign-pack-output-system_impl.md");
+  const creativeStudioSpec = read("__docs__/campaigncue/creative-studio/creative-studio_spec.md");
+  const trustCenterSpec = read("__docs__/campaigncue/creative-trust-center/creative-trust-center_spec.md");
+  const ugcScriptSpec = read("__docs__/campaigncue/ugc-script-studio/ugc-script-studio_spec.md");
+  const ugcScriptImpl = read("__docs__/campaigncue/ugc-script-studio/ugc-script-studio_impl.md");
+  const ugcScriptFirebase = read("__docs__/campaigncue/ugc-script-studio/ugc-script-studio_firebase.md");
+  const videoReelSpec = read("__docs__/campaigncue/video-reel-studio/video-reel-studio_spec.md");
+  const videoReelImpl = read("__docs__/campaigncue/video-reel-studio/video-reel-studio_impl.md");
+  const templateRegistrySpec = read("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_spec.md");
+  const templateRegistryImpl = read("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_impl.md");
   const cueLayersReadme = read("__docs__/campaigncue/cue-layers/README.md");
   const cueLayersImpl = read("__docs__/campaigncue/cue-layers/cue-layers_impl.md");
   const cueLayersFirebase = read("__docs__/campaigncue/cue-layers/cue-layers_firebase.md");
@@ -1258,6 +1302,31 @@ function verifyDocsAlignment() {
   assertIncludes(outputPackReadme, "language handoff note with preferred locale", "Campaign Pack docs list language handoff output");
   assertIncludes(outputPackSpec, "No automatic translation claim", "Campaign Pack spec preserves safe language boundary");
   assertIncludes(outputPackImpl, "instructions/language-handoff.txt", "Campaign Pack impl documents language handoff ZIP file");
+  assertIncludes(businessBrainSpec, "Brand Playbook", "Business Brain spec documents Brand Playbook");
+  assertIncludes(businessBrainImpl, "BrandPlaybook", "Business Brain implementation documents playbook shape");
+  assertIncludes(outputPackReadme, "proof-deck/campaign-proof-deck.md", "Campaign Pack docs list proof deck ZIP file");
+  assertIncludes(outputPackSpec, "Campaign Proof Deck", "Campaign Pack spec documents proof deck contract");
+  assertIncludes(outputPackImpl, "CampaignCueOutputPack.proofDeck", "Campaign Pack implementation documents proof deck field");
+  assertIncludes(outputPackSpec, "UGC/reel dialogue-action reference", "Campaign Pack spec documents UGC dialogue/action proof reference");
+  assertIncludes(outputPackImpl, "UGC dialogue/action beats", "Campaign Pack implementation documents UGC dialogue/action proof content");
+  assertIncludes(creativeStudioSpec, "Brand Playbook-aware brief", "Creative Studio spec documents playbook-aware briefs");
+  assertIncludes(trustCenterSpec, "Brand Playbook check", "Creative Trust Center spec documents playbook checks");
+  assertIncludes(trustCenterSpec, "UGC experience check", "Creative Trust Center spec documents first-person UGC experience checks");
+  assertIncludes(ugcScriptSpec, "Dialogue/action brief", "UGC Script Studio spec documents dialogue/action brief structure");
+  assertIncludes(ugcScriptSpec, "AI avatars, stock people, or fictional customers", "UGC Script Studio spec rejects fake avatar/customer posture");
+  assertIncludes(ugcScriptImpl, "dialogue/action beats", "UGC Script Studio implementation documents active brief fields");
+  assertIncludes(ugcScriptImpl, "First-person usage or recommendation wording", "UGC Script Studio implementation documents first-person testimonial guard");
+  assertIncludes(ugcScriptFirebase, "adds no new Firestore collection", "UGC Script Studio Firebase docs preserve no-new-cost active runtime");
+  assertIncludes(videoReelSpec, "Phone-camera structure", "Video Reel Studio spec documents phone-camera brief structure");
+  assertIncludes(videoReelSpec, "AI avatars, stock people, or fictional customers", "Video Reel Studio spec rejects fake avatar/customer posture");
+  assertIncludes(videoReelImpl, "B-roll checklist", "Video Reel Studio implementation documents B-roll brief fields");
+  assertIncludes(videoReelImpl, "does not call an avatar", "Video Reel Studio implementation preserves no-provider active runtime");
+  assertIncludes(templateRegistrySpec, "Campaign proof deck", "Template registry spec documents proof deck output intent");
+  assertIncludes(templateRegistryImpl, "campaign_proof_deck_pdf", "Template registry implementation documents proof deck output type");
+  assertIncludes(deliveryDoc, "Campaign Proof Deck brief", "Delivery boundary documents proof deck as response-derived brief");
+  assertIncludes(changelog, "CampaignCue Brand Playbook And Proof Deck", "CampaignCue changelog documents Brand Playbook and Proof Deck pass");
+  assertIncludes(changelog, "CampaignCue UGC Brief Guardrails", "CampaignCue changelog documents UGC brief guardrails pass");
+  assertIncludes(coverageAudit, "AI UGC avatar tutorial", "CampaignCue coverage audit documents AI UGC avatar tutorial decision");
   assertIncludes(expansionDoc, "Provider adapters behind capability checks", "CampaignCue next expansion provider gate");
   assertIncludes(deliveryDoc, "CampaignCue day-one delivery is export/download only", "CampaignCue delivery-boundary day-one rule");
   assertIncludes(deliveryDoc, "/api/campaigncue/integrations` is read-only", "CampaignCue delivery-boundary read-only integrations rule");
@@ -1274,6 +1343,7 @@ function verifyDocsAlignment() {
   assertIncludes(cueLayersReadme, "Provider-driven decomposition remains gated", "CueLayers README provider gate");
   assertIncludes(cueLayersReadme, "SVG/JSON browser exports are disabled", "CueLayers README documents browser export lock");
   assertIncludes(cueLayersImpl, "Flat-safe projection", "CueLayers implementation doc current scope");
+  assertIncludes(cueLayersImpl, "Brand Playbook", "CueLayers implementation doc captures Brand Playbook snapshot context");
   assertIncludes(cueLayersImpl, "Not implemented as active runtime yet", "CueLayers implementation doc gated scope");
   assertIncludes(cueLayersFirebase, "Safe upload spine implemented", "CueLayers Firebase doc implemented status");
   assertIncludes(cueLayersValidation, "Safe upload spine is implementation-ready", "CueLayers validation verdict");
@@ -1282,6 +1352,7 @@ function verifyDocsAlignment() {
   assertIncludes(changelog, "CampaignCue CueLayers Safe Upload Spine", "CampaignCue changelog CueLayers implementation entry");
   assertIncludes(designCueReadme, "The current CampaignCue editor renders Design Cue", "Design Cue README implemented status");
   assertIncludes(designCueImpl, "Implemented File Map", "Design Cue implementation file map");
+  assertIncludes(designCueImpl, "Brand Playbook-aware brand checks", "Design Cue implementation documents Brand Playbook checks");
   assertIncludes(designCueFirebase, "guarded route fails closed while model assist is disabled", "Design Cue Firebase fail-closed model route");
   assertIncludes(designCueValidation, "Design Cue deterministic patch flow is implementation-ready", "Design Cue validation verdict");
   assertIncludes(designCueValidation, "Provider-backed model assistance is not active", "Design Cue validation model boundary");

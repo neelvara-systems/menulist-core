@@ -16,9 +16,11 @@ UGC Script Studio creates creator-ready scripts, briefs, hooks, shot lists, talk
 | Requirement | Acceptance |
 | --- | --- |
 | Brief pack | Output includes hook, script, shot list, talking points, prohibited claims, CTA, and disclosure note. |
+| Dialogue/action brief | Creator scripts include a phone-camera persona, product-placement note, and dialogue/action beats that a real owner, staff member, creator, or source-approved customer can follow. |
 | Role variants | Supports owner, staff, customer-style, creator, and agency brief formats with compliance restrictions. |
 | Claim guard | Testimonials, results, health/beauty outcomes, and review-like claims require approved source. |
 | Export | Brief can be downloaded/exported or sent to agency workspace. |
+| Proof deck reference | Campaign Pack Output may summarize UGC/script direction in the Campaign Proof Deck as a review reference only. |
 | Trust review | Brief must pass Creative Trust Center before external handoff. |
 | Versioning | Owner can compare and approve a specific brief version. |
 
@@ -27,6 +29,7 @@ UGC Script Studio creates creator-ready scripts, briefs, hooks, shot lists, talk
 - It does not recruit creators.
 - It does not manage influencer contracts or payments.
 - It does not create fake customers or fake personal experiences.
+- It does not present AI avatars, stock people, or fictional customers as real customer experiences.
 
 ## Risks
 

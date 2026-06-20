@@ -58,7 +58,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product/knowledge-governance',
         title: 'Review Approved Answers | AnswerLattice',
-        description: 'Review approved answers, stale support, repeated misses, coverage KPI, and trust/readiness metrics.',
+        description: 'Review approved answers, stale support, repeated misses, coverage signals, and launch readiness.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },

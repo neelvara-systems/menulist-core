@@ -426,6 +426,15 @@ function MenuPageNew({
     }, [projectData?.files]);
     const useProgressiveRender = totalItemCount >= PROGRESSIVE_THRESHOLD;
     const [visibleCategoryIds, setVisibleCategoryIds] = useState<Set<string>>(new Set());
+    const [categoryVisibilityTick, setCategoryVisibilityTick] = useState(0);
+
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            setCategoryVisibilityTick((tick) => tick + 1);
+        }, 60000);
+
+        return () => window.clearInterval(interval);
+    }, []);
 
     // P0.2 - State Persistence: Generate unique storage key per menu
     const storageKey = useMemo(() => {
@@ -447,11 +456,26 @@ function MenuPageNew({
     const allCategories = useMemo(() => {
         const cats: any[] = [];
         const seenIds = new Set();
+        const activeItemCategoryIds = new Set<string>();
+
+        projectData?.files?.forEach(file => {
+            const fileItems = file.extractedData?.data?.items || [];
+            fileItems.forEach((item: any) => {
+                if (item?.active !== false && typeof item?.category === 'string') {
+                    activeItemCategoryIds.add(item.category);
+                }
+            });
+        });
 
         projectData?.files?.forEach(file => {
             const fileCats = file.extractedData?.data?.categories || [];
             fileCats.forEach((cat: any) => {
-                if (!seenIds.has(cat.id) && cat.active !== false && isCategoryVisibleByTime(cat)) {
+                if (
+                    !seenIds.has(cat.id) &&
+                    cat.active !== false &&
+                    activeItemCategoryIds.has(cat.id) &&
+                    isCategoryVisibleByTime(cat, storeDetails?.timeZone)
+                ) {
                     seenIds.add(cat.id);
                     cats.push(cat);
                 }
@@ -459,7 +483,7 @@ function MenuPageNew({
         });
 
         return cats;
-    }, [projectData?.files]);
+    }, [categoryVisibilityTick, projectData?.files, storeDetails?.timeZone]);
     const categoriesById = useMemo(() => {
         const map = new Map<string, any>();
         allCategories.forEach((category: any) => {
@@ -850,7 +874,7 @@ function MenuPageNew({
 
     const visibleItems = useMemo(() => {
         return allItems.filter((item: any) =>
-            typeof item.category === 'string' && categoriesById.has(item.category),
+            item.active !== false && typeof item.category === 'string' && categoriesById.has(item.category),
         );
     }, [allItems, categoriesById]);
 

@@ -13,6 +13,27 @@ const optionalUrl = (maxLength: number): z.ZodEffects<z.ZodNullable<z.ZodOptiona
     z.string().trim().url().max(maxLength).optional().nullable(),
 );
 
+const optionalText = (maxLength: number) => z.preprocess(
+    (value) => {
+        if (typeof value !== "string") return value;
+        const trimmed = value.trim();
+        return trimmed ? trimmed : undefined;
+    },
+    z.string().trim().max(maxLength).optional(),
+);
+
+const optionalTextList = (maxItems: number, maxLength: number) => z.preprocess(
+    (value) => {
+        if (Array.isArray(value)) return value;
+        if (typeof value !== "string") return value;
+        return value
+            .split(/[\n,;]+/)
+            .map((item) => item.trim())
+            .filter(Boolean);
+    },
+    z.array(z.string().trim().min(1).max(maxLength)).max(maxItems).optional(),
+);
+
 const isValidTimeZone = (value: string) => {
     try {
         new Intl.DateTimeFormat("en-US", { timeZone: value });
@@ -91,6 +112,13 @@ export const CampaignCueBusinessPatchSchema = z.object({
     logoUrl: optionalUrl(1000),
     primaryColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/).optional(),
     voice: z.enum(["calm", "friendly", "premium", "direct"]).optional(),
+    targetAudience: optionalText(180),
+    brandFeel: optionalTextList(8, 40),
+    inspirationNotes: optionalTextList(8, 80),
+    visualMotifs: optionalTextList(8, 60),
+    avoidList: optionalTextList(10, 80),
+    productFocus: optionalTextList(10, 80),
+    typographyNotes: optionalText(180),
     locale: z.string().trim().min(2).max(12).optional(),
     timezone: timeZoneSchema.optional(),
     agencyMode: z.boolean().optional(),

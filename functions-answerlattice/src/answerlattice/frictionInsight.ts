@@ -16,6 +16,12 @@ import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import {
+    ANSWERLATTICE_AI_ACTIONS,
+    AnswerlatticeUsageMetadata,
+    callAnswerlatticeGeminiContent,
+    recordGeminiCallOperation,
+} from './aiOperationAccounting';
 
 const PROMPT_VERSION = 'friction_insight_v1';
 const MIN_SIGNALS_FOR_INSIGHT = 5;
@@ -30,29 +36,23 @@ export interface FrictionInsightResult {
 // ═══════════════════════════════════════════════════════════════
 
 async function callGeminiForFrictionInsight(promptData: string): Promise<{
-    summary: string;
-    topFrictions: Array<{
-        entityName: string;
-        entityType: string;
-        signalCount: number;
-        escalationRate: number;
-        trend: string;
-        suggestedAction: string;
-    }>;
-    emergingTopics: string[];
-    overallHealth: string;
+    insight: {
+        summary: string;
+        topFrictions: Array<{
+            entityName: string;
+            entityType: string;
+            signalCount: number;
+            escalationRate: number;
+            trend: string;
+            suggestedAction: string;
+        }>;
+        emergingTopics: string[];
+        overallHealth: string;
+    };
+    processingTime: number;
+    usageMetadata: AnswerlatticeUsageMetadata;
 } | null> {
     try {
-        const { GoogleGenerativeAI } = await import('@google/generative-ai');
-        const apiKey = process.env.GEMINI_AI_KEY;
-        if (!apiKey) {
-            logger.warn('[Answerlattice Friction Insight] GEMINI_AI_KEY not set. Skipping insight generation.');
-            return null;
-        }
-
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-
         const prompt = `You are a product friction analyst for a SaaS company.
 
 Given the following support friction data for the past week, generate a concise weekly friction report.
@@ -89,18 +89,25 @@ Rules:
   - other → review support articles for this topic
 - Return ONLY valid JSON, no markdown code blocks`;
 
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
+        const geminiResult = await callAnswerlatticeGeminiContent({
+            model: 'gemini-2.0-flash',
+            userPrompt: prompt,
+        });
+        const text = geminiResult.text || '';
 
         // Parse JSON from response (handle potential markdown wrapping)
         const jsonStr = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         const parsed = JSON.parse(jsonStr);
 
         return {
-            summary: parsed.summary || '',
-            topFrictions: parsed.topFrictions || [],
-            emergingTopics: parsed.emergingTopics || [],
-            overallHealth: parsed.overallHealth || 'LOW',
+            insight: {
+                summary: parsed.summary || '',
+                topFrictions: parsed.topFrictions || [],
+                emergingTopics: parsed.emergingTopics || [],
+                overallHealth: parsed.overallHealth || 'LOW',
+            },
+            processingTime: geminiResult.processingTime,
+            usageMetadata: geminiResult.usageMetadata,
         };
     } catch (error) {
         logger.error('[Answerlattice Friction Insight] Gemini call failed', { error });
@@ -173,6 +180,19 @@ export async function generateFrictionInsight(tId: number, sId: number): Promise
         if (!aiResult) {
             return { generated: false, skippedReason: 'gemini_failed' };
         }
+        await recordGeminiCallOperation({
+            action: ANSWERLATTICE_AI_ACTIONS.FRICTION_INSIGHT,
+            clientResponse: {
+                emergingTopicsCount: aiResult.insight.emergingTopics.length,
+                overallHealth: aiResult.insight.overallHealth,
+                topFrictionsCount: aiResult.insight.topFrictions.length,
+            },
+            processingTime: aiResult.processingTime,
+            sId,
+            source: 'answerlattice_friction_insight_weekly',
+            tId,
+            usageMetadata: aiResult.usageMetadata,
+        });
 
         // 5. Compute week boundaries
         const now = new Date();
@@ -186,15 +206,15 @@ export async function generateFrictionInsight(tId: number, sId: number): Promise
             lastUpdated: Timestamp.now(),
             weekStart,
             weekEnd,
-            summary: aiResult.summary,
-            topFrictions: aiResult.topFrictions,
-            emergingTopics: aiResult.emergingTopics,
-            overallHealth: aiResult.overallHealth,
+            summary: aiResult.insight.summary,
+            topFrictions: aiResult.insight.topFrictions,
+            emergingTopics: aiResult.insight.emergingTopics,
+            overallHealth: aiResult.insight.overallHealth,
             promptVersion: PROMPT_VERSION,
             generatedAt: Timestamp.now(),
         }, { merge: true });
 
-        logger.info('[Answerlattice Friction Insight] Generated', { tId, sId, overallHealth: aiResult.overallHealth });
+        logger.info('[Answerlattice Friction Insight] Generated', { tId, sId, overallHealth: aiResult.insight.overallHealth });
         return { generated: true };
 
     } catch (error) {

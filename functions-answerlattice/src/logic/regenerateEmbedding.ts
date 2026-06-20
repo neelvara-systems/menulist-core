@@ -34,7 +34,10 @@ export const regenerateEmbeddingLogic = async (articleId: string) => {
             categoryTitle: article.categoryTitle,
             sectionTitle: article.sectionTitle || "",
             title: article.title,
-            content: article.content
+            content: article.content,
+            tId: tenantId,
+            sId: storeId,
+            source: "answerlattice_regenerate_embedding",
         }
         const embeddingVector = await genrateEmbedding(articleToEmbed);
 

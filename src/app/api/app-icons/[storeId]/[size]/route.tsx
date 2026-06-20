@@ -15,6 +15,8 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import {
     clampCustomerAppIconSize,
     CUSTOMER_APP_ICON_CACHE_CONTROL,
@@ -22,9 +24,23 @@ import {
     resolveCustomerAppIconSource,
 } from '@lib/pwa/customerAppAssets';
 import { ImageResponse } from 'next/og';
+import { NextRequest } from 'next/server';
+import { getClientIp } from 'src/middleware/publicApi';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const STORE_ID_PATTERN = /^\d{1,20}$/;
+
+async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Promise<boolean> {
+    if (!STORE_ID_PATTERN.test(storeId)) return true;
+
+    const config = getRateLimitForFeature('PUBLIC_DYNAMIC_ASSET');
+    const limit = await checkRateLimit({
+        key: `public-dynamic-asset:icon:${getClientIp(request)}`,
+        ...config,
+    });
+    return !limit.allowed;
+}
 
 // Caching rationale (KEPT — do not remove):
 //   - Icons rarely change (logo update / owner override). When they do, busting
@@ -35,13 +51,25 @@ export const dynamic = 'force-dynamic';
 //   - s-maxage=86400: Vercel edge caches 1 day.
 //   - stale-while-revalidate=604800: serve stale for 1wk while refetching.
 export async function GET(
-    _request: Request,
+    request: NextRequest,
     { params }: { params: { storeId: string; size: string } },
 ) {
     const size = clampCustomerAppIconSize(params.size);
     const storeId = params.storeId;
 
     try {
+        if (await shouldUseFallbackAsset(request, storeId)) {
+            return new ImageResponse(renderCustomerAppIcon({
+                displayName: 'Menu',
+                seed: storeId || 'menu',
+                size,
+            }), {
+                width: size,
+                height: size,
+                headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
+            });
+        }
+
         const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get();
         const store = snap.exists ? snap.data() : null;
 

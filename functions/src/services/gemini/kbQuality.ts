@@ -131,7 +131,6 @@ function parseKBQualityResponse(text: string): KBQualityResult {
     };
   } catch (error) {
     console.error('[KB Quality] Failed to parse JSON response:', error);
-    console.error('[KB Quality] Raw text:', text.substring(0, 500));
     throw error;
   }
 }

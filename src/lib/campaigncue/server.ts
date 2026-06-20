@@ -46,6 +46,7 @@ import type {
     CampaignCueActionType,
     CampaignCueAnalyticsSummary,
     CampaignCueAsset,
+    CampaignCueBrandPlaybook,
     CampaignCueBusinessBrain,
     CampaignCueCampaign,
     CampaignCueChannel,
@@ -119,6 +120,67 @@ const buildId = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${Math
 const hasOwn = <T extends object, K extends PropertyKey>(value: T, key: K) => (
     Object.prototype.hasOwnProperty.call(value, key)
 );
+
+const normalizeBrandPlaybookList = (value: unknown, limit: number) => {
+    if (!Array.isArray(value)) return [];
+    return uniqueCompactStrings(value.map((item) => compactString(item)), limit);
+};
+
+const normalizeBrandPlaybook = (value: unknown): CampaignCueBrandPlaybook => {
+    const playbook = (value || {}) as Partial<CampaignCueBrandPlaybook>;
+    return {
+        targetAudience: compactString(playbook.targetAudience) || undefined,
+        brandFeel: normalizeBrandPlaybookList(playbook.brandFeel, 8),
+        inspirationNotes: normalizeBrandPlaybookList(playbook.inspirationNotes, 8),
+        visualMotifs: normalizeBrandPlaybookList(playbook.visualMotifs, 8),
+        avoidList: normalizeBrandPlaybookList(playbook.avoidList, 10),
+        productFocus: normalizeBrandPlaybookList(playbook.productFocus, 10),
+        typographyNotes: compactString(playbook.typographyNotes) || undefined,
+    };
+};
+
+const hasBrandPlaybookSignal = (playbook: CampaignCueBrandPlaybook) => Boolean(
+    playbook.targetAudience
+    || playbook.typographyNotes
+    || playbook.brandFeel.length
+    || playbook.inspirationNotes.length
+    || playbook.visualMotifs.length
+    || playbook.avoidList.length
+    || playbook.productFocus.length,
+);
+
+const brandPlaybookSourceRefs = (businessBrain: CampaignCueBusinessBrain) => (
+    hasBrandPlaybookSignal(businessBrain.brandKit.playbook) ? ["brand_playbook"] : []
+);
+
+const isCampaignSourceInputRef = (sourceRef?: string) => Boolean(
+    sourceRef && sourceRef !== "store_profile" && sourceRef !== "brand_playbook",
+);
+
+const mergeBrandPlaybookPatch = (
+    current: CampaignCueBrandPlaybook,
+    input: CampaignCueBusinessPatchInput,
+): CampaignCueBrandPlaybook => normalizeBrandPlaybook({
+    targetAudience: hasOwn(input, "targetAudience") ? input.targetAudience : current.targetAudience,
+    brandFeel: hasOwn(input, "brandFeel") ? input.brandFeel : current.brandFeel,
+    inspirationNotes: hasOwn(input, "inspirationNotes") ? input.inspirationNotes : current.inspirationNotes,
+    visualMotifs: hasOwn(input, "visualMotifs") ? input.visualMotifs : current.visualMotifs,
+    avoidList: hasOwn(input, "avoidList") ? input.avoidList : current.avoidList,
+    productFocus: hasOwn(input, "productFocus") ? input.productFocus : current.productFocus,
+    typographyNotes: hasOwn(input, "typographyNotes") ? input.typographyNotes : current.typographyNotes,
+});
+
+const brandPlaybookBriefLine = (businessBrain: CampaignCueBusinessBrain) => {
+    const playbook = businessBrain.brandKit.playbook;
+    if (!hasBrandPlaybookSignal(playbook)) return "";
+    return uniqueCompactStrings([
+        playbook.targetAudience ? `Audience: ${playbook.targetAudience}` : undefined,
+        playbook.brandFeel.length ? `Feel: ${playbook.brandFeel.join(", ")}` : undefined,
+        playbook.visualMotifs.length ? `Visual motifs: ${playbook.visualMotifs.join(", ")}` : undefined,
+        playbook.productFocus.length ? `Focus: ${playbook.productFocus.join(", ")}` : undefined,
+        playbook.avoidList.length ? `Avoid: ${playbook.avoidList.join(", ")}` : undefined,
+    ], 5).join(" | ");
+};
 
 const patchOptionalUrl = (
     input: CampaignCueBusinessPatchInput,
@@ -292,6 +354,7 @@ function buildBusinessBrain(params: {
             primaryColor: compactString(storeData?.brandColor || storeData?.primaryColor || CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR),
             logoUrl: compactString(storeData?.logo || storeData?.logoUrl || ""),
             voice: "friendly",
+            playbook: normalizeBrandPlaybook(null),
         },
         locale: compactString(storeData?.locale || CAMPAIGNCUE_DEFAULT_LOCALE),
         timezone: compactString(storeData?.timezone || CAMPAIGNCUE_DEFAULT_TIMEZONE),
@@ -324,7 +387,11 @@ function buildSourceSnapshot(
         workspaceId: businessBrain.workspaceId,
         sourceType: sourceInputs.length ? "manual" : "menulist",
         sourceHash: stableHash(facts),
-        sourceRefs: ["store_profile", ...sourceInputs.map((input) => input.id)],
+        sourceRefs: Array.from(new Set([
+            "store_profile",
+            ...brandPlaybookSourceRefs(businessBrain),
+            ...sourceInputs.map((input) => input.id),
+        ])),
         confidence: businessBrain.sourceConfidence,
         freshness: missingFacts.length ? "unknown" : "fresh",
         summary: `${businessBrain.name} ${businessBrain.locality ? `in ${businessBrain.locality}` : ""} · ${facts.length} saved facts`.trim(),
@@ -342,7 +409,7 @@ function buildSourceSnapshotFromExistingSnapshot(params: {
     const baseFacts = buildSourceFacts(params.businessBrain);
     const baseFactIds = new Set(baseFacts.map((fact) => fact.id));
     const previousInputFacts = (params.existingSnapshot?.facts || [])
-        .filter((fact) => fact.sourceRef !== "store_profile" && !baseFactIds.has(fact.id));
+        .filter((fact) => isCampaignSourceInputRef(fact.sourceRef) && !baseFactIds.has(fact.id));
     const nextFacts = params.sourceInput ? sourceInputToFacts(params.sourceInput) : [];
     const factsById = new Map<string, CampaignCueSourceFact>();
     [...baseFacts, ...previousInputFacts, ...nextFacts].forEach((fact) => {
@@ -351,16 +418,18 @@ function buildSourceSnapshotFromExistingSnapshot(params: {
     const facts = Array.from(factsById.values());
     const sourceRefs = Array.from(new Set([
         "store_profile",
-        ...(params.existingSnapshot?.sourceRefs || []).filter((sourceRef) => sourceRef && sourceRef !== "store_profile"),
+        ...brandPlaybookSourceRefs(params.businessBrain),
+        ...(params.existingSnapshot?.sourceRefs || []).filter(isCampaignSourceInputRef),
         params.sourceInput?.id,
     ].filter(Boolean) as string[]));
-    const hasActiveSourceInput = facts.some((fact) => fact.sourceRef !== "store_profile" && fact.risk === "low");
+    const hasManualSourceInput = sourceRefs.some(isCampaignSourceInputRef);
+    const hasActiveSourceInput = facts.some((fact) => isCampaignSourceInputRef(fact.sourceRef) && fact.risk === "low");
     const missingFacts = buildMissingSourceFactsFromState(params.businessBrain, hasActiveSourceInput);
     const verticalRisks = buildVerticalRisks(params.businessBrain);
     return {
         id: defaultSourceSnapshotId,
         workspaceId: params.businessBrain.workspaceId,
-        sourceType: sourceRefs.length > 1 ? "manual" : "menulist",
+        sourceType: hasManualSourceInput ? "manual" : "menulist",
         sourceHash: stableHash(facts),
         sourceRefs,
         confidence: params.businessBrain.sourceConfidence,
@@ -423,6 +492,7 @@ function buildSourceFacts(
 ): CampaignCueSourceFact[] {
     const item = businessBrain.catalog.items.find((entry) => entry.available) || businessBrain.catalog.items[0];
     const service = businessBrain.catalog.services.find((entry) => entry.available) || businessBrain.catalog.services[0];
+    const playbook = businessBrain.brandKit.playbook;
     const baseFacts = [
         buildSourceFact({
             id: "business_name",
@@ -480,6 +550,54 @@ function buildSourceFacts(
             sourceRef: "store_profile",
             sourceType: "asset",
             risk: "needs_review",
+        }),
+        buildSourceFact({
+            id: "brand_target_audience",
+            label: "Brand audience",
+            value: playbook.targetAudience,
+            sourceRef: "brand_playbook",
+            sourceType: "business_profile",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "brand_feel",
+            label: "Brand feel",
+            value: playbook.brandFeel.join(", "),
+            sourceRef: "brand_playbook",
+            sourceType: "business_profile",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "brand_visual_motifs",
+            label: "Brand visual motifs",
+            value: playbook.visualMotifs.join(", "),
+            sourceRef: "brand_playbook",
+            sourceType: "business_profile",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "brand_product_focus",
+            label: "Brand product focus",
+            value: playbook.productFocus.join(", "),
+            sourceRef: "brand_playbook",
+            sourceType: "business_profile",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "brand_avoid_list",
+            label: "Brand avoid list",
+            value: playbook.avoidList.join(", "),
+            sourceRef: "brand_playbook",
+            sourceType: "policy",
+            confidence: "manual",
+        }),
+        buildSourceFact({
+            id: "brand_typography",
+            label: "Brand typography",
+            value: playbook.typographyNotes,
+            sourceRef: "brand_playbook",
+            sourceType: "business_profile",
+            confidence: "manual",
         }),
     ].filter(Boolean) as CampaignCueSourceFact[];
     return [
@@ -620,6 +738,36 @@ function normalizeCampaignCueWorkspace(workspace: CampaignCueWorkspace): Campaig
     };
 }
 
+function normalizeCampaignCueBusinessBrain(businessBrain: CampaignCueBusinessBrain): CampaignCueBusinessBrain {
+    const brandKit = (businessBrain.brandKit || {}) as {
+        logoUrl?: string;
+        playbook?: Partial<CampaignCueBrandPlaybook>;
+        primaryColor?: string;
+        voice?: CampaignCueBusinessBrain["brandKit"]["voice"];
+    };
+    return {
+        ...businessBrain,
+        contacts: businessBrain.contacts || {},
+        brandKit: {
+            primaryColor: compactString(brandKit.primaryColor || CAMPAIGNCUE_DEFAULT_PRIMARY_COLOR),
+            logoUrl: compactString(brandKit.logoUrl) || undefined,
+            voice: brandKit.voice || "friendly",
+            playbook: normalizeBrandPlaybook(brandKit.playbook),
+        },
+        locale: compactString(businessBrain.locale, CAMPAIGNCUE_DEFAULT_LOCALE),
+        timezone: compactString(businessBrain.timezone, CAMPAIGNCUE_DEFAULT_TIMEZONE),
+        catalog: {
+            items: businessBrain.catalog?.items || [],
+            services: businessBrain.catalog?.services || [],
+        },
+        readiness: businessBrain.readiness || {
+            status: "limited",
+            blockers: [],
+            warnings: [],
+        },
+    };
+}
+
 function dashboardSummarySeed(workspaceId: string): CampaignCueAnalyticsSummary {
     const now = nowTimestamp();
     return {
@@ -650,7 +798,7 @@ export async function ensureCampaignCueWorkspaceServer(scope: CampaignCueSession
         if (businessSnap.exists) {
             return {
                 workspace,
-                businessBrain: businessSnap.data() as CampaignCueBusinessBrain,
+                businessBrain: normalizeCampaignCueBusinessBrain(businessSnap.data() as CampaignCueBusinessBrain),
             };
         }
     }
@@ -719,10 +867,12 @@ export function buildCampaignCueOpportunities(params: {
     const sourceSnapshot = params.sourceSnapshot || buildSourceSnapshot(businessBrain, sourceInputs);
     const snapshotSourceRefs = sourceInputs.length
         ? []
-        : sourceSnapshot.sourceRefs.filter((sourceRef) => sourceRef && sourceRef !== "store_profile");
+        : sourceSnapshot.sourceRefs.filter(isCampaignSourceInputRef);
     const snapshotReadyFactCount = sourceInputs.length
         ? 0
-        : sourceSnapshot.facts.filter((fact) => fact.sourceRef !== "store_profile" && fact.risk === "low").length;
+        : sourceSnapshot.facts.filter((fact) => (
+            isCampaignSourceInputRef(fact.sourceRef) && fact.risk === "low"
+        )).length;
     const readySourceCount = activeInputs.length || snapshotReadyFactCount;
     const sourceReferences = [
         businessBrain.sourceSnapshotId || defaultSourceSnapshotId,
@@ -1251,6 +1401,60 @@ function primaryThing(businessBrain: CampaignCueBusinessBrain) {
     return businessBrain.catalog.items.find((item) => item.available)?.name || "featured item";
 }
 
+function creatorRoleForBusiness(businessBrain: CampaignCueBusinessBrain) {
+    if (businessBrain.businessType === "restaurant") return "owner, staff member, regular creator, or source-approved customer";
+    if (businessBrain.businessType === "salon") return "owner, stylist, booked creator, or source-approved client";
+    if (businessBrain.businessType === "fitness") return "owner, coach, staff member, booked creator, or source-approved member";
+    if (businessBrain.businessType === "clinic") return "owner, front-desk staff, clinician-approved spokesperson, or booked creator";
+    if (businessBrain.businessType === "retail") return "owner, staff member, booked creator, or source-approved shopper";
+    return "owner, staff member, booked creator, or source-approved customer";
+}
+
+function cameraPlanForChannel(channel: CampaignCueChannel, businessBrain: CampaignCueBusinessBrain) {
+    const feel = businessBrain.brandKit.playbook.brandFeel.slice(0, 3).join(", ");
+    const style = feel ? `, matching this feel: ${feel}` : "";
+    if (channel === "video") {
+        return `9:16 phone video, natural light, handheld or simple stationary setup, product/service visible, center-safe framing${style}`;
+    }
+    return `9:16 phone-style clip, medium close-up, center eye line, natural pauses, product/service visible without overproduced polish${style}`;
+}
+
+function productPlacementBrief(businessBrain: CampaignCueBusinessBrain, thing: string) {
+    const focus = businessBrain.brandKit.playbook.productFocus.slice(0, 3).join(", ");
+    const source = focus ? `${thing} with focus on ${focus}` : thing;
+    return `Use an owner-approved photo or real filmed product/service moment for ${source}. Do not use stock people or synthetic customers as real proof.`;
+}
+
+function buildUgcDialogueActionBrief(businessBrain: CampaignCueBusinessBrain, thing: string) {
+    const location = businessBrain.locality ? ` in ${businessBrain.locality}` : "";
+    return [
+        `1. Dialogue: "Here at ${businessBrain.name}${location}, this is what we are featuring today." Action: open on the real storefront, counter, product, service setup, or staff member.`,
+        `2. Dialogue: "The useful thing to notice is ${thing}." Action: show the product, service moment, menu, booking screen, or approved visual proof.`,
+        "3. Dialogue: \"Check the details before you come in or book.\" Action: show the CTA, menu, booking link, phone, or final frame.",
+        "Guardrail: do not say the speaker personally used it, got results, or recommends it unless that real person approved the claim and the source is attached.",
+    ].join("\n");
+}
+
+function buildVideoShotPlan(businessBrain: CampaignCueBusinessBrain, thing: string) {
+    const location = businessBrain.locality ? ` in ${businessBrain.locality}` : "";
+    return [
+        `0-2s hook: show ${thing} or the business entrance${location}.`,
+        "3-7s proof: show a close product shot, service action, menu/booking proof, or staff preparation moment.",
+        "8-12s context: show the business name, location cue, or owner-approved source detail.",
+        "Final frame: show the CTA clearly; do not imply CampaignCue rendered or published the video.",
+    ].join("\n");
+}
+
+function buildBrollChecklist(businessBrain: CampaignCueBusinessBrain, thing: string) {
+    return uniqueCompactStrings([
+        `${thing} close-up`,
+        businessBrain.name ? `${businessBrain.name} sign or counter` : undefined,
+        businessBrain.locality ? `${businessBrain.locality} context shot` : undefined,
+        "staff or creator hands using the product/service with consent",
+        "CTA screen, booking page, menu, phone, or WhatsApp contact",
+    ], 5).join(" | ");
+}
+
 function providerModeForChannel(channel: CampaignCueChannel): CampaignCueProviderMode {
     if (channel === "video") return "brief_only";
     if (channel === "ads") return "manual_handoff";
@@ -1268,6 +1472,8 @@ function lineForChannel(params: {
     const cta = ctaForBusiness(businessBrain);
     const location = businessBrain.locality ? ` in ${businessBrain.locality}` : "";
     const ctaLine = cta ? `\n\nNext step: ${cta}` : "";
+    const brandLine = brandPlaybookBriefLine(businessBrain);
+    const brandDirection = brandLine ? `\n\nBrand direction: ${brandLine}` : "";
     if (channel === "whatsapp") {
         return `${businessBrain.name}: ${thing} is ready${location}. Reply here or open the link to check details.${ctaLine}`;
     }
@@ -1275,16 +1481,34 @@ function lineForChannel(params: {
         return `${businessBrain.name} update: ${thing} is available${location}. ${params.brief || title}.${ctaLine}\n\nManual note: product-style posts must be handled manually when direct API support is unavailable.`;
     }
     if (channel === "creative") {
-        return `Creative brief: lead with ${thing}, show the business name clearly, keep the CTA visible, and avoid unsupported result claims.${ctaLine}`;
+        return `Creative brief: lead with ${thing}, show the business name clearly, keep the CTA visible, and avoid unsupported result claims.${ctaLine}${brandDirection}`;
     }
     if (channel === "video") {
-        return `Reel brief: 0-2s hook on ${thing}; 3-7s close shot or service moment; 8-12s business/location proof; final frame with CTA.${ctaLine}`;
+        return [
+            "Reel brief:",
+            `Camera plan: ${cameraPlanForChannel(channel, businessBrain)}.`,
+            `Shot plan:\n${buildVideoShotPlan(businessBrain, thing)}`,
+            `B-roll checklist: ${buildBrollChecklist(businessBrain, thing)}.`,
+            `Product placement: ${productPlacementBrief(businessBrain, thing)}`,
+            "Boundary: this is a shoot/edit brief only, not a rendered video or provider upload.",
+            ctaLine.trim(),
+            brandDirection.trim(),
+        ].filter(Boolean).join("\n\n");
     }
     if (channel === "ugc") {
-        return `Creator script: "I am at ${businessBrain.name}${location}. The useful thing to notice is ${thing}." Keep it as a creator brief, not a fake customer testimonial.${ctaLine}`;
+        return [
+            "UGC creator brief:",
+            `Persona: ${creatorRoleForBusiness(businessBrain)}.`,
+            `Camera plan: ${cameraPlanForChannel(channel, businessBrain)}.`,
+            `Product placement: ${productPlacementBrief(businessBrain, thing)}`,
+            `Dialogue/action beats:\n${buildUgcDialogueActionBrief(businessBrain, thing)}`,
+            "Disclosure: use a real owner, staff member, creator, or source-approved customer; do not present an AI avatar, stock person, or fictional customer as real experience.",
+            ctaLine.trim(),
+            brandDirection.trim(),
+        ].filter(Boolean).join("\n\n");
     }
     if (channel === "ads") {
-        return `Ad handoff: promote ${thing} for ${businessBrain.name}. Audience: nearby customers. Budget: owner-approved only. UTM: campaigncue_${title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.`;
+        return `Ad handoff: promote ${thing} for ${businessBrain.name}. Audience: ${businessBrain.brandKit.playbook.targetAudience || "nearby customers"}. Budget: owner-approved only. UTM: campaigncue_${title.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.`;
     }
     return `Manual task: review and use the approved campaign pack for ${thing}.${ctaLine}`;
 }
@@ -1324,6 +1548,8 @@ function outputFieldsForChannel(params: {
         || businessBrain.contacts.bookingUrl
         || businessBrain.contacts.website
         || "";
+    const brandLine = brandPlaybookBriefLine(businessBrain);
+    const brandBrief = brandLine ? ` Brand direction: ${brandLine}.` : "";
     const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
     const utm = destination ? `utm_source=campaigncue&utm_medium=${channel}&utm_campaign=${base || "manual_pack"}` : "";
     const manualStepsByChannel: Record<CampaignCueChannel, string[]> = {
@@ -1349,13 +1575,14 @@ function outputFieldsForChannel(params: {
         ],
         ugc: [
             "Share this as a creator or staff brief.",
-            "Use only real experiences and approved claims.",
+            "Follow the dialogue/action beats and keep camera direction phone-native.",
+            "Use only real experiences and approved claims; do not present synthetic or fictional people as real customers.",
             "Attach consent when a customer, staff member, or transformation appears.",
         ],
         video: [
-            "Shoot the listed moments on a phone.",
+            "Shoot the listed moments on a phone using the camera plan and B-roll checklist.",
             "Keep the CTA visible in the final frame.",
-            "Avoid before/after or result claims without proof and consent.",
+            "Avoid before/after, personal-experience, or result claims without proof and consent.",
         ],
         whatsapp: [
             "Send only to people who expect business messages from this business.",
@@ -1386,8 +1613,8 @@ function outputFieldsForChannel(params: {
         calendar: ["Manual posting reminder", "Owner task note", "Follow-up result prompt"],
         creative: recipe.outputFormats,
         google_local: ["Google update draft", "Offer/event verification checklist", "Local caption"],
-        ugc: ["Creator script", "Staff talking points", "Consent reminder"],
-        video: ["Reel shot list", "Opening hook", "Final-frame CTA"],
+        ugc: ["Creator script", "Dialogue/action beat sheet", "Product-placement note", "Consent reminder"],
+        video: ["Reel shot list", "Phone camera plan", "B-roll checklist", "Final-frame CTA"],
         whatsapp: ["WhatsApp text", "Staff sharing text", "Reply prompt"],
     };
     const handoffFieldsByChannel: Record<CampaignCueChannel, NonNullable<CampaignCueOutputFields["handoffFields"]>> = {
@@ -1408,6 +1635,7 @@ function outputFieldsForChannel(params: {
             handoffField({ id: "square", label: "Square", value: recipe.outputFormats.find((format) => /square/i.test(format)) || "Square post", required: false }),
             handoffField({ id: "story", label: "Story", value: recipe.outputFormats.find((format) => /story/i.test(format)) || "Story/reel format", required: false }),
             handoffField({ id: "print", label: "Print", value: recipe.printFormats[0], required: false }),
+            handoffField({ id: "brand_direction", label: "Brand direction", value: brandLine, required: false }),
             handoffField({ id: "cta", label: "CTA", value: cta }),
         ],
         google_local: [
@@ -1421,11 +1649,21 @@ function outputFieldsForChannel(params: {
         ],
         ugc: [
             handoffField({ id: "script", label: "Script", value: text }),
+            handoffField({ id: "persona", label: "Persona", value: creatorRoleForBusiness(businessBrain), required: false }),
+            handoffField({ id: "camera_plan", label: "Camera plan", value: cameraPlanForChannel(channel, businessBrain), required: false }),
+            handoffField({ id: "product_placement", label: "Product placement", value: productPlacementBrief(businessBrain, thing), required: false }),
+            handoffField({ id: "dialogue_action_beats", label: "Dialogue/action beats", value: buildUgcDialogueActionBrief(businessBrain, thing), required: false }),
+            handoffField({ id: "brand_direction", label: "Brand direction", value: brandLine, required: false }),
+            handoffField({ id: "disclosure", label: "Disclosure", value: "Use a real owner, staff member, creator, or source-approved customer. Do not present synthetic or fictional people as real customers.", required: false }),
             handoffField({ id: "consent", label: "Consent", value: "Use only real experiences and approved claims.", required: false }),
             handoffField({ id: "cta", label: "CTA", value: cta }),
         ],
         video: [
             handoffField({ id: "shot_list", label: "Shot list", value: text }),
+            handoffField({ id: "camera_plan", label: "Camera plan", value: cameraPlanForChannel(channel, businessBrain), required: false }),
+            handoffField({ id: "b_roll", label: "B-roll checklist", value: buildBrollChecklist(businessBrain, thing), required: false }),
+            handoffField({ id: "product_placement", label: "Product placement", value: productPlacementBrief(businessBrain, thing), required: false }),
+            handoffField({ id: "brand_direction", label: "Brand direction", value: brandLine, required: false }),
             handoffField({ id: "final_frame", label: "Final frame", value: cta }),
             handoffField({ id: "consent", label: "Consent", value: "Confirm people or customer images before filming.", required: false }),
         ],
@@ -1444,15 +1682,18 @@ function outputFieldsForChannel(params: {
         channel === "whatsapp" ? "Recipients expect business messages" : undefined,
         channel === "ads" ? "Budget and audience are approved outside CampaignCue" : undefined,
         channel === "video" || channel === "ugc" ? "People, staff, or customer images have consent" : undefined,
+        channel === "ugc" ? "Dialogue/action beats do not invent personal experience" : undefined,
+        channel === "video" ? "Shot list remains a brief; no rendered video is implied" : undefined,
+        brandLine ? "Brand direction and avoid list are checked" : undefined,
         ...recipe.guardrails.slice(0, 2),
-    ], 6);
+    ], 8);
     return {
         headline: `${thing} from ${businessBrain.name}`,
         body: text,
         cta: cta || "Add a phone, booking, menu, or website link before posting.",
         imageBrief: channel === "video"
-            ? `Show ${thing}, the business name, and a clear final CTA.`
-            : `Use an approved image that matches ${thing}; avoid unrelated or unavailable items.`,
+            ? `Show ${thing}, the business name, and a clear final CTA.${brandBrief}`
+            : `Use an approved image that matches ${thing}; avoid unrelated or unavailable items.${brandBrief}`,
         dimensions: channel === "video" ? "9:16 reel" : channel === "google_local" ? "Google Business Profile post" : "Channel native format",
         postType: postTypeByChannel[channel],
         consentNote: channel === "whatsapp"
@@ -1464,7 +1705,9 @@ function outputFieldsForChannel(params: {
             ? "No spend starts from CampaignCue. Check platform policy before launching."
             : channel === "google_local"
                 ? "Verify offer dates, price, and post type before publishing manually."
-                : "Do not add guarantees, fake testimonials, or unsupported result claims.",
+                : channel === "ugc" || channel === "video"
+                    ? "Do not add guarantees, fake testimonials, synthetic personal experiences, or unsupported result claims."
+                    : "Do not add guarantees, fake testimonials, or unsupported result claims.",
         destination,
         utm,
         approvalNote: "Owner or assigned reviewer should approve source details, CTA, and claims before use.",
@@ -1529,15 +1772,49 @@ function buildTrustReport(params: {
     const unreviewedFacts = params.sourceFacts.filter((fact) => fact.risk === "needs_review");
     const blockedFacts = params.sourceFacts.filter((fact) => fact.risk === "blocked");
     const assetFacts = params.sourceFacts.filter((fact) => fact.sourceType === "asset");
+    const avoidTerms = params.businessBrain.brandKit.playbook.avoidList
+        .map((term) => term.trim().toLowerCase())
+        .filter((term) => term.length >= 3);
     for (const output of params.outputs) {
+        const outputTrustText = [
+            output.text,
+            output.fields.body,
+            output.fields.policyNote,
+            ...(output.fields.handoffFields || []).map((field) => field.value),
+        ].join("\n").toLowerCase();
         const text = output.text.toLowerCase();
-        if (/(guaranteed|100%|cure|best in|#1)/.test(text)) {
+        const publicLikeOutput = output.channel === "whatsapp" || output.channel === "google_local" || output.channel === "ads";
+        if (/(guaranteed|100%|cure|best in|#1)/.test(outputTrustText)) {
             findings.push({
                 id: `${output.id}_blocked_claim`,
                 severity: "blocked",
                 ruleId: "unsupported_absolute_claim",
                 message: `${output.label} includes an unsupported absolute or result claim.`,
                 recommendation: "Remove guarantee, medical/result, or ranking language before export or handoff.",
+                sourceReferences: output.sourceReferences,
+            });
+        }
+        if (
+            (output.channel === "ugc" || output.channel === "video")
+            && /\b(i have been using|i've been using|i absolutely love|i absolutely recommend|i recommend this|got me hooked|my results|changed my life|worked for me)\b/.test(outputTrustText)
+        ) {
+            findings.push({
+                id: `${output.id}_fake_personal_experience`,
+                severity: "needs_fix",
+                ruleId: "fake_personal_experience",
+                message: `${output.label} contains first-person experience or recommendation wording that needs source proof.`,
+                recommendation: "Replace it with a role-neutral creator brief, or attach approved testimonial source, consent, and disclosure before handoff.",
+                sourceReferences: output.sourceReferences,
+            });
+        }
+        const avoidedTerm = publicLikeOutput ? avoidTerms.find((term) => text.includes(term)) : undefined;
+        if (avoidedTerm) {
+            findings.push({
+                id: `${output.id}_brand_avoid_term`,
+                severity: "warning",
+                ruleId: "brand_playbook_avoid_term",
+                message: `${output.label} uses a term from the Brand Playbook avoid list.`,
+                recommendation: `Review or remove "${avoidedTerm}" before export.`,
                 sourceReferences: output.sourceReferences,
             });
         }
@@ -2455,6 +2732,7 @@ export async function patchCampaignCueBusinessServer(params: {
             primaryColor: params.input.primaryColor ?? businessBrain.brandKit.primaryColor,
             logoUrl: patchOptionalUrl(params.input, "logoUrl", businessBrain.brandKit.logoUrl),
             voice: params.input.voice ?? businessBrain.brandKit.voice,
+            playbook: mergeBrandPlaybookPatch(businessBrain.brandKit.playbook, params.input),
         },
         locale: params.input.locale ?? businessBrain.locale,
         timezone: params.input.timezone ?? businessBrain.timezone,

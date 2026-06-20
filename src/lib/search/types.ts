@@ -94,6 +94,14 @@ export interface CoreSearchResult {
     /** Provider-backed steps used by this request, for audit-only operation logging */
     aiProviderOperations?: string[];
 
+    /** Aggregated token usage for provider-backed search steps. */
+    aiProviderTokenUsage?: {
+        candidatesTokenCount: number;
+        promptTokenCount: number;
+        tokenCountSource: 'provider' | 'estimated' | 'mixed' | 'none';
+        totalTokenCount: number;
+    };
+
     /** Whether the answer came from canonical retrieval (not RAG) */
     canonical: boolean;
 

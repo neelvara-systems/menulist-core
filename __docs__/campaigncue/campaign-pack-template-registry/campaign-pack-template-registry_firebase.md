@@ -59,6 +59,7 @@ campaigncue/templates/workspaces/{workspaceId}/{templateId}/preview.webp
 | Load platform templates | 1 | 0 | 0 | 0 | Reads one `campaigncuePlatformPackTemplates/{businessCategory}` doc. |
 | Search/filter templates | 0 | 0 | 0 | 0 | In-memory filtering over loaded summary metadata. |
 | Choose campaign output intent | 0 | 0 | 0 | 0 | In-memory filter over loaded category and workspace summaries; the selected intent is passed into the local editor context or campaign creation request. |
+| Choose Campaign Proof Deck intent | 0 | 0 | 0 | 0 | Uses the same in-memory output picker and existing output-pack proof deck field. |
 | Open platform template | 0 | 0 | 1-2 downloads | 0 | Downloads pack payload and optional editor document from Storage. |
 | Load saved workspace templates | 1 | 0 | 0 | 0 | Reads `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` only when saved templates are shown. |
 | Save workspace template | 1 | 1 | 1-3 uploads | 0 | Reads current index, writes bounded summary array, uploads payload/editor/optional preview, and cleans up newly-created uploaded artifacts if the index write fails. |
@@ -86,7 +87,7 @@ If saved templates are visible in the same panel:
 0 Storage downloads until open
 ```
 
-Changing the selected output intent after the templates are loaded:
+Changing the selected output intent after the templates are loaded, including Campaign Proof Deck:
 
 ```text
 0 additional Firestore reads

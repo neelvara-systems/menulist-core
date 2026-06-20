@@ -154,7 +154,7 @@ assert(!ownerTransactionsPage.includes("dataIndex: 'totalTokenCount'"), 'desktop
 assert(ownerTransactionsPage.includes('getAiOperationOwnerSummary'), 'desktop owner transaction table shows shared owner-facing result summaries');
 assert(ownerTransactionsPage.includes('pagination={false}'), 'desktop owner transaction table uses custom cursor pagination instead of fake total pagination');
 assert(ownerTransactionsPage.includes('pageCursorsRef'), 'desktop owner transaction pagination tracks page cursors');
-assert(ownerTransactionsPage.includes('No-credit actions'), 'desktop owner transaction page distinguishes free setup actions from charged actions');
+assert(ownerTransactionsPage.includes("t('noCreditActions')"), 'desktop owner transaction page distinguishes free setup actions from charged actions');
 assert(ownerTransactionsPage.includes('getExistingProjectsListWithoutLoader'), 'desktop owner transaction page uses read-only project summary lookup');
 assert(!ownerTransactionsPage.includes('getMetadataProjectsList'), 'desktop owner transaction page does not use project lookup that can create defaults');
 
@@ -166,17 +166,17 @@ assert(!aiOperationsDalAfterHardening.includes('firebaseClient'), 'AI operations
 const ownerTransactionModal = read('src/components/templates/main-app/transactions/TransactionDetailsModal.tsx');
 assert(ownerTransactionModal.includes("platformRole === 'PLATFORM'"), 'desktop transaction raw AI debug is platform-role gated');
 assert(!ownerTransactionModal.includes('Descriptions.Item label="Total Charge"'), 'desktop owner transaction details do not show internal provider charge');
-assert(ownerTransactionModal.includes('Full AI transaction object'), 'desktop platform transaction debug can inspect full AI transaction object');
-assert(ownerTransactionModal.includes('Actual Provider Cost'), 'desktop platform transaction debug shows actual AI provider cost when recorded');
+assert(ownerTransactionModal.includes("t('fullAiTransactionObject')"), 'desktop platform transaction debug can inspect full AI transaction object');
+assert(ownerTransactionModal.includes("t('actualProviderCost')"), 'desktop platform transaction debug shows actual AI provider cost when recorded');
 assert(ownerTransactionModal.includes('getAiOperationOwnerSummary'), 'desktop transaction details show shared owner-facing result summary');
 
 const mobileTransactionsPage = read('src/components/mobile/screens/MobileTransactionsScreen.tsx');
 assert(mobileTransactionsPage.includes("platformRole === 'PLATFORM'"), 'mobile transaction raw AI debug is platform-role gated');
 assert(!mobileTransactionsPage.includes('tx.totalTokenCount.toLocaleString()} tokens'), 'mobile owner transaction list does not expose token counts');
-assert(mobileTransactionsPage.includes('Platform Debug'), 'mobile platform transaction debug can inspect internal AI accounting fields');
+assert(mobileTransactionsPage.includes("t('platformDebug')"), 'mobile platform transaction debug can inspect internal AI accounting fields');
 assert(mobileTransactionsPage.includes('getAiOperationOwnerSummary'), 'mobile owner transaction list shows shared owner-facing result summaries');
 assert(mobileTransactionsPage.includes('formatInrPaise'), 'mobile platform transaction debug formats paise-denominated cost values as INR');
-assert(mobileTransactionsPage.includes('No-credit actions'), 'mobile owner transaction screen distinguishes free setup actions from charged actions');
+assert(mobileTransactionsPage.includes("t('noCreditActions')"), 'mobile owner transaction screen distinguishes free setup actions from charged actions');
 
 const operationPresentation = read('src/lib/ai/operationPresentation.ts');
 assert(operationPresentation.includes('formatAiOperationActionLabel'), 'AI operation presentation helper centralizes owner action labels');

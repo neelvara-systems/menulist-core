@@ -3,8 +3,8 @@
 > **Feature:** AI Menu Manager
 > **Internal slug:** `ai-menu-manager`
 > **Product:** MenuList
-> **Status:** Initial implementation validated - enabled behind AMM feature flags in current config
-> **Last Updated:** June 18, 2026
+> **Status:** Initial implementation validated - controlled launch ready for supported adapters behind AMM feature flags
+> **Last Updated:** June 20, 2026
 > **Version:** 1.1
 
 ---
@@ -50,7 +50,7 @@ AI Menu Manager is:
 - a chat-first work surface with card-native execution.
 - an action registry over existing menu operations.
 - a selected-context answer surface for menu readiness, content gaps, visibility, and share-readiness checks.
-- an approval-safe route for price, availability, import, design, photo, image, special menu, publish, adapter-supported undo/rollback, staff, and rule actions.
+- an approval-safe route for supported price, availability, design, selected-menu answer, and browser-local/share actions, with image, import, publish, rule, rollback, staff, and special-menu families kept behind adapter readiness and review/handoff cards until their safe execution paths are connected.
 - a voice-ready input surface because voice enters the same command pipeline as text.
 
 AI Menu Manager is not:
@@ -140,6 +140,8 @@ Feedback link and feedback QR requests are dedicated browser-local export cards,
 
 The production checklist for exact action types is [ai-menu-manager_action-type-checklist.md](./ai-menu-manager_action-type-checklist.md). The docs define these action families from the start:
 
+Readiness rule: this catalog is the day-one product contract and production checklist, not a claim that every listed family is fully executable from AMM today. Each row in the checklist decides whether the current behavior is executable, needs adapter glue, browser-local, manual-task-only, or blocked. Public demos should lead with verified daily ops and selected-menu answer cards; unfinished families must be shown as draft, review, handoff, or not-supported cards.
+
 - menu import and review
 - import identity acceptance and import-created new menu
 - upload queue cleanup
@@ -204,6 +206,8 @@ AI_MENU_MANAGER_SESSION_STORAGE_MODE: "daily_compact"
 ```
 
 The feature is designed as a complete day-one contract. Flags are safety controls, not scope-reduction switches.
+
+Flag note: enabled flags only allow the AMM surface and registered card families to appear. They do not bypass the action checklist. A rule, image, import, publish, rollback, or staff request still remains blocked, manual-task-only, or review-only unless its registered adapter is marked ready and verified.
 
 ## Firebase Cost Rule
 

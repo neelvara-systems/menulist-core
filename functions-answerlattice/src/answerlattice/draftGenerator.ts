@@ -4,7 +4,7 @@
  * Generates AI draft canonical answers for new_answer_required mutation proposals.
  * Called as Step 9 of the nightly batch in answerlatticeNightly.ts.
  * 
- * Uses firebase-admin (server-side Firestore) + Gemini via Google Generative AI SDK.
+ * Uses firebase-admin (server-side Firestore) + Gemini through the Answerlattice Vertex AI client.
  * 
  * Expansion Item #4 — Automatic Knowledge Creation
  * Feature-flagged: ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE
@@ -23,6 +23,12 @@ import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import {
+    ANSWERLATTICE_AI_ACTIONS,
+    AnswerlatticeGeminiCallResult,
+    callAnswerlatticeGeminiContent,
+    recordGeminiCallOperation,
+} from './aiOperationAccounting';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -285,28 +291,15 @@ function parseDraftResponse(rawResponse: string | null): ParsedDraft | null {
 
 /**
  * Call Gemini for draft generation.
- * Uses Google Generative AI SDK (server-side).
- * 
- * Requires GEMINI_AI_KEY secret in Cloud Functions config.
+ * Uses the Answerlattice Firebase project's Vertex AI client.
  */
-async function callGeminiForDraft(systemPrompt: string, userPrompt: string): Promise<string | null> {
+async function callGeminiForDraft(systemPrompt: string, userPrompt: string): Promise<AnswerlatticeGeminiCallResult | null> {
     try {
-        const apiKey = process.env.GEMINI_AI_KEY;
-        if (!apiKey) {
-            logger.error('[Answerlattice Draft] GEMINI_AI_KEY not configured');
-            return null;
-        }
-
-        const { GoogleGenerativeAI } = await import('@google/generative-ai');
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
+        return await callAnswerlatticeGeminiContent({
             model: 'gemini-2.0-flash',
-            systemInstruction: systemPrompt,
+            systemPrompt,
+            userPrompt,
         });
-
-        const result = await model.generateContent(userPrompt);
-        const text = result.response?.text();
-        return text || null;
     } catch (error) {
         logger.error('[Answerlattice Draft] Gemini call failed', { error });
         return null;
@@ -399,7 +392,24 @@ export async function generateDraftsForNewProposals(
 
                 // Build prompt and call Gemini
                 const userPrompt = buildUserPrompt(entity, signalExamples, existingAnswers);
-                const rawResponse = await callGeminiForDraft(DRAFT_SYSTEM_PROMPT, userPrompt);
+                const geminiResult = await callGeminiForDraft(DRAFT_SYSTEM_PROMPT, userPrompt);
+                const rawResponse = geminiResult?.text || null;
+
+                if (geminiResult) {
+                    await recordGeminiCallOperation({
+                        action: ANSWERLATTICE_AI_ACTIONS.DRAFT_GENERATION,
+                        clientResponse: {
+                            entityId,
+                            proposalId: proposal.id,
+                            signalExamplesCount: signalExamples.length,
+                        },
+                        processingTime: geminiResult.processingTime,
+                        sId,
+                        source: 'answerlattice_draft_generator_nightly',
+                        tId,
+                        usageMetadata: geminiResult.usageMetadata,
+                    });
+                }
 
                 // Parse response
                 const parsed = parseDraftResponse(rawResponse);

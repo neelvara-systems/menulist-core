@@ -47,6 +47,7 @@ Exact per-action mobile handling is tracked in [ai-menu-manager_action-type-chec
 - Approve/reject staff photo.
 - Use generated image only from a prepared review card.
 - Apply a prepared menu design preset card.
+- Read selected-menu answer cards for menu readiness, missing photos, unavailable items, and next safe actions.
 - See completion/failure receipts.
 
 ### Mobile Restricted
@@ -130,6 +131,14 @@ The composer Work on picker is separate from suggestions:
 - Item/category lists use compact rows and only show search for long lists or active search text, so short category lists do not waste screen height.
 - selecting context only affects the next message text; no card, approval, Firestore write, or mutation happens until the owner sends the message.
 
+Selected-menu answer cards also run on mobile:
+
+- questions such as "What should I fix today?", "Which items have no photos?", and "Is this menu ready to share?" render as read-only cards.
+- answer cards are built from the selected project/menu data already available in the mobile context.
+- they do not need approval, do not write menu truth, do not create pending proposal summaries, and do not call an AI/provider or external lookup.
+- suggested next actions fill the composer only; the owner still sends the follow-up and approves any resulting proposal card.
+- generic questions such as weather, news, sports, or unrelated advice show an out-of-scope card.
+
 ---
 
 ## MobileShell Contract
@@ -185,6 +194,7 @@ Rules:
 | Price update | Show item, old price, new price, scope, approve/cancel; heavy confirmation for large/all-outlet changes. |
 | Availability | One-tap mark unavailable/restore with expiry/time chip. |
 | Menu design update | Show selected preset and small preview thumbnail; Apply or Try another. |
+| Selected-menu answer | Read-only card with menu readiness, missing photos, unavailable items, or next safe actions; no approve button. |
 | Generated image | Review variant, Use on menu, Reject, Regenerate only if flag allows. |
 | Outlet generated image | Show only policy-allowed local-only items unless inherited image override is enabled. |
 | Menu import | Show "Review needed" summary; full review surface may open separately. |

@@ -42,7 +42,7 @@ Returns store business information: name, address, hours, phone, status, social 
 
 `GET /api/public/v1/menu`
 
-Returns full menu data in the same format as POS Webhook Sync payload: categories, items, prices, availability, attributes.
+Returns full menu data in the same format as POS Webhook Sync payload: categories, items, prices, availability, attributes. The endpoint selects the menu through `platformSummary/projects_{storeId}` because that summary document owns the public `isDefault` project state used by the customer renderer.
 
 ---
 
@@ -155,5 +155,5 @@ IDs are only retired when an item is permanently deleted.
 
 ---
 
-**Last Updated:** March 14, 2026  
+**Last Updated:** June 20, 2026
 **ChatGPT Review:** Session Mar 14, 2026 — 45% accuracy (11/25 already done, 6 valid, 5 deferred, 1 rejected)

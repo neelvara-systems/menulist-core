@@ -72,6 +72,27 @@ export const formatAiOperationActionLabel = (
     if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER) {
         return translate(translator, `actions.${action}`, "Business Health answer");
     }
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_WIDGET_SEARCH) {
+        return translate(translator, `actions.${action}`, "Widget answer");
+    }
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_KB_EMBEDDING || action === AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING) {
+        return translate(translator, `actions.${action}`, "Knowledge embedding");
+    }
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_DRAFT_GENERATION) {
+        return translate(translator, `actions.${action}`, "Canonical draft");
+    }
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_TICKET_KNOWLEDGE_EXTRACTION) {
+        return translate(translator, `actions.${action}`, "Ticket knowledge");
+    }
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_ONBOARDING_BOOTSTRAP) {
+        return translate(translator, `actions.${action}`, "Launch setup");
+    }
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_ENTITY_EXTRACTION) {
+        return translate(translator, `actions.${action}`, "Entity extraction");
+    }
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_FRICTION_INSIGHT) {
+        return translate(translator, `actions.${action}`, "Friction insight");
+    }
 
     return translate(translator, `actions.${action}`, formatActionFallback(action));
 };
@@ -87,13 +108,22 @@ export const formatAiOperationCredits = (
 };
 
 export const getAiOperationTone = (action?: string | null): AiOperationTone => {
-    if (action === AI_ACTIONS_TYPES.IMAGE_PROCESSING || action === AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION) {
+    if (
+        action === AI_ACTIONS_TYPES.IMAGE_PROCESSING
+        || action === AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION
+        || action === AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR
+        || action === AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_TRANSCRIPTION
+        || action === AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING
+        || action === AI_ACTIONS_TYPES.ANSWERLATTICE_KB_EMBEDDING
+        || action === AI_ACTIONS_TYPES.ANSWERLATTICE_ENTITY_EXTRACTION
+    ) {
         return "extraction";
     }
     if (
         action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION
         || action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION
         || action === AI_ACTIONS_TYPES.ITEM_TRANSLATION
+        || action === AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION
     ) {
         return "language";
     }
@@ -114,6 +144,10 @@ export const getAiOperationTone = (action?: string | null): AiOperationTone => {
         || action === AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION
         || action === AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR
         || action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER
+        || action === AI_ACTIONS_TYPES.ANSWERLATTICE_FAQ_GENERATION
+        || action === AI_ACTIONS_TYPES.ANSWERLATTICE_DRAFT_GENERATION
+        || action === AI_ACTIONS_TYPES.ANSWERLATTICE_TICKET_KNOWLEDGE_EXTRACTION
+        || action === AI_ACTIONS_TYPES.ANSWERLATTICE_FRICTION_INSIGHT
     ) {
         return "content";
     }
@@ -274,6 +308,59 @@ export const getAiOperationOwnerSummary = (
 
     if (action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER) {
         return translate(translator, "summary.businessHealthQuestionAnswered", "Answered a Business Health question.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_WIDGET_SEARCH || action === AI_ACTIONS_TYPES.HELP_CENTER_SEARCH) {
+        const referencesCount = Number(operation.clientResponse?.referencesCount || 0);
+        return referencesCount > 0
+            ? translate(translator, "summary.answerlatticeAnswerWithReferences", `Answered with ${baseFormatCount(referencesCount, "reference")}.`, { count: referencesCount })
+            : translate(translator, "summary.answerlatticeAnswer", "Answered a support question.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_KB_EMBEDDING || action === AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING || action === AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING) {
+        return translate(translator, "summary.answerlatticeKnowledgeEmbedding", "Updated knowledge search data.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_TRANSLATION) {
+        return translate(translator, "summary.answerlatticeTranslation", "Prepared an article translation.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_FAQ_GENERATION) {
+        const createdCount = Number(operation.clientResponse?.createdCount || 0);
+        return createdCount > 0
+            ? translate(translator, "summary.answerlatticeFaqsCreated", `Prepared ${baseFormatCount(createdCount, "FAQ")}.`, { count: createdCount })
+            : translate(translator, "summary.answerlatticeFaqGeneration", "Checked article FAQ suggestions.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR) {
+        return translate(translator, "summary.answerlatticeIntakeOcr", "Extracted text from a screenshot.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_TRANSCRIPTION) {
+        return translate(translator, "summary.answerlatticeIntakeTranscription", "Extracted text from media.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_DRAFT_GENERATION) {
+        return translate(translator, "summary.answerlatticeDraftGeneration", "Prepared a canonical answer draft.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_TICKET_KNOWLEDGE_EXTRACTION) {
+        return translate(translator, "summary.answerlatticeTicketKnowledge", "Prepared knowledge from resolved tickets.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_ONBOARDING_BOOTSTRAP) {
+        return translate(translator, "summary.answerlatticeOnboardingBootstrap", "Prepared launch setup knowledge.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_ENTITY_EXTRACTION) {
+        const matchedCount = Number(operation.clientResponse?.matchedEntityCount || 0);
+        return matchedCount > 0
+            ? translate(translator, "summary.answerlatticeEntityExtractionMatched", `Matched ${baseFormatCount(matchedCount, "entity")}.`, { count: matchedCount })
+            : translate(translator, "summary.answerlatticeEntityExtraction", "Checked article entity context.");
+    }
+
+    if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_FRICTION_INSIGHT) {
+        return translate(translator, "summary.answerlatticeFrictionInsight", "Prepared a friction insight.");
     }
 
     if (action === AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY) {

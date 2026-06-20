@@ -2,7 +2,7 @@
 
 ## Summary
 
-Business Brain is the source context CampaignCue uses to create campaigns. It holds business name, type, locality, logo, brand colors, WhatsApp/contact CTA, language, tone, restaurant menu items, salon services, photos, offers, and source confidence.
+Business Brain is the source context CampaignCue uses to create campaigns. It holds business name, type, locality, logo, brand colors, WhatsApp/contact CTA, language, tone, Brand Playbook, restaurant menu items, salon services, photos, offers, and source confidence.
 
 ## Requirements
 
@@ -11,7 +11,8 @@ Business Brain is the source context CampaignCue uses to create campaigns. It ho
 | Multi-vertical profile | Restaurant, cafe, cloud kitchen, salon, spa, barbershop, retail, local service, and other are supported. |
 | Catalog model | Restaurant items/categories/prices/photos and salon services/packages/prices/photos are stored separately. |
 | Source confidence | Each fact records whether it came from MenuList, upload, website, manual entry, connected source, or generated fallback. |
-| Brand kit | Logo, colors, style, tone, and local-language preference are stored once and reused. |
+| Brand kit | Logo, colors, tone, local-language preference, and Brand Playbook direction are stored once and reused. |
+| Brand Playbook | Target audience, brand feel, style references, visual motifs, product/service focus, typography notes, and avoid list can be saved as bounded owner-edited fields. |
 | Campaign readiness | Business Brain exposes missing data such as no WhatsApp number, no photos, no prices, or low-confidence extraction. |
 
 ## User Flows
@@ -26,5 +27,5 @@ Business Brain is the source context CampaignCue uses to create campaigns. It ho
 - Wrong source authority can create wrong public campaigns.
 - Over-collecting data slows onboarding.
 - Generic brand settings can make outputs look repetitive.
+- Brand Playbook must guide briefs and proof review without becoming a generic brand-generation tool.
 - Missing consent on salon assets can block campaigns later.
-

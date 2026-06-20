@@ -124,11 +124,12 @@ export function getStoreStatus(
     timeZone?: string,
     timeFormat?: string,
 ): StoreStatus {
-    // No hours configured - assume open (silent behavior)
+    // No hours configured - suppress open/closed authority. Public surfaces
+    // should show less rather than claim the business is open from missing data.
     if (!workingHours || Object.keys(workingHours).length === 0) {
         return {
-            isOpen: true,
-            statusText: "Open",
+            isOpen: false,
+            statusText: "Hours not available",
         };
     }
 

@@ -329,9 +329,14 @@ const loadSourceData = async (tId: number, sId: number) => {
     const answers = answersRaw.filter(answer => !answer.governance?.reviewRequired);
     const surfaces = surfacesRaw.filter(surface => surface.active !== false);
     const releases = releasesRaw.filter((release: any) => String(release.status || '').toLowerCase() === 'active');
+    const storeData = storeSnap.exists ? (storeSnap.data() || {}) : {};
+    const storeTenantId = Number(storeData.tId || storeData.tenantId);
+    const store = storeSnap.exists && (!Number.isFinite(storeTenantId) || storeTenantId === Number(tId))
+        ? { ...storeData, id: storeSnap.id }
+        : {};
 
     return {
-        store: storeSnap.exists ? { ...storeSnap.data(), id: storeSnap.id } : {},
+        store,
         contextSummary,
         entities,
         relations,

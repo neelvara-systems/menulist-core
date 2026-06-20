@@ -34,7 +34,7 @@ export default function SupportWidgetForSoloFoundersPage() {
                 question="What should I upload first?"
                 genericAnswer="Upload your documentation and check the setup guide."
                 answerlatticeAnswer="Start with your setup guide, top recurring questions, release notes, and billing or onboarding pages. AnswerLattice prepares drafts and gaps for owner review."
-                ownerReview="AnswerLattice keeps the founder in control of authority: generated drafts, fallback gaps, user-attached screenshots, and mutation proposals stay bounded review inputs before they become approved answers."
+                ownerReview="AnswerLattice keeps the founder in control of official support: generated drafts, fallback gaps, user-attached screenshots, and proposed fixes stay bounded review inputs before they become approved answers."
                 setupSteps={[
                     'Sign in and create the beta workspace.',
                     'Add product name, support email, and important pages.',

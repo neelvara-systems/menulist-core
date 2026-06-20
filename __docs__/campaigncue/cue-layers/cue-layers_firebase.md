@@ -12,7 +12,7 @@ Current implementation notes:
 - The active path is upload -> flat-safe editor projection -> autosave/version -> Storage-backed PNG export registration. Provider calls are not active, so provider cost is zero in the current runtime.
 - Asset Library downloads for private Storage-backed exports use runtime signed URLs. Signed URLs are not stored in Firestore or durable editor JSON.
 - Active v1 avoids duplicate diagnostic writes: no separate truth-snapshot JSON files, no projection/reconstruction JSON persistence, no quality-report collection writes, no job-event writes, no correction-event writes, and no export-report JSON artifact.
-- Active v1 business snapshots store catalog fact summaries only, not catalog image URLs or source-reference arrays. Item/service names and price labels remain in protected text truth.
+- Active v1 business snapshots store catalog fact summaries and Brand Playbook context only, not catalog image URLs or source-reference arrays. Item/service names and price labels remain in protected text truth.
 
 ## Cost Principles
 

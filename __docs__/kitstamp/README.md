@@ -5,7 +5,7 @@
 **Status:** Stage 1 planning docs only. Implementation not started. Product routes and Firebase targets are not active.
 **Created:** May 31, 2026
 **Product decision:** Treat KitStamp as a separate product, with separation discipline similar to Answerlattice.
-**Naming lock:** KitStamp is the permanent product name. The previous VisualMeta planning name is retired.
+**Naming lock:** Active implementation naming is only `KitStamp`, `kitstamp`, and `KS`.
 
 ---
 
@@ -18,6 +18,36 @@ The active definition is:
 > KitStamp is a content readiness workspace that turns source images, text, translations, and review notes into human-approved Final Content Kits.
 
 KitStamp prepares content before it is published elsewhere. It does not publish, schedule, manage live pages, or claim marketing outcomes.
+
+## Naming And Activation Lock
+
+Use only these active names and identifiers:
+
+| Layer | Locked value |
+| --- | --- |
+| Public product brand | KitStamp |
+| Product slug | `kitstamp` |
+| Product code | `KS` |
+| Local dev prefix | `/__kitstamp` |
+| Public site route group | `src/app/sites/kitstamp/` |
+| App/API namespace | `src/app/kitstamp/`, `src/app/api/kitstamp/` |
+| Firebase target prefix | `kitstamp` |
+| Functions package | `functions-kitstamp/` |
+| Core artifact | Final Content Kit |
+| User-facing artifact phrase | Approved Kit |
+
+Implementation may begin only with foundation work:
+
+- disabled feature flags
+- product constants
+- disabled route skeleton
+- Firebase config, rules, indexes, and Storage skeleton
+- KitStamp Firebase helpers
+- types and constants
+- DAL skeleton
+- emulator/rules test skeleton
+
+Do not start with provider generation, MenuList import, export adapters, guest review links, public launch, downstream API push, or billing-enabled provider calls.
 
 The May 31, 2026 deep ChatGPT review is accepted only with limits:
 
@@ -123,14 +153,10 @@ Do not activate the existing KitStamp product-domain placeholder until deploymen
 
 ## Document Map
 
-The active implementation contract is the Implementation Lock plus current spec/impl/cost/test docs. Doctrine files remain reference material and were intentionally not changed during the deep ChatGPT review pass.
+The active implementation contract is the standard KitStamp doc set below. Extra strategy, review, doctrine, naming-lock, decision-brief, implementation-lock, and archive docs have been removed from the active tree.
 
 | Document | Purpose |
 | --- | --- |
-| [Naming Lock](./kitstamp_naming-lock.md) | Permanent brand, slug, product code, domain, and legal-name decision. |
-| [Decision Brief](./kitstamp_decision-brief.md) | Founder-level why/where/who/how decision. |
-| [ChatGPT Review](./kitstamp_chatgpt-review-2026-05-31.md) | Line-range review of the deep KitStamp conversation and final accept/modify/reject decisions. |
-| [Implementation Lock](./kitstamp_implementation-lock-v1.md) | Frozen first-implementation contracts, schemas, flags, storage paths, routes, and activation gates. |
 | [Specification](./kitstamp_spec.md) | Product requirements, ICP, scope, workflows, acceptance criteria. |
 | [Implementation Plan](./kitstamp_impl.md) | Architecture, files, flags, APIs, routing, billing, and separation plan. |
 | [Firebase Cost](./kitstamp_firebase.md) | Firestore, Storage, provider, functions, and billing cost plan. |
@@ -139,30 +165,12 @@ The active implementation contract is the Implementation Lock plus current spec/
 | [Website Copy](./kitstamp_website.md) | Candidate public website copy. |
 | [Helpdoc](./kitstamp_helpdoc.md) | Candidate user help article. |
 | [Test Cases](./kitstamp_test-cases.md) | Product, security, cost, mobile, export, and routing verification. |
-| [Doctrine](./doctrine/01-core-doctrine.md) | Core identity and pillars. |
-| [Non-Goals](./doctrine/02-non-goals-charter.md) | Permanent exclusions. |
-| [Infrastructure Freeze](./doctrine/03-infrastructure-freeze-v1.md) | 3-year architecture freeze target. |
-| [Separation Playbook](./doctrine/04-product-separation-playbook.md) | Answerlattice-like product separation plan. |
-
-## Historical Docs
-
-The previous single-file KitStamp strategy is archived at:
-
-```txt
-__docs__/kitstamp/_archive/kitstamp-strategy-2026-05-31.md
-```
-
-The original ChatGPT review remains at:
-
-```txt
-__docs__/kitstamp/_archive/chatgpt-review.md
-```
 
 ## Implementation Gate
 
 Before implementation:
 
-- use [Implementation Lock v1](./kitstamp_implementation-lock-v1.md) as the bridge from planning to code
+- use this README plus `kitstamp_spec.md`, `kitstamp_impl.md`, `kitstamp_firebase.md`, and `kitstamp_test-cases.md` as the build contract
 - provision or confirm the selected KitStamp Firebase targets
 - keep all KitStamp flags default off
 - build foundation and core workspace before generation or integrations

@@ -94,20 +94,26 @@ This appendix lists the exact code/doc references used for the Answerlattice dat
 | Job creation writes product/workspace fields, input metadata, counters, usage summary, timestamps, and a compact summary patch. | `src/lib/answerlattice/knowledgeIntake.ts:356-403` |
 | Loading an intake bundle is bounded by constraints for sources and review items. | `src/lib/answerlattice/knowledgeIntake.ts:406-433` |
 | Sources store redacted `contentText`, excerpt, content hash, tags, context keys, entity ids, metadata, timestamps, and actor fields. | `src/lib/answerlattice/knowledgeIntake.ts:460-564` |
-| Media extraction enforces type/size/signature checks, reserves usage, records AI operation, stores extracted text as a source, records hashes, and notes raw media is not retained. | `src/lib/answerlattice/knowledgeIntake.ts:567-724` |
+| Media extraction enforces type/size/signature checks, reserves usage, records AI operation with support-credit debit breakdown and token count source, stores extracted text as a source, records hashes, and notes raw media is not retained. | `src/lib/answerlattice/knowledgeIntake.ts:567-728`, `src/lib/answerlattice/knowledgeIntake.ts:646-708` |
 | Review-item status edits build parent job counter deltas and apply them transactionally with the item update instead of recounting all sources/review items on every edit. | `src/lib/answerlattice/knowledgeIntake.ts:318-339`, `src/lib/answerlattice/knowledgeIntake.ts:737-790` |
 | Knowledge Intake can publish review items into KB articles, FAQs, product surfaces, or canonical mutation proposals; changelog publish is blocked. | `src/lib/answerlattice/knowledgeIntake.ts:941-975` |
 | Publishing a KB article writes `kb_articles`, updates `kb_categories`, bumps cache version, and marks compiled context changed. | `src/lib/answerlattice/knowledgeIntake.ts:977-1099` |
 | Publishing FAQ/surface/proposal writes to `answerlattice_faqs`, `answerlattice_productSurfaces`, or `answerlattice_mutationProposals`. | `src/lib/answerlattice/knowledgeIntake.ts:1102-1225` |
-| Intake usage ledger reserves/finalizes/refunds credits and writes `answerlattice_intakeUsageLedger`. | `src/lib/answerlattice/intakeUsageLedger.ts:42-47`, `src/lib/answerlattice/intakeUsageLedger.ts:156-328` |
+| Intake usage ledger reserves/finalizes/refunds credits and writes token count source plus monthly-vs-top-up debit details to `answerlattice_intakeUsageLedger`. | `src/lib/answerlattice/intakeUsageLedger.ts:33-48`, `src/lib/answerlattice/intakeUsageLedger.ts:157-331` |
 | Nightly summary reads latest jobs and writes a compact Knowledge Intake summary. | `functions-answerlattice/src/answerlattice/knowledgeIntakeSummary.ts:43-59`, `functions-answerlattice/src/answerlattice/knowledgeIntakeSummary.ts:87-120` |
 
 ## 9. AI operation logging
 
 | Claim | Evidence |
 | --- | --- |
-| AI operation logging stores detailed provider response only when `AI_OPERATION_LOG_MODE` is `detailed`; otherwise it is accounting-only. | `src/lib/ai/operationLog.ts:61-74`, `src/lib/ai/operationLog.ts:89-109` |
-| Answerlattice AI operation rows write to `answerlattice_aiOperations/{tId}/{sId}` when `pId` is `AL`. | `src/lib/ai/operationLog.ts:111-146` |
+| AI operation logging stores detailed provider response only when `AI_OPERATION_LOG_MODE` is `detailed`; otherwise it is accounting-only. | `src/lib/ai/operationLog.ts:72-108` |
+| App-side Answerlattice AI operation rows force `pId=AL` and scoped `tId/sId` before writing to the shared operation logger; billable finalization also records credit balance/debit detail when present. | `src/lib/answerlattice/aiAccounting.ts:262-276`, `src/lib/answerlattice/aiAccounting.ts:301-343` |
+| The shared AI operation logger routes `pId=AL` rows to `answerlattice_aiOperations/{tId}/{sId}`. | `src/lib/ai/operationLog.ts:111-145` |
+| Answerlattice Cloud Functions write accounting-only AI operation rows with model, token counts, token source, units, source, and compact client response. | `functions-answerlattice/src/answerlattice/aiOperationAccounting.ts:102-156` |
+| Manual draft regeneration and article entity extraction call Gemini through dedicated Answerlattice API routes and record scoped AI operation rows server-side. | `src/app/api/answerlattice/mutation-proposals/regenerate-draft/route.ts:77-241`, `src/app/api/answerlattice/articles/extract-entities/route.ts:30-176`, `src/hooks/answerlattice/useMutationProposals.ts:109-128`, `src/database/knowledgeBase/articles.ts:326-348` |
+| Owner-visible operation reads expose safe support-credit usage fields, token fields, and credit consumption detail while hiding provider payload/cost internals. | `src/app/api/answerlattice/ai-operations/route.ts:44-62`, `src/app/api/answerlattice/ai-operations/route.ts:268-276` |
+| Answerlattice support-credit top-up verification increments subscription top-up balance and mirrors the result to the store subscription summary, including idempotent paid-order repair. | `src/app/api/razorpay/verify-topup/route.ts:186-203`, `src/app/api/razorpay/verify-topup/route.ts:378-420`, `src/lib/billing/productBillingServer.ts:352-367` |
+| Direct Firestore reads of raw AI operation rows are platform-only; tenant billing usage reads go through the sanitized API route. | `firestore-answerlattice.rules:99-102`, `src/app/api/answerlattice/ai-operations/route.ts:171-278` |
 | Detailed mode adds `detailExpiresAt`, but the operation document is otherwise retained. | `src/lib/ai/operationLog.ts:115-135` |
 
 ## 10. Support tickets, chat sessions, and feedback

@@ -617,6 +617,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 isBeta: true,
                 subscriptionEndDate: admin.firestore.Timestamp.fromDate(betaEnd),
                 monthlyCreditsAllowance: plan.priceINR.monthlyCredits,
+                monthlyCredits: plan.priceINR.monthlyCredits,
+                topUpCredits: 0,
+                creditsLastResetMonth: subscriptionPayload.creditsLastResetMonth,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             };
         } else {
@@ -720,6 +723,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 isBeta: false,
                 subscriptionEndDate: null,
                 monthlyCreditsAllowance: monthlyCredits,
+                monthlyCredits,
+                topUpCredits: 0,
+                creditsLastResetMonth: subscriptionPayload.creditsLastResetMonth,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             };
         }

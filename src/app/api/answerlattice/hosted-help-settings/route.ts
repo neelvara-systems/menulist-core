@@ -42,6 +42,11 @@ const resolveSessionScope = (session: any): { tenantId: number; storeId: number 
     return { tenantId, storeId };
 };
 
+const registryScopeMatches = (registry: Record<string, any> | null | undefined, scope: { tenantId: number; storeId: number }) => (
+    Number(registry?.tId) === Number(scope.tenantId)
+    && Number(registry?.sId) === Number(scope.storeId)
+);
+
 const RESERVED_HOSTED_HELP_DOMAINS = new Set(ALL_PRODUCT_DOMAINS.map(domain => domain.toLowerCase()));
 
 const getClientErrorMessage = (data: any, fallback: string) => (
@@ -302,11 +307,19 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             if (registrySnap.exists) {
                 const registry = registrySnap.data() || {};
                 registryByDomain.set(domain, registry);
-                const existingTId = Number(registry.tId);
-                const existingSId = Number(registry.sId);
-                if (existingTId !== Number(scope.tenantId) || existingSId !== Number(scope.storeId)) {
+                if (!registryScopeMatches(registry, scope)) {
                     return NextResponse.json({ error: `Domain ${domain} is already assigned to another Answerlattice workspace.` }, { status: 409 });
                 }
+            }
+        }
+
+        const removedRegistryByDomain = new Map<string, Record<string, any>>();
+        for (const domain of removedDomains) {
+            const normalized = normalizeHostedHelpDomain(domain);
+            if (!normalized) continue;
+            const registrySnap = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_PUBLIC_HELP_SITES).doc(normalized).get();
+            if (registrySnap.exists) {
+                removedRegistryByDomain.set(normalized, registrySnap.data() || {});
             }
         }
 
@@ -375,8 +388,16 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
 
         removedDomains.forEach(domain => {
             const normalized = normalizeHostedHelpDomain(domain);
-            if (normalized) {
+            if (!normalized) return;
+            const registry = removedRegistryByDomain.get(normalized);
+            if (registry && registryScopeMatches(registry, scope)) {
                 batch.delete(db.collection(DB_COLLECTIONS.ANSWERLATTICE_PUBLIC_HELP_SITES).doc(normalized));
+            } else if (registry) {
+                secureError('[Answerlattice Hosted Help] Skipped registry delete for mismatched domain scope', new Error('Hosted help registry delete scope mismatch'), {
+                    storeId: scope.storeId,
+                    tenantId: scope.tenantId,
+                    domain: normalized,
+                });
             }
         });
 

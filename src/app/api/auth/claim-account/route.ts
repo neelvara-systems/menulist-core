@@ -18,7 +18,8 @@ export const dynamic = 'force-dynamic';
  *   Creates/updates Firebase Auth user with the generated messaging email.
  *   Owner logs in with the WhatsApp phone number and passcode.
  *
- * Token never expires (256-bit random, brute force impossible).
+ * Token is high-entropy and one-time use. If `claimTokenExpiresAt` is present,
+ * the claim link expires at that timestamp.
  *
  * @see __docs__/auth/README.md — Messaging Onboarding Login Flow
  */
@@ -112,6 +113,18 @@ const createOrUpdateFirebasePasswordUser = async (params: {
   }
 };
 
+const timestampLikeToMillis = (value: unknown): number | null => {
+  if (!value) return null;
+  if (typeof (value as any).toMillis === "function") return (value as any).toMillis();
+  if (typeof (value as any).toDate === "function") return (value as any).toDate().getTime();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
 export async function POST(request: NextRequest) {
   try {
     // 🔒 RATE LIMITING: Prevent brute force account claim attempts
@@ -143,16 +156,23 @@ export async function POST(request: NextRequest) {
 
     const messagingUserDoc = messagingUserQuery.docs[0];
     const messagingUser = messagingUserDoc.data();
+    const now = admin.firestore.Timestamp.now();
 
-    // Token never expires — 256-bit cryptographic random, brute force impossible
-    // Expiry removed to eliminate support dependency (B4)
+    const claimTokenExpiresAtMs = timestampLikeToMillis(messagingUser.claimTokenExpiresAt);
+    if (claimTokenExpiresAtMs && claimTokenExpiresAtMs <= Date.now()) {
+      await messagingUserDoc.ref.update({
+        claimToken: null,
+        claimTokenExpiresAt: null,
+        claimTokenExpiredAt: now,
+        modifiedOn: now,
+      });
+      return NextResponse.json({ error: "Claim link expired. Please request a new sign-in link." }, { status: 410 });
+    }
 
     // Check the messaging user actually has a tenant/store
     if (!messagingUser.tenantId || !messagingUser.storeId) {
       return NextResponse.json({ error: "No business found for this claim" }, { status: 400 });
     }
-
-    const now = admin.firestore.Timestamp.now();
 
     const messagingPhone = getMessagingPhone(messagingUser);
     const normalizedPhone = normalizePhoneNumberForStorage({

@@ -15,7 +15,7 @@ KitStamp may reuse generalized engineering patterns from MenuList and Answerlatt
 
 Do not implement KitStamp by placing records inside MenuList `projects`, MenuList AI packs, Answerlattice collections, or GrowthOS docs.
 
-Use [Implementation Lock v1](./kitstamp_implementation-lock-v1.md) as the direct bridge from planning to code. This implementation plan explains the architecture; the lock document freezes schemas, flags, storage paths, route contracts, and activation gates.
+This implementation plan is the build contract for schemas, flags, storage paths, route contracts, and activation gates, alongside `kitstamp_spec.md`, `kitstamp_firebase.md`, and `kitstamp_test-cases.md`.
 
 ## 2. Existing Repo Reuse
 
@@ -102,9 +102,9 @@ src/constants/kitstamp/
 src/database/kitstamp/
 src/hooks/kitstamp/
 src/lib/kitstamp/
-src/lib/firebase/visualMetaConfig.ts
-src/lib/firebase/visualMetaFirebaseClient.ts
-src/lib/firebase/visualMetaFirebaseAdmin.ts
+src/lib/firebase/kitstampConfig.ts
+src/lib/firebase/kitstampFirebaseClient.ts
+src/lib/firebase/kitstampFirebaseAdmin.ts
 src/types/kitstamp.ts
 firebase-kitstamp.json
 firestore-kitstamp.rules

@@ -123,7 +123,10 @@ const buildPublishedFaqDraftsForArticle = (
 export const publishApprovedJobLogic = async (jobId: string, finalCategories: IngestionJobCategoriesMap) => {
 
     const logger = functions.logger;
-    logger.info(`[publishApprovedJobLogic] Orchestrator starting publish process. with job id ${jobId} and job data ${finalCategories}`);
+    logger.info('[publishApprovedJobLogic] Orchestrator starting publish process.', {
+        jobId,
+        categoryCount: Object.keys(finalCategories || {}).length,
+    });
 
     const articlesToReEmbed: EmbedArticleType[] = Object.values(finalCategories).reduce<EmbedArticleType[]>((acc, category) => {
         // Handle category-level articles
@@ -200,7 +203,13 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
             if (!jobDoc.exists) throw new Error(`Job ${jobId} not found.`);
             const job = jobDoc.data() as IngestionJob;
 
-            logger.info(`[publishApprovedJobLogic] Pre-flight check. with job id ${jobId} and job data ${job}`);
+            logger.info('[publishApprovedJobLogic] Pre-flight check.', {
+                jobId,
+                status: job.status,
+                tId: job.tId,
+                sId: job.sId,
+                articleCount: Array.isArray(job.articleIds) ? job.articleIds.length : 0,
+            });
             if (job.status !== INGESTION_JOB_STATUS.NEEDS_REVIEW) {
                 logger.warn(`[publishApprovedJobLogic] Publish aborted. Job status is '${job.status}'.`);
                 return;
@@ -219,7 +228,11 @@ export const publishApprovedJobLogic = async (jobId: string, finalCategories: In
             // 3. Update Master Navigation Document
             const categoriesMetaDoc = await transaction.get(categoriesDocRef);
             const currentCategoriesData: KnowledgeBaseCategoriesType = categoriesMetaDoc.exists ? categoriesMetaDoc.data() as KnowledgeBaseCategoriesType : { categories: {} };
-            logger.info(`[publishApprovedJobLogic] Pre-flight check. with job id ${jobId} and job data ${job}`);
+            logger.info('[publishApprovedJobLogic] Loaded publish navigation context.', {
+                jobId,
+                categoriesDocId,
+                existingCategoryCount: Object.keys(currentCategoriesData.categories || {}).length,
+            });
 
             for (const articleId of allArticleIds) {
                 const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc(articleId);

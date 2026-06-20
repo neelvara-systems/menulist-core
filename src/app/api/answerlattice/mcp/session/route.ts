@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticeContextBundleManifestServer } from '@lib/answerlattice/contextBundleBuilderServer';
 import {
     canIssueAnswerlatticeMcpSession,
@@ -49,6 +50,8 @@ export async function POST(request: NextRequest) {
         });
         if (
             !auth
+            || (auth.credential?.productId && auth.credential.productId !== PRODUCT_IDS.ANSWERLATTICE)
+            || (auth.credential?.purpose && auth.credential.purpose !== 'answerlattice_public_api')
             || !hasPublicApiCredentialScope(auth.credential, 'public:read')
             || !hasPublicApiCredentialScope(auth.credential, 'signals:write')
         ) {

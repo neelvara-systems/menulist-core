@@ -1,6 +1,6 @@
 # Platform Pull API — Implementation
 
-**Status:** ✅ IMPLEMENTED (v1.1 — hardened Mar 14, 2026)  
+**Status:** ✅ IMPLEMENTED (v1.2 — summary-source aligned Jun 20, 2026)
 **Date:** February 22, 2026  
 **Feature Flag:** `ENABLE_PUBLIC_API`
 
@@ -16,6 +16,7 @@ API Route: /api/public/v1/business OR /api/public/v1/menu
   ├── Rate limit (60 req/min per key) + Retry-After header
   ├── Validate API key → SHA-256 hash → lookup by apiKeyHash
   ├── Abuse logging (IP, user-agent, storeId)
+  ├── Menu endpoint resolves default project from platformSummary/projects_{storeId}
   ├── Build response with schemaVersion + generatedAt
   ├── ETag: check If-None-Match → 304 Not Modified if unchanged
   └── Return JSON with ETag + Cache-Control headers
@@ -66,6 +67,10 @@ publicApi?: {
 
 All responses include `schemaVersion: "1.0"` and `generatedAt` timestamp.
 
+## Menu Source Of Truth
+
+`GET /api/public/v1/menu` resolves the public menu through `platformSummary/projects_{storeId}` before reading the full project document. The summary document owns `isDefault`, `active`, `deleted`, and special-menu listing state for project selection; the full `projects/{tId}/{sId}/{projectId}` document owns item/category/menu content. This matches the customer renderer and prevents the pull API from treating a missing `isDefault` field on the full project document as "no menu."
+
 ### Structured Errors
 
 All errors follow `{ error: { code, message } }` format. See spec for full error code list.
@@ -101,4 +106,4 @@ No dashboards — only for detecting leaked keys via log search.
 
 ---
 
-**Last Updated:** March 14, 2026
+**Last Updated:** June 20, 2026

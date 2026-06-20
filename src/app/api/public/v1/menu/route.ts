@@ -11,11 +11,57 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { buildMenuSnapshot } from "@lib/posSync/payloadFormatter";
 import { apiError, generateETag, hashApiKey, logApiRequest, PULL_API_SCHEMA_VERSION, validatePublicApiKey } from "@lib/publicApi/auth";
 import { checkRateLimit } from "@lib/rateLimit";
 import { secureError } from "@lib/security/secureLogger";
 import { NextRequest, NextResponse } from "next/server";
+
+async function getDefaultPublicMenuProject(
+    db: ReturnType<typeof admin.firestore>,
+    tenantId: string | number,
+    storeId: string,
+): Promise<Record<string, any> | null> {
+    const summarySnap = await db
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(`projects_${storeId}`)
+        .get();
+
+    if (!summarySnap.exists) return null;
+
+    const projects = Object.entries(parseSummaryProjects(summarySnap.data()))
+        .map(([projectId, data]: [string, any]) => ({
+            projectId,
+            ...data,
+        }))
+        .filter((project) => (
+            project.active !== false
+            && project.deleted !== true
+            && project.isSpecialMenu !== true
+        ));
+
+    const selectedProject = projects.find((project) => project.isDefault === true) || projects[0];
+    if (!selectedProject?.projectId) return null;
+
+    const projectDoc = await db
+        .collection(DB_COLLECTIONS.PROJECTS)
+        .doc(String(tenantId))
+        .collection(String(storeId))
+        .doc(selectedProject.projectId)
+        .get();
+
+    if (!projectDoc.exists) return null;
+
+    const projectData = projectDoc.data() as Record<string, any> | undefined;
+    if (!projectData) return null;
+    if (projectData?.active === false || projectData?.deleted === true) return null;
+
+    return {
+        ...projectData,
+        projectId: projectData?.projectId || selectedProject.projectId,
+    };
+}
 
 export async function GET(request: NextRequest) {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_API) {
@@ -52,24 +98,17 @@ export async function GET(request: NextRequest) {
         // Abuse logging
         logApiRequest(request, storeId, 'GET /menu');
 
-        // Find the default (published) project for this store
-        // Path: projects/{tenantId}/{storeId}/{projectId}
+        // Find the default public project through the same summary source used
+        // by the customer renderer. `isDefault` is summary truth, not a
+        // guaranteed field on the full project document.
         const db = admin.firestore();
-        const projectsSnapshot = await db
-            .collection(`${DB_COLLECTIONS.PROJECTS}/${tenantId}/${storeId}`)
-            .where('isDefault', '==', true)
-            .limit(1)
-            .get();
-
-        if (projectsSnapshot.empty) {
+        const projectData = await getDefaultPublicMenuProject(db, tenantId, String(storeId));
+        if (!projectData) {
             return apiError('NO_MENU', 'No published menu found', 404);
         }
 
-        const projectDoc = projectsSnapshot.docs[0];
-        const projectData = projectDoc.data();
-
         // Build menu payload using same formatter as POS Webhook Sync
-        const menuVersion = storeData.posSync?.menuVersion || 1;
+        const menuVersion = Number(projectData.menuVersion || storeData.posSync?.menuVersion || 1);
         const currency = storeData.currencyCode || storeData.currency || 'INR';
 
         const payload = buildMenuSnapshot(
@@ -83,6 +122,7 @@ export async function GET(request: NextRequest) {
         // Override event type for pull API (not webhook) and add schema version
         const response = {
             schemaVersion: PULL_API_SCHEMA_VERSION,
+            generatedAt: new Date().toISOString(),
             ...payload,
             event: 'menu.pull' as const,
         };

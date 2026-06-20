@@ -30,7 +30,7 @@ const LOOP_STEPS = [
 
 const APPROVAL_POINTS = [
     ['Drafts are assistive', 'AnswerLattice can prepare answer drafts from recurring gaps, but drafts are not official answers.'],
-    ['Humans approve authority', 'Owners review proposed changes before they become approved answers.'],
+    ['Humans approve answers', 'Owners review proposed changes before they become approved answers.'],
     ['Stale answers stay visible', 'Release changes and stale-answer risk become review work instead of silent support debt.'],
 ];
 

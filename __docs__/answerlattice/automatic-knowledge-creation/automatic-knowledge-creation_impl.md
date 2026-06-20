@@ -227,8 +227,9 @@ Generate a canonical answer draft for this knowledge gap.
 ### §5.1 — New Files
 
 ```
-src/lib/answerlattice/draftGenerator.ts          — Main draft generation logic (client-side, for manual trigger)
+src/lib/answerlattice/draftGenerator.ts          — Shared manual draft-generation logic, called through the governance API route
 src/lib/answerlattice/draftPrompt.ts             — Prompt template + response parser
+src/app/api/answerlattice/mutation-proposals/regenerate-draft/route.ts — Manual regeneration route; owns Gemini call, permission/rate-limit checks, and AI operation accounting
 ```
 
 ### §5.2 — CF Files (Server-Side Draft Generation)
@@ -237,7 +238,7 @@ src/lib/answerlattice/draftPrompt.ts             — Prompt template + response 
 functions-answerlattice/src/answerlattice/draftGenerator.ts  — Server-side draft generation (for nightly batch)
 ```
 
-Note: Draft generation in the nightly CF uses `firebase-admin` + Gemini server-side. The client-side version (`src/lib/answerlattice/draftGenerator.ts`) is for manual regeneration from the governance UI.
+Note: Draft generation in the nightly CF uses `firebase-admin` + Gemini server-side. Manual regeneration from the governance UI calls `/api/answerlattice/mutation-proposals/regenerate-draft`, which invokes the shared draft helper server-side and records Answerlattice AI operation metadata.
 
 ### §5.3 — Modified Files
 
@@ -473,8 +474,8 @@ ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE: true,
 **Status:** LOCKED
 
 ### ADR-4: Server-Side Draft Generation (CF, not Client)
-**Decision:** Primary draft generation happens in the nightly Cloud Function, not client-side.
-**Rationale:** Draft generation is a batch operation (max 10/run). Running in CF avoids CORS issues, keeps Gemini API key server-side, and aligns with existing nightly batch pattern. Client-side `draftGenerator.ts` is only for manual regeneration from governance UI.
+**Decision:** Draft generation happens through server-owned execution: nightly Cloud Function for batches, governance API route for manual regeneration.
+**Rationale:** Draft generation is a batch operation in normal operation and a manual owner action from the UI. Both paths keep Gemini credentials server-side, apply permission/rate-limit checks, and record AI operation accounting.
 **Status:** LOCKED
 
 ### ADR-5: Structured Skeleton Over Full Article

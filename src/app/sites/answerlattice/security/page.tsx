@@ -68,7 +68,7 @@ const CONTROLS = [
         body: 'Tickets can include a capped, sanitized snapshot of recent browser context at creation time so owners can debug broken screens without asking customers for technical details.',
     },
     {
-        title: 'Owner-approved authority',
+        title: 'Owner-approved answers',
         body: 'Generated drafts, entity candidates, and mutation proposals require human review before they become active approved answers.',
     },
     {
@@ -96,7 +96,7 @@ const SECURITY_FACTS = [
     { label: 'Source intake', value: 'Owner-selected and capped' },
     { label: 'Hosted help', value: 'Registry-scoped domains' },
     { label: 'Ticket context', value: 'Capped and sanitized' },
-    { label: 'Answer authority', value: 'Owner-reviewed approved answers' },
+    { label: 'Answer approval', value: 'Owner-reviewed approved answers' },
     { label: 'Runtime context', value: 'Versioned approved bundles' },
     { label: 'Expensive requests', value: 'Rate-limited endpoints' },
     { label: 'Scheduler output', value: 'Local EOD + compact summaries' },
@@ -152,7 +152,7 @@ const TRUST_AREAS = [
     },
     {
         title: 'Bounded page context',
-        body: 'AnswerLattice treats page context as a hint for support relevance, not as trusted identity or tenant authority.',
+        body: 'AnswerLattice treats page context as a hint for support relevance, not as trusted identity or tenant scope.',
         points: [
             'Context should describe page, route, feature, workflow, role, or plan.',
             'Secrets, tokens, passwords, payment card data, and unrelated personal data should not be sent.',
@@ -319,7 +319,7 @@ export default function AnswerlatticeSecurityPage() {
                                     detail: 'Public docs, FAQ, changelog, robots, and sitemap render without account data.',
                                 },
                                 {
-                                    title: 'Owner-approved authority',
+                                    title: 'Owner-approved answers',
                                     detail: 'Drafts and proposals require review before becoming official answers.',
                                 },
                                 {

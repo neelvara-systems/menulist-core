@@ -27,7 +27,7 @@
 2. `X-API-Key` exists and starts with `al_`.
 3. Rate limit is checked before Firestore key lookup.
 4. `validatePublicApiKey()` resolves the hash-only key from `stores.publicApi.apiKeyHash`; Answerlattice public APIs disable the legacy raw-key fallback and do not opt into widget-only credential sources.
-5. The resolved key must be an Answerlattice public API key (`productId: 'AL'` when present, `purpose` starts with `answerlattice` when present, and the endpoint's required scope is present).
+5. The resolved key must be an Answerlattice public API key (`productId: 'AL'` when present, `purpose: 'answerlattice_public_api'` when present, and the endpoint's required scope is present).
    - Read endpoints require `public:read`.
    - Signal-ingestion endpoints require `signals:write`.
 6. If the request has an `Origin`, it must match the store's allowed origins.

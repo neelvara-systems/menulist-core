@@ -5,9 +5,9 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import {
     ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT,
     ANSWERLATTICE_FAQ_GENERATED_PER_ARTICLE_LIMIT,
@@ -260,10 +260,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             await batch.commit();
         }
 
-        recordAiOperationForSession(session, {
-            pId: PRODUCT_IDS.ANSWERLATTICE,
+        recordAnswerlatticeAiOperation({
             tId: tenantId,
             sId: storeId,
+        }, {
             action: AI_ACTIONS_TYPES.ANSWERLATTICE_FAQ_GENERATION,
             articleId,
             billingMode: 'internal',
@@ -276,6 +276,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             model: 'gemini-2.0-flash',
             processingTime: Date.now() - operationStart,
             source: 'answerlattice_article_faq_generation',
+        }, {
+            id: session.user?.id,
+            name: session.user?.name,
+            email: session.user?.email,
         }).catch((logError) => {
             secureError('[Answerlattice FAQ] Operation log failed', logError as Error, { articleId, tenantId, storeId });
         });

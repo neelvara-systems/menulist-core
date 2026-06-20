@@ -220,6 +220,65 @@ export const RATE_LIMIT_CONFIGS = {
     },
 
     /**
+     * Screen Seen Signal - anonymous daily liveness signal.
+     * Used by: POST /api/screen/seen
+     *
+     * Why 120/hour per IP:
+     * - Screens should normally send at most one useful signal per day.
+     * - Shared networks may host several displays.
+     * - Token/store-level limiting is stricter in the route; this IP cap blocks
+     *   random-token read loops before Firestore lookup.
+     */
+    SCREEN_SEEN_SIGNAL: {
+        limit: 120,
+        window: 3600,
+        description: 'Screen seen signal - 120 per hour per IP'
+    },
+
+    /**
+     * Public Dynamic Assets - anonymous PWA icon/screenshot generation.
+     * Used by: GET /api/app-icons/* and /api/app-screenshots/*
+     *
+     * Why 60/min:
+     * - Legitimate install flows request a small fixed set of cached URLs.
+     * - Random storeId probes can otherwise force Firestore reads plus image
+     *   rendering before CDN cache can help.
+     */
+    PUBLIC_DYNAMIC_ASSET: {
+        limit: 60,
+        window: 60,
+        description: 'Public dynamic assets - 60 uncached renders per minute per IP'
+    },
+
+    /**
+     * CSP Reports - anonymous browser violation telemetry.
+     * Used by: POST /api/csp-report
+     *
+     * Why 60/min:
+     * - A broken page can emit several reports quickly.
+     * - Abuse should not create unbounded security-log volume.
+     */
+    CSP_REPORT: {
+        limit: 60,
+        window: 60,
+        description: 'CSP reports - 60 per minute per IP'
+    },
+
+    /**
+     * Custom Domain Management - authenticated external provider calls.
+     * Used by: /api/domain
+     *
+     * Why 10/hour:
+     * - Domain add/verify/remove is an infrequent owner workflow.
+     * - Each request can call Vercel APIs, so retries should stay bounded.
+     */
+    DOMAIN_MANAGEMENT: {
+        limit: 10,
+        window: 3600,
+        description: 'Domain management - 10 provider calls per hour per owner/store'
+    },
+
+    /**
      * Payment Operations - Security critical
      * Used by: Onboarding, subscription creation, topup orders
      */

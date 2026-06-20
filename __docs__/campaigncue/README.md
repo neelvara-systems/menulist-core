@@ -5,7 +5,7 @@
 **Product class:** Separate product in the shared MenuList/Answerlattice repo
 **Primary source input:** ChatGPT conversation attachment, current repo product-boundary patterns, and live web validation notes from the planning pass
 
-CampaignCue is a business-data-first campaign operating system for local businesses. It starts from a deterministic Campaign Decision Engine, shows the Daily Campaign Desk, recommends what to promote from facts and recipes rather than model guesses, prepares a structured Campaign Pack Output, protects business facts, routes optional edits through the shared editor/Design Cue/CueLayers, and records manual results.
+CampaignCue is a business-data-first campaign operating system for local businesses. It starts from a deterministic Campaign Decision Engine, shows the Daily Campaign Desk, recommends what to promote from facts and recipes rather than model guesses, prepares a structured Campaign Pack Output with a Campaign Proof Deck brief, protects business facts and Brand Playbook direction, routes optional edits through the shared editor/Design Cue/CueLayers, and records manual results.
 
 CampaignCue is not a MenuList feature, not an Answerlattice feature, not GrowthOS, not KitStamp, and not a generic design tool. MenuList can be an optional read-only source connector for restaurant/menu facts. Salons and non-MenuList businesses must work without MenuList.
 
@@ -33,12 +33,12 @@ Each feature folder follows the repo doc-set pattern: `README.md`, `_spec.md`, `
 
 | Feature | Scope |
 | --- | --- |
-| [business-brain](./business-brain/README.md) | Business profile, brand kit, local-business type, catalog/service context, preferences, and source confidence. |
+| [business-brain](./business-brain/README.md) | Business profile, brand kit, Brand Playbook, local-business type, catalog/service context, preferences, and source confidence. |
 | [source-integrations](./source-integrations/README.md) | Current runtime uses signed-in MenuList store-profile bootstrap plus owner source inputs; social/provider connectors are future-disabled posture only. |
 | [opportunity-engine](./opportunity-engine/README.md) | Current runtime creates deterministic Business Brain/readiness cues; broader signal inputs remain provider/source architecture requirements. |
 | [campaign-decision-engine](./campaign-decision-engine/README.md) | Implemented deterministic recommendation authority. It ranks campaign recipes from Business Brain facts, readiness, timing, assets, trust risk, owner effort, repetition, and compact result memory without asking a model what to promote. |
 | [daily-campaign-desk](./daily-campaign-desk/README.md) | Implemented owner-first starting screen that turns existing CampaignCue data into one recommended action, missing-input prompts, ready-pack controls, manual delivery tasks, asset reuse, print/photo tasks, and result memory without extra Firebase reads. |
-| [campaign-pack-output-system](./campaign-pack-output-system/README.md) | Implemented canonical output layer that packages decision, missing inputs, channel copy, handoff fields, trust report, reuse notes, mini-page/QR brief, result memory, and a structured ZIP download. |
+| [campaign-pack-output-system](./campaign-pack-output-system/README.md) | Implemented canonical output layer that packages decision, missing inputs, channel copy, handoff fields, trust report, reuse notes, mini-page/QR brief, Campaign Proof Deck brief, result memory, and a structured ZIP download. |
 | [campaign-pack-template-registry](./campaign-pack-template-registry/README.md) | Planned category-aware pack-template registry for curated CampaignCue platform templates and owner-saved reusable packs, using shared business category truth and one default category catalog read. |
 | [campaign-studio](./campaign-studio/README.md) | Goal-first campaign brief, pack generation, output selection, edits, duplicate/reuse behavior. |
 | [creative-studio](./creative-studio/README.md) | Current runtime produces source-backed creative briefs and copy; CampaignCue can open the shared creative editor, use deterministic AI Tools and Design Cue for editable copy/checks, and export manual SVG/PNG assets while provider rendering remains disabled. |

@@ -11,6 +11,7 @@
 
 ## Cost Guardrails
 
+- Current active export/download runtime adds no new Firestore collection, read, write, Storage object, Cloud Function, provider call, or model call for dialogue/action beat sheets. The fields are derived from the existing campaign output and Business Brain data.
 - Store script text and metadata in Firestore; avoid large embedded media payloads.
 - Reuse campaign facts already loaded by Campaign Studio.
 - Re-run trust checks only when script content or source references change.
@@ -21,4 +22,3 @@
 - Workspace role checks required for all reads and writes.
 - Agency handoff requires explicit permission.
 - Export history should record actor id, timestamp, and approved version id.
-

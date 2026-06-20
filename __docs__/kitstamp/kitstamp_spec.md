@@ -260,7 +260,7 @@ Exact pricing is not frozen in this doc. Implementation must prove margin above 
 
 KitStamp is ready to enter implementation only when:
 
-- [Implementation Lock v1](./kitstamp_implementation-lock-v1.md) is accepted as the direct build contract
+- the standard KitStamp doc set is accepted as the direct build contract
 - product domain is confirmed
 - Firebase QA and production targets are confirmed
 - billing scope for `KS` is defined

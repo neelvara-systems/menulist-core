@@ -14,7 +14,7 @@ The registry should help an SMB owner start from a useful campaign structure:
 
 It must then rehydrate current business facts, run missing-input/trust checks, and keep manual delivery instructions inside the campaign pack.
 
-The owner may also choose what the pack should help with, but this is not a design-format browser. CampaignCue output choices are business-use intents such as WhatsApp sales pack, booking push pack, Google local update, poster/flyer, staff share pack, ad handoff, reuse old asset, or custom size.
+The owner may also choose what the pack should help with, but this is not a design-format browser. CampaignCue output choices are business-use intents such as WhatsApp sales pack, booking push pack, Google local update, poster/flyer, staff share pack, ad handoff, Campaign Proof Deck, reuse old asset, or custom size.
 
 ## Product Role
 
@@ -76,6 +76,8 @@ Owner-saved templates must not persist stale facts as truth. They may store:
 - channel handoff shape,
 - trust checks,
 - result memory references,
+- proof deck shape,
+- Brand Playbook style tags from saved owner fields,
 - owner-friendly labels.
 
 When reopened, the template must rehydrate from current Business Brain/source facts and show missing inputs before export. If the template includes an editor document reference, it must open in the shared editor with Campaign Pack context visible: task-based editing, protected facts, output formats, Trust Center status, manual delivery, result memory, and mobile review/download scope.
@@ -112,6 +114,7 @@ CampaignCue uses a small grouped output-intent registry instead of a generic "Ch
 | Poster or flyer | Use the campaign offline. | Poster PDF, flyer PDF, counter or reception use. |
 | Staff share pack | Give staff a clear message and script. | Staff WhatsApp text, counter script, customer reply prompt. |
 | Ad handoff pack | Prepare copy for a human ad-account owner or agency. | Headline, copy, destination, terms, approval notes. |
+| Campaign proof deck | Prepare a review brief for owner, client, or agency approval. | Brand system, campaign/social set, focus, UGC/reel reference, checklist, source trace. |
 | Reuse old poster/image | Start from an existing owner asset. | CueLayers-safe source preservation and manual export. |
 | Custom size | Advanced blank layout when the owner already knows the size. | Shared editor blank asset, desktop-preferred. |
 

@@ -11,7 +11,9 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, where } from "@firebase/firestore";
+import { PRODUCT_IDS } from "@constant/product";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, Timestamp, where } from "@firebase/firestore";
+import { markAnswerlatticeCompiledContextSourceChanged } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
@@ -21,9 +23,76 @@ import {
 } from "@type/answerlattice";
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS;
+const SUMMARY_COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
 const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, COLLECTION, docId);
+const getSummaryDocRef = (tId: number, sId: number) => doc(answerlatticeFirebaseClient, SUMMARY_COLLECTION, `predictiveTriggers_${tId}_${sId}`);
+
+const assertScope = (tId: unknown, sId: unknown) => {
+    const tenantId = Number(tId);
+    const storeId = Number(sId);
+    if (!Number.isFinite(tenantId) || tenantId <= 0 || !Number.isFinite(storeId) || storeId <= 0) {
+        throw new Error('Answerlattice predictive trigger scope is not available.');
+    }
+    return { tId: tenantId, sId: storeId };
+};
+
+const resolveTriggerScope = async (
+    data?: Partial<AnswerlatticePredictiveTrigger> | null,
+    triggerId?: string,
+) => {
+    const dataTId = Number(data?.tId);
+    const dataSId = Number(data?.sId);
+    if (Number.isFinite(dataTId) && dataTId > 0 && Number.isFinite(dataSId) && dataSId > 0) {
+        return { tId: dataTId, sId: dataSId };
+    }
+
+    if (triggerId) {
+        const snap = await getDoc(getDocRef(triggerId));
+        if (snap.exists()) {
+            const existing = snap.data() as Partial<AnswerlatticePredictiveTrigger>;
+            return assertScope(existing.tId, existing.sId);
+        }
+    }
+
+    throw new Error('Answerlattice predictive trigger scope is not available.');
+};
+
+const rebuildPredictiveTriggerSummary = async (
+    scope: { tId: number; sId: number },
+    reason: string,
+    sourceId?: string,
+) => {
+    const { tId, sId } = assertScope(scope.tId, scope.sId);
+    const snapshot = await getDocs(query(
+        getCollectionRef(),
+        where('tId', '==', tId),
+        where('sId', '==', sId),
+        limit(ANSWERLATTICE_PREDICTIVE_CONSTRAINTS.MAX_TRIGGERS_PER_TENANT),
+    ));
+    const triggers: Record<string, AnswerlatticePredictiveTrigger> = {};
+    snapshot.docs.forEach((triggerDoc) => {
+        triggers[triggerDoc.id] = { ...triggerDoc.data(), id: triggerDoc.id } as AnswerlatticePredictiveTrigger;
+    });
+    const triggerValues = Object.values(triggers);
+
+    await setDoc(getSummaryDocRef(tId, sId), {
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        tId,
+        sId,
+        lastUpdated: Timestamp.now(),
+        version: Date.now(),
+        triggerCount: triggerValues.length,
+        activeTriggerCount: triggerValues.filter(trigger => trigger.status === 'active').length,
+        triggers,
+    });
+    await markAnswerlatticeCompiledContextSourceChanged('predictiveTriggers', tId, sId, {
+        reason,
+        sourceId,
+        sourceType: COLLECTION,
+    });
+};
 
 /**
  * Get all predictive triggers for a tenant+store.
@@ -109,6 +178,7 @@ export const addPredictiveTrigger = async (data: Omit<AnswerlatticePredictiveTri
 
             const submitData = await answerlatticeRequestBodyComposer(data);
             const docRef = await addDoc(getCollectionRef(), submitData);
+            await rebuildPredictiveTriggerSummary(assertScope(data.tId, data.sId), 'predictive_trigger_create', docRef.id);
             return { ...submitData, id: docRef.id } as AnswerlatticePredictiveTrigger;
         },
         data,
@@ -122,8 +192,10 @@ export const addPredictiveTrigger = async (data: Omit<AnswerlatticePredictiveTri
 export const updatePredictiveTrigger = async (data: Partial<AnswerlatticePredictiveTrigger> & { id: string }) => {
     return await apiCallComposer(
         async () => {
+            const scope = await resolveTriggerScope(data, data.id);
             const composedData = await answerlatticeRequestBodyComposer(data);
             await setDoc(getDocRef(data.id), composedData, { merge: true });
+            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_update', data.id);
             return composedData;
         },
         data,
@@ -142,12 +214,14 @@ export const activateTrigger = async (triggerId: string) => {
             if (!docSnap.exists()) throw new Error(`Trigger ${triggerId} not found`);
 
             const current = docSnap.data() as AnswerlatticePredictiveTrigger;
+            const scope = assertScope(current.tId, current.sId);
             if (current.status !== 'suggested' && current.status !== 'disabled') {
                 throw new Error(`Cannot activate trigger in '${current.status}' state — must be 'suggested' or 'disabled'`);
             }
 
             const composedData = await answerlatticeRequestBodyComposer({ status: 'active' });
             await setDoc(getDocRef(triggerId), composedData, { merge: true });
+            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_activate', triggerId);
             return composedData;
         },
         { triggerId },
@@ -161,8 +235,10 @@ export const activateTrigger = async (triggerId: string) => {
 export const disableTrigger = async (triggerId: string) => {
     return await apiCallComposer(
         async () => {
+            const scope = await resolveTriggerScope(null, triggerId);
             const composedData = await answerlatticeRequestBodyComposer({ status: 'disabled' });
             await setDoc(getDocRef(triggerId), composedData, { merge: true });
+            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_disable', triggerId);
             return composedData;
         },
         { triggerId },
@@ -176,7 +252,9 @@ export const disableTrigger = async (triggerId: string) => {
 export const deletePredictiveTrigger = async (triggerId: string) => {
     return await apiCallComposer(
         async () => {
+            const scope = await resolveTriggerScope(null, triggerId);
             await deleteDoc(getDocRef(triggerId));
+            await rebuildPredictiveTriggerSummary(scope, 'predictive_trigger_delete', triggerId);
             return { deleted: true };
         },
         { triggerId },

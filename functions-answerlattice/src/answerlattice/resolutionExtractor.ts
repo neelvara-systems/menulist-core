@@ -25,6 +25,12 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import {
+    ANSWERLATTICE_AI_ACTIONS,
+    AnswerlatticeGeminiCallResult,
+    callAnswerlatticeGeminiContent,
+    recordGeminiCallOperation,
+} from './aiOperationAccounting';
+import {
     buildTicketKnowledgePrompt,
     parseTicketResolutionResponse,
     TICKET_KNOWLEDGE_SYSTEM_PROMPT,
@@ -183,23 +189,13 @@ async function findExistingPendingProposal(
 // STEP 3: GEMINI EXTRACTION
 // ═══════════════════════════════════════════════════════════════
 
-async function callGeminiForExtraction(userPrompt: string): Promise<string | null> {
+async function callGeminiForExtraction(userPrompt: string): Promise<AnswerlatticeGeminiCallResult | null> {
     try {
-        const apiKey = process.env.GEMINI_AI_KEY;
-        if (!apiKey) {
-            logger.error('[Answerlattice TicketKnowledge] GEMINI_AI_KEY not configured');
-            return null;
-        }
-
-        const { GoogleGenerativeAI } = await import('@google/generative-ai');
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
+        return await callAnswerlatticeGeminiContent({
             model: 'gemini-2.0-flash',
-            systemInstruction: TICKET_KNOWLEDGE_SYSTEM_PROMPT,
+            systemPrompt: TICKET_KNOWLEDGE_SYSTEM_PROMPT,
+            userPrompt,
         });
-
-        const result = await model.generateContent(userPrompt);
-        return result.response?.text() || null;
     } catch (error) {
         logger.error('[Answerlattice TicketKnowledge] Gemini call failed', { error });
         return null;
@@ -338,7 +334,22 @@ export async function extractTicketKnowledge(
                     existingAnswerTitles: existingTitles,
                 });
 
-                const rawResponse = await callGeminiForExtraction(userPrompt);
+                const geminiResult = await callGeminiForExtraction(userPrompt);
+                const rawResponse = geminiResult?.text || null;
+                if (geminiResult) {
+                    await recordGeminiCallOperation({
+                        action: ANSWERLATTICE_AI_ACTIONS.TICKET_KNOWLEDGE_EXTRACTION,
+                        clientResponse: {
+                            entityId: cluster.entityId,
+                            sourceTicketCount: cluster.totalCount,
+                        },
+                        processingTime: geminiResult.processingTime,
+                        sId,
+                        source: 'answerlattice_ticket_resolution_extractor',
+                        tId,
+                        usageMetadata: geminiResult.usageMetadata,
+                    });
+                }
                 const parsed = parseTicketResolutionResponse(rawResponse);
 
                 if (!parsed) {

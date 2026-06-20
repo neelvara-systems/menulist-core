@@ -93,7 +93,7 @@ Product-area subpages:
 
 Each subpage must feel like its own landing page, not a thin documentation page: hero, horizontal product-area tabs, connected support-suite framing, compact proof strip, large browser-style product canvas, bento benefit grid, animated workflow sequence, evaluation strip for setup/security/category-fit checks, and CTA. These pages stay static and may only claim implemented AnswerLattice behavior.
 
-Each product-area subpage must include the same proof-and-action treatment above the product canvas: Create workspace, demo, source-preparation CTA, and proof items for page context, approved-answer authority, owner review, and connected runtime surfaces.
+Each product-area subpage must include the same proof-and-action treatment above the product canvas: Create workspace, demo, source-preparation CTA, and proof items for page context, approved answers, owner review, and connected runtime surfaces.
 
 Product-feature subpages:
 - `/product/team-access`
@@ -125,7 +125,7 @@ Feature pages must use buyer-facing wording and avoid overclaiming. FAQ Manageme
 
 Role-specific pages:
 - `/use-cases/ai-built-saas`
-- `/use-cases/vibe-coded-saas` (canonicalized campaign/search alias only)
+- `/use-cases/vibe-coded-saas` (campaign/search alias only)
 - `/use-cases/founders`
 - `/use-cases/small-saas-teams`
 - `/use-cases/studios-agencies`
@@ -340,8 +340,8 @@ Rules:
 **Goal:** Give buyers a concise trust page without overclaiming compliance.
 
 **Sections:**
-- Security-at-a-glance facts for data boundary, runtime database, widget key storage, widget placement, answer authority, expensive request limits, scheduler output, and product boundary
-- Animated security-boundary diagram for allowed origins, safe page context, blocked routes, workspace scope, hosted help boundary, compiled context boundary, and owner-approved authority
+- Security-at-a-glance facts for data boundary, runtime database, widget key storage, widget placement, answer approval, expensive request limits, scheduler output, and product boundary
+- Animated security-boundary diagram for allowed origins, safe page context, blocked routes, workspace scope, hosted help boundary, compiled context boundary, and owner-approved answers
 - Status snapshots for workspace scope, safe context, origin/route controls, hosted help boundary, ticket context, owner approval, bounded logging, and product separation
 - Runtime context safety: public widget bundles contain only approved public-safe context; drafts, tickets, audit logs, API keys, raw signals, and billing internals stay out.
 - Tenant-scoped data and workspace isolation
@@ -350,7 +350,7 @@ Rules:
 - Origin and blocked-route controls for widget placement
 - Hosted help domain registry for anonymous public docs/FAQ/changelog without exposing tickets or workspace internals
 - Safe ticket debugging context that is capped, sanitized, ticket-scoped, and captured only when a ticket is created
-- Owner-approved authority through canonical answers, published owner FAQ/custom answers, drafts, proposals, and drift checks
+- Owner-approved answers through reviewed answers, published owner FAQ/custom answers, drafts, proposals, and stale-answer checks
 - Cost and abuse controls through rate-limited widget endpoints, cache freshness checks, and summary-backed dashboards
 - Separate AnswerLattice product infrastructure with client products treated as integrations, not hardcoded dependencies
 - Responsible disclosure contact and safe reporting guidance
@@ -527,7 +527,7 @@ AnswerLattice website CSS must remain root-loadable and product-scoped. Clean-ca
 | `/product/team-access` | Team Access \| AnswerLattice | Manage AnswerLattice workspace members, roles, custom permissions, owner reset, and force sign-out with workspace-scoped access. |
 | `/product/page-aware-widget` | In-App Help Widget \| AnswerLattice | Install AnswerLattice as an in-app widget with safe context, explicit screenshot attachments, allowed origins, blocked routes, hosted help, approved answers, and owner answers before fallback. |
 | `/product/support-control` | Help Center and Tickets \| AnswerLattice | Operate AnswerLattice hosted help, docs, FAQ, custom owner answers, changelog, tickets, feedback, Support Board, conversations, and weekly support review from one support layer. |
-| `/product/knowledge-governance` | Review Approved Answers \| AnswerLattice | Review approved answers, stale support, repeated-question signals, coverage KPI, and trust/readiness metrics. |
+| `/product/knowledge-governance` | Review Approved Answers \| AnswerLattice | Review approved answers, stale support, repeated-question signals, coverage signals, and launch readiness. |
 | `/product/support-board` | Support Board \| AnswerLattice | Private owner/staff support cards, internal notes, status history, selected follow-up, and answer-proposal handoff. |
 | `/product/feedback-review` | Feedback Review \| AnswerLattice | Collect ratings, product feedback, feature requests, and suggestions, then review useful items as support signals before board or answer-proposal handoff. |
 | `/use-cases` | Use Cases \| AnswerLattice | AnswerLattice use cases for AI-built SaaS apps across billing, onboarding, settings, releases, errors, and support fallback. |
@@ -645,7 +645,7 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 | 2026-05-22 | 1.2.4 | Final product-suite polish: header Product dropdown, homepage product-area section, resources product-area hub, and SEO/use-case product-area cross-links make the current product easier to evaluate without adding Firebase cost |
 | 2026-05-23 | 1.2.5 | Added AnswerLattice-specific `llms.txt` and `llms-full.txt` routes so product-domain agents read AnswerLattice product context, non-goals, and mutation boundaries |
 | 2026-05-23 | 1.2.6 | Added server-rendered WebPage/BreadcrumbList JSON-LD coverage across public AnswerLattice routes, explicit AI/search crawler robots rules, route-registry Website graph references, and `verify:agent-readiness` coverage |
-| 2026-05-24 | 1.2.7 | Reframed public copy for AI-built SaaS founders, moved the page-aware demo into first-proof position, simplified first-visit vocabulary, added `/use-cases/ai-built-saas`, and kept `/use-cases/vibe-coded-saas` as a canonicalized campaign/search alias rather than the primary ICP label |
+| 2026-05-24 | 1.2.7 | Reframed public copy for AI-built SaaS founders, moved the page-aware demo into first-proof position, simplified first-visit vocabulary, added `/use-cases/ai-built-saas`, and kept `/use-cases/vibe-coded-saas` as a campaign/search alias rather than the primary ICP label |
 | 2026-05-24 | 1.2.8 | Refined the shared AnswerLattice support knowledge map diagram with a logo-only center, AnswerLattice-colored ripple rings, dotted SVG paths, homepage-style pulse strokes, and border-only output highlights |
 | 2026-05-24 | 1.2.9 | Expanded the same animated diagram language across AnswerLattice workflow-heavy sections: homepage loops/sequences, product-area and feature workflows, connected surfaces, SEO/use-case pages, install, security, resources, engine pillars, and system coverage |
 | 2026-05-24 | 1.2.10 | Added non-diagram proof blocks for text compression: homepage fit decisions, widget state snapshots, trust controls, use-case before/after examples, and security status snapshots |

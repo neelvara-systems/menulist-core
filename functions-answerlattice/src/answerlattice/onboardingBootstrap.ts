@@ -8,7 +8,7 @@
  * 4. Track progress on the KB generation job
  * 
  * Called as Step 12 of the nightly batch in answerlatticeNightly.ts.
- * Uses firebase-admin (server-side Firestore) + Gemini via Google Generative AI SDK.
+ * Uses firebase-admin (server-side Firestore) + Gemini through the Answerlattice Vertex AI client.
  * 
  * CRITICAL: This runs as a SEPARATE discovery loop (not inside the main per-tenant loop)
  * because new tenants may have zero entities and would not be discovered by discoverActiveTenants().
@@ -31,6 +31,12 @@ import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import {
+    ANSWERLATTICE_AI_ACTIONS,
+    AnswerlatticeGeminiCallResult,
+    callAnswerlatticeGeminiContent,
+    recordGeminiCallOperation,
+} from './aiOperationAccounting';
 import { markCompiledContextSourceChanged } from './compiledContextVersions';
 import { upsertAnswerlatticeTenantSummary } from './tenantSummary';
 
@@ -197,24 +203,13 @@ function generateSlug(name: string): string {
 // GEMINI CALLER (reused pattern from draftGenerator.ts)
 // ═══════════════════════════════════════════════════════════════
 
-async function callGemini(systemPrompt: string, userPrompt: string): Promise<string | null> {
+async function callGemini(systemPrompt: string, userPrompt: string): Promise<AnswerlatticeGeminiCallResult | null> {
     try {
-        const apiKey = process.env.GEMINI_AI_KEY;
-        if (!apiKey) {
-            logger.error('[Answerlattice Bootstrap] GEMINI_AI_KEY not configured');
-            return null;
-        }
-
-        const { GoogleGenerativeAI } = await import('@google/generative-ai');
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
+        return await callAnswerlatticeGeminiContent({
             model: 'gemini-2.0-flash',
-            systemInstruction: systemPrompt,
+            systemPrompt,
+            userPrompt,
         });
-
-        const result = await model.generateContent(userPrompt);
-        const text = result.response?.text();
-        return text || null;
     } catch (error) {
         logger.error('[Answerlattice Bootstrap] Gemini call failed', { error });
         return null;
@@ -342,9 +337,24 @@ async function extractEntitiesForTenant(
         const prompt = `Extract product entities from these knowledge base articles:\n\n${articleTexts}\n\nExtract ALL product entities following the rules. Return JSON only.`;
 
         try {
-            const response = await callGemini(ENTITY_EXTRACTION_SYSTEM_PROMPT, prompt);
-            if (response) {
-                let cleaned = response.trim();
+            const geminiResult = await callGemini(ENTITY_EXTRACTION_SYSTEM_PROMPT, prompt);
+            if (geminiResult) {
+                await recordGeminiCallOperation({
+                    action: ANSWERLATTICE_AI_ACTIONS.ONBOARDING_BOOTSTRAP,
+                    clientResponse: {
+                        articlesInBatch: batch.length,
+                        batchIndex: i,
+                        step: 'entity_extraction',
+                    },
+                    processingTime: geminiResult.processingTime,
+                    sId,
+                    source: 'answerlattice_onboarding_entity_extraction',
+                    tId,
+                    usageMetadata: geminiResult.usageMetadata,
+                });
+            }
+            if (geminiResult?.text) {
+                let cleaned = geminiResult.text.trim();
                 if (cleaned.startsWith('```')) {
                     cleaned = cleaned.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
                 }
@@ -688,7 +698,24 @@ async function generateDraftsForPromotedEntities(
         promptParts.push('Generate a canonical answer draft for this product concept based on the source articles. Return JSON only.');
 
         try {
-            const rawResponse = await callGemini(ONBOARDING_DRAFT_SYSTEM_PROMPT, promptParts.join('\n'));
+            const geminiResult = await callGemini(ONBOARDING_DRAFT_SYSTEM_PROMPT, promptParts.join('\n'));
+            const rawResponse = geminiResult?.text || null;
+            if (geminiResult) {
+                await recordGeminiCallOperation({
+                    action: ANSWERLATTICE_AI_ACTIONS.ONBOARDING_BOOTSTRAP,
+                    clientResponse: {
+                        entityId: entityDoc.id,
+                        entityName: entity.name,
+                        relevantArticlesCount: relevantArticles.length,
+                        step: 'draft_generation',
+                    },
+                    processingTime: geminiResult.processingTime,
+                    sId,
+                    source: 'answerlattice_onboarding_draft_generation',
+                    tId,
+                    usageMetadata: geminiResult.usageMetadata,
+                });
+            }
 
             // Parse response
             const parsed = parseDraftResponse(rawResponse);

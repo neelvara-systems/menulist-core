@@ -78,6 +78,13 @@ const fetchHostedHelpSiteByDomain = async (domain: string): Promise<Answerlattic
     if (!snapshot.exists) return null;
 
     const data = snapshot.data() || {};
+    if (String(data.pId || '') !== PRODUCT_IDS.ANSWERLATTICE) {
+        secureError('[Answerlattice Hosted Help] Invalid registry product', new Error('Hosted help registry doc has invalid product scope'), {
+            domain: normalizedDomain,
+        });
+        return null;
+    }
+
     const config = normalizeHostedHelpConfig(data.config);
     const tId = Number(data.tId);
     const sId = Number(data.sId);
@@ -94,7 +101,7 @@ const fetchHostedHelpSiteByDomain = async (domain: string): Promise<Answerlattic
         domain: normalizedDomain,
         tId,
         sId,
-        pId: String(data.pId || PRODUCT_IDS.ANSWERLATTICE),
+        pId: PRODUCT_IDS.ANSWERLATTICE,
         enabled: true,
         config,
         updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : null,

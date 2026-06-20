@@ -26,7 +26,7 @@ const UPDATES = [
         title: 'Knowledge Intake can start from repeated replies',
         items: [
                 'Owners can paste one repeated user question and the answer they already send, then prepare FAQ and answer-proposal drafts for review.',
-                'The repeated-reply path stays inside Knowledge Intake and Governance; it does not read an inbox, sync a helpdesk, or publish canonical answers automatically.',
+                'The repeated-reply path stays inside Knowledge Intake and answer review; it does not read an inbox, sync a helpdesk, or publish official answers automatically.',
                 'Draft generation stays low-cost by using existing source and review-item writes and skipping the default full-article draft for repeated replies.',
         ],
     },
@@ -34,7 +34,7 @@ const UPDATES = [
         date: 'June 6, 2026',
         title: 'Activation now shows first-client launch proof',
         items: [
-            'Activation now groups setup, knowledge, product surfaces, approved answers, widget runtime, governance summaries, and signal-source checks into one launch-proof view.',
+            'Activation now groups setup, knowledge, product surfaces, approved answers, widget runtime, review summaries, and signal-source checks into one launch-proof view.',
             'The proof is summary-backed, so normal Activation loading stays on compact readiness documents instead of scanning source knowledge, tickets, entities, or mutation proposals.',
             'Signal Queue remains the place to confirm generated proposal quality before broader connector or distribution rollout.',
         ],
@@ -127,7 +127,7 @@ const UPDATES = [
         items: [
             'Homepage now starts from the post-launch problem: users need correct answers after a founder ships an app quickly with AI.',
             'The support-loop demo now appears as the first proof, showing generic AI vs AnswerLattice before deeper product architecture.',
-            'A new AI-built SaaS use-case page explains the setup path, while the vibe-coded SaaS URL stays a canonicalized campaign/search alias.',
+            'A new AI-built SaaS use-case page explains the setup path, while the vibe-coded SaaS URL stays as a campaign/search alias.',
         ],
     },
     {
@@ -200,7 +200,7 @@ const UPDATES = [
         date: 'May 22, 2026',
         title: 'Main website content sharpened for buyer-facing trust',
         items: [
-            'Custom help domains such as help.yourapp.com are now presented as a first-class hosted-help benefit.',
+            'Custom help domains such as help.yourapp.com are now presented as a core hosted-help benefit.',
             'Ticket debugging context is now described as capped, sanitized support context instead of raw technical logging.',
             'Security, FAQ, privacy, product, install, and homepage copy now explain those benefits without exposing internal tenant or store details.',
         ],

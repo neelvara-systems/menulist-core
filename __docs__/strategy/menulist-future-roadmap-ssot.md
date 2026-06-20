@@ -903,13 +903,11 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 - **Kill Criteria for GrowthOS (NEW):** DOC 10 — when to shut down, banned expansions, red-flag test. Written by Cascade (ChatGPT referenced but never produced it).
 - **Monetization Model (NEW):** Pay-per-kit or prepaid bundles. No subscriptions, no unlimited, no feature tiers. Cascade note: Indian market likely needs prepaid bundles (₹199/5 kits).
 
-**Cascade Review:** 85% accuracy. Strong philosophical framework. Key gap: ChatGPT unaware Social Content Engine already exists (~60% of GrowthOS vision). Over-emphasized separation when most value already inside MenuList. 5/6 use cases already implemented as campaign types. Full review archived at `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/_archive/chatgpt-review.md`
+**Cascade Review:** 85% accuracy. Strong philosophical framework. Key gap: ChatGPT unaware Social Content Engine already exists (~60% of GrowthOS vision). Over-emphasized separation when most value already inside MenuList. 5/6 use cases already implemented as campaign types. Retained decisions now live in the active Growth Kits docs.
 
 **Documents Created/Updated:**
 
-- `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/README.md` — Archived comprehensive GrowthOS strategy
-- `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/_archive/chatgpt-review.md` — Archived full conversation review
-- `__docs__/growthos-addon/_archive/growth-execution-strategy-2026-05-31/agentkits-repo-analysis.md` — Archived repo extraction plan
+- `__docs__/growthos-addon/README.md` — Active Growth Kits strategy and implementation source
 - `__docs__/strategy/product-positioning-map.md` — 3-product positioning map
 - `__docs__/constitution/12-product-separation-doctrine.md` — Product separation doctrine
 
@@ -925,12 +923,11 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 - **KitStamp Kill-List (9 Permanent Bans):** No publishing, no performance metrics, no auto-selection, no prompt-centric UX, no asset management, no learning claims, no personalization, no scoring, no autonomous flows.
 - **V2 Expansion (4 Ideas):** Content Variants Pack (✅), Brand Guardrails (✅), Short-Form Motion Draft (V3+), Client Review Mode (with limits).
 
-**Cascade Review:** 82% accuracy. Excellent strategic thinking. Key gap: ChatGPT unaware AI Image Generation system already exists (~70% of KitStamp's image capability). Over-designed for agency market when Indian SMBs (primary MenuList market) do their own content. Strong philosophical framework, production-grade design artifacts. Full review at `__docs__/kitstamp/_archive/chatgpt-review.md`
+**Cascade Review:** 82% accuracy. Excellent strategic thinking. Key gap: ChatGPT unaware AI Image Generation system already exists (~70% of KitStamp's image capability). Over-designed for agency market when Indian SMBs (primary MenuList market) do their own content. Strong philosophical framework, production-grade design artifacts. Retained decisions now live in the active KitStamp docs.
 
 **Documents Created:**
 
-- `__docs__/kitstamp/README.md` — Comprehensive KitStamp strategy (20 sections)
-- `__docs__/kitstamp/_archive/chatgpt-review.md` — Full conversation review (28 topics analyzed)
+- `__docs__/kitstamp/README.md` — Active KitStamp documentation hub
 
 ## Session 9 Topics (February 21, 2026)
 

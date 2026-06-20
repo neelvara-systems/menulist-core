@@ -34,13 +34,13 @@ const CONCEPT_COPY: Record<AnswerlatticeConceptIllustrationVariant, {
         description: 'Docs, tickets, releases, screenshots, recordings, notes, and feedback become approved answers before users see widget or hosted-help output.',
     },
     'governance-loop': {
-        eyebrow: 'Governance loop',
+        eyebrow: 'Review loop',
         title: 'Missing answers become review work.',
         description: 'Fallback, repeated questions, and stale guidance move into owner review before any answer becomes official.',
     },
     'positioning-boundary': {
         eyebrow: 'Category boundary',
-        title: 'Answer authority sits between tools.',
+        title: 'Reviewed answers sit between tools.',
         description: 'AnswerLattice is not the chatbot, helpdesk, or docs CMS. It governs the answers those surfaces depend on.',
     },
 };
@@ -68,7 +68,7 @@ const MOBILE_STEPS: Record<AnswerlatticeConceptIllustrationVariant, Array<{ titl
     ],
     'positioning-boundary': [
         { title: 'Other tools remain tools', detail: 'Chatbots, helpdesks, docs, and tickets keep their jobs.' },
-        { title: 'Answer authority lives here', detail: 'AnswerLattice governs the support truth they depend on.' },
+        { title: 'Approved answers live here', detail: 'AnswerLattice keeps the support truth they depend on.' },
         { title: 'No replacement claim', detail: 'It works with support tools instead of pretending to be all of them.' },
     ],
 };
@@ -324,7 +324,7 @@ function PositioningBoundary() {
             <Arrow d="M606 308 C540 308 524 284 476 274" tone="muted" />
             <rect x="342" y="204" width="176" height="128" rx="30" fill="rgba(45,212,191,0.14)" stroke="rgba(94,234,212,0.52)" strokeWidth="1.8" />
             <text x="382" y="250" fill="#ecfeff" fontSize="22" fontWeight="900">Answer</text>
-            <text x="382" y="278" fill="#ecfeff" fontSize="22" fontWeight="900">authority</text>
+            <text x="382" y="278" fill="#ecfeff" fontSize="22" fontWeight="900">review</text>
             <text x="380" y="306" fill="#a7f3d0" fontSize="15" fontWeight="700">governed layer</text>
             <Pill x={298} y={388} label="Works with support tools" tone="teal" width={264} />
         </Shell>

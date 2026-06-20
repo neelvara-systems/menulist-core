@@ -6,7 +6,7 @@ CampaignCue should live in the same repo with a separate product boundary. Imple
 
 ## Implementation Status
 
-CampaignCue now has a repo-level public shell and a protected export/download-first runtime. The runtime adds CampaignCue workspace APIs, a dedicated Firebase Admin client, CampaignCue Firebase rules/config files, Business Brain bootstrap, source snapshots, source facts, evidence-backed opportunity cues, deterministic Campaign Decision Engine scoring, structured campaign packs, first-class pack reviews, canonical Campaign Pack Output ZIPs, manual delivery cards, local visibility cues, trust reports, asset rights metadata, manual schedule records, approval request logging, compact owner-reported result memory, launch-readiness checks, bounded analytics summaries, and a CampaignCue dashboard shell that reuses the same MenuList authenticated app foundation, theme settings, language settings, shared dashboard sidebar, shared top header, profile menu, and settings drawer.
+CampaignCue now has a repo-level public shell and a protected export/download-first runtime. The runtime adds CampaignCue workspace APIs, a dedicated Firebase Admin client, CampaignCue Firebase rules/config files, Business Brain bootstrap with Brand Playbook fields, source snapshots, source facts, evidence-backed opportunity cues, deterministic Campaign Decision Engine scoring, structured campaign packs, first-class pack reviews, canonical Campaign Pack Output ZIPs with Campaign Proof Deck briefs, manual delivery cards, local visibility cues, trust reports, asset rights metadata, manual schedule records, approval request logging, compact owner-reported result memory, launch-readiness checks, bounded analytics summaries, and a CampaignCue dashboard shell that reuses the same MenuList authenticated app foundation, theme settings, language settings, shared dashboard sidebar, shared top header, profile menu, and settings drawer.
 
 It still does not create direct provider calls, billing checkout, ad spend mutations, WhatsApp direct sends, rendered video provider calls, or MenuList write-back.
 
@@ -29,13 +29,13 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Service | Responsibility |
 | --- | --- |
 | WorkspaceService | Workspace, membership, agency, multi-location scope. |
-| BusinessBrainService | Profile, catalog, brand kit, source facts, missing fact list, vertical risk context. |
+| BusinessBrainService | Profile, catalog, brand kit, Brand Playbook, source facts, missing fact list, vertical risk context. |
 | SourceConnectionService | Manual/upload/website/MenuList/Google/WhatsApp/Meta/source links. |
 | OpportunityService | Campaign cues with owner benefit, evidence, and safe next action labels. |
 | CampaignDecisionEngine | Deterministically ranks campaign recipes from Business Brain facts, timing/readiness signals, assets, missing inputs, trust risk, owner effort, repetition, and compact result memory. It does not call AI, providers, Firebase, or Storage. |
 | CampaignService | Campaign brief, structured channel fields, manual handoff steps, and pack state. |
 | DailyDeskService | In-memory Daily Campaign Desk, pack review, missing input inbox, local visibility cues, and manual delivery cards derived from the existing overview. |
-| CampaignPackOutputService | Derived output-pack contract with channel copy, trust report, reuse notes, mini-page/QR brief, result memory, and browser-local ZIP bundle. |
+| CampaignPackOutputService | Derived output-pack contract with channel copy, trust report, reuse notes, mini-page/QR brief, Campaign Proof Deck brief, result memory, and browser-local ZIP bundle. |
 | GenerationService | Visual/script/video/ad generation jobs. |
 | AssetService | Upload, classify, rights/consent metadata. |
 | TrustService | Fact, source, consent, claim, vertical, destination, asset-rights, and spend checks. |
@@ -58,7 +58,7 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Theme/i18n shell | CampaignCue route group must keep the shared MenuList dark/light, color, RTL, timezone, date/time, and language settings available through the same App Settings panel. CampaignCue dashboard chrome uses shared `next-intl` locale files. CampaignCue owner-page body copy can remain product-specific, but shell behavior must not fork from MenuList. |
 | Date/time handling | Durable timestamps stay as Firestore `Timestamp` or UTC ISO strings. Owner-facing dates and times render through the shared `next-intl` formatter from `LocalisationProvider`, so selected timezone, date format, time format, language, and RTL settings apply. Native datetime inputs are converted with the workspace timezone before persistence; invalid workspace timezone values are rejected at the API schema boundary. |
 | Campaign pack review | Latest campaign review is derived from already-loaded source facts, outputs, trust state, missing inputs, and visibility cues; no separate pack collection is added. |
-| Campaign Pack Output | `CampaignCueOutputPack` is derived from the same overview and downloaded as a browser-local ZIP containing summary, JSON, channel files, trust notes, reuse notes, and result prompt. |
+| Campaign Pack Output | `CampaignCueOutputPack` is derived from the same overview and downloaded as a browser-local ZIP containing summary, JSON, channel files, trust notes, reuse notes, Campaign Proof Deck brief, and result prompt. |
 | Campaign decision object | Created campaigns store the selected deterministic `campaign.pack.decision` plus `recipeId` so later exports can show why the pack was recommended without re-running a model. |
 | Result memory | `record_outcome` accepts a structured `resultSignalId` and updates compact `campaign.resultMemory` for repeat/adjust recommendations without raw scans. |
 
@@ -103,7 +103,7 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 ## Disagreements With ChatGPT
 
 - Do not frame the product as "Local Business Campaign Engine" publicly. It is descriptive but not brandable.
-- Do not treat avatar/AI UGC as the first video primitive. Use uploaded assets, scripts, voiceover, subtitles, and end cards first.
+- Do not treat avatar/AI UGC as the first video primitive. Use uploaded assets, creator-safe scripts, dialogue/action beat sheets, phone-camera plans, B-roll checklists, voiceover/subtitle briefs, and end cards first.
 - Do not claim Google ranking, ad ROI, bookings, or sales without measured source data.
 - Do not allow direct MenuList writes from CampaignCue unless MenuList later exposes an explicit owner-approved write-back API.
 

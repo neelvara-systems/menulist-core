@@ -2,7 +2,7 @@
 
 > **External systems read business and menu data FROM MenuList — the pull counterpart to POS Webhook push.**
 
-**Status:** ✅ IMPLEMENTED (v1.1 — hardened Mar 14, 2026)  
+**Status:** ✅ IMPLEMENTED (v1.2 — summary-source aligned Jun 20, 2026)
 **Feature Flag:** `ENABLE_PUBLIC_API` (default OFF)  
 **Date:** February 22, 2026
 
@@ -52,9 +52,10 @@ MenuList is the **upstream menu authority** (Doc 15 Rule 1). POS Webhook Sync pu
 - **`Retry-After` header** — on 429 rate limit responses
 - **`schemaVersion` field** — in all response payloads (`"1.0"`)
 - **Abuse logging** — IP + user-agent per request for leak detection
+- **Menu source alignment** — menu pull resolves the default project from `platformSummary/projects_{storeId}`, matching the customer renderer.
 
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
 **Created:** February 22, 2026  
-**Last Updated:** March 14, 2026
+**Last Updated:** June 20, 2026

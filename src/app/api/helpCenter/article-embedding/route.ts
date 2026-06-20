@@ -1,13 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
-import { recordAiOperationForSession } from '@lib/ai/operationLog';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
+import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
-import { EMBED_MODEL, callGeminiEmbedding } from '@lib/vectorEmbeddings';
+import { EMBED_MODEL, callGeminiEmbeddingWithMetadata } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
 import { writeLogEntry } from 'logs/utils';
 import { NextRequest, NextResponse } from 'next/server';
@@ -41,6 +42,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (rateLimitResponse) return rateLimitResponse;
 
         const { embeddingPayload } = ArticleEmbeddingRequestSchema.parse(await request.json());
+        const sessionScope = resolveAnswerlatticeSessionScope(session) || (() => {
+            const tenantId = Number(session.tId ?? session.user?.tenantId);
+            const storeId = Number(session.sId ?? session.user?.storeId);
+            return Number.isFinite(tenantId) && Number.isFinite(storeId)
+                ? { tenantId, storeId }
+                : null;
+        })();
+        if (!sessionScope) {
+            return NextResponse.json({ error: 'User not onboarded' }, { status: 400 });
+        }
+
         const articleRef = firestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES).doc(embeddingPayload.articleId);
         const articleDoc = await articleRef.get();
         if (!articleDoc.exists) {
@@ -53,8 +65,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (
             !Number.isFinite(articleTenantId) ||
             !Number.isFinite(articleStoreId) ||
-            articleTenantId !== Number(session.tId) ||
-            articleStoreId !== Number(session.sId)
+            articleTenantId !== Number(sessionScope.tenantId) ||
+            articleStoreId !== Number(sessionScope.storeId)
         ) {
             return NextResponse.json({ error: 'Article not found' }, { status: 404 });
         }
@@ -84,10 +96,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
         const embeddingInput = `Category: ${categoryTitle}\nSection: ${sectionTitle}\nTitle: ${articleTitle}\nContent: ${text}`;
         const operationStart = Date.now();
-        const vector = await callGeminiEmbedding(embeddingInput, {
+        const embeddingResult = await callGeminiEmbeddingWithMetadata(embeddingInput, {
             taskType: 'RETRIEVAL_DOCUMENT',
             title: articleTitle,
         });
+        const vector = embeddingResult.vector;
 
         if (!vector) {
             await writeLogEntry({ logFileName: LOG_FILE, logType: 'EMBEDDING_GENERATION_ERROR', data: vector });
@@ -111,8 +124,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             sourceType: 'kb_article',
         });
         await articleRef.update({ embedding: vector });
-        recordAiOperationForSession(session, {
-            action: AI_ACTIONS_TYPES.HELP_CENTER_EMBEDDING,
+        recordAnswerlatticeAiOperation({
+            tId: articleTenantId,
+            sId: articleStoreId,
+        }, {
+            action: AI_ACTIONS_TYPES.ANSWERLATTICE_KB_EMBEDDING,
             articleId: embeddingPayload.articleId,
             billingMode: 'internal',
             clientResponse: {
@@ -123,7 +139,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             },
             model: EMBED_MODEL,
             processingTime: Date.now() - operationStart,
+            promptTokenCount: embeddingResult.usageMetadata.promptTokenCount || 0,
             source: 'help_center_article_embedding',
+            totalTokenCount: embeddingResult.usageMetadata.totalTokenCount || 0,
+            candidatesTokenCount: embeddingResult.usageMetadata.candidatesTokenCount || 0,
+            tokenCountSource: embeddingResult.usageMetadata.tokenCountSource || 'none',
+        }, {
+            id: session.user?.id,
+            name: session.user?.name,
+            email: session.user?.email,
         }).catch((error) => {
             void writeLogEntry({ logFileName: LOG_FILE, logType: 'EMBEDDING_OPERATION_LOG_ERROR', data: error });
         });

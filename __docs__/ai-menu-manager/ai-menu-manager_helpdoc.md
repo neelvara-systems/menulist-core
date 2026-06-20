@@ -2,13 +2,15 @@
 
 **Status:** Draft owner help article
 **Public naming note:** Public website and launch copy use "AI Menu Manager". In-app help may use "Menu Manager" when referring to the owner navigation label.
-**Last Updated:** June 17, 2026
+**Last Updated:** June 20, 2026
 
 ---
 
 ## Quick Summary
 
-Menu Manager lets you tell MenuList what changed in your menu. MenuList prepares the update, shows a card, and applies it after approval when approval is needed.
+Menu Manager lets you tell MenuList what changed in your menu. MenuList prepares the update, shows a card, and applies supported changes after approval when approval is needed.
+
+You can also ask about the selected menu, such as what needs fixing or which items have no photos. Menu Manager answers from that selected menu only and does not change anything from an answer card.
 
 ---
 
@@ -64,23 +66,27 @@ Screenshot: Sold-out card with time option.
 
 Screenshot: Menu style preview card.
 
-### Generate An Item Image
+### Check What Needs Attention
+
+1. Type a menu question, for example: `What should I fix today?`, `Which items have no photos?`, or `Is this menu ready to share?`.
+2. Read the answer card.
+3. Select a suggested next message if useful, then send it when ready.
+
+Answer cards are read-only. They do not change your menu and do not need approval.
+
+### Prepare An Item Image Request
 
 1. Type the item image request, for example: `Generate image for masala tea`.
-2. Wait for the draft images.
-3. Select **Use on menu**, **Download**, **Regenerate**, or **Reject**.
+2. Menu Manager shows a draft/review card when image actions are available for the selected menu.
+3. The menu image does not change until you explicitly choose to use an approved image.
 
-Screenshot: Generated image card.
+If the image adapter is not available, use the existing image or asset screen.
 
-### Upload A New Menu
+### Prepare A Menu Upload Or Import
 
-1. Select the upload button.
-2. Upload your menu image or PDF.
-3. Wait for MenuList to prepare the review.
-4. Check the review card.
-5. Approve only the changes you want.
+Menu Manager can prepare an import or review handoff when upload/import actions are available. Uploaded or linked menu content must stay in review until you approve the extracted changes.
 
-Screenshot: Menu import review card.
+If the AMM import adapter is not available, use the existing menu upload/import screen.
 
 ---
 
@@ -92,10 +98,11 @@ Examples:
 
 - price changes
 - deleting or archiving items
-- publishing outside MenuList
+- supported MenuList publishing
+- external platform handoff tasks
 - applying to all outlets
-- rollback
-- creating rules
+- rollback, only when undo is supported for that action
+- creating rules, only when the rule adapter is available
 
 The card shows what will change before you approve.
 
@@ -136,6 +143,10 @@ MenuList asks only when it cannot safely decide. Answer the card question or can
 ### A publish task says manual action is needed
 
 Open the task card. It will show what to update outside MenuList.
+
+### Menu Manager says a question is out of scope
+
+Menu Manager only handles selected-menu work and selected-menu questions. Weather, news, sports, and unrelated questions are not answered here.
 
 ---
 

@@ -34,12 +34,12 @@ export default function LaunchSetupProductPage() {
                 activeTab="Set up support"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
                 bentoTitle="You always know what is ready and what is missing."
-                bentoDescription="A buyer should know exactly what remains before launch: setup, content, product surfaces, widget runtime, governance summaries, and first approved answers."
+                bentoDescription="A buyer should know exactly what remains before launch: setup, content, product surfaces, widget runtime, review summaries, and first approved answers."
                 bentoCards={[
-                    { title: 'Launch proof', description: 'Keep setup focused on the proof that support is usable: profile, team access, import, surfaces, widget, governance summaries, signal sources, and answer review.' },
+                    { title: 'Launch proof', description: 'Keep setup focused on the proof that support is usable: profile, team access, import, surfaces, widget, review summaries, signal sources, and answer review.' },
                     { title: 'No enterprise implementation', description: 'Google sign-in and workspace creation get the founder into AnswerLattice without a sales-led project.' },
                     { title: 'Page setup first', description: 'Owners start with the screens where users actually get stuck instead of building a generic docs tree.' },
-                    { title: 'Review before authority', description: 'Generated drafts and early support answers stay review work until the owner approves them.' },
+                    { title: 'Review before users see it', description: 'Generated drafts and early support answers stay review work until the owner approves them.' },
                     { title: 'Owner-managed access', description: 'Owners can reset temporary passcodes and force sign-out when a workspace member needs refreshed access.' },
                     { title: 'Safe key handling', description: 'The widget key is shown for setup and managed through widget settings without exposing tenant or store IDs.' },
                 ]}

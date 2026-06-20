@@ -13,6 +13,7 @@ Implemented now:
 - `CreativeEditorDocumentSnapshot` as durable editor truth with `cue-asset://assetId` references.
 - Boot-time signed URL hydration and autosave-time URL dehydration.
 - Flat-safe projection into the shared Creative Editor that preserves the original image as the first render.
+- Source package snapshots now include saved Brand Playbook fields from Business Brain so old-poster reuse can keep brand direction and avoid-list context without provider decomposition.
 - Cost-shaped Firestore commits: upload completion writes design/job/version/idempotency together, autosave batches design pointer plus version metadata while reusing the existing layer index, repair writes one restore-fallback request, and export writes CueLayers export metadata after output Storage and Asset Library registration succeed.
 
 Not implemented as active runtime yet:

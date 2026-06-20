@@ -23,6 +23,7 @@ export type CampaignCueOutputPickerItemId =
     | "print_in_store"
     | "staff_share_pack"
     | "ad_handoff_pack"
+    | "campaign_proof_deck"
     | "reuse_old_asset"
     | "custom_size";
 
@@ -184,6 +185,18 @@ export const CAMPAIGNCUE_OUTPUT_PICKER_ITEMS: CampaignCueOutputPickerItem[] = [
         searchTokens: ["ads", "handoff", "headline", "destination", "agency"],
         templateKinds: ["campaign_pack", "handoff_pack"],
         title: "Ad handoff pack",
+    },
+    {
+        actionLabel: "Prepare proof deck",
+        channels: ["creative", "ugc", "video"],
+        description: "Brand, campaign, UGC/reel, trust, and source-trace brief for review.",
+        groupId: "handoff",
+        id: "campaign_proof_deck",
+        outputTypes: ["campaign_proof_deck_pdf"],
+        requiredFactTypes: ["business_name", "approved_asset", "asset_rights"],
+        searchTokens: ["proof", "deck", "brand", "approval", "client", "review"],
+        templateKinds: ["campaign_pack", "editor_layout", "handoff_pack"],
+        title: "Campaign proof deck",
     },
     {
         actionLabel: "Reuse old image",

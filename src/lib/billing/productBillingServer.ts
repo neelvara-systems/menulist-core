@@ -360,6 +360,9 @@ export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
         isBeta: subscription.planId === 'answerlattice_beta',
         subscriptionEndDate: subscription.subscriptionEndDate || null,
         monthlyCreditsAllowance: subscription.monthlyCreditsAllowance ?? 0,
+        monthlyCredits: subscription.monthlyCredits ?? 0,
+        topUpCredits: subscription.topUpCredits ?? 0,
+        creditsLastResetMonth: subscription.creditsLastResetMonth ?? null,
         updatedAt: syncedAt,
     };
 

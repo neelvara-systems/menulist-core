@@ -12,7 +12,7 @@ The product must remain useful when only `brief` mode is enabled.
 ## Flow
 
 1. Load campaign, source facts, channel targets, and brand style.
-2. Create a reel brief with scenes, timing, hook, overlays, caption, and CTA.
+2. Create a reel brief with scenes, timing, hook, phone-camera plan, product/service placement, B-roll checklist, overlays, caption, and CTA.
 3. Estimate credits for any render attempt.
 4. If rendering is enabled, send the normalized brief to the video provider adapter.
 5. Store partial outputs if rendering fails.
@@ -32,9 +32,10 @@ The product must remain useful when only `brief` mode is enabled.
 
 Video rendering providers must be optional, feature-flagged, timeout-limited, and usage-metered. Provider output must be treated as draft until trust review passes.
 
+The active export/download runtime uses brief mode only. It adds camera plan, B-roll, product-placement, and consent fields to existing campaign output handoff fields. It does not call an avatar, voiceover, video-render, or upload provider.
+
 ## Acceptance
 
 - Brief mode works without video provider credentials.
 - Failed render attempts keep the script and shot list.
 - Owner can approve or reject the rendered video separately from the script.
-

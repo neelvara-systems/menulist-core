@@ -16,14 +16,17 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import { checkRateLimit } from "@lib/rateLimit";
+import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { FieldValue } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
+import { getClientIp } from "src/middleware/publicApi";
 
-// Rate limit: prevent abuse (even though client-side also limits)
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const seenRequests = new Map<string, number>();
+const TOKEN_RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
 const SCREEN_TOKEN_PATTERN = /^[a-z0-9_-]{6,24}$/i;
 const STORE_ID_PATTERN = /^\d+$/;
+
+const cachedSeenResponse = () => NextResponse.json({ ok: true, cached: true });
 
 const getUtcDateKey = (value: unknown): string | null => {
     const date =
@@ -67,11 +70,22 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid store' }, { status: 400 });
         }
 
-        // Simple rate limit per token (1 per hour max server-side)
-        const lastSeen = seenRequests.get(token);
-        if (lastSeen && Date.now() - lastSeen < RATE_LIMIT_WINDOW_MS) {
-            // Already seen recently, skip write but return success
-            return NextResponse.json({ ok: true, cached: true });
+        const ipRateConfig = getRateLimitForFeature('SCREEN_SEEN_SIGNAL');
+        const ipRateLimit = await checkRateLimit({
+            key: `screen-seen:ip:${getClientIp(request)}`,
+            ...ipRateConfig,
+        });
+        if (!ipRateLimit.allowed) {
+            return cachedSeenResponse();
+        }
+
+        const tokenRateLimit = await checkRateLimit({
+            key: `screen-seen:token:${normalizedStoreId || 'legacy'}:${token}`,
+            limit: 1,
+            window: TOKEN_RATE_LIMIT_WINDOW_SECONDS,
+        });
+        if (!tokenRateLimit.allowed) {
+            return cachedSeenResponse();
         }
 
         const summaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY);
@@ -90,8 +104,7 @@ export async function POST(request: NextRequest) {
             const lastSeenDate = getUtcDateKey(docSnap.data()?.screen?.screenLastSeenAt);
             const todayDate = new Date().toISOString().slice(0, 10);
             if (lastSeenDate === todayDate) {
-                seenRequests.set(token, Date.now());
-                return NextResponse.json({ ok: true, cached: true });
+                return cachedSeenResponse();
             }
 
             docRef = directRef;
@@ -105,8 +118,7 @@ export async function POST(request: NextRequest) {
             const lastSeenDate = getUtcDateKey(snapshot.docs[0].data()?.screen?.screenLastSeenAt);
             const todayDate = new Date().toISOString().slice(0, 10);
             if (lastSeenDate === todayDate) {
-                seenRequests.set(token, Date.now());
-                return NextResponse.json({ ok: true, cached: true });
+                return cachedSeenResponse();
             }
 
             docRef = snapshot.docs[0].ref;
@@ -116,20 +128,6 @@ export async function POST(request: NextRequest) {
         await docRef.update({
             'screen.screenLastSeenAt': FieldValue.serverTimestamp()
         });
-
-        // Update rate limit map
-        seenRequests.set(token, Date.now());
-
-        // Cleanup old entries (prevent memory leak)
-        if (seenRequests.size > 10000) {
-            const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS;
-            const entries = Array.from(seenRequests.entries());
-            for (const [key, time] of entries) {
-                if (time < cutoff) {
-                    seenRequests.delete(key);
-                }
-            }
-        }
 
         logger.info('[Screen Seen] Daily signal recorded', {
             directStoreLookup: Boolean(normalizedStoreId),

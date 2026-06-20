@@ -219,13 +219,10 @@ async function aggregateForStore(
     const tIdNumber = typeof tId === 'string' ? parseInt(tId) : tId;
     const storeIdNumber = typeof storeId === 'string' ? parseInt(storeId) : storeId;
 
-    // 🔍 DEBUG: Log query parameters
-    console.log(`[aggregateForStore] Querying for:`, {
+    console.log(`[aggregateForStore] Querying daily chat stats`, {
         tId: tIdNumber,
         storeId: storeIdNumber,
         date: dateStr,
-        startOfDay: startOfDay.toISOString(),
-        endOfDay: endOfDay.toISOString()
     });
 
     // Query all chats for this STORE on this date
@@ -239,17 +236,7 @@ async function aggregateForStore(
     // 🔍 DEBUG: Log query results
     console.log(`[aggregateForStore] Found ${chatsSnapshot.size} chat sessions for ${dateStr}`);
 
-    // 🔍 DEBUG: Log first document to see its structure
-    if (chatsSnapshot.size > 0) {
-        const firstDoc = chatsSnapshot.docs[0].data();
-        console.log(`[aggregateForStore] Sample document:`, {
-            id: chatsSnapshot.docs[0].id,
-            tId: firstDoc.tId,
-            sId: firstDoc.sId,
-            createdOn: firstDoc.createdOn?.toDate?.() || firstDoc.createdOn,
-            mode: firstDoc.mode
-        });
-    } else {
+    if (chatsSnapshot.size === 0) {
         console.log(`[aggregateForStore] ⚠️ No documents found. Checking if ANY chat sessions exist...`);
         // Query without date filter to see if there are any sessions at all
         const anyChats = await db.collection(DB_COLLECTIONS.CHAT_SESSIONS)
@@ -258,15 +245,6 @@ async function aggregateForStore(
             .limit(1)
             .get();
         console.log(`[aggregateForStore] Found ${anyChats.size} chat sessions (any date) for tId=${tIdNumber}, sId=${storeIdNumber}`);
-        if (anyChats.size > 0) {
-            const sample = anyChats.docs[0].data();
-            console.log(`[aggregateForStore] Sample ANY chat:`, {
-                id: anyChats.docs[0].id,
-                tId: sample.tId,
-                sId: sample.sId,
-                createdOn: sample.createdOn?.toDate?.() || sample.createdOn
-            });
-        }
     }
 
     // Initialize stats

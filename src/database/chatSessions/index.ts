@@ -18,6 +18,10 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, qu
 
 const COLLECTION = DB_COLLECTIONS.CHAT_SESSIONS;
 const USER_CHAT_SESSION_LIMIT = 50;
+const ADMIN_CHAT_SESSION_PAGE_SIZE_LIMIT = 100;
+const ADMIN_CHAT_SESSION_SCAN_LIMIT = 500;
+const CHAT_VOLUME_SESSION_LIMIT = 1000;
+const MAX_CHAT_VOLUME_DAYS = 90;
 
 const collectChatImageUrls = (session?: ChatSession | null): string[] => {
     const urls = new Set<string>();
@@ -37,6 +41,21 @@ const getDocRef = async (docId: string) => {
 const getCollectionRef = async () => {
     return collection(answerlatticeFirebaseClient, `${COLLECTION}`);
 };
+
+const normalizePositiveInteger = (value: unknown, fallback: number, max: number) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+        return fallback;
+    }
+    return Math.min(Math.floor(parsed), max);
+};
+
+const hasValidStoreScope = (session: any) => (
+    Number.isFinite(Number(session?.tId))
+    && Number.isFinite(Number(session?.sId))
+    && Number(session?.tId) > 0
+    && Number(session?.sId) > 0
+);
 
 /**
  * Upload chat image to Firebase Storage with tenant/store isolation
@@ -384,14 +403,19 @@ export const getAllChatSessionsForAdmin = async (
 ) => {
     return await apiCallComposer(
         async () => {
-            const pageSize = filters?.pageSize || 20;
+            if (!hasValidStoreScope(session)) {
+                return { sessions: [], hasNextPage: false, total: 0 };
+            }
+
+            const pageSize = normalizePositiveInteger(filters?.pageSize, 20, ADMIN_CHAT_SESSION_PAGE_SIZE_LIMIT);
             const sortBy = filters?.sortBy || 'modifiedOn';
             const sortOrder = filters?.sortOrder || 'desc';
 
-            // Base query: all sessions for this tenant
+            // Base query: all sessions for this Answerlattice store.
             let q = query(
                 await getCollectionRef(),
                 where('tId', '==', session.tId),
+                where('sId', '==', session.sId),
                 orderBy(sortBy, sortOrder),
                 limit(pageSize + 1) // +1 to check if there's a next page
             );
@@ -481,12 +505,29 @@ export const getChatStatistics = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            if (!hasValidStoreScope(session)) {
+                return {
+                    totalChats: 0,
+                    todayChats: 0,
+                    satisfactionRate: 0,
+                    positiveFeedback: 0,
+                    negativeFeedback: 0,
+                    totalFeedback: 0,
+                    avgMessagesPerChat: 0,
+                    qnaChats: 0,
+                    assistantChats: 0,
+                    regenerationRate: 0,
+                    totalRegenerations: 0
+                };
+            }
+
             // Query sessions for this tenant (capped at 500 to prevent unbounded Firestore reads)
             let q = query(
                 await getCollectionRef(),
                 where('tId', '==', session.tId),
+                where('sId', '==', session.sId),
                 orderBy('createdOn', 'desc'),
-                limit(500)
+                limit(ADMIN_CHAT_SESSION_SCAN_LIMIT)
             );
 
             // Add date range filter if provided
@@ -584,12 +625,17 @@ export const getChatStatistics = async (
 export const getTopQuestions = async (session: any, limitCount: number = 10) => {
     return await apiCallComposer(
         async () => {
+            if (!hasValidStoreScope(session)) {
+                return [];
+            }
+
             // Get recent sessions (capped at 500 to prevent unbounded Firestore reads)
             const q = query(
                 await getCollectionRef(),
                 where('tId', '==', session.tId),
+                where('sId', '==', session.sId),
                 orderBy('createdOn', 'desc'),
-                limit(500)
+                limit(ADMIN_CHAT_SESSION_SCAN_LIMIT)
             );
 
             const querySnapshot = await getDocs(q);
@@ -629,12 +675,17 @@ export const getTopQuestions = async (session: any, limitCount: number = 10) => 
 export const getKnowledgeGaps = async (session: any) => {
     return await apiCallComposer(
         async () => {
+            if (!hasValidStoreScope(session)) {
+                return [];
+            }
+
             // Get recent sessions (capped at 500 to prevent unbounded Firestore reads)
             const q = query(
                 await getCollectionRef(),
                 where('tId', '==', session.tId),
+                where('sId', '==', session.sId),
                 orderBy('createdOn', 'desc'),
-                limit(500)
+                limit(ADMIN_CHAT_SESSION_SCAN_LIMIT)
             );
 
             const querySnapshot = await getDocs(q);
@@ -698,24 +749,31 @@ export const getKnowledgeGaps = async (session: any) => {
 export const getChatVolumeOverTime = async (session: any, days: number = 7) => {
     return await apiCallComposer(
         async () => {
+            if (!hasValidStoreScope(session)) {
+                return [];
+            }
+
+            const safeDays = normalizePositiveInteger(days, 7, MAX_CHAT_VOLUME_DAYS);
             const endDate = new Date();
             const startDate = new Date();
-            startDate.setDate(startDate.getDate() - days);
+            startDate.setDate(startDate.getDate() - safeDays);
             startDate.setHours(0, 0, 0, 0);
 
             const q = query(
                 await getCollectionRef(),
                 where('tId', '==', session.tId),
+                where('sId', '==', session.sId),
                 where('createdOn', '>=', Timestamp.fromDate(startDate)),
                 where('createdOn', '<=', Timestamp.fromDate(endDate)),
-                orderBy('createdOn', 'asc')
+                orderBy('createdOn', 'asc'),
+                limit(CHAT_VOLUME_SESSION_LIMIT)
             );
 
             const querySnapshot = await getDocs(q);
             const dailyCounts: Record<string, number> = {};
 
             // Initialize all days with 0
-            for (let i = 0; i < days; i++) {
+            for (let i = 0; i < safeDays; i++) {
                 const date = new Date(startDate);
                 date.setDate(date.getDate() + i);
                 const dateKey = date.toISOString().split('T')[0];
@@ -742,7 +800,7 @@ export const getChatVolumeOverTime = async (session: any, days: number = 7) => {
 
             return chartData;
         },
-        { session, days },
+        { session, days: normalizePositiveInteger(days, 7, MAX_CHAT_VOLUME_DAYS) },
         'getChatVolumeOverTime'
     );
 };

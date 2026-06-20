@@ -97,7 +97,7 @@ export default function AnswerlatticeComparisonDetailPage({ comparisonPath }: { 
                             className="mb-8"
                             eyebrow="Decision table"
                             title="Compare by operating model, not by hype."
-                            description="The useful question is where the source of authority lives: a chat response, a ticket queue, a document page, or a reviewed support knowledge layer."
+                            description="The useful question is where the official answer comes from: a chat response, a ticket queue, a document page, or a reviewed support knowledge layer."
                         />
                         <div className="overflow-x-auto rounded-[1.5rem] border border-white/[0.06]">
                             <div className="min-w-[48rem]">

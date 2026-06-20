@@ -4,7 +4,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getUnitCost } from '@constant/AI/unitCosts';
 import { revalidateAnswerlatticePublicCache, type AnswerlatticePublicCacheSegment } from '@lib/actions/revalidateAnswerlatticePublicCache';
-import { recordAiOperation } from '@lib/ai/operationLog';
+import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { bumpAnswerlatticeCacheVersionAdmin } from '@lib/answerlattice/cacheVersionAdmin';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
 import { markAnswerlatticeCompiledContextSourceChangedAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
@@ -17,6 +17,7 @@ import {
 import { rebuildProductSurfaceContentSummaryServer } from '@lib/answerlattice/productSurfaceContentServer';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { secureError, secureLog } from '@lib/security/secureLogger';
+import { normalizeGeminiUsageMetadata } from '@lib/vectorEmbeddings';
 import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
@@ -642,30 +643,33 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
             throw new Error('No support-relevant text was extracted from this file.');
         }
 
-        aiOperationId = await recordAiOperation({
+        aiOperationId = await recordAnswerlatticeAiOperation(scope, {
             action,
             billingMode: 'billable',
             byteSize: input.buffer.byteLength,
             clientResponse: {
+                creditConsumption: {
+                    monthlyCreditsDebited: reservation.chargedMonthlyCredits,
+                    topUpCreditsDebited: reservation.chargedTopUpCredits,
+                    unitsConsumed: reservation.unitsReserved,
+                    monthlyCreditsAfter: reservation.remainingBalance.monthlyCredits,
+                    topUpCreditsAfter: reservation.remainingBalance.topUpCredits,
+                    totalCreditsAfter: reservation.remainingBalance.monthlyCredits + reservation.remainingBalance.topUpCredits,
+                },
                 extractedTextLength: extracted.text.length,
                 mediaKind,
             },
             fileId: input.fileName || null,
             geminiResponse: extracted.rawResponse,
             model: INTAKE_MEDIA_MODEL,
-            pId: PRODUCT_IDS.ANSWERLATTICE,
             processingTime: extracted.processingTime,
-            sId: scope.sId,
             source: 'answerlattice_knowledge_intake',
-            tId: scope.tId,
-            totalTokenCount: extracted.rawResponse?.usageMetadata?.totalTokenCount || 0,
-            promptTokenCount: extracted.rawResponse?.usageMetadata?.promptTokenCount || 0,
-            candidatesTokenCount: extracted.rawResponse?.usageMetadata?.candidatesTokenCount || 0,
+            totalTokenCount: extracted.usageMetadata.totalTokenCount || 0,
+            promptTokenCount: extracted.usageMetadata.promptTokenCount || 0,
+            candidatesTokenCount: extracted.usageMetadata.candidatesTokenCount || 0,
+            tokenCountSource: extracted.usageMetadata.tokenCountSource || 'none',
             unitsConsumed: getUnitCost(action),
-            uId: actor?.id ? String(actor.id) : undefined,
-            createdBy: actor?.email || actor?.name || 'answerlattice',
-            modifiedBy: actor?.email || actor?.name || 'answerlattice',
-        });
+        }, actor);
 
         const source = await addKnowledgeSource(scope, jobId, {
             type: sourceType,
@@ -693,13 +697,14 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
 
         await finalizeAnswerlatticeIntakeUsage(scope, reservation.ledgerId, {
             aiOperationId,
-            candidatesTokenCount: extracted.rawResponse?.usageMetadata?.candidatesTokenCount || 0,
+            candidatesTokenCount: extracted.usageMetadata.candidatesTokenCount || 0,
             metadata: {
                 sourceId: source.id,
                 mediaKind,
             },
-            promptTokenCount: extracted.rawResponse?.usageMetadata?.promptTokenCount || 0,
-            totalTokenCount: extracted.rawResponse?.usageMetadata?.totalTokenCount || 0,
+            promptTokenCount: extracted.usageMetadata.promptTokenCount || 0,
+            tokenCountSource: extracted.usageMetadata.tokenCountSource || 'none',
+            totalTokenCount: extracted.usageMetadata.totalTokenCount || 0,
             unitsCharged: reservation.unitsReserved,
         });
 
@@ -909,10 +914,52 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
 
         return { published };
     } catch (error) {
+        const failedAt = now();
+        const message = error instanceof Error ? error.message : 'Publish failed.';
+        const counters = await refreshJobCounters(scope, jobId).catch((counterError) => {
+            secureError('[Answerlattice Intake] Failed to refresh counters after partial publish failure', counterError as Error, {
+                ...scope,
+                jobId,
+            });
+            return null;
+        });
+
+        if (segments.size > 0) {
+            await Promise.all(Array.from(segments).map(segment => revalidateAnswerlatticePublicCache(scope.tId, scope.sId, segment))).catch((cacheError) => {
+                secureError('[Answerlattice Intake] Public cache revalidation failed after partial publish failure', cacheError as Error, {
+                    ...scope,
+                    jobId,
+                });
+            });
+        }
+
+        if (published.length > 0) {
+            await summaryRef(scope).set(buildSummaryPatch(scope, {
+                activeJobId: jobId,
+                activeJobTitle: job.title,
+                publishedItems: FieldValue.increment(published.length),
+                lastPublishedAt: failedAt,
+                ...(counters ? {
+                    reviewItems: counters.total,
+                    acceptedItems: counters.accepted,
+                } : {}),
+            }), { merge: true });
+        }
+
         await jobRef(jobId).set({
-            status: ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.FAILED,
-            errorMessage: error instanceof Error ? error.message : 'Publish failed.',
-            modifiedOn: now(),
+            status: published.length > 0
+                ? ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.REVIEWING
+                : ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.FAILED,
+            ...(counters ? {
+                reviewItemCount: counters.total,
+                acceptedItemCount: counters.accepted,
+                rejectedItemCount: counters.rejected,
+                publishedItemCount: counters.published,
+            } : {}),
+            errorMessage: published.length > 0
+                ? `Published ${published.length} item${published.length === 1 ? '' : 's'}, then stopped: ${message}`
+                : message,
+            modifiedOn: failedAt,
             ...mutableActorFields(actor),
         }, { merge: true });
         throw error;
@@ -1235,33 +1282,36 @@ async function maybeEmbedArticle(articleData: Record<string, any>, actor?: Intak
     const text = cleanLongText(`${articleData.title}\n${articleData.plainText}`, 8000);
     if (!text || text.length < 40) return;
     try {
-        const { callGeminiEmbedding } = await import('@lib/vectorEmbeddings');
-        articleData.embedding = await callGeminiEmbedding(text, {
+        const operationStart = Date.now();
+        const { callGeminiEmbeddingWithMetadata } = await import('@lib/vectorEmbeddings');
+        const embeddingResult = await callGeminiEmbeddingWithMetadata(text, {
             taskType: 'RETRIEVAL_DOCUMENT',
             title: articleData.title,
         });
+        articleData.embedding = embeddingResult.vector;
         articleData.embeddingStatus = 'embedded';
         articleData.embeddingCacheVersion = 'gemini-embedding-001:768:v1';
-        await recordAiOperation({
+        await recordAnswerlatticeAiOperation({
+            tId: Number(articleData.tId),
+            sId: Number(articleData.sId),
+        }, {
             action: AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING,
             billingMode: 'internal',
             byteSize: Buffer.byteLength(text, 'utf8'),
             clientResponse: {
                 articleId: articleData.id,
-                embeddingDimensions: Array.isArray(articleData.embedding) ? articleData.embedding.length : 0,
+                embeddingDimensions: (articleData.embedding?.values || articleData.embedding?._values || []).length,
             },
             fileId: articleData.id || null,
             model: 'gemini-embedding-001',
-            pId: PRODUCT_IDS.ANSWERLATTICE,
-            processingTime: 0,
-            sId: Number(articleData.sId),
+            processingTime: Date.now() - operationStart,
             source: 'answerlattice_knowledge_intake_publish',
-            tId: Number(articleData.tId),
+            promptTokenCount: embeddingResult.usageMetadata.promptTokenCount || 0,
+            totalTokenCount: embeddingResult.usageMetadata.totalTokenCount || 0,
+            candidatesTokenCount: embeddingResult.usageMetadata.candidatesTokenCount || 0,
+            tokenCountSource: embeddingResult.usageMetadata.tokenCountSource || 'none',
             unitsConsumed: getUnitCost(AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING),
-            uId: actor?.id ? String(actor.id) : undefined,
-            createdBy: actor?.email || actor?.name || 'answerlattice',
-            modifiedBy: actor?.email || actor?.name || 'answerlattice',
-        });
+        }, actor);
     } catch (error) {
         articleData.embedding = null;
         articleData.embeddingStatus = 'failed';
@@ -1588,11 +1638,12 @@ Rules:
 - Keep extractedText under 8000 characters.`;
 
     const started = Date.now();
+    const requestText = `${prompt}\n\nFile name: ${input.fileName || 'unknown'}\nOwner title: ${input.title || 'not provided'}`;
     const rawResponse = await genAIClient.models.generateContent({
         model: INTAKE_MEDIA_MODEL,
         contents: [
             {
-                text: `${prompt}\n\nFile name: ${input.fileName || 'unknown'}\nOwner title: ${input.title || 'not provided'}`,
+                text: requestText,
             },
             {
                 inlineData: {
@@ -1621,6 +1672,7 @@ Rules:
         rawResponse,
         processingTime: Date.now() - started,
         text,
+        usageMetadata: normalizeGeminiUsageMetadata(rawResponse, requestText, text),
     };
 }
 

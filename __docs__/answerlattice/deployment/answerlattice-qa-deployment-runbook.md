@@ -103,7 +103,7 @@ Verification performed:
 - Created and updated a changelog page under Answerlattice Firestore.
 - Confirmed the same ticket and changelog documents were not present in the default MenuList Firebase project.
 - Called `/api/widget/config` with a real `al_*` Answerlattice widget key and received remote config with route blocklist values.
-- Deployed `firestore-answerlattice.rules` to `answerlattice-qa` after allowing tenant write roles to manage their own changelog documents and tenant-scoped reads of `answerlattice_aiOperations`.
+- Deployed `firestore-answerlattice.rules` to `answerlattice-qa` after allowing tenant write roles to manage their own changelog documents. `answerlattice_aiOperations` direct Firestore reads are platform-only; tenant billing usage reads must go through the sanitized `/api/answerlattice/ai-operations` route.
 
 Local route verification:
 
@@ -111,6 +111,23 @@ Local route verification:
 - `Host: ecomsai.com` + `/dashboard` rewrites to `/answerlattice/dashboard`.
 - `Host: menulist.online` + `/dashboard` stays in the MenuList owner app.
 - `/__answerlattice` still renders the Answerlattice site directly for local/dev checks.
+
+## 2026-06-20 AI Accounting Deploy Attempt
+
+Local validation passed for Answerlattice AI operation accounting, token tracking, server-side manual draft/entity extraction, Cloud Function accounting, and platform-only raw AI operation reads:
+
+- `npx tsc --noEmit --incremental false`
+- `npm run build` from `functions-answerlattice/`
+- `git diff --check`
+
+Deploy was attempted with Firebase CLI under Node `20.20.2` because the local default Node `18.18.2` is below the Firebase CLI requirement.
+
+- `firebase deploy --only functions:answerlattice,firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive`
+  - Predeploy functions build passed.
+  - Blocked at Firestore rules validation: `Request to https://firebaserules.googleapis.com/v1/projects/answerlattice-qa:test had HTTP Error: 403, The caller does not have permission`.
+- `firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive`
+  - Predeploy functions build passed.
+  - Blocked at project lookup: `Request to https://cloudresourcemanager.googleapis.com/v1/projects/answerlattice-qa had HTTP Error: 403, The caller does not have permission`.
 
 ## 2026-05-21 Full-Flow QA Pass
 
@@ -222,6 +239,8 @@ Firestore rules and indexes:
 - 2026-06-11: Public compiled bundle proxy responses now include public CORS handling and return a no-store `503 Bundle unavailable` when Answerlattice Storage Admin credentials/access fail. Local unauthenticated API sweep confirmed this path is service-unavailable while the local Storage credential reports `invalid_grant: account not found`.
 - 2026-06-11: Widget/public API hardening added the `aiSearchHistory` cache lookup index (`cacheKey asc`, `tId asc`, `sId asc`, `createdOn desc`). Local JSON validation, TypeScript, and targeted lint passed, but deploy is blocked for the active account. `firebase deploy --only firestore:indexes --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` failed during Firebase Rules API preflight with `403 The caller does not have permission`; direct `gcloud firestore indexes composite create --project=answerlattice-qa --database='(default)' --collection-group=aiSearchHistory --query-scope=COLLECTION --field-config=field-path=cacheKey,order=ascending --field-config=field-path=tId,order=ascending --field-config=field-path=sId,order=ascending --field-config=field-path=createdOn,order=descending --quiet` failed with `PERMISSION_DENIED` for active account `tech.ecomsai@gmail.com`.
 - 2026-06-16: Added separate Firebase content-reaction rules for `article_feedback/{tId}/{sId}/{docId}` and `changelog_feedback/{tId}/{sId}/{docId}`. Local rules compile passed during a default-project deploy, but the correct Answerlattice QA deploy remains blocked for the active account. `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` failed during Firebase Rules API preflight with `403 The caller does not have permission`.
+- 2026-06-20: Added Answerlattice AI operation/token accounting for app routes and Cloud Functions. Local root TypeScript, functions build, and diff check passed. `firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` first required loading Node 20.20.2 for Firebase CLI 14, then failed at Cloud Resource Manager with `403 The caller does not have permission` for project `answerlattice-qa`.
+- 2026-06-20: Forensic audit hardening added store-scoped `chatSessions` composite indexes and removed raw approved-job payload logging from the Answerlattice publish callable. Local root TypeScript, lint, app build, functions build, Answerlattice runtime verifier, and diff check passed. `firebase deploy --only firestore:indexes,functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` failed during Firestore Rules API preflight with `403 The caller does not have permission`; retrying `firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` failed at Cloud Resource Manager with the same permission blocker.
 
 Storage rules:
 

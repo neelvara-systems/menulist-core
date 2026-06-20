@@ -91,6 +91,29 @@ export const getMutationProposalById = async (proposalId: string) => {
     );
 };
 
+export const regenerateMutationProposalDraft = async (proposalId: string, regeneratedBy?: string) => {
+    return apiCallComposer(
+        async () => {
+            const response = await fetch('/api/answerlattice/mutation-proposals/regenerate-draft', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ proposalId, regeneratedBy }),
+            });
+
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(result?.error || 'Draft generation failed');
+            }
+
+            return result;
+        },
+        { proposalId },
+        'regenerateMutationProposalDraft',
+    );
+};
+
 /**
  * Create a new mutation proposal
  */
@@ -226,6 +249,9 @@ export const approveDraftAsCanonicalAnswer = async (
             }
             const proposal = { ...proposalSnap.data(), id: proposalSnap.id } as AnswerlatticeMutationProposal;
 
+            if (Number(proposal.tId) !== Number(tId) || Number(proposal.sId) !== Number(sId)) {
+                throw new Error('Proposal is outside the current Answerlattice workspace');
+            }
             if (proposal.status !== 'pending_review') {
                 throw new Error(`Cannot approve draft in '${proposal.status}' state — must be 'pending_review'`);
             }
@@ -250,6 +276,9 @@ export const approveDraftAsCanonicalAnswer = async (
             const entity = await getEntityById(entityId);
             if (!entity) {
                 throw new Error(`Entity ${entityId} not found`);
+            }
+            if (Number(entity.tId) !== Number(tId) || Number(entity.sId) !== Number(sId)) {
+                throw new Error(`Entity ${entityId} is outside the current Answerlattice workspace`);
             }
             if (entity.status === 'deprecated') {
                 throw new Error(`Cannot create answer for deprecated entity "${entity.name}"`);

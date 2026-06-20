@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import {
     handlePublicApiCorsPreflight,
@@ -155,10 +156,10 @@ export async function POST(request: NextRequest) {
 
         const { storeData, storeId } = authResult;
         const credential = authResult.credential || {};
-        if (credential.productId && credential.productId !== 'AL') {
+        if (credential.productId && credential.productId !== PRODUCT_IDS.ANSWERLATTICE) {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
-        if (credential.purpose && !String(credential.purpose).startsWith('answerlattice')) {
+        if (credential.purpose && credential.purpose !== 'answerlattice_widget') {
             return jsonResponse(request, { error: 'Invalid API key' }, { status: 401 });
         }
         if (!hasPublicApiCredentialScope(credential, 'widget:feedback')) {

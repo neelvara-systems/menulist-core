@@ -137,6 +137,24 @@ const buildCampaignCueTextPlaceholders = (params: {
         sourceRef: params.output?.id,
         value: getCampaignCueDestination(params.businessBrain, params.output),
     },
+    {
+        id: "brand-feel",
+        label: "Brand feel",
+        sourceRef: "brand_playbook",
+        value: params.businessBrain.brandKit.playbook.brandFeel.join(", "),
+    },
+    {
+        id: "brand-visual-motifs",
+        label: "Brand visual motifs",
+        sourceRef: "brand_playbook",
+        value: params.businessBrain.brandKit.playbook.visualMotifs.join(", "),
+    },
+    {
+        id: "brand-avoid-list",
+        label: "Brand avoid list",
+        sourceRef: "brand_playbook",
+        value: params.businessBrain.brandKit.playbook.avoidList.join(", "),
+    },
 ]);
 
 export function buildCampaignCueBlankCreativeDocument(params: {

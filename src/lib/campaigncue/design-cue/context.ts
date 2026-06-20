@@ -12,6 +12,9 @@ import type {
 
 export interface CampaignCueDesignCueContext {
     brandColor: string;
+    brandFeel: string[];
+    brandAvoidList: string[];
+    brandVisualMotifs: string[];
     brandVoice: string;
     businessName: string;
     businessType: string;
@@ -110,8 +113,11 @@ export const buildCampaignCueDesignCueContext = (params: {
     const localitySource = cleanDesignCueText(businessBrain?.locality || params.overview?.locations?.[0]?.locality);
     const contact = getContactLine(businessBrain);
     return {
-        brandColor: cleanDesignCueText(businessBrain?.brandKit.primaryColor || brand?.primaryColor) || DEFAULT_BRAND_COLOR,
-        brandVoice: cleanDesignCueText(businessBrain?.brandKit.voice || brand?.voice) || "friendly",
+        brandColor: cleanDesignCueText(businessBrain?.brandKit?.primaryColor || brand?.primaryColor) || DEFAULT_BRAND_COLOR,
+        brandFeel: businessBrain?.brandKit?.playbook?.brandFeel || [],
+        brandAvoidList: businessBrain?.brandKit?.playbook?.avoidList || [],
+        brandVisualMotifs: businessBrain?.brandKit?.playbook?.visualMotifs || [],
+        brandVoice: cleanDesignCueText(businessBrain?.brandKit?.voice || brand?.voice) || "friendly",
         businessName: businessNameSource || DEFAULT_BUSINESS_NAME,
         businessType: titleizeBusinessType(businessBrain?.businessType),
         contactKind: contact.contactKind,

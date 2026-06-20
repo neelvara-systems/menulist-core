@@ -19,6 +19,8 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
+import { revalidatePublicClientCacheForStore } from '../logic/publicCacheRevalidation';
+import { invalidateOwnerBusinessAssistantContextPackets } from '../ownerBusinessAssistant/contextPacketCacheInvalidation';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -80,6 +82,14 @@ async function syncStorePlanEntitlement(
                 source,
             },
         }, { merge: true }),
+    ]);
+
+    await Promise.all([
+        revalidatePublicClientCacheForStore(storeId, source),
+        invalidateOwnerBusinessAssistantContextPackets({
+            tId: sub.tenantId ?? sub.tId,
+            sId: storeId,
+        }),
     ]);
 }
 

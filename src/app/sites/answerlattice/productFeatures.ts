@@ -183,7 +183,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             { title: 'Knowledge Base', description: 'Accepted article drafts become reviewed KB content with embeddings attempted at publish time.' },
             { title: 'FAQ Management', description: 'Short answers can publish as owner-reviewed FAQs tied to product material and context keys.' },
             { title: 'Product Surfaces', description: 'Selected page context can become support-aware route and workflow mappings.' },
-            { title: 'Answer review', description: 'Approved-answer output stays reviewable through proposals instead of auto-publishing authority.' },
+            { title: 'Answer review', description: 'Approved-answer output stays reviewable through proposals instead of auto-publishing official support.' },
         ],
         faq: [
             {
@@ -320,7 +320,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                     'Use context keys, tags, entities, and article links so billing answers show on billing pages and onboarding answers show on onboarding pages.',
             },
             {
-                title: 'Review before authority',
+                title: 'Review before users see it',
                 description:
                     'Owner-approved FAQ answers can become trusted shortcuts; drafts do not silently become official guidance.',
             },
@@ -447,7 +447,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Does AnswerLattice auto-change answers after a release?',
                 description:
-                    'No. Release impact can create review work, but authoritative answers remain human-approved.',
+                    'No. Release impact can create review work, but official answers remain human-approved.',
             },
         ],
     },
@@ -587,7 +587,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             { title: 'Move the status', description: 'Use current status for the board view while preserving timestamped status activity.' },
             { title: 'Attach product context', description: 'Link the item to a surface, entity, answer, ticket, or conversation when that helps review.' },
             { title: 'Create a proposal', description: 'Draft an answer proposal only when the support item should become reusable support knowledge.' },
-            { title: 'Approve the answer', description: 'The review queue remains the authority layer before an answer becomes official.' },
+            { title: 'Approve the answer', description: 'The review queue remains the approval step before an answer becomes official.' },
         ],
         connectedTitle: 'The board turns scattered follow-up into review work.',
         connectedDescription:
@@ -860,7 +860,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             { title: 'Let runtime gate the call', description: 'The widget checks capability state before requesting proactive help.' },
             { title: 'Review feedback', description: 'Use feedback and fallback signals to improve the trigger or support content.' },
         ],
-        connectedTitle: 'Proactive prompts should follow the same authority model.',
+        connectedTitle: 'Proactive prompts should follow the same review model.',
         connectedDescription:
             'A proactive suggestion is still support knowledge. It must stay scoped to product context, approved content, widget controls, and reviewable signals.',
         connectedItems: [
@@ -878,7 +878,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             {
                 title: 'Does proactive help auto-generate answers?',
                 description:
-                    'No. Proactive prompts should point to approved support content or reviewable fallback paths. They do not publish new authoritative answers by themselves.',
+                    'No. Proactive prompts should point to approved support content or reviewable fallback paths. They do not publish new official answers by themselves.',
             },
             {
                 title: 'Will this increase widget cost on every page?',

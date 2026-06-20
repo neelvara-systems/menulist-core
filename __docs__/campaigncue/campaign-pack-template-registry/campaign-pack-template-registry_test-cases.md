@@ -20,6 +20,7 @@
 | Owner chooses `WhatsApp sales pack` output | Filters loaded category/workspace summaries in memory by output type, channel, kind, required fact, and tags. |
 | Owner switches from WhatsApp to Google to print | No additional platform catalog, workspace index, Storage, provider, or Cloud Function call. |
 | Owner chooses output intent with no matching template | Owner can still create a bounded channel pack from the current cue. |
+| Owner chooses Campaign Proof Deck | Filters locally by `campaign_proof_deck_pdf` and keeps the proof deck as a review artifact inside the pack. |
 | Owner chooses custom size | Opens the existing blank shared-editor flow; no template marketplace or new persistence path is created. |
 | Overflow doc exists | Not read until owner clicks "More templates". |
 | Platform summary lacks payload path | Seed/admin verifier rejects it. |
@@ -36,6 +37,7 @@
 | Owner opens saved pack with editor document | Opens the shared editor with task, protected-fact, Trust Center, delivery, result-memory, and mobile-review context intact. |
 | Saved pack has old price | Shows missing/review state until current price is confirmed. |
 | Saved pack has old phone | Uses current Business Brain phone or asks owner to choose. |
+| Saved pack has Brand Playbook fields | Search/style tags use saved owner fields, then reopen against current Business Brain playbook truth. |
 | Owner deletes saved pack | Rewrites index and deletes workspace Storage payloads. |
 
 ## Trust and Safety

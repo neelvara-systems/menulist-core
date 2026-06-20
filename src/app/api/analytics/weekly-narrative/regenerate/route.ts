@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@lib/monitoring/logger';
 import { POST as generateWeeklyNarrativeLocally } from '../generate-local/route';
 
 export async function POST(request: NextRequest) {
@@ -14,12 +15,11 @@ export async function POST(request: NextRequest) {
     return await generateWeeklyNarrativeLocally(request);
 
   } catch (error: any) {
-    console.error('[Weekly Narrative Regeneration] Error:', error);
+    logger.error('[Weekly Narrative Regeneration] Error', error);
 
     return NextResponse.json(
       {
-        error: 'Failed to regenerate weekly narrative',
-        details: error.message
+        error: 'Failed to regenerate weekly narrative'
       },
       { status: 500 }
     );

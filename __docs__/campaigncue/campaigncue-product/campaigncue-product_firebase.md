@@ -9,7 +9,7 @@ CampaignCue is cost-sensitive because campaign generation, videos, asset process
 | Collection family | Read pattern | Write pattern | Cost risk |
 | --- | --- | --- | --- |
 | `campaigncueWorkspaces/{workspaceId}` | Workspace load | Server-created workspace, members, settings | Medium |
-| `campaigncueWorkspaces/{workspaceId}/businessBrains/{businessBrainId}` | Business Brain load, campaign creation | Profile, catalog, brand kit, source confidence | Medium |
+| `campaigncueWorkspaces/{workspaceId}/businessBrains/{businessBrainId}` | Business Brain load, campaign creation | Profile, catalog, brand kit, Brand Playbook, source confidence | Medium |
 | `campaigncueWorkspaces/{workspaceId}/sourceSnapshots/{snapshotId}` | Campaign generation/trust check | Snapshot with source facts, missing facts, vertical risks, and hash on changed source data | Medium |
 | `campaigncueWorkspaces/{workspaceId}/campaigns/{campaignId}` | Campaign lists and detail | Brief, status, output references | Medium |
 | `campaigncueWorkspaces/{workspaceId}/assets/{assetId}` | Asset library and campaign selection | Asset metadata, rights, consent type, tags, source links | Medium |
@@ -62,7 +62,7 @@ The current implementation adds an export/download-first CampaignCue runtime:
 - Date/time handling: durable schedule/source/campaign timestamps remain Firestore `Timestamp` or UTC ISO values. Owner-facing formatting happens in the client through the shared app formatter and native datetime inputs convert through the workspace timezone before persistence. This adds no Firestore read/write, Storage object, Cloud Function, or provider cost.
 - Workspace load: one bounded server overview read for workspace, Business Brain, source inputs, campaigns, assets, schedules, locations, and one analytics summary; zero realtime listeners. Provider connection records are not read in the active runtime.
 - Daily Campaign Desk and Campaign Decision Engine: computed from the same overview payload and recomputed locally after owner mutations; vertical recipes, deterministic scoring, manual delivery tasks, asset-reuse prompts, and result options add zero additional overview reads, writes, realtime listeners, Storage calls, Cloud Functions, providers, or model calls.
-- Campaign Pack Output System: `CampaignCueOutputPack` is derived from the same overview payload and downloaded as a browser-local ZIP; it adds no new collection, read, write, Storage object, Cloud Function, provider call, or model call.
+- Campaign Pack Output System: `CampaignCueOutputPack`, including Campaign Proof Deck brief content, is derived from the same overview payload and downloaded as a browser-local ZIP; it adds no new collection, read, write, Storage object, Cloud Function, provider call, or model call.
 - Standalone campaign, asset, source, read-only provider posture, location, and analytics endpoints use direct workspace-only reads instead of loading the full overview.
 - First workspace load: may create workspace, business brain, source snapshot, and dashboard summary documents once for the signed-in tenant/store.
 - Owner business/profile save: after workspace/business guard reads, reads the compact `sourceSnapshots/current` read model, rebuilds current facts from the new Business Brain plus saved snapshot facts, and writes workspace/business/source snapshot updates in one batch. It does not list `sourceInputs` for profile-only changes.

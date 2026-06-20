@@ -25,7 +25,7 @@ const TRUST_CONTROLS = [
     },
     {
         status: 'review first',
-        title: 'Keep approval before authority',
+        title: 'Keep approval before users see it',
         detail: 'Drafts and improvements stay reviewable before they become official answers.',
         tone: 'good' as const,
         rows: [['official answer', 'owner approved']] as Array<[string, string]>,

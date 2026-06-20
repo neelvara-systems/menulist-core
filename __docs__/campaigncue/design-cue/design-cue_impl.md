@@ -44,9 +44,9 @@ Use this hierarchy:
 | Path | Purpose |
 | --- | --- |
 | `src/constants/campaigncue/designCue.ts` | Action ids, command chips, copy, limits, patch allowlists, feature ids. |
-| `src/lib/campaigncue/design-cue/context.ts` | Builds `DesignCueContext` from current document and CampaignCue overview. |
+| `src/lib/campaigncue/design-cue/context.ts` | Builds `DesignCueContext` from current document, CampaignCue overview, and saved Brand Playbook review fields. |
 | `src/lib/campaigncue/design-cue/intent.ts` | Deterministic command and comment intent resolver. Unsupported product-neutral strings fail closed. |
-| `src/lib/campaigncue/design-cue/patches.ts` | Patch builders for text, selected layer, canvas presets, business checks, brand checks, and export checklist actions. |
+| `src/lib/campaigncue/design-cue/patches.ts` | Patch builders for text, selected layer, canvas presets, business checks, Brand Playbook-aware brand checks, and export checklist actions. |
 | `src/lib/campaigncue/design-cue/validate.ts` | Patch validation, layer existence/lock checks, text safety, numeric bounds, color safety, and layer patch allowlist. |
 | `src/lib/campaigncue/design-cue/apply.ts` | Applies validated patch sets to `CreativeEditorDocument`. |
 | `src/lib/campaigncue/design-cue/modelAdapter.ts` | Optional provider adapter boundary; currently disabled/fail-closed. |
@@ -110,7 +110,7 @@ type DesignCuePatchSet = {
 | Add contact line | Insert approved WhatsApp, phone, booking, menu, or website contact from Business Brain. If none is confirmed, show a review finding and do not add placeholder text. | No |
 | Make square/story/poster | Resize canvas and scale layers. | No |
 | Check facts | Text scan against source facts and protected facts. | No |
-| Check brand | Brand color/name/logo presence check. | No |
+| Check brand | Brand color/name/logo presence check plus Brand Playbook feel, visual motif, and avoid-list review notes. | No |
 | Export checklist | Static checklist from delivery boundary and rights status. | No |
 | Ready for WhatsApp | Static readiness findings for business name, approved contact, text density, and manual WhatsApp handoff. | No |
 | Ready for Google | Static readiness findings for business name, contact, locality, destination, and Google Business Profile handoff. | No |

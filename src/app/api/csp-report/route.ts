@@ -10,8 +10,13 @@ export const dynamic = 'force-dynamic';
  */
 
 import { logger } from '@lib/monitoring/logger';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { NextRequest } from 'next/server';
 
 const isDev = process.env.NODE_ENV === 'development';
+const CSP_REPORT_MAX_BYTES = 32 * 1024;
+const CSP_REPORT_FIELD_MAX_LENGTH = 500;
 
 interface CSPReport {
     'csp-report': {
@@ -24,9 +29,40 @@ interface CSPReport {
     };
 }
 
-export async function POST(request: Request) {
+const getClientIp = (request: NextRequest): string => {
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    if (forwardedFor) return forwardedFor.split(',')[0].trim();
+    return request.headers.get('x-real-ip') || request.headers.get('cf-connecting-ip') || 'unknown';
+};
+
+const safeReportField = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.replace(/[\r\n\t]/g, ' ').trim();
+    return normalized ? normalized.slice(0, CSP_REPORT_FIELD_MAX_LENGTH) : undefined;
+};
+
+export async function POST(request: NextRequest) {
     try {
-        const report: CSPReport = await request.json();
+        const config = getRateLimitForFeature('CSP_REPORT');
+        const limit = await checkRateLimit({
+            key: `csp-report:${getClientIp(request)}`,
+            ...config,
+        });
+        if (!limit.allowed) {
+            return new Response(null, { status: 204 });
+        }
+
+        const contentLength = Number(request.headers.get('content-length') || 0);
+        if (contentLength > CSP_REPORT_MAX_BYTES) {
+            return new Response(null, { status: 204 });
+        }
+
+        const body = await request.text();
+        if (body.length > CSP_REPORT_MAX_BYTES) {
+            return new Response(null, { status: 204 });
+        }
+
+        const report: CSPReport = JSON.parse(body);
         const cspReport = report['csp-report'];
 
         if (!cspReport) {
@@ -35,15 +71,15 @@ export async function POST(request: Request) {
 
         // Extract violation details
         const violation = {
-            blockedUri: cspReport['blocked-uri'],
-            violatedDirective: cspReport['violated-directive'],
-            sourceFile: cspReport['source-file'],
+            blockedUri: safeReportField(cspReport['blocked-uri']),
+            violatedDirective: safeReportField(cspReport['violated-directive']),
+            sourceFile: safeReportField(cspReport['source-file']),
             lineNumber: cspReport['line-number'],
             columnNumber: cspReport['column-number'],
             timestamp: new Date().toISOString(),
-            userAgent: request.headers.get('user-agent'),
+            userAgent: safeReportField(request.headers.get('user-agent')),
             // Add URL context
-            reportUrl: request.headers.get('referer') || 'unknown',
+            reportUrl: safeReportField(request.headers.get('referer')) || 'unknown',
         };
 
         // 🚨 SECURITY LOGGING

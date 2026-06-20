@@ -35,6 +35,7 @@ type FinalizeUsageInput = {
     metadata?: Record<string, any>;
     promptTokenCount?: number;
     candidatesTokenCount?: number;
+    tokenCountSource?: 'provider' | 'estimated' | 'mixed' | 'none';
     totalTokenCount?: number;
     unitsCharged?: number;
 };
@@ -281,6 +282,7 @@ export async function finalizeAnswerlatticeIntakeUsage(_scope: AnswerlatticeScop
         aiOperationId: input.aiOperationId || null,
         promptTokenCount: Number(input.promptTokenCount || 0),
         candidatesTokenCount: Number(input.candidatesTokenCount || 0),
+        tokenCountSource: input.tokenCountSource || 'none',
         totalTokenCount: Number(input.totalTokenCount || 0),
         metadata: sanitizeMetadata(input.metadata),
         settledOn: now(),

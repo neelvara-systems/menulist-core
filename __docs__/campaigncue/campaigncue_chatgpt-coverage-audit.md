@@ -75,6 +75,7 @@
 | Earlier naming preference was SignalPack.ai | Changed to CampaignCue.ai because it better describes cue-to-campaign action and has fewer positioning drawbacks. |
 | Launch-ordering language | Rewritten as day-one complete architecture with implementation flags, not staged roadmap promises. |
 | UGC-style video value | Kept scripts and creator briefs; blocked fake first-person customer testimonials without real source. |
+| AI UGC avatar tutorial | Kept the structured UGC prompt pattern as persona, camera plan, product placement, dialogue/action beats, and B-roll checklist. Rejected AI-avatar-first output, fake authenticity language, and fictional first-person testimonials. |
 | Google/local automation | Kept export/download path active; direct publish remains a separate future provider layer because Google Business Profile APIs have post-type limitations. |
 | WhatsApp execution | Kept WhatsApp as primary channel but made opt-in, opt-out, template, and spam controls part of the core product. |
 | Analytics outcomes | Kept measurement model but separated usage, execution, performance, and business outcomes so reports do not claim sales without proof. |
@@ -87,7 +88,7 @@
 | Separate product, not MenuList | Product id, docs, routes, public shell, app shell, CampaignCue Firebase config/rules/index/storage files, and product-domain entries exist. MenuList store profile is read-only source bootstrap only. | Aligned. |
 | Business data should drive output | Business Brain is created from signed-in store/session source and owner inputs; campaign packs use Business Brain source references. | Aligned for current runtime. |
 | Marketing banner/static creative creator | Current runtime produces creative briefs and channel copy inside campaign packs. It does not render PNG/JPG banners or template images yet. | Covered as architecture and manual brief runtime; rendered asset generation intentionally inactive. |
-| UGC/video creator | Current runtime produces creator-safe UGC scripts and reel briefs. It does not render MP4 videos, avatars, AI voiceover, or subtitles. | Covered as architecture and brief-mode runtime; video rendering intentionally inactive. |
+| UGC/video creator | Current runtime produces creator-safe UGC scripts, dialogue/action beat sheets, product-placement notes, camera plans, B-roll checklists, and reel briefs. It does not render MP4 videos, avatars, AI voiceover, or subtitles. | Covered as architecture and brief-mode runtime; video rendering intentionally inactive. |
 | Campaign pack generator | Campaign creation produces source-backed multi-channel packs for WhatsApp, Google local, creative, video, UGC, ads, and calendar. | Aligned. |
 | Edit/export flow | Owner can download text outputs, download full packs, schedule manual tasks, request approval, mark used, register assets, and open supported assets in the shared Creative Editor. Design Cue provides deterministic editor patches, and CueLayers supports flat-safe uploaded image editing. Video subtitle/MP4 rendering remains inactive. | Aligned to export/download-first decision. |
 | Data advantage over generic tools | Runtime avoids blank-prompt flow by deriving opportunities and outputs from Business Brain/readiness. | Aligned. |
