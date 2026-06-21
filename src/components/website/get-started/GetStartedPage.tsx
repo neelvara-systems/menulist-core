@@ -2,7 +2,6 @@
 
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { LuCheckCircle, LuCreditCard, LuFileCheck, LuLogIn, LuShieldCheck } from 'react-icons/lu';
@@ -10,6 +9,7 @@ import { buildWebsiteSignInPath } from '@/lib/website/signInLinks';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
+import Link from '../shared/WebsiteLink';
 import WebsitePageHero from '../shared/WebsitePageHero';
 import WebsiteProofStrip from '../shared/WebsiteProofStrip';
 

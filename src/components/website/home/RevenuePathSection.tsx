@@ -1,5 +1,4 @@
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import {
   LuArrowRight,
   LuBadgeCheck,
@@ -14,6 +13,7 @@ import {
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import Link from '../shared/WebsiteLink';
 
 const pathIcons = [LuClipboardCheck, LuGlobe2, LuQrCode, LuPhoneCall];
 const assuranceIcons = [LuSearch, LuClock3, LuBadgeCheck, LuMapPin];

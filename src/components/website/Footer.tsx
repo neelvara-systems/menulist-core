@@ -1,10 +1,10 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { LuArrowRight, LuBadgeCheck, LuBookOpen, LuBuilding2, LuFileText, LuGlobe2, LuLayoutGrid, LuLink, LuMapPin } from 'react-icons/lu';
 import { FEATURE_FLAGS } from '@config/features';
 import BrandWordmark from './shared/BrandWordmark';
+import Link from './shared/WebsiteLink';
 import AnimateOnScroll, { AnimateStaggerChild } from './shared/AnimateOnScroll';
 import WebsiteButton from './shared/WebsiteButton';
 import WebsiteAnalyticsPreferencesButton from './shared/WebsiteAnalyticsPreferencesButton';

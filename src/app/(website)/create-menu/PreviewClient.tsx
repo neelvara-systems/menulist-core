@@ -14,6 +14,7 @@ import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { LuAlertCircle, LuCheck, LuLoader, LuLogIn, LuSend, LuUpload } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
+import { useWebsitePath } from '@/components/website/shared/WebsiteProductPathProvider';
 import type { OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 
 interface ExtractedCategory {
@@ -156,7 +157,10 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const t = useTranslations('Website');
     const isClaimMode = searchParams.get('claim') === 'true';
     const { status: sessionStatus, update: updateSession } = useSession();
-    const previewCallbackUrl = `/create-menu/preview/${draftId}${isClaimMode ? '?claim=true' : ''}`;
+    const createMenuPath = useWebsitePath('/create-menu');
+    const createMenuSuccessPath = useWebsitePath('/create-menu/success');
+    const previewCallbackUrl = useWebsitePath(`/create-menu/preview/${draftId}${isClaimMode ? '?claim=true' : ''}`);
+    const previewClaimPath = useWebsitePath(`/create-menu/preview/${draftId}?claim=true`);
     const signInUrl = `/signin?callbackUrl=${encodeURIComponent(previewCallbackUrl)}`;
 
     const [draft, setDraft] = useState<DraftData | null>(null);
@@ -264,11 +268,11 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
     const handleSignUp = () => {
         if (sessionStatus === 'authenticated') {
-            router.push(`/create-menu/preview/${draftId}?claim=true`);
+            router.push(previewClaimPath);
             return;
         }
 
-        const callbackUrl = encodeURIComponent(`/create-menu/preview/${draftId}?claim=true`);
+        const callbackUrl = encodeURIComponent(previewClaimPath);
         router.push(`/signin?callbackUrl=${callbackUrl}`);
     };
 
@@ -329,7 +333,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 subdomain: data.subdomain || '',
                 name: businessName.trim(),
             });
-            router.push(`/create-menu/success?${params.toString()}`);
+            router.push(`${createMenuSuccessPath}?${params.toString()}`);
         } catch {
             setClaimError(t('CreateMenu.genericError'));
             setClaiming(false);
@@ -416,7 +420,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
                         {t('CreateMenu.previewExpiredBody')}
                     </p>
-                    <button onClick={() => router.push('/create-menu')} style={primaryBtnStyle}>
+                    <button onClick={() => router.push(createMenuPath)} style={primaryBtnStyle}>
                         <LuUpload size={16} /> {t('CreateMenu.previewUploadCta')}
                     </button>
                 </div>
@@ -436,7 +440,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '8px', maxWidth: '360px', textAlign: 'center' }}>
                         {draft.error || t('CreateMenu.previewFailedFallback')}
                     </p>
-                    <button onClick={() => router.push('/create-menu')} style={primaryBtnStyle}>
+                    <button onClick={() => router.push(createMenuPath)} style={primaryBtnStyle}>
                         <LuUpload size={16} /> {t('CreateMenu.tryAgain')}
                     </button>
                 </div>

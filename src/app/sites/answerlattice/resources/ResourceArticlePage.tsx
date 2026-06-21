@@ -13,6 +13,9 @@ import AnswerlatticeResourceStructuredData from './ResourceStructuredData';
 function getBasePath(): string {
     try {
         const h = headers();
+        const aliasBasePath = h.get('x-product-base-path') || '';
+        if (aliasBasePath) return aliasBasePath;
+
         const host = h.get('host') || '';
         return (h.get('x-product-id') && (host.startsWith('localhost') || host.startsWith('127.0.0.1'))) ? '/__answerlattice' : '';
     } catch { return ''; }

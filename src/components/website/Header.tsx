@@ -2,7 +2,6 @@
 
 import { signOut, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
@@ -23,6 +22,7 @@ import {
   LuZap,
 } from "react-icons/lu";
 import BrandWordmark from "./shared/BrandWordmark";
+import Link from "./shared/WebsiteLink";
 import { FEATURE_FLAGS } from "@config/features";
 import { buildWebsiteSignInPath } from "@/lib/website/signInLinks";
 import { websiteFeatureNavGroups } from "./features/featureNavigation";
@@ -59,6 +59,11 @@ export default function Header() {
   });
   const [openMobileFeatureGroups, setOpenMobileFeatureGroups] = useState<Record<string, boolean>>({});
   const pathname = usePathname();
+  const publicPathname = pathname === "/ml"
+    ? "/"
+    : pathname?.startsWith("/ml/")
+      ? pathname.slice("/ml".length)
+      : pathname;
 
   const openDrawer = () => setIsOpen(true);
   const handleMenuTouch = () => openDrawer();
@@ -68,10 +73,10 @@ export default function Header() {
   };
 
   const isResourcesPath = Boolean(
-    pathname?.startsWith("/resources")
-    || /^\/[a-z]{2}-[A-Z]{2}\/resources/.test(pathname || ""),
+    publicPathname?.startsWith("/resources")
+    || /^\/[a-z]{2}-[A-Z]{2}\/resources/.test(publicPathname || ""),
   );
-  const isCurrentPath = (href: string) => pathname === href || Boolean(pathname?.endsWith(href));
+  const isCurrentPath = (href: string) => publicPathname === href || Boolean(publicPathname?.endsWith(href));
   const activeFeatureGroupKey = websiteFeatureNavGroups.find((group) =>
     group.links.some((featureLink) => isCurrentPath(featureLink.href)),
   )?.key;
@@ -163,8 +168,8 @@ export default function Header() {
             className="ws-desktop-nav"
           >
             {navItemKeys.map((item) => {
-              const isFeaturesPath = Boolean(pathname?.startsWith("/features"));
-              const isActive = pathname === item.href
+              const isFeaturesPath = Boolean(publicPathname?.startsWith("/features"));
+              const isActive = publicPathname === item.href
                 || (item.href === "/features" && isFeaturesPath)
                 || (item.href === "/resources" && isResourcesPath);
               if (item.key === "features") {

@@ -28,6 +28,7 @@ import {
 } from '@constant/answerlattice/domains';
 import { getCampaignCueWorkspaceRewritePath } from '@constant/campaigncue/domains';
 import {
+    getDeploymentStage,
     getProductDeploymentTarget,
     isActiveProductDomain,
     resolveKnownProductIdByHostname,
@@ -38,7 +39,12 @@ import {
     getAnswerlatticeHostedHelpRewritePath,
     isAnswerlatticeHostedHelpCandidateHostname,
 } from '@constant/answerlattice/hostedHelp';
-import { resolveProductSiteByDevPath } from '@constant/productDomains';
+import {
+    getProductSiteById,
+    resolveProductSiteByDevPath,
+    type ProductDomainConfig,
+    type ProductSiteId,
+} from '@constant/productDomains';
 import { resolveDomain, shouldBypassDomainRouting } from '@lib/multiTenant/domainResolver';
 import {
     MYCODEX_LOGIN_PATH,
@@ -191,6 +197,84 @@ function buildAnswerlatticeWebsiteRewritePath(basePath: string, publicPath: stri
     return (publicPath === '/' || publicPath === '/home') ? basePath : `${basePath}${publicPath}`;
 }
 
+function rewriteWithProductHeaders(
+    request: NextRequest,
+    url: URL,
+    productConfig: ProductDomainConfig,
+    basePath = '',
+): NextResponse {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-product-id', productConfig.id);
+    requestHeaders.set('x-product-name', productConfig.name);
+    if (basePath) {
+        requestHeaders.set('x-product-base-path', basePath);
+    } else {
+        requestHeaders.delete('x-product-base-path');
+    }
+
+    const response = NextResponse.rewrite(url, {
+        request: {
+            headers: requestHeaders,
+        },
+    });
+    response.headers.set('x-product-id', productConfig.id);
+    response.headers.set('x-product-name', productConfig.name);
+    if (basePath) {
+        response.headers.set('x-product-base-path', basePath);
+    }
+
+    return response;
+}
+
+const MYCODEX_PRODUCT_ALIAS_ROUTES: Array<{
+    prefix: string;
+    productId: Extract<ProductSiteId, 'menulist' | 'answerlattice' | 'campaigncue'>;
+}> = [
+    { prefix: '/ml', productId: 'menulist' },
+    { prefix: '/al', productId: 'answerlattice' },
+    { prefix: '/cc', productId: 'campaigncue' },
+];
+
+const INTERNAL_PRODUCT_ALIAS_HOSTS = new Set([
+    'menulist.online',
+    'www.menulist.online',
+]);
+
+function canUseInternalProductAliases(hostname: string | null, knownProductId: string | null): boolean {
+    if (getDeploymentStage() === 'production') return false;
+    if (
+        process.env.NODE_ENV === 'production'
+        && process.env.VERCEL_ENV !== 'preview'
+        && process.env.NEXT_PUBLIC_ENV !== 'preview'
+    ) {
+        return false;
+    }
+
+    const normalizedHost = normalizeHostname(hostname);
+    return knownProductId === MYCODEX_PRODUCT_SLUG || INTERNAL_PRODUCT_ALIAS_HOSTS.has(normalizedHost);
+}
+
+function resolveMyCodexProductAliasPath(pathname: string): {
+    product: ProductDomainConfig;
+    basePath: string;
+    strippedPath: string;
+} | null {
+    for (const route of MYCODEX_PRODUCT_ALIAS_ROUTES) {
+        if (pathname !== route.prefix && !pathname.startsWith(`${route.prefix}/`)) continue;
+
+        const product = getProductSiteById(route.productId);
+        if (!product?.enabled) return null;
+
+        return {
+            product,
+            basePath: route.prefix,
+            strippedPath: pathname.slice(route.prefix.length) || '/',
+        };
+    }
+
+    return null;
+}
+
 function buildMyCodexLoginRedirect(request: NextRequest): NextResponse {
     const url = request.nextUrl.clone();
     url.pathname = MYCODEX_LOGIN_PATH;
@@ -326,6 +410,34 @@ export async function middleware(request: NextRequest) {
         }
     }
 
+    // Internal/test-only aliases for portfolio/product landing pages:
+    // /ml -> MenuList, /al -> Answerlattice, /cc -> CampaignCue.
+    // Production canonical domains continue through the normal product routing.
+    // These are path aliases only; product slugs, env names, and Firebase
+    // targets remain the canonical per-product values.
+    if (canUseInternalProductAliases(hostname, knownProductId)) {
+        const aliasMatch = resolveMyCodexProductAliasPath(pathname);
+        if (aliasMatch) {
+            const { product, basePath, strippedPath } = aliasMatch;
+            const url = request.nextUrl.clone();
+
+            if (product.id === 'answerlattice') {
+                const answerlatticeDashboardPath = getAnswerlatticeDashboardRewritePath(strippedPath);
+                url.pathname = answerlatticeDashboardPath ||
+                    buildAnswerlatticeWebsiteRewritePath(product.internalBasePath, strippedPath);
+            } else if (product.id === 'campaigncue') {
+                const campaignCueWorkspacePath = getCampaignCueWorkspaceRewritePath(strippedPath);
+                url.pathname = campaignCueWorkspacePath ||
+                    `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
+            } else {
+                url.pathname = strippedPath === '/product' ? '/how-it-works' : strippedPath;
+            }
+
+            const response = rewriteWithProductHeaders(request, url, product, basePath);
+            return applySecurityHeaders(request, response);
+        }
+    }
+
     // 1a. Vercel hostname-based product routing.
     // QA: ecomsai.com → /sites/answerlattice
     // Production: answerlattice.com → /sites/answerlattice
@@ -357,9 +469,7 @@ export async function middleware(request: NextRequest) {
             url.pathname = answerlatticeDashboardPath ||
                 buildAnswerlatticeWebsiteRewritePath(productConfig.internalBasePath, pathname);
 
-            const response = NextResponse.rewrite(url);
-            response.headers.set('x-product-id', productConfig.id);
-            response.headers.set('x-product-name', productConfig.name);
+            const response = rewriteWithProductHeaders(request, url, productConfig);
             return applySecurityHeaders(request, response);
         }
 
@@ -371,17 +481,13 @@ export async function middleware(request: NextRequest) {
             const campaignCueWorkspacePath = getCampaignCueWorkspaceRewritePath(pathname);
             const url = request.nextUrl.clone();
             url.pathname = campaignCueWorkspacePath || `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;
-            const response = NextResponse.rewrite(url);
-            response.headers.set('x-product-id', productConfig.id);
-            response.headers.set('x-product-name', productConfig.name);
+            const response = rewriteWithProductHeaders(request, url, productConfig);
             return applySecurityHeaders(request, response);
         }
 
         const url = request.nextUrl.clone();
         url.pathname = `${productConfig.internalBasePath}${pathname === '/' ? '' : pathname}`;
-        const response = NextResponse.rewrite(url);
-        response.headers.set('x-product-id', productConfig.id);
-        response.headers.set('x-product-name', productConfig.name);
+        const response = rewriteWithProductHeaders(request, url, productConfig);
         return applySecurityHeaders(
             request,
             productConfig.id === MYCODEX_PRODUCT_SLUG ? setMyCodexResponseHeaders(response) : response,
@@ -422,9 +528,7 @@ export async function middleware(request: NextRequest) {
                     ? `${product.internalBasePath}/home`
                     : `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
             url.pathname = answerlatticeDashboardPath || campaignCueWorkspacePath || productWebsitePath;
-            const response = NextResponse.rewrite(url);
-            response.headers.set('x-product-id', product.id);
-            response.headers.set('x-product-name', product.name);
+            const response = rewriteWithProductHeaders(request, url, product, product.devPathPrefix);
             return applySecurityHeaders(
                 request,
                 product.id === MYCODEX_PRODUCT_SLUG ? setMyCodexResponseHeaders(response) : response,

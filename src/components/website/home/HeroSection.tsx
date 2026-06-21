@@ -2,11 +2,11 @@
 
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { LuArrowRight, LuBot, LuFileText, LuGlobe, LuLayoutGrid, LuMonitor, LuQrCode, LuShieldCheck, LuSmartphone } from 'react-icons/lu';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import Link from '../shared/WebsiteLink';
 
 const surfaceKeys = [
   { key: 'surfaceOfficialPage', icon: LuLayoutGrid },

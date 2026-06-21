@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { type CSSProperties, type MouseEvent, useEffect, useRef, useState } from 'react';
 import {
@@ -19,6 +18,7 @@ import {
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import Link from '../shared/WebsiteLink';
 
 const checks = [
   { icon: LuClipboardCheck, key: 'check0' },

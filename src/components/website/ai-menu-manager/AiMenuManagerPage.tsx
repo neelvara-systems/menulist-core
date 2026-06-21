@@ -1,7 +1,6 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import {
   LuArrowRight,
   LuBadgeCheck,
@@ -19,6 +18,7 @@ import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import Link from '../shared/WebsiteLink';
 
 const operationIcons = [LuMessageSquare, LuBadgeCheck, LuImage, LuUpload, LuPalette, LuZap];
 const safetyIcons = [LuShieldCheck, LuCheckCircle2, LuBadgeCheck];

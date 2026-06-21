@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import type { ReactNode } from 'react';
+import Link from '../shared/WebsiteLink';
 
 type WebsiteGtagWindow = Window & {
     gtag?: (...args: unknown[]) => void;

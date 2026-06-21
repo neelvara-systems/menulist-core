@@ -43,6 +43,9 @@ export const metadata: Metadata = {
 function getBasePath(): string {
     try {
         const headersList = headers();
+        const aliasBasePath = headersList.get('x-product-base-path') || '';
+        if (aliasBasePath) return aliasBasePath;
+
         const productId = headersList.get('x-product-id');
         const host = headersList.get('host') || '';
         const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1');

@@ -1,10 +1,10 @@
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { LuArrowRight, LuCheckCircle2 } from 'react-icons/lu';
 import type { WebsiteIndustryPage } from '@/content/websiteIndustries';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
+import Link from '../shared/WebsiteLink';
 
 interface IndustryLandingPageProps {
     page: WebsiteIndustryPage;

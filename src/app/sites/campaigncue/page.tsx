@@ -119,6 +119,20 @@ type CatalogItem = {
     icon: IconType;
 };
 
+type ProofDeckPreviewRow = {
+    label: string;
+    detail: string;
+    status: string;
+};
+
+type TrustMatrixRow = {
+    claim: string;
+    source: string;
+    risk: string;
+    action: string;
+    tone: string;
+};
+
 type FooterGroup = {
     title: string;
     links: Array<{
@@ -366,11 +380,32 @@ const CATALOG_ITEMS: CatalogItem[] = [
         icon: LuImage,
     },
     {
+        group: 'Pack',
+        title: 'Reusable templates',
+        detail: 'Platform and saved workspace templates keep recurring restaurant, salon, retail, agency, and location campaigns consistent.',
+        tag: 'Template',
+        icon: LuWalletCards,
+    },
+    {
         group: 'Review',
         title: 'Claim check',
         detail: 'Sales promises, ranking claims, before/after copy, consent, and sensitive wording stay visible.',
         tag: 'Safety',
         icon: LuShieldAlert,
+    },
+    {
+        group: 'Review',
+        title: 'Brand Playbook',
+        detail: 'Brand feel, visual motifs, product focus, and avoid-list wording guide the pack without replacing campaign proof.',
+        tag: 'Brand guide',
+        icon: LuPalette,
+    },
+    {
+        group: 'Review',
+        title: 'Proof deck',
+        detail: 'Brand direction, source trace, UGC/reel reference, review checklist, and delivery boundary travel with the pack.',
+        tag: 'Review brief',
+        icon: LuClipboardCheck,
     },
     {
         group: 'Review',
@@ -425,6 +460,68 @@ const PRODUCT_CAPABILITIES: IconCard[] = [
         title: 'Creative Trust Center',
         description: 'Every risky claim, missing proof, stale detail, or spend action is visible before the owner uses the pack.',
         icon: LuClipboardCheck,
+    },
+];
+
+const PROOF_SYSTEM_CAPABILITIES: IconCard[] = [
+    {
+        title: 'Brand Playbook',
+        description: 'Brand feel, visual motifs, product focus, and avoid-list wording guide the pack while campaign facts stay separate.',
+        icon: LuPalette,
+    },
+    {
+        title: 'Campaign proof deck',
+        description: 'Brand snapshot, source trace, trust checklist, UGC/reel references, and manual delivery notes stay together for review.',
+        icon: LuClipboardCheck,
+    },
+    {
+        title: 'Reusable pack templates',
+        description: 'Approved packs can become repeatable starting points for recurring restaurant, salon, retail, agency, and location work.',
+        icon: LuWalletCards,
+    },
+    {
+        title: 'Disclosure and avoid-list checks',
+        description: 'UGC and video briefs surface consent, fake testimonial risk, disclosure language, and blocked wording before handoff.',
+        icon: LuShieldAlert,
+    },
+];
+
+const PROOF_DECK_PREVIEW_ROWS: ProofDeckPreviewRow[] = [
+    {
+        label: 'Source trace',
+        detail: 'Menu price, owner note, booking link, and asset rights stay attached.',
+        status: 'Checked',
+    },
+    {
+        label: 'Brand direction',
+        detail: 'Brand feel, visual motifs, product focus, and avoid-list wording are visible.',
+        status: 'Guided',
+    },
+    {
+        label: 'Review checklist',
+        detail: 'Claims, consent, disclosure, spend, and manual delivery are reviewed before export.',
+        status: 'Owner review',
+    },
+];
+
+const TEMPLATE_REUSE_STEPS: WorkflowStep[] = [
+    {
+        label: '01',
+        title: 'Save the useful pack',
+        detail: 'A proven lunch, slot-fill, event, or approval pack becomes a reusable base for the workspace.',
+        icon: LuWalletCards,
+    },
+    {
+        label: '02',
+        title: 'Update the facts',
+        detail: 'Change price, date, product, photo, location, or CTA while the source checks stay visible.',
+        icon: LuRefreshCcw,
+    },
+    {
+        label: '03',
+        title: 'Export again',
+        detail: 'Download the refreshed pack, send for approval, or mark manual use without connecting accounts.',
+        icon: LuDownload,
     },
 ];
 
@@ -571,12 +668,42 @@ const CAMPAIGN_WALL_ASSETS: CampaignWallAsset[] = [
     },
 ];
 
-const TRUST_ROWS = [
-    { label: 'Price, hours, and link', result: 'Source checked', tone: 'ok' },
-    { label: 'Photo and asset rights', result: 'Attached', tone: 'ok' },
-    { label: 'Sensitive result claim', result: 'Owner review', tone: 'warn' },
-    { label: 'Guaranteed sales or ranking', result: 'Blocked', tone: 'block' },
-    { label: 'Direct publish or spend', result: 'Disabled', tone: 'block' },
+const TRUST_ROWS: TrustMatrixRow[] = [
+    {
+        claim: 'Lunch combo today 12-3 PM',
+        source: 'Menu price + pickup link',
+        risk: 'Clear',
+        action: 'Export ready',
+        tone: 'ok',
+    },
+    {
+        claim: 'Best biryani in town',
+        source: 'No ranking source',
+        risk: 'Unsupported ranking',
+        action: 'Blocked',
+        tone: 'block',
+    },
+    {
+        claim: 'Visible results after one facial',
+        source: 'No approved before/after proof',
+        risk: 'Result promise',
+        action: 'Owner review',
+        tone: 'warn',
+    },
+    {
+        claim: 'I love this treatment',
+        source: 'No consent or testimonial proof',
+        risk: 'Fake experience',
+        action: 'Rewrite brief',
+        tone: 'warn',
+    },
+    {
+        claim: 'Boost post with Rs 500',
+        source: 'Spend not approved',
+        risk: 'Paid action',
+        action: 'Disabled',
+        tone: 'block',
+    },
 ];
 
 const OWNER_OUTCOMES: IconCard[] = [
@@ -623,6 +750,10 @@ const FAQ_ITEMS = [
         question: 'Can owners reuse existing images?',
         answer: 'Yes. CueLayers treats uploaded or generated flat images as editable candidates when reconstruction is safe, with protected text, source truth, and a flat fallback when reconstruction is uncertain.',
     },
+    {
+        question: 'Do packs include a review record?',
+        answer: 'Yes. Campaign packs can include a proof deck with brand direction, source trace, trust checks, UGC or reel references, and manual delivery notes so an owner, agency, or client can review before use.',
+    },
 ];
 
 const FOOTER_GROUPS: FooterGroup[] = [
@@ -648,6 +779,7 @@ const FOOTER_GROUPS: FooterGroup[] = [
         title: 'Trust',
         links: [
             { label: 'Safety boundary', href: '#trust' },
+            { label: 'Brand and proof', href: '#proof-system' },
             { label: 'Export-first delivery', href: '#delivery' },
             { label: 'Source checks', href: '#trust' },
             { label: 'FAQ', href: '#faq' },
@@ -692,6 +824,9 @@ const JSON_LD = {
 function getBasePath(): string {
     try {
         const headerList = headers();
+        const aliasBasePath = headerList.get('x-product-base-path') || '';
+        if (aliasBasePath) return aliasBasePath;
+
         const host = headerList.get('host') || '';
         const productId = headerList.get('x-product-id');
         const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1');
@@ -1020,6 +1155,89 @@ function OwnerDayPath() {
     );
 }
 
+function ProofDeckPreview() {
+    return (
+        <div className="campaigncue-proof-deck-preview" aria-label="Campaign proof deck preview">
+            <div className="campaigncue-proof-deck-top">
+                <span>Campaign proof deck</span>
+                <strong>Ready for review</strong>
+            </div>
+            <div className="campaigncue-proof-deck-hero">
+                <span>Review brief</span>
+                <h3>Lunch combo campaign</h3>
+                <p>Source-backed pack for WhatsApp, Google, poster, staff note, and manual handoff.</p>
+            </div>
+            <div className="campaigncue-proof-deck-list">
+                {PROOF_DECK_PREVIEW_ROWS.map((row) => (
+                    <div className="campaigncue-proof-deck-row" key={row.label}>
+                        <div>
+                            <strong>{row.label}</strong>
+                            <p>{row.detail}</p>
+                        </div>
+                        <span>{row.status}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function TemplateReuseFlow() {
+    return (
+        <div className="campaigncue-template-flow" aria-label="Reusable pack template flow">
+            <div className="campaigncue-template-flow-heading">
+                <span>Reusable template loop</span>
+                <strong>Do not start over when a pack already works.</strong>
+            </div>
+            <ol>
+                {TEMPLATE_REUSE_STEPS.map((step) => {
+                    const Icon = step.icon;
+                    return (
+                        <li key={step.title}>
+                            <span>{step.label}</span>
+                            <Icon aria-hidden="true" />
+                            <div>
+                                <strong>{step.title}</strong>
+                                <p>{step.detail}</p>
+                            </div>
+                        </li>
+                    );
+                })}
+            </ol>
+        </div>
+    );
+}
+
+function CampaignCueProofSystem() {
+    return (
+        <section className="campaigncue-section campaigncue-proof-system" id="proof-system">
+            <div className="campaigncue-proof-system-copy">
+                <SectionIntro eyebrow="Brand And Proof" title="The pack keeps the reason it is safe to use.">
+                    CampaignCue does not only prepare artwork and copy. It keeps brand guidance, reusable pack
+                    structure, proof notes, disclosure checks, and delivery boundaries visible before anything is exported.
+                </SectionIntro>
+                <div className="campaigncue-inline-checks">
+                    <span>
+                        <LuPalette aria-hidden="true" />
+                        Brand guided
+                    </span>
+                    <span>
+                        <LuClipboardCheck aria-hidden="true" />
+                        Proof deck
+                    </span>
+                    <span>
+                        <LuShieldCheck aria-hidden="true" />
+                        Review ready
+                    </span>
+                </div>
+                <CapabilityLedger cards={PROOF_SYSTEM_CAPABILITIES} />
+            </div>
+            <ProofDeckPreview />
+            <TemplateReuseFlow />
+        </section>
+    );
+}
+
 function RealWorkProof() {
     return (
         <section className="campaigncue-real-work" aria-label="Concrete CampaignCue examples">
@@ -1099,10 +1317,18 @@ function TrustMatrix() {
                     <strong>Checks before handoff</strong>
                 </div>
             </div>
+            <div className="campaigncue-trust-table-heading" aria-hidden="true">
+                <span>Claim</span>
+                <span>Source</span>
+                <span>Risk</span>
+                <span>Action</span>
+            </div>
             {TRUST_ROWS.map((row) => (
-                <div className="campaigncue-trust-row" data-tone={row.tone} key={row.label}>
-                    <span>{row.label}</span>
-                    <strong>{row.result}</strong>
+                <div className="campaigncue-trust-row" data-tone={row.tone} key={row.claim}>
+                    <strong>{row.claim}</strong>
+                    <span>{row.source}</span>
+                    <span>{row.risk}</span>
+                    <em>{row.action}</em>
                 </div>
             ))}
         </div>
@@ -1197,6 +1423,8 @@ export default function CampaignCueHomePage() {
             <CampaignCueCatalog />
 
             <OwnerDayPath />
+
+            <CampaignCueProofSystem />
 
             <section className="campaigncue-section" id="workflow">
                 <SectionIntro eyebrow="Workflow" title="A simple daily loop from business fact to usable campaign pack.">

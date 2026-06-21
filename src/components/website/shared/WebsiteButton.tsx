@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import WebsiteLink from './WebsiteLink';
 
 interface WebsiteButtonProps {
   href: string;
@@ -10,12 +10,12 @@ interface WebsiteButtonProps {
 
 export default function WebsiteButton({ href, children, variant = 'primary', className = '', ariaLabel }: WebsiteButtonProps) {
   return (
-    <Link
+    <WebsiteLink
       href={href}
       aria-label={ariaLabel}
       className={`ws-btn ws-btn--${variant} ${className}`}
     >
       {children}
-    </Link>
+    </WebsiteLink>
   );
 }

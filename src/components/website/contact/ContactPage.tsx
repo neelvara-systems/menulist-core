@@ -8,6 +8,7 @@ import { LuCheck, LuCheckCircle, LuLoader, LuSend } from 'react-icons/lu';
 import * as z from 'zod';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import SectionWrapper from '../shared/SectionWrapper';
+import WebsiteLink from '../shared/WebsiteLink';
 import WebsitePageHero from '../shared/WebsitePageHero';
 import WebsiteProofStrip from '../shared/WebsiteProofStrip';
 
@@ -211,9 +212,9 @@ export default function ContactPage() {
                     />
                     <label htmlFor="agreeToTerms" style={{ fontSize: '0.875rem', color: 'var(--ws-text-muted)', cursor: 'pointer', lineHeight: 1.5 }}>
                       {t('Contact.formAgree')}
-                      <a href="/privacy-policy" style={{ color: 'var(--ws-brand-secondary)', textDecoration: 'none' }}>{t('Contact.formPrivacyPolicy')}</a>
+                      <WebsiteLink href="/privacy-policy" style={{ color: 'var(--ws-brand-secondary)', textDecoration: 'none' }}>{t('Contact.formPrivacyPolicy')}</WebsiteLink>
                       {t('Contact.formAnd')}
-                      <a href="/terms-of-service" style={{ color: 'var(--ws-brand-secondary)', textDecoration: 'none' }}>{t('Contact.formTerms')}</a>{t('Contact.formAgreeEnd')}
+                      <WebsiteLink href="/terms-of-service" style={{ color: 'var(--ws-brand-secondary)', textDecoration: 'none' }}>{t('Contact.formTerms')}</WebsiteLink>{t('Contact.formAgreeEnd')}
                     </label>
                   </div>
                   {errors.agreeToTerms && <p style={{ ...errorStyle, marginTop: '-12px' }}>{errors.agreeToTerms.message}</p>}

@@ -3,9 +3,11 @@ import { ThemeProvider } from "@/components/website/shadcn/theme-provider";
 import LocalisationProvider from '@providers/localisationProvider';
 import "@styles/app.scss";
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { getLocale } from 'next-intl/server';
 import WebsiteThemeShortcut from '@/components/website/shared/WebsiteThemeShortcut';
 import WebsiteDocumentTheme from '@/components/website/shared/WebsiteDocumentTheme';
+import WebsiteProductPathProvider from '@/components/website/shared/WebsiteProductPathProvider';
 import WebsiteAuthProvider from "./WebsiteAuthProvider";
 import {
     MENULIST_SITE_DESCRIPTION,
@@ -20,6 +22,15 @@ const siteUrl = MENULIST_SITE_URL;
 const siteTitle = MENULIST_SITE_TITLE;
 const siteDescription = MENULIST_SITE_DESCRIPTION;
 const siteImage = MENULIST_SITE_IMAGE;
+
+function getWebsiteBasePath(): string {
+    try {
+        const basePath = headers().get('x-product-base-path') || '';
+        return basePath === '/ml' ? basePath : '';
+    } catch {
+        return '';
+    }
+}
 
 export const metadata: Metadata = {
     title: siteTitle,
@@ -78,15 +89,18 @@ interface WebsiteLayoutProps {
 export default async function WebsiteLayout({ children }: WebsiteLayoutProps) {
     // Get locale for internationalization
     const locale = await getLocale();
+    const basePath = getWebsiteBasePath();
 
     return (
         <LocalisationProvider locale={locale}>
             <WebsiteAuthProvider>
                 <ThemeProvider>
-                    <WebsiteDocumentTheme />
-                    <WebsiteThemeShortcut />
-                    <WebsiteAnalyticsConsent />
-                    <>{children}</>
+                    <WebsiteProductPathProvider basePath={basePath}>
+                        <WebsiteDocumentTheme />
+                        <WebsiteThemeShortcut />
+                        <WebsiteAnalyticsConsent />
+                        <>{children}</>
+                    </WebsiteProductPathProvider>
                 </ThemeProvider>
             </WebsiteAuthProvider>
         </LocalisationProvider>

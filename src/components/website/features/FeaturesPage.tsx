@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { LuActivity, LuArrowRight, LuBadgeCheck, LuBarChart3, LuBot, LuBriefcase, LuCamera, LuCheck, LuEye, LuFileText, LuImage, LuLanguages, LuLayoutGrid, LuLink, LuList, LuMessageSquare, LuMonitor, LuPackage, LuPalette, LuPrinter, LuQrCode, LuRefreshCw, LuShield, LuSmartphone, LuSparkles, LuTrendingUp, LuUsers, LuZap } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
@@ -10,6 +9,7 @@ import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import Link from '../shared/WebsiteLink';
 
 const groupIds = ['setup', 'surfaces', 'brand', 'smart', 'operations', 'integrity'];
 const groupIcons = [

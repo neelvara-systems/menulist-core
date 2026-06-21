@@ -1,11 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { LuArrowRight } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
+import Link from '../shared/WebsiteLink';
 import FeatureDetailJourney from './FeatureDetailJourney';
 import FeatureDetailVisual from './FeatureDetailVisual';
 import FeatureScreenshotProofGallery from './FeatureScreenshotProofGallery';

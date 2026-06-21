@@ -15,6 +15,7 @@ The CampaignCue public website is now a focused product site, not a status shell
 - The owner value: start without a blank prompt, keep source facts attached, move faster on mobile, and control risk/cost.
 - The output value: Campaign Packs include channel copy, creative files, print/in-store material, staff sharing text, email/SMS handoff, QR/offer-page notes, trust checks, and result prompts instead of only social posts.
 - The editor value: Creative Studio and CueLayers make assets reusable while preserving source checks.
+- The proof value: Brand Playbook guidance, a proof deck preview, reusable-template loop, proof deck review briefs, UGC/reel disclosure notes, avoid-list checks, and a concrete claim/source/risk/action trust matrix stay visible with the pack without replacing source facts.
 
 Public website copy must stay owner-facing. Do not expose internal repo details, deployment target names, Firebase project ids, implementation status tables, or local route names on the homepage.
 
@@ -46,6 +47,10 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | AdCreative asset/tool pages: https://www.adcreative.ai/generate-product-photoshoots, https://www.adcreative.ai/product-videoshoot-ai, https://www.adcreative.ai/creative-utility-suite, https://www.adcreative.ai/custom-templates | Upload-based product photos, product videos, utility tools, and templates are shown with before/after or layer-style demos. | Use this as support for Creative Studio and CueLayers messaging: reuse uploaded/generated assets and export safely, but do not imply rendered provider video/photo generation is active. |
 | AdCreative use-case/ROI pages: https://www.adcreative.ai/use-case/small-business, https://www.adcreative.ai/use-case/e-commerce, https://www.adcreative.ai/use-case/agencies, https://www.adcreative.ai/roi-calculator | Separate use-case pages and calculator frame the product by customer type and business value. | CampaignCue can use owner-type examples and future ROI education, but the current public site must avoid pricing/savings calculators until billing and real benchmark assumptions are configured. |
 | AdCreative full-page visual system screenshot review | The page feels creative because it shows floating artifacts around the hero, colorful product tiles, visual feature cards, a mid-page asset wall, and real product screenshots before heavy explanation. | CampaignCue must not remain a text-only ledger page. Add creative artifact visuals that show campaign work being produced while preserving the export-first and source-check boundaries. |
+| AdCreative Compliance Checker: https://www.adcreative.ai/compliance-checker | Compliance is shown as its own visible product surface with platform, legal, brand, issue, and suggested-revision rows. | Make CampaignCue's Trust Center concrete with claim/source/risk/action rows, but do not claim legal-platform precision, policy monitoring, or predictive scoring. |
+| Canva Brand Kit: https://www.canva.com/pro/brand-kit/ | Brand assets, brand guidelines, and multi-brand management are presented directly inside the creative workflow. | Keep Brand Playbook visible beside the pack as guidance and provenance, but do not let brand guidance replace campaign source facts or approval. |
+| Planable home: https://planable.io/ | Create, discuss, approve, schedule, agency, multi-location, and multi-brand flows are visible as operational workflows. | Show review and handoff as part of the CampaignCue pack loop while preserving that direct publishing remains disabled on day one. |
+| Rocketium Creative Automation: https://rocketium.com/products/creative-automation.html | Creative automation pages emphasize on-brand templates, platform variants, and reuse of existing design assets. | Add a reusable-template loop and proof-deck preview for CampaignCue; reject Photoshop/source-file import claims and broad enterprise creative automation promises until those runtimes exist. |
 
 ## Implemented Homepage Structure
 
@@ -61,6 +66,7 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | Real work proof | Dark proof band with ledger rows: concrete local-business examples name the fact, output, and proof note behind each campaign pack without using separate example cards. |
 | Pack index | Seesaw-inspired compact catalog with Start, Pack, Review, and Handoff categories shown as grouped ledger rows so owners can scan what CampaignCue prepares. |
 | Owner path | Connected four-step sequence: open Today, confirm facts, download the pack, and mark what happened. |
+| Brand and proof layer | Makes implemented Brand Playbook guidance, a Campaign Proof Deck preview, reusable-template loop, UGC/reel disclosure notes, and avoid-list checks visible without promising autopilot publishing or source-proof replacement. |
 | Workflow | Continuous ledger: read business, find cue, prepare pack, check risk, optionally edit/reuse assets, export manually, record result. |
 | Daily Campaign Desk | Explains the first owner screen and why it removes blank-prompt confusion. |
 | Outputs | WhatsApp, Google local, social creative, print/staff, reel brief, UGC script, email/SMS/QR, and ad handoff shown as one output ledger. |
@@ -68,7 +74,7 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | CueLayers | Explains image upload/generated-flat reuse with editable layer candidates and flat-safe fallback. |
 | Examples | Restaurant, salon, retail, local-service, fitness, clinic, agency, and multi-location examples shown as compact prompt-start rows. |
 | Campaign artifact wall | Visual wall of example handoff artifacts: WhatsApp status, story, poster, Google draft, reel list, QR card, UGC prompt, spend-gated ad copy, clinic reminder, and agency approval note. |
-| Trust and Safety | Source checks, unsafe claim warnings, spend gates, and the concrete check matrix. |
+| Trust and Safety | Source checks, unsafe claim warnings, spend gates, and a concrete claim/source/risk/action matrix. |
 | Delivery Boundary | Explicit no-direct-posting section aligned with day-one product rules. |
 | Use Cases | Product capability ledger for Daily Desk, Business Brain, Campaign Studio, Creative Studio, CueLayers, and Trust Center. |
 | FAQ | Answers direct publishing, MenuList relationship, generic design-tool difference, full pack scope, and image reuse. |
@@ -96,7 +102,7 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 
 ## Visual Direction
 
-The site uses an operational SaaS layout with product and campaign artifacts as the primary visuals. The current production pass follows Blank for restraint, Ploy for proof/activity records, Linear for editorial product rhythm, Seesaw for fast scanning, and AdCreative for creative artifact density. The homepage should feel like a creative operating desk: restrained first viewport, large brand-led typography, screenshot-like product surfaces, colorful campaign thumbnails, connected sequences, and proof ledgers. Use ledgers instead of repeated card grids when listing source proof, owner steps, or output inventories, but use visual product tiles when showing CampaignCue's creative moat. It intentionally avoids:
+The site uses an operational SaaS layout with product and campaign artifacts as the primary visuals. The current production pass follows Blank for restraint, Ploy for proof/activity records, Linear for editorial product rhythm, Seesaw for fast scanning, AdCreative for creative artifact density and compliance-surface clarity, Canva for brand-guidance visibility, Planable for approval-loop clarity, and Rocketium for reusable-template framing. The homepage should feel like a creative operating desk: restrained first viewport, large brand-led typography, screenshot-like product surfaces, colorful campaign thumbnails, connected sequences, proof ledgers, proof deck preview, reusable-template loop, and a concrete trust matrix. Use ledgers instead of repeated card grids when listing source proof, owner steps, or output inventories, but use visual product tiles when showing CampaignCue's creative moat. It intentionally avoids:
 
 - Generic abstract AI imagery.
 - Broad "make anything" claims.
@@ -106,6 +112,7 @@ The site uses an operational SaaS layout with product and campaign artifacts as 
 - Text-only ledgers that make CampaignCue feel like a documentation page instead of a campaign asset product.
 - Overbuilt first-viewport card clusters, repeated equal-weight card grids without product visuals, random accent colors, or decorative gradients that make the page feel like a student collage.
 - Public claims about billing, direct integrations, direct account posting, or social-account connection.
+- Legal/platform compliance precision, predictive creative scoring, or ROI/ROAS promises without active evidence infrastructure.
 - Internal implementation or Firebase wording.
 
 The design should stay practical and owner-readable: concrete output examples, short headings, visible safety state, proof notes, and no broken footer links. Every major section should answer one SMB-owner question: what fact is used, what pack is prepared, what review is required, and what the owner can do next.
@@ -155,7 +162,17 @@ CampaignCue should reject or soften:
 - fake or unverified logo/proof strips;
 - direct ad-account push, social-account posting, or WhatsApp send language;
 - pricing, trial, credit, or ROI calculator claims before billing is configured;
+- predictive creative scoring and platform/legal compliance precision before dedicated evidence and policy infrastructure exists;
 - broad all-in-one creative-tool positioning that hides CampaignCue's source-backed campaign-pack boundary.
+
+## Competitor Follow-Up Decisions
+
+| Pattern | Adopted as | Boundary |
+| --- | --- | --- |
+| Compliance surface with issues and suggested fixes | Trust matrix with claim/source/risk/action rows. | CampaignCue shows owner review posture, not legal advice or platform-certification. |
+| Brand kit and guidelines inside the editor/workflow | Brand Playbook and proof deck preview beside the pack. | Brand Playbook guides creative direction; source facts still decide campaign truth. |
+| Approval-first team workflow | Proof deck and owner review language. | Direct publishing, auto-scheduling, and account posting remain inactive. |
+| Reusable on-brand templates | Reusable-template loop: save pack, update facts, export again. | No source-file import, Photoshop recovery, or generic template marketplace claim. |
 
 ## Route And Product Boundary
 
@@ -176,6 +193,9 @@ CampaignCue should reject or soften:
 | Manual posting workflow | Connected social accounts on day one |
 | Source-backed checks | Guaranteed sales/ranking |
 | Owner review | Full autopilot |
+| Brand Playbook guidance | Brand guidance replaces source proof |
+| Campaign Proof Deck review brief | Proof deck is a final rendered ad, video, website, or legal approval |
+| Reusable pack templates | Template library that ignores source facts |
 | CueLayers creates editable candidates | Perfect source-file recovery |
 | Direct account posting outside active delivery mode | Account posting already active |
 | Proof note, source fact, or boundary | "AI will handle everything" |
@@ -196,3 +216,6 @@ CampaignCue should reject or soften:
 
 **Q:** Can owners reuse existing images?
 **A:** Yes. CueLayers treats uploaded or generated flat images as editable candidates when reconstruction is safe, with protected text, source truth, and a flat fallback when reconstruction is uncertain.
+
+**Q:** Do packs include a review record?
+**A:** Yes. Campaign packs can include a proof deck with brand direction, source trace, trust checks, UGC or reel references, and manual delivery notes so an owner, agency, or client can review before use.

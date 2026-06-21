@@ -1,11 +1,11 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { LuCheck, LuShieldCheck, LuX } from 'react-icons/lu';
 import ClarityAnalytics from './ClarityAnalytics';
 import GoogleAnalytics from './GoogleAnalytics';
+import Link from './shared/WebsiteLink';
 import { WEBSITE_ANALYTICS_CONSENT_STORAGE_KEY, WEBSITE_ANALYTICS_PREFERENCES_EVENT } from './shared/websiteAnalyticsConsentConfig';
 
 type AnalyticsConsent = 'accepted' | 'declined';

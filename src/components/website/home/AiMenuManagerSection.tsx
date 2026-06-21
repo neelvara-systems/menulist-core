@@ -1,7 +1,6 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import {
   LuArrowRight,
   LuBadgeCheck,
@@ -16,6 +15,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
+import Link from '../shared/WebsiteLink';
 
 const commandKeys = [
   { icon: LuMessageSquare, key: 'command0' },
