@@ -37,7 +37,7 @@ The owner can say:
 - "What should I fix today?"
 - "Which items have no photos?"
 
-MenuList turns that into a prepared operation card. The owner approves important changes, and MenuList applies the work through the same system that runs the public menu.
+MenuList turns that into a prepared operation card. The owner approves important changes, and MenuList applies supported work through the same system that runs the public menu.
 
 When the owner asks about the selected menu instead of asking for a change, MenuList can show a read-only answer card using the menu data already loaded for that project. These answers can suggest the next message, but they do not approve, mutate, or fetch unrelated external information.
 

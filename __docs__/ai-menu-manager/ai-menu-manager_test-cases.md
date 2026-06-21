@@ -1,8 +1,8 @@
 # AI Menu Manager - Test Cases
 
-**Status:** Draft QA plan
+**Status:** Current QA plan
 **Audience:** Engineering, QA, product review
-**Last Updated:** June 17, 2026
+**Last Updated:** June 20, 2026
 
 ---
 
@@ -31,6 +31,8 @@ Every passing test should confirm four things:
 | Firebase cost | Owner chat does not create one Firestore document per token, message fragment, model step, or card render. |
 | Mobile | Mobile opens inside `MobileShell` and supports quick approvals without route bypasses. |
 | Security | Protected endpoints validate session, tenant, payload, rate limit, and action authority. |
+
+Current executable write boundary: QA treats `AI_MENU_MANAGER_EXECUTABLE_ACTIONS` in `src/lib/ai-menu-manager/actionTypes.ts` as the current production executable client-project mutation list. The full action checklist remains the production catalog for supported, local, read-only, manual, blocked, and future adapter families. A checklist row marked as field coverage or future adapter work is not considered live executable until it appears in the executable export and has resolver/card/patch coverage.
 
 ---
 
@@ -667,7 +669,9 @@ npm run verify:ai-menu-manager
 Required implementation checks:
 
 - feature flags exist.
-- registry coverage matches every executable row in `ai-menu-manager_action-type-checklist.md`.
+- registry metadata covers every row in `ai-menu-manager_action-type-checklist.md`.
+- current executable writes match `AI_MENU_MANAGER_EXECUTABLE_ACTIONS`.
+- every action in `AI_MENU_MANAGER_EXECUTABLE_ACTIONS` has resolver fixture coverage and approved-patch verification.
 - every adapter has manual parity.
 - every executable adapter has an approval policy.
 - every adapter cost class and mobile handling matches the checklist.

@@ -1,0 +1,35 @@
+/* CampaignCue website viewport-reveal effects. */
+
+.cc-scroll-reveal {
+    opacity: 1;
+    transition-property: opacity, transform, filter;
+    transition-duration: var(--cc-reveal-duration, 760ms);
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--cc-reveal-delay, 0s);
+}
+
+.cc-scroll-reveal--pending {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translate3d(0, var(--cc-reveal-distance, 34px), 0) scale(0.988);
+    will-change: opacity, transform, filter;
+}
+
+.cc-scroll-reveal--visible {
+    filter: blur(0);
+    opacity: 1;
+    transform: none;
+    will-change: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cc-scroll-reveal,
+    .cc-scroll-reveal--pending,
+    .cc-scroll-reveal--visible {
+        filter: none;
+        opacity: 1;
+        transform: none;
+        transition: none;
+        will-change: auto;
+    }
+}

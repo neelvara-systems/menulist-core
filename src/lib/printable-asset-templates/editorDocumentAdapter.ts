@@ -16,6 +16,11 @@ import type {
     PrintableAssetTypeId,
 } from "./types";
 
+const BUSINESS_CARD_FACE_WIDTH = 1063;
+const BUSINESS_CARD_FACE_HEIGHT = 650;
+const BUSINESS_CARD_FACE_GAP = 40;
+const BUSINESS_CARD_COMBINED_WIDTH = BUSINESS_CARD_FACE_WIDTH * 2 + BUSINESS_CARD_FACE_GAP;
+
 const EDITOR_RENDERABLE_ASSETS = new Set<PrintableAssetTypeId>([
     "table_tent",
     "single_table_card",
@@ -25,6 +30,7 @@ const EDITOR_RENDERABLE_ASSETS = new Set<PrintableAssetTypeId>([
     "campaign_flyer",
     "gift_certificate",
     "business_card",
+    "staff_id_card",
     "event_invitation",
     "postcard",
     "product_tag",
@@ -32,7 +38,7 @@ const EDITOR_RENDERABLE_ASSETS = new Set<PrintableAssetTypeId>([
 ]);
 
 const PRINT_DIMENSIONS: Record<PrintableAssetTypeId, { height: number; heightMm: number; width: number; widthMm: number }> = {
-    business_card: { width: 1063, height: 650, widthMm: 90, heightMm: 55 },
+    business_card: { width: BUSINESS_CARD_COMBINED_WIDTH, height: BUSINESS_CARD_FACE_HEIGHT, widthMm: 183, heightMm: 55 },
     campaign_flyer: { width: 1748, height: 2480, widthMm: 148, heightMm: 210 },
     campaign_poster: { width: 2480, height: 3508, widthMm: 210, heightMm: 297 },
     complete_menu_kit: { width: 1080, height: 1080, widthMm: 100, heightMm: 100 },
@@ -45,6 +51,7 @@ const PRINT_DIMENSIONS: Record<PrintableAssetTypeId, { height: number; heightMm:
     print_menu: { width: 2480, height: 3508, widthMm: 210, heightMm: 297 },
     product_tag: { width: 1063, height: 591, widthMm: 90, heightMm: 50 },
     single_table_card: { width: 1240, height: 1748, widthMm: 105, heightMm: 148 },
+    staff_id_card: { width: 900, height: 1420, widthMm: 54, heightMm: 85 },
     table_tent: { width: 2480, height: 1748, widthMm: 210, heightMm: 148 },
 };
 
@@ -77,6 +84,30 @@ function truncateForLayer(value: string | null | undefined, max = 52): string {
 
 function getDisplayShortLink(ctx: BuildContext): string {
     return ctx.input.shortLink || ctx.input.menuUrl.replace(/^https?:\/\//, "");
+}
+
+function getContactPhone(ctx: BuildContext): string {
+    return truncateForLayer(ctx.input.contactPhone || "Phone number", 32);
+}
+
+function getContactName(ctx: BuildContext): string {
+    return truncateForLayer(ctx.input.contactName || ctx.input.storeName, 34);
+}
+
+function getContactRole(ctx: BuildContext): string {
+    return truncateForLayer(ctx.input.contactRole || "Owner / Manager", 28);
+}
+
+function getContactEmailOrLink(ctx: BuildContext): string {
+    return truncateForLayer(ctx.input.contactEmail || getDisplayShortLink(ctx), 34);
+}
+
+function getContactAddress(ctx: BuildContext): string {
+    return truncateForLayer(ctx.input.contactAddress || "Business address", 46);
+}
+
+function getSocialHandle(ctx: BuildContext): string {
+    return truncateForLayer(ctx.input.socialHandle || "Follow / save / share", 30);
 }
 
 function initials(value: string) {
@@ -254,6 +285,170 @@ function addIdentityBadge(ctx: BuildContext, x: number, y: number, size: number,
     }));
 }
 
+function addBrandMark(ctx: BuildContext, x: number, y: number, size: number, align: "left" | "center" = "left") {
+    const markX = align === "center" ? x - size / 2 : x;
+    if (ctx.input.logoUrl) {
+        ctx.elements.push(imageElement(ctx, {
+            height: size,
+            locked: true,
+            name: "Business logo",
+            src: ctx.input.logoUrl,
+            width: size,
+            x: markX,
+            y,
+        }));
+        return;
+    }
+    addIdentityBadge(ctx, x, y, size, align);
+}
+
+function addContactLine(ctx: BuildContext, params: {
+    fill?: string;
+    icon: string;
+    text: string;
+    textColor?: string;
+    width: number;
+    x: number;
+    y: number;
+}) {
+    const size = Math.round(ctx.canvasHeight * 0.072);
+    const iconFill = params.fill || ctx.accent;
+    const lineTextColor = params.textColor || ctx.text;
+    ctx.elements.push(ellipseElement(ctx, {
+        fill: iconFill,
+        height: size,
+        name: `${params.icon} icon`,
+        width: size,
+        x: params.x,
+        y: params.y,
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.accentText,
+        fontSize: Math.round(size * 0.42),
+        fontWeight: "900",
+        height: size,
+        name: `${params.icon} symbol`,
+        text: params.icon,
+        width: size,
+        x: params.x,
+        y: params.y + Math.round(size * 0.24),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: lineTextColor,
+        fontSize: Math.round(ctx.canvasHeight * 0.045),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.075),
+        name: "Contact detail",
+        text: params.text,
+        width: params.width,
+        x: params.x + size + Math.round(ctx.canvasWidth * 0.028),
+        y: params.y + Math.round(size * 0.14),
+    }));
+}
+
+function addCardCornerRibbons(ctx: BuildContext, variant: "front" | "back" | "id" = "front") {
+    const navy = ctx.input.templateFamilyId === "executive-dark" ? "#080d18" : "#071a74";
+    const deep = ctx.input.templateFamilyId === "executive-dark" ? "#111827" : "#11246f";
+    const pink = ctx.input.templateFamilyId === "executive-dark" ? ctx.accent : "#dd72a2";
+    const subtle = ctx.input.templateFamilyId === "executive-dark" ? "rgba(255,255,255,0.06)" : "rgba(7,26,116,0.08)";
+
+    if (variant === "id") {
+        ctx.elements.push(rectElement(ctx, {
+            fill: navy,
+            height: Math.round(ctx.canvasHeight * 0.16),
+            locked: true,
+            name: "Top brand ribbon",
+            radius: Math.round(ctx.canvasWidth * 0.05),
+            rotation: 8,
+            width: Math.round(ctx.canvasWidth * 0.74),
+            x: Math.round(ctx.canvasWidth * 0.05),
+            y: Math.round(ctx.canvasHeight * 0.00),
+        }));
+        ctx.elements.push(rectElement(ctx, {
+            fill: pink,
+            height: Math.round(ctx.canvasHeight * 0.16),
+            locked: true,
+            name: "Top accent ribbon",
+            radius: Math.round(ctx.canvasWidth * 0.045),
+            rotation: 36,
+            width: Math.round(ctx.canvasWidth * 0.46),
+            x: Math.round(ctx.canvasWidth * 0.50),
+            y: Math.round(ctx.canvasHeight * 0.00),
+        }));
+        ctx.elements.push(rectElement(ctx, {
+            fill: pink,
+            height: Math.round(ctx.canvasHeight * 0.18),
+            locked: true,
+            name: "Bottom accent ribbon",
+            radius: Math.round(ctx.canvasWidth * 0.045),
+            rotation: -28,
+            width: Math.round(ctx.canvasWidth * 0.64),
+            x: Math.round(ctx.canvasWidth * 0.00),
+            y: Math.round(ctx.canvasHeight * 0.78),
+        }));
+        ctx.elements.push(rectElement(ctx, {
+            fill: navy,
+            height: Math.round(ctx.canvasHeight * 0.18),
+            locked: true,
+            name: "Bottom brand ribbon",
+            radius: Math.round(ctx.canvasWidth * 0.055),
+            rotation: -18,
+            width: Math.round(ctx.canvasWidth * 0.68),
+            x: Math.round(ctx.canvasWidth * 0.28),
+            y: Math.round(ctx.canvasHeight * 0.82),
+        }));
+        return;
+    }
+
+    ctx.elements.push(rectElement(ctx, {
+        fill: navy,
+        height: Math.round(ctx.canvasHeight * 0.86),
+        locked: true,
+        name: "Brand color field",
+        radius: Math.round(ctx.canvasHeight * 0.05),
+        rotation: variant === "front" ? 0 : -15,
+        width: Math.round(ctx.canvasWidth * (variant === "front" ? 0.40 : 0.54)),
+        x: Math.round(ctx.canvasWidth * (variant === "front" ? 0.56 : 0.02)),
+        y: Math.round(ctx.canvasHeight * (variant === "front" ? 0.02 : 0.08)),
+    }));
+    ctx.elements.push(rectElement(ctx, {
+        fill: pink,
+        height: Math.round(ctx.canvasHeight * 0.23),
+        locked: true,
+        name: "Accent sweep",
+        radius: Math.round(ctx.canvasHeight * 0.06),
+        rotation: variant === "front" ? 38 : 16,
+        width: Math.round(ctx.canvasWidth * (variant === "front" ? 0.50 : 0.62)),
+        x: Math.round(ctx.canvasWidth * (variant === "front" ? 0.45 : 0.12)),
+        y: Math.round(ctx.canvasHeight * (variant === "front" ? 0.50 : 0.00)),
+    }));
+    ctx.elements.push(rectElement(ctx, {
+        fill: deep,
+        height: Math.round(ctx.canvasHeight * 0.24),
+        locked: true,
+        name: "Deep corner",
+        opacity: variant === "front" ? 1 : 0.9,
+        radius: Math.round(ctx.canvasHeight * 0.045),
+        rotation: variant === "front" ? 44 : -38,
+        width: Math.round(ctx.canvasWidth * (variant === "front" ? 0.34 : 0.38)),
+        x: Math.round(ctx.canvasWidth * (variant === "front" ? 0.63 : 0.58)),
+        y: Math.round(ctx.canvasHeight * (variant === "front" ? 0.07 : 0.03)),
+    }));
+    ctx.elements.push(rectElement(ctx, {
+        fill: subtle,
+        height: Math.round(ctx.canvasHeight * 0.18),
+        locked: true,
+        name: "Soft shape",
+        radius: Math.round(ctx.canvasHeight * 0.06),
+        rotation: -28,
+        width: Math.round(ctx.canvasWidth * 0.36),
+        x: Math.round(ctx.canvasWidth * 0.00),
+        y: Math.round(ctx.canvasHeight * 0.68),
+    }));
+}
+
 function isPrintableAssetPlatformAttribution(element: CreativeEditorElement): boolean {
     const name = element.name.trim().toLowerCase();
     if (name === "menulist mark" || name === "menulist attribution") return true;
@@ -319,7 +514,7 @@ function addDecor(ctx: BuildContext) {
     const family = ctx.input.templateFamilyId;
     if (family === "soft-curve") {
         const curveWidth = Math.round(ctx.canvasWidth * 0.60);
-        const curveHeight = Math.round(ctx.canvasWidth * 0.52);
+        const curveHeight = Math.round(Math.min(ctx.canvasWidth * 0.52, ctx.canvasHeight * 0.78));
         ctx.elements.push(ellipseElement(ctx, {
             fill: ctx.accent,
             height: curveHeight,
@@ -784,43 +979,280 @@ function buildGiftCertificate(ctx: BuildContext) {
     });
 }
 
-function buildBusinessCard(ctx: BuildContext) {
-    addDecor(ctx);
+function offsetFaceElements(elements: CreativeEditorElement[], offsetX: number, offsetY: number): CreativeEditorElement[] {
+    return elements.map((element) => ({
+        ...element,
+        x: element.x + offsetX,
+        y: element.y + offsetY,
+    }));
+}
+
+function addBusinessCardFace(
+    ctx: BuildContext,
+    offsetX: number,
+    builder: (faceCtx: BuildContext) => void,
+) {
+    const faceElements: CreativeEditorElement[] = [];
+    const faceCtx: BuildContext = {
+        ...ctx,
+        canvasHeight: BUSINESS_CARD_FACE_HEIGHT,
+        canvasWidth: BUSINESS_CARD_FACE_WIDTH,
+        elements: faceElements,
+    };
+    builder(faceCtx);
+    ctx.elements.push(...offsetFaceElements(faceElements, offsetX, 0));
+}
+
+function buildBusinessCardFrontFace(ctx: BuildContext) {
+    addCardCornerRibbons(ctx, "front");
     const margin = Math.round(ctx.canvasWidth * 0.07);
-    addIdentityBadge(ctx, margin, Math.round(ctx.canvasHeight * 0.13), Math.round(ctx.canvasHeight * 0.20));
+    addBrandMark(ctx, margin, Math.round(ctx.canvasHeight * 0.10), Math.round(ctx.canvasHeight * 0.16));
     ctx.elements.push(textElement(ctx, {
         align: "left",
         color: ctx.text,
-        fontSize: Math.round(ctx.canvasHeight * 0.098),
+        fontSize: Math.round(ctx.canvasHeight * 0.082),
         fontWeight: "900",
-        height: Math.round(ctx.canvasHeight * 0.18),
-        name: "Business name",
-        text: truncateForLayer(ctx.input.storeName, 34),
-        width: Math.round(ctx.canvasWidth * 0.56),
+        height: Math.round(ctx.canvasHeight * 0.12),
+        name: "Contact name",
+        text: getContactName(ctx),
+        width: Math.round(ctx.canvasWidth * 0.50),
         x: margin,
-        y: Math.round(ctx.canvasHeight * 0.40),
+        y: Math.round(ctx.canvasHeight * 0.38),
     }));
     ctx.elements.push(textElement(ctx, {
         align: "left",
         color: ctx.accent,
-        fontSize: Math.round(ctx.canvasHeight * 0.055),
+        fontSize: Math.round(ctx.canvasHeight * 0.045),
         fontWeight: "800",
-        height: Math.round(ctx.canvasHeight * 0.09),
-        name: "Card purpose",
-        text: `${ctx.labels.offeringTitle} & updates`,
+        height: Math.round(ctx.canvasHeight * 0.07),
+        name: "Role",
+        text: getContactRole(ctx),
+        width: Math.round(ctx.canvasWidth * 0.48),
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.50),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasHeight * 0.044),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Business name",
+        text: truncateForLayer(ctx.input.storeName, 34),
         width: Math.round(ctx.canvasWidth * 0.56),
         x: margin,
         y: Math.round(ctx.canvasHeight * 0.60),
     }));
-    const qrSize = Math.round(ctx.canvasHeight * 0.38);
-    addQrPanel(ctx, Math.round(ctx.canvasWidth * 0.70), Math.round(ctx.canvasHeight * 0.24), qrSize);
+    addContactLine(ctx, {
+        fill: "#071a74",
+        icon: "P",
+        text: getContactPhone(ctx),
+        width: Math.round(ctx.canvasWidth * 0.40),
+        x: margin,
+        y: Math.round(ctx.canvasHeight * 0.72),
+    });
+    addContactLine(ctx, {
+        fill: "#dd72a2",
+        icon: "@",
+        text: getContactEmailOrLink(ctx),
+        width: Math.round(ctx.canvasWidth * 0.40),
+        x: Math.round(ctx.canvasWidth * 0.34),
+        y: Math.round(ctx.canvasHeight * 0.72),
+    });
+    const qrSize = Math.round(ctx.canvasHeight * 0.34);
+    addQrPanel(ctx, Math.round(ctx.canvasWidth * 0.72), Math.round(ctx.canvasHeight * 0.18), qrSize);
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: "#dd72a2",
+        fontFamily: "Georgia, serif",
+        fontSize: Math.round(ctx.canvasHeight * 0.05),
+        fontStyle: "italic",
+        fontWeight: "700",
+        height: Math.round(ctx.canvasHeight * 0.08),
+        name: "Scan note",
+        text: `Scan for ${ctx.labels.offeringLower}`,
+        width: Math.round(ctx.canvasWidth * 0.32),
+        x: Math.round(ctx.canvasWidth * 0.65),
+        y: Math.round(ctx.canvasHeight * 0.66),
+    }));
     addShortLink(ctx, {
         align: "left",
-        fontSize: Math.round(ctx.canvasHeight * 0.038),
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasHeight * 0.036),
         height: Math.round(ctx.canvasHeight * 0.08),
-        width: Math.round(ctx.canvasWidth * 0.56),
+        width: Math.round(ctx.canvasWidth * 0.50),
         x: margin,
-        y: Math.round(ctx.canvasHeight * 0.78),
+        y: Math.round(ctx.canvasHeight * 0.86),
+    });
+}
+
+function buildBusinessCardBackFace(ctx: BuildContext) {
+    addCardCornerRibbons(ctx, "back");
+    const centerX = Math.round(ctx.canvasWidth * 0.50);
+    const markSize = Math.round(ctx.canvasHeight * 0.20);
+    addBrandMark(ctx, centerX, Math.round(ctx.canvasHeight * 0.26), markSize, "center");
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasHeight * 0.075),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.10),
+        name: "Business name",
+        text: truncateForLayer(ctx.input.storeName, 34),
+        width: Math.round(ctx.canvasWidth * 0.60),
+        x: Math.round(ctx.canvasWidth * 0.20),
+        y: Math.round(ctx.canvasHeight * 0.49),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        charSpacing: 220,
+        color: ctx.accent,
+        fontSize: Math.round(ctx.canvasHeight * 0.034),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.07),
+        name: "Tagline",
+        text: "SCAN SAVE VISIT",
+        width: Math.round(ctx.canvasWidth * 0.68),
+        x: Math.round(ctx.canvasWidth * 0.16),
+        y: Math.round(ctx.canvasHeight * 0.61),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasHeight * 0.042),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.07),
+        name: "Social handles",
+        text: getSocialHandle(ctx),
+        width: Math.round(ctx.canvasWidth * 0.58),
+        x: Math.round(ctx.canvasWidth * 0.37),
+        y: Math.round(ctx.canvasHeight * 0.73),
+    }));
+    addShortLink(ctx, {
+        align: "center",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasHeight * 0.062),
+        height: Math.round(ctx.canvasHeight * 0.10),
+        width: Math.round(ctx.canvasWidth * 0.68),
+        x: Math.round(ctx.canvasWidth * 0.27),
+        y: Math.round(ctx.canvasHeight * 0.84),
+    });
+}
+
+function buildBusinessCard(ctx: BuildContext) {
+    addBusinessCardFace(ctx, 0, buildBusinessCardFrontFace);
+    ctx.elements.push(lineElement(ctx, {
+        height: Math.round(ctx.canvasHeight * 0.86),
+        locked: true,
+        name: "Side divider",
+        opacity: 0.45,
+        stroke: ctx.borderColor,
+        strokeStyle: "dashed",
+        strokeWidth: 3,
+        width: 0,
+        x: BUSINESS_CARD_FACE_WIDTH + Math.round(BUSINESS_CARD_FACE_GAP / 2),
+        y: Math.round(ctx.canvasHeight * 0.07),
+    }));
+    addBusinessCardFace(ctx, BUSINESS_CARD_FACE_WIDTH + BUSINESS_CARD_FACE_GAP, buildBusinessCardBackFace);
+}
+
+function buildStaffIdCard(ctx: BuildContext) {
+    addCardCornerRibbons(ctx, "id");
+    addBrandMark(ctx, Math.round(ctx.canvasWidth * 0.08), Math.round(ctx.canvasHeight * 0.08), Math.round(ctx.canvasWidth * 0.12));
+    ctx.elements.push(textElement(ctx, {
+        align: "left",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasWidth * 0.055),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.06),
+        name: "Business name",
+        text: truncateForLayer(ctx.input.storeName, 28),
+        width: Math.round(ctx.canvasWidth * 0.48),
+        x: Math.round(ctx.canvasWidth * 0.22),
+        y: Math.round(ctx.canvasHeight * 0.10),
+    }));
+    const photoSize = Math.round(ctx.canvasWidth * 0.42);
+    const photoX = Math.round((ctx.canvasWidth - photoSize) / 2);
+    const photoY = Math.round(ctx.canvasHeight * 0.27);
+    ctx.elements.push(ellipseElement(ctx, {
+        fill: ctx.input.templateFamilyId === "executive-dark" ? "#1f2937" : "#f3f4f6",
+        height: photoSize,
+        name: "Photo placeholder",
+        stroke: "#dd72a2",
+        strokeWidth: Math.round(ctx.canvasWidth * 0.025),
+        width: photoSize,
+        x: photoX,
+        y: photoY,
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.muted,
+        fontSize: Math.round(ctx.canvasWidth * 0.052),
+        fontWeight: "900",
+        height: Math.round(photoSize * 0.18),
+        name: "Photo label",
+        text: "PHOTO",
+        width: photoSize,
+        x: photoX,
+        y: photoY + Math.round(photoSize * 0.42),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasWidth * 0.085),
+        fontWeight: "900",
+        height: Math.round(ctx.canvasHeight * 0.075),
+        name: "Staff name",
+        text: getContactName(ctx),
+        width: Math.round(ctx.canvasWidth * 0.76),
+        x: Math.round(ctx.canvasWidth * 0.12),
+        y: Math.round(ctx.canvasHeight * 0.56),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        charSpacing: 160,
+        color: ctx.accent,
+        fontSize: Math.round(ctx.canvasWidth * 0.042),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.06),
+        name: "Staff role",
+        text: getContactRole(ctx).toUpperCase(),
+        width: Math.round(ctx.canvasWidth * 0.68),
+        x: Math.round(ctx.canvasWidth * 0.16),
+        y: Math.round(ctx.canvasHeight * 0.63),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasWidth * 0.049),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.06),
+        name: "Phone number",
+        text: getContactPhone(ctx),
+        width: Math.round(ctx.canvasWidth * 0.76),
+        x: Math.round(ctx.canvasWidth * 0.12),
+        y: Math.round(ctx.canvasHeight * 0.71),
+    }));
+    ctx.elements.push(textElement(ctx, {
+        align: "center",
+        color: ctx.text,
+        fontSize: Math.round(ctx.canvasWidth * 0.04),
+        fontWeight: "800",
+        height: Math.round(ctx.canvasHeight * 0.085),
+        name: "Address",
+        text: getContactAddress(ctx),
+        width: Math.round(ctx.canvasWidth * 0.76),
+        x: Math.round(ctx.canvasWidth * 0.12),
+        y: Math.round(ctx.canvasHeight * 0.77),
+    }));
+    addShortLink(ctx, {
+        align: "center",
+        color: "#ffffff",
+        fontSize: Math.round(ctx.canvasWidth * 0.045),
+        height: Math.round(ctx.canvasHeight * 0.05),
+        width: Math.round(ctx.canvasWidth * 0.76),
+        x: Math.round(ctx.canvasWidth * 0.12),
+        y: Math.round(ctx.canvasHeight * 0.94),
     });
 }
 
@@ -1128,6 +1560,7 @@ export function buildPrintableAssetEditorDocument(input: PrintableAssetRenderInp
     else if (input.assetTypeId === "campaign_flyer") buildCampaignFlyer(ctx);
     else if (input.assetTypeId === "gift_certificate") buildGiftCertificate(ctx);
     else if (input.assetTypeId === "business_card") buildBusinessCard(ctx);
+    else if (input.assetTypeId === "staff_id_card") buildStaffIdCard(ctx);
     else if (input.assetTypeId === "event_invitation") buildEventInvitation(ctx);
     else if (input.assetTypeId === "postcard") buildPostcard(ctx);
     else if (input.assetTypeId === "product_tag") buildProductTag(ctx);

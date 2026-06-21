@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import './styles.css';
+import CampaignCueScrollReveal from './components/CampaignCueScrollReveal';
 import {
     CAMPAIGNCUE_SITE_DESCRIPTION,
     CAMPAIGNCUE_SITE_TITLE,
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
-    themeColor: '#0f766e',
+    themeColor: '#061a78',
 };
 
 interface CampaignCueLayoutProps {
@@ -80,5 +80,10 @@ interface CampaignCueLayoutProps {
 }
 
 export default function CampaignCueLayout({ children }: CampaignCueLayoutProps) {
-    return <>{children}</>;
+    return (
+        <>
+            <CampaignCueScrollReveal />
+            {children}
+        </>
+    );
 }

@@ -95,14 +95,24 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
         title: 'Gift Certificate',
     },
     {
-        defaultTemplateId: 'modern-calm',
-        description: 'Contact or QR card for counters, bags, and appointments.',
+        defaultTemplateId: 'soft-curve',
+        description: 'Front and back card in one print-ready file.',
         id: 'business_card',
         outputFormat: 'pdf',
         placement: 'identity',
-        size: '90 x 55 mm',
+        size: '2 x 90 x 55 mm',
         supportedOutputFormats: ['pdf', 'png'],
         title: 'Business Card',
+    },
+    {
+        defaultTemplateId: 'soft-curve',
+        description: 'Portrait staff, owner, or service ID card with photo area.',
+        id: 'staff_id_card',
+        outputFormat: 'pdf',
+        placement: 'identity',
+        size: '54 x 85 mm',
+        supportedOutputFormats: ['pdf', 'png'],
+        title: 'ID Card',
     },
     {
         defaultTemplateId: 'soft-curve',
@@ -178,7 +188,9 @@ export function getPrintableAssetPreviewCopy(
         case 'gift_certificate':
             return { actionLabel: 'GIFT CERTIFICATE', instructionLabel: 'Scan to redeem' };
         case 'business_card':
-            return { actionLabel: 'CONTACT CARD', instructionLabel: `Scan for ${labels.offeringUpper}` };
+            return { actionLabel: 'CONTACT CARD', instructionLabel: 'Front and back in one file' };
+        case 'staff_id_card':
+            return { actionLabel: 'STAFF ID', instructionLabel: 'Owner or staff identity card' };
         case 'event_invitation':
             return { actionLabel: 'YOU ARE INVITED', instructionLabel: 'Scan for details' };
         case 'postcard':

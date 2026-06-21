@@ -1,7 +1,7 @@
 # Print Assets Mobile Support
 
 **Status:** Implemented
-**Last Updated:** June 6, 2026
+**Last Updated:** June 21, 2026
 
 ## Admission Test
 
@@ -21,7 +21,7 @@
 - Menu tab opens Print Menu through `onOpenPrintMenu` shell callback after pending menu saves complete.
 - Mobile uses `MobileShareScreen` download handlers in focused mode.
 - Mobile and desktop use the same `generateMenuKit()` bundle output.
-- Mobile and desktop use the same printable renderer for individual downloads and previews.
+- Mobile and desktop use the same printable renderer for individual downloads and previews, including front/back business cards and ID cards.
 - Readiness, print-shop handoff, and reprint guidance come from shared print-assets helpers.
 - Preview appears inside the template bottom sheet first, with separate PDF/image download actions for single assets.
 

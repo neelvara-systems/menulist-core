@@ -24,12 +24,29 @@ export const ANSWERLATTICE_PLAN_TIER_ORDER: Record<string, number> = {
 
 export const normalizeBillingProductId = (value: unknown): ProductId => {
     const normalized = String(value || '').trim().toUpperCase();
-    return normalized === PRODUCT_IDS.ANSWERLATTICE ? PRODUCT_IDS.ANSWERLATTICE : PRODUCT_IDS.MENULIST;
+    if (normalized === PRODUCT_IDS.ANSWERLATTICE) return PRODUCT_IDS.ANSWERLATTICE;
+    if (normalized === PRODUCT_IDS.CAMPAIGNCUE) return PRODUCT_IDS.CAMPAIGNCUE;
+    if (normalized === PRODUCT_IDS.MYCODEX) return PRODUCT_IDS.MYCODEX;
+    return PRODUCT_IDS.MENULIST;
 };
 
 export const isAnswerlatticeBillingProduct = (productId: unknown): boolean => (
     normalizeBillingProductId(productId) === PRODUCT_IDS.ANSWERLATTICE
 );
+
+export const isCampaignCueBillingProduct = (productId: unknown): boolean => (
+    normalizeBillingProductId(productId) === PRODUCT_IDS.CAMPAIGNCUE
+);
+
+export const isMyCodexBillingProduct = (productId: unknown): boolean => (
+    normalizeBillingProductId(productId) === PRODUCT_IDS.MYCODEX
+);
+
+export const isProductBillingDisabled = (productId: unknown): boolean => {
+    const normalized = normalizeBillingProductId(productId);
+    return normalized === PRODUCT_IDS.CAMPAIGNCUE
+        || normalized === PRODUCT_IDS.MYCODEX;
+};
 
 export const answerlatticePlanToBillingPlan = (plan: AnswerlatticePlan): Plan => ({
     planId: plan.planId,
@@ -55,6 +72,10 @@ export const getBillingPlansForProduct = (
     productId: unknown,
     userType: PlanType | 'B2B' | 'B2C' = 'B2C',
 ): Plan[] => {
+    if (isProductBillingDisabled(productId)) {
+        return [];
+    }
+
     if (isAnswerlatticeBillingProduct(productId)) {
         return getAnswerlatticePlans()
             .filter((plan) => plan.priceINR.price > 0 || plan.priceUSD.price > 0)
@@ -64,12 +85,17 @@ export const getBillingPlansForProduct = (
     return userType === 'B2B' ? getB2BPlansList() : getB2CPlansList();
 };
 
-export const getCreditPacksForProduct = (productId: unknown): AIEnhancementPack[] => (
-    isAnswerlatticeBillingProduct(productId) ? ANSWERLATTICE_CREDIT_PACKS_LIST : aiEnhancementPacksList
-);
+export const getCreditPacksForProduct = (productId: unknown): AIEnhancementPack[] => {
+    if (isProductBillingDisabled(productId)) return [];
+    return isAnswerlatticeBillingProduct(productId) ? ANSWERLATTICE_CREDIT_PACKS_LIST : aiEnhancementPacksList;
+};
 
 export const getBillingPlanDetailsFromNotes = (notes: any): any => {
     if (!notes?.planId || !notes?.interval) return null;
+
+    if (isProductBillingDisabled(notes.productId || notes.pId)) {
+        return null;
+    }
 
     if (isAnswerlatticeBillingProduct(notes.productId || notes.pId)) {
         return getAnswerlatticePlanById(notes.planId, notes.interval) || null;

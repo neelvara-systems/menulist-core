@@ -1,7 +1,10 @@
+import { PRODUCT_IDS } from '@constant/product';
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export const MYCODEX_PRODUCT_ID = 'mycodex';
+export const MYCODEX_PRODUCT_CODE = PRODUCT_IDS.MYCODEX;
+export const MYCODEX_PRODUCT_SLUG = 'mycodex';
 export const MYCODEX_SESSION_COOKIE = 'mycodex_session';
 export const MYCODEX_LOGIN_PATH = '/login';
 export const MYCODEX_LOGIN_API_PATH = '/api/session';
@@ -11,7 +14,7 @@ export const MYCODEX_ROBOTS_TAG = 'noindex, nofollow, noarchive, nosnippet, noim
 export const MYCODEX_SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 
 interface MyCodexSessionPayload {
-    product: typeof MYCODEX_PRODUCT_ID;
+    product: typeof MYCODEX_PRODUCT_SLUG;
     sub: string;
     exp: number;
 }
@@ -117,7 +120,7 @@ export const validateMyCodexCredentials = (username: string, password: string) =
 
 export const createMyCodexSessionToken = async (username: string) => {
     const payload: MyCodexSessionPayload = {
-        product: MYCODEX_PRODUCT_ID,
+        product: MYCODEX_PRODUCT_SLUG,
         sub: username,
         exp: Date.now() + (MYCODEX_SESSION_TTL_SECONDS * 1000),
     };
@@ -142,7 +145,7 @@ export const verifyMyCodexSessionToken = async (token: string | undefined) => {
 
     try {
         const payload = JSON.parse(base64UrlToString(payloadPart)) as Partial<MyCodexSessionPayload>;
-        return payload.product === MYCODEX_PRODUCT_ID
+        return payload.product === MYCODEX_PRODUCT_SLUG
             && typeof payload.sub === 'string'
             && typeof payload.exp === 'number'
             && payload.exp > Date.now();

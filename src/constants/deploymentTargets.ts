@@ -1,6 +1,6 @@
 /**
- * Deployment target matrix for the shared MenuList + Answerlattice +
- * CampaignCue Vercel app.
+ * Deployment target matrix for the shared MenuList + ConstantLayer +
+ * Answerlattice + CampaignCue Vercel app.
  *
  * Domain routing and Firebase project selection must stay aligned:
  * - local development keeps MenuList at / and product sites under /__{product}
@@ -9,7 +9,7 @@
  */
 
 export type DeploymentStage = 'local' | 'preview' | 'production';
-export type DeploymentProductId = 'menulist' | 'answerlattice' | 'campaigncue' | 'mycodex';
+export type DeploymentProductId = 'menulist' | 'constantlayer' | 'answerlattice' | 'campaigncue' | 'mycodex';
 
 export interface ProductDeploymentTarget {
     productId: DeploymentProductId;
@@ -34,6 +34,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             domains: ['localhost', '127.0.0.1'],
             devPathPrefix: '',
             firebaseProjectId: 'ecomsai',
+        },
+        constantlayer: {
+            productId: 'constantlayer',
+            url: 'http://localhost:3000/__constantlayer/',
+            domains: [],
+            devPathPrefix: '/__constantlayer',
+            firebaseProjectId: '',
         },
         answerlattice: {
             productId: 'answerlattice',
@@ -65,6 +72,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '',
             firebaseProjectId: 'ecomsai',
         },
+        constantlayer: {
+            productId: 'constantlayer',
+            url: 'https://constantlayer.menulist.online',
+            domains: ['constantlayer.menulist.online'],
+            devPathPrefix: '',
+            firebaseProjectId: '',
+        },
         answerlattice: {
             productId: 'answerlattice',
             url: 'https://ecomsai.com',
@@ -94,6 +108,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             domains: ['menulist.ai', 'www.menulist.ai'],
             devPathPrefix: '',
             firebaseProjectId: 'menulist',
+        },
+        constantlayer: {
+            productId: 'constantlayer',
+            url: 'https://constantlayer.in',
+            domains: ['constantlayer.in', 'www.constantlayer.in'],
+            devPathPrefix: '',
+            firebaseProjectId: '',
         },
         answerlattice: {
             productId: 'answerlattice',
@@ -161,7 +182,7 @@ export function resolveKnownProductIdByHostname(hostname: string | null | undefi
     if (!hostname) return null;
     const normalizedHost = hostname.split(':')[0].toLowerCase();
 
-    for (const productId of ['menulist', 'answerlattice', 'campaigncue', 'mycodex'] as DeploymentProductId[]) {
+    for (const productId of ['menulist', 'constantlayer', 'answerlattice', 'campaigncue', 'mycodex'] as DeploymentProductId[]) {
         if (getKnownProductDomains(productId).includes(normalizedHost)) {
             return productId;
         }

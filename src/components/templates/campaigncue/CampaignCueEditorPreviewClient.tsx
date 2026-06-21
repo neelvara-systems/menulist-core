@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
 import { CAMPAIGNCUE_CREATIVE_EDITOR_AI_ACTIONS } from "@constant/campaigncue/creativeEditorAiTools";
 import { CAMPAIGNCUE_DESIGN_CUE_COMMANDS } from "@constant/campaigncue/designCue";
 import { runCampaignCueCreativeEditorAiTool } from "@lib/campaigncue/creativeEditorAiTools";
@@ -36,7 +37,7 @@ const buildCampaignCueEditorTestDocument = (): CreativeEditorDocument => ({
         height: 1350,
         primaryColor: "#e7792b",
         productContext: {
-            productId: "campaigncue",
+            productId: CAMPAIGNCUE_PRODUCT_CODE,
             sourceSurface: "campaigncue-editor-test",
             workspaceId: "local-editor-test",
         },

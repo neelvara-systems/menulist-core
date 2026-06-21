@@ -30,7 +30,10 @@ const storeId = process.env.MOBILE_QA_STORE_ID || '15';
 const email = process.env.MOBILE_QA_EMAIL || 'danny.tools.4884@gmail.com';
 const outputDir = process.env.MOBILE_QA_OUTPUT_DIR || '/tmp';
 const debugPort = Number(process.env.MOBILE_QA_DEBUG_PORT || 9344);
-const uploadFilePath = process.env.MOBILE_QA_UPLOAD_FILE || '/tmp/menulist-extraction-test-menu.png';
+const defaultUploadFilePath = path.resolve(
+  'menulist-answerlattice-upload-inputs/asset-inputs/private-reference-captures/public-menu-mobile.png',
+);
+const uploadFilePath = process.env.MOBILE_QA_UPLOAD_FILE || defaultUploadFilePath;
 const projectName = process.env.MOBILE_QA_PROJECT_NAME || `Mobile Upload QA ${new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 12)}`;
 const waitForCompletionMs = Number(process.env.MOBILE_QA_WAIT_MS || 240000);
 const tenantId = process.env.MOBILE_QA_TENANT_ID || '14';
@@ -181,9 +184,15 @@ async function clickByText(client, sessionId, text, exact = false) {
       const visible = (el) => {
         const rect = el.getBoundingClientRect();
         const style = getComputedStyle(el);
-        return rect.width > 0 && rect.height > 0 &&
+        if (!(rect.width > 0 && rect.height > 0 &&
           rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth &&
-          style.visibility !== 'hidden' && style.display !== 'none' && style.pointerEvents !== 'none';
+          style.visibility !== 'hidden' && style.display !== 'none' && style.pointerEvents !== 'none' && style.opacity !== '0')) {
+          return false;
+        }
+        const x = Math.min(Math.max(rect.left + rect.width / 2, 0), innerWidth - 1);
+        const y = Math.min(Math.max(rect.top + rect.height / 2, 0), innerHeight - 1);
+        const hit = document.elementFromPoint(x, y);
+        return Boolean(hit && (hit === el || el.contains(hit) || hit.contains(el)));
       };
       const match = candidates.find((el) => {
         if (!visible(el)) return false;
@@ -204,9 +213,15 @@ async function clickButtonByText(client, sessionId, text) {
       const visible = (el) => {
         const rect = el.getBoundingClientRect();
         const style = getComputedStyle(el);
-        return rect.width > 0 && rect.height > 0 &&
+        if (!(rect.width > 0 && rect.height > 0 &&
           rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth &&
-          style.visibility !== 'hidden' && style.display !== 'none' && style.pointerEvents !== 'none';
+          style.visibility !== 'hidden' && style.display !== 'none' && style.pointerEvents !== 'none' && style.opacity !== '0')) {
+          return false;
+        }
+        const x = Math.min(Math.max(rect.left + rect.width / 2, 0), innerWidth - 1);
+        const y = Math.min(Math.max(rect.top + rect.height / 2, 0), innerHeight - 1);
+        const hit = document.elementFromPoint(x, y);
+        return Boolean(hit && (hit === el || el.contains(hit) || hit.contains(el)));
       };
       const matches = Array.from(document.querySelectorAll('button'))
         .filter((el) => visible(el) && !el.disabled && (el.textContent || '').replace(/\\s+/g, ' ').trim() === wanted);
@@ -224,9 +239,15 @@ async function clickMobileProjectSelector(client, sessionId) {
       .some((el) => {
         const rect = el.getBoundingClientRect();
         const style = getComputedStyle(el);
-        return rect.width > 0 && rect.height > 0 &&
+        if (!(rect.width > 0 && rect.height > 0 &&
           rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth &&
-          style.visibility !== 'hidden' && style.display !== 'none' && style.pointerEvents !== 'none' &&
+          style.visibility !== 'hidden' && style.display !== 'none' && style.pointerEvents !== 'none' && style.opacity !== '0')) {
+          return false;
+        }
+        const x = Math.min(Math.max(rect.left + rect.width / 2, 0), innerWidth - 1);
+        const y = Math.min(Math.max(rect.top + rect.height / 2, 0), innerHeight - 1);
+        const hit = document.elementFromPoint(x, y);
+        return Boolean(hit && (hit === el || el.contains(hit) || hit.contains(el))) &&
           (el.textContent || '').replace(/\\s+/g, ' ').trim().includes('Select a Menu');
       })
   `;
@@ -235,9 +256,15 @@ async function clickMobileProjectSelector(client, sessionId) {
       const visible = (el) => {
         const rect = el.getBoundingClientRect();
         const style = getComputedStyle(el);
-        return rect.width > 0 && rect.height > 0 &&
+        if (!(rect.width > 0 && rect.height > 0 &&
           rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth &&
-          style.visibility !== 'hidden' && style.display !== 'none' && style.pointerEvents !== 'none';
+          style.visibility !== 'hidden' && style.display !== 'none' && style.pointerEvents !== 'none' && style.opacity !== '0')) {
+          return false;
+        }
+        const x = Math.min(Math.max(rect.left + rect.width / 2, 0), innerWidth - 1);
+        const y = Math.min(Math.max(rect.top + rect.height / 2, 0), innerHeight - 1);
+        const hit = document.elementFromPoint(x, y);
+        return Boolean(hit && (hit === el || el.contains(hit) || hit.contains(el)));
       };
       const candidates = Array.from(document.querySelectorAll('button, [role="button"], .ant-card, div'))
         .map((el) => ({ el, rect: el.getBoundingClientRect(), text: (el.textContent || '').replace(/\\s+/g, ' ').trim() }))
@@ -267,18 +294,36 @@ async function clickMobileProjectSelector(client, sessionId) {
 
 async function setFirstFileInput(client, sessionId, filePath) {
   const document = await client.send('DOM.getDocument', { depth: -1, pierce: true }, sessionId);
-  const input = await client.send('DOM.querySelector', {
+  const inputs = await client.send('DOM.querySelectorAll', {
     nodeId: document.root.nodeId,
-    selector: 'input[type="file"][accept*="pdf"], input[type="file"][multiple], input[type="file"]',
+    selector: 'input[type="file"]',
   }, sessionId);
-  if (!input.nodeId) throw new Error('No file input found in mobile upload sheet.');
+  let selectedNodeId = 0;
+  for (const nodeId of inputs.nodeIds || []) {
+    const attributesResult = await client.send('DOM.getAttributes', { nodeId }, sessionId);
+    const attributes = {};
+    for (let i = 0; i < (attributesResult.attributes || []).length; i += 2) {
+      attributes[attributesResult.attributes[i]] = attributesResult.attributes[i + 1] || '';
+    }
+    const accept = String(attributes.accept || '').toLowerCase();
+    const name = String(attributes.name || '').toLowerCase();
+    if (accept.includes('pdf') || name === 'file' || Object.prototype.hasOwnProperty.call(attributes, 'multiple')) {
+      selectedNodeId = nodeId;
+      break;
+    }
+    if (!selectedNodeId) selectedNodeId = nodeId;
+  }
+  if (!selectedNodeId) throw new Error('No file input found in mobile upload sheet.');
   await client.send('DOM.setFileInputFiles', {
     files: [filePath],
-    nodeId: input.nodeId,
+    nodeId: selectedNodeId,
   }, sessionId);
   await evaluate(client, sessionId, `
     (() => {
-      const input = document.querySelector('input[type="file"]');
+      const input = Array.from(document.querySelectorAll('input[type="file"]'))
+        .find((candidate) => candidate.files && candidate.files.length > 0)
+        || Array.from(document.querySelectorAll('input[type="file"]'))
+          .find((candidate) => ((candidate.getAttribute('accept') || '').toLowerCase().includes('pdf') || candidate.name === 'file'));
       if (!input) return false;
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -416,7 +461,7 @@ async function createAdminQaProject(db) {
     name: localizedName,
     slug: `${slugifyName(projectName)}-${timestamp}`,
   };
-  await db.collection('projects').doc(projectId).set(projectData, { merge: true });
+  await db.collection('projects').doc(String(tenantId)).collection(String(storeId)).doc(projectId).set(projectData, { merge: true });
   await db.collection('platformSummary').doc(`projects_${storeId}`).set({
     [`projects.${projectId}`]: summaryData,
   }, { merge: true });
@@ -595,13 +640,47 @@ async function main() {
       await captureScreenshot(client, sessionId, path.join(outputDir, 'mobile-upload-create-menu-click-failed.png'));
       throw new Error('Could not click Create Menu in project selector.');
     }
-    if (!projectId) await waitForExpression(client, sessionId, `document.body.innerText.includes('Menu Name') && document.body.innerText.includes('Create')`, 20000);
+    if (!projectId) await waitForExpression(client, sessionId, `
+      (() => {
+        const visible = (el) => {
+          const rect = el.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          if (!(rect.width > 0 && rect.height > 0 &&
+            rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth &&
+            style.visibility !== 'hidden' && style.display !== 'none' && style.pointerEvents !== 'none' && style.opacity !== '0')) {
+            return false;
+          }
+          const x = Math.min(Math.max(rect.left + rect.width / 2, 0), innerWidth - 1);
+          const y = Math.min(Math.max(rect.top + rect.height / 2, 0), innerHeight - 1);
+          const hit = document.elementFromPoint(x, y);
+          return Boolean(hit && (hit === el || el.contains(hit) || hit.contains(el)));
+        };
+        const visibleText = Array.from(document.querySelectorAll('button, input, textarea, h1, h2, h3, h4, label, span, div'))
+          .filter(visible)
+          .map((el) => (el.getAttribute('placeholder') || el.textContent || '').replace(/\\s+/g, ' ').trim())
+          .join(' ');
+        return visibleText.includes('Menu Name') && visibleText.includes('Create');
+      })()
+    `, 20000);
     const previousProjectId = projectId || await evaluate(client, sessionId, `
       localStorage.getItem('mobileSelectedProjectId:${storeId}') || localStorage.getItem('mobileSelectedProjectId') || ''
     `);
     const focusedNameInput = projectId ? true : await evaluate(client, sessionId, `
       (() => {
-        const input = Array.from(document.querySelectorAll('input')).find((el) => (el.placeholder || '').includes('Enter menu name')) || document.querySelector('input');
+        const visible = (el) => {
+          const rect = el.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          if (!(rect.width > 0 && rect.height > 0 &&
+            rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth &&
+            style.visibility !== 'hidden' && style.display !== 'none' && style.pointerEvents !== 'none' && style.opacity !== '0')) {
+            return false;
+          }
+          const x = Math.min(Math.max(rect.left + rect.width / 2, 0), innerWidth - 1);
+          const y = Math.min(Math.max(rect.top + rect.height / 2, 0), innerHeight - 1);
+          const hit = document.elementFromPoint(x, y);
+          return Boolean(hit && (hit === el || el.contains(hit) || hit.contains(el)));
+        };
+        const input = Array.from(document.querySelectorAll('input')).find((el) => visible(el) && (el.placeholder || '').includes('Enter menu name'));
         if (!input) return false;
         input.focus();
         const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
@@ -744,14 +823,33 @@ async function main() {
     }
     await delay(2500);
     await resolveVisibleIntakePrompts(client, sessionId, db, projectId, jobCreateStartMs);
-    await waitForExpression(client, sessionId, `
-      document.body.innerText.includes('Preparing your upload') ||
-      document.body.innerText.includes('Processing your menu') ||
-      document.body.innerText.includes('Upload complete') ||
-      document.body.innerText.includes('Menu updated') ||
-      document.body.innerText.includes('View Updated Menu') ||
-      /\\b\\d+ items?\\b/.test(document.body.innerText)
-    `, 60000);
+    try {
+      await waitForExpression(client, sessionId, `
+        document.body.innerText.includes('Working on upload') ||
+        document.body.innerText.includes('Preparing your upload') ||
+        document.body.innerText.includes('Checking your upload') ||
+        document.body.innerText.includes('Uploading') ||
+        document.body.innerText.includes('Creating') ||
+        document.body.innerText.includes('Processing your menu') ||
+        document.body.innerText.includes('Upload complete') ||
+        document.body.innerText.includes('Menu updated') ||
+        document.body.innerText.includes('View Updated Menu') ||
+        /\\b\\d+ items?\\b/.test(document.body.innerText)
+      `, 60000);
+    } catch (error) {
+      await captureScreenshot(client, sessionId, path.join(outputDir, 'mobile-upload-post-submit-timeout.png'));
+      const latestJob = await getLatestJobForProject(db, projectId, jobCreateStartMs);
+      const postSubmitDebug = await evaluate(client, sessionId, `(() => ({
+        text: document.body.innerText.slice(0, 2600),
+        buttons: Array.from(document.querySelectorAll('button')).map((button, index) => ({
+          index,
+          text: (button.textContent || '').replace(/\\s+/g, ' ').trim(),
+          disabled: button.disabled,
+          rect: (() => { const r = button.getBoundingClientRect(); return { top: r.top, left: r.left, width: r.width, height: r.height }; })(),
+        })).filter((button) => button.text),
+      }))()`);
+      throw new Error(`${error.message}. Post-submit debug: ${JSON.stringify(postSubmitDebug)}. Latest job: ${JSON.stringify(latestJob ? { id: latestJob.id, status: latestJob.status, currentStep: latestJob.currentStep, error: latestJob.error || null } : null)}`);
+    }
     await delay(3000);
     await captureScreenshot(client, sessionId, screenshots.processing);
 

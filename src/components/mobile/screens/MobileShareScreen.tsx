@@ -14,6 +14,7 @@ import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetK
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PRINTABLE_ASSET_TYPES, getPrintableAssetPreviewCopy, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
 import { renderPrintableAsset } from '@lib/printable-asset-templates/renderPrintableAsset';
+import { buildPrintableStoreContactFields } from '@lib/printable-asset-templates/storeContact';
 import {
     DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID,
     getPrintableTemplateFamiliesForAsset,
@@ -51,6 +52,7 @@ import {
     LuCalendarDays,
     LuCheck,
     LuClipboard,
+    LuContact,
     LuCopy,
     LuDownload,
     LuEye,
@@ -536,6 +538,7 @@ export default function MobileShareScreen({
         templateFamilyId: PrintableTemplateFamilyId,
     ): Promise<PrintableAssetRenderInput | null> => {
         if (!data) return null;
+        const contactFields = buildPrintableStoreContactFields(storeDetails);
 
         const baseInput: PrintableAssetRenderInput = {
             activePlanType: (storeDetails as any)?.activePlanType,
@@ -543,6 +546,7 @@ export default function MobileShareScreen({
             brandColor: storeBrandColor,
             businessCategory: (storeDetails as any)?.businessCategory,
             businessType: (storeDetails as any)?.businessType || data.businessType,
+            ...contactFields,
             feedbackUrl: data.feedbackQrLink,
             lastPublishedAt: parseTimestamp(data.menuModifiedOn),
             logoUrl: data.storeLogo || undefined,
@@ -1748,6 +1752,7 @@ function getMobilePrintableAssetIcon(assetId: PrintableAssetTypeId) {
     if (assetId === 'campaign_flyer') return <LuMegaphone size={18} />;
     if (assetId === 'gift_certificate') return <LuGift size={18} />;
     if (assetId === 'business_card') return <LuBadge size={18} />;
+    if (assetId === 'staff_id_card') return <LuContact size={18} />;
     if (assetId === 'event_invitation') return <LuCalendarDays size={18} />;
     if (assetId === 'postcard') return <LuMail size={18} />;
     if (assetId === 'product_tag') return <LuTag size={18} />;

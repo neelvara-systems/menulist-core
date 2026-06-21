@@ -1,6 +1,6 @@
 import KBGenerationTemplate from '@template/platform/KBGeneration'
 import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice'
-import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient'
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeConfig'
 
 function page() {
     if (!isAnswerlatticeFirebaseConfigured) {

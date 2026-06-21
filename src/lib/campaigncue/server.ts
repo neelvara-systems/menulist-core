@@ -19,7 +19,7 @@ import {
     CAMPAIGNCUE_PROVIDER_POSTURES,
 } from "@constant/campaigncue/delivery";
 import { CAMPAIGNCUE_ERROR_CODES } from "@constant/campaigncue/errors";
-import { CAMPAIGNCUE_PRODUCT_ID } from "@constant/campaigncue/product";
+import { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
 import { buildCampaignCueAuthLaunchUrl as buildCampaignCueAuthLaunchUrlFromSignIn } from "@constant/campaigncue/routes";
 import {
     CAMPAIGNCUE_DEFAULT_LOCALE,
@@ -695,7 +695,7 @@ function buildWorkspace(params: {
     return {
         id: params.workspaceId,
         workspaceId: params.workspaceId,
-        productId: CAMPAIGNCUE_PRODUCT_ID,
+        productId: CAMPAIGNCUE_PRODUCT_CODE,
         tId: params.scope.tId,
         sId: params.scope.sId,
         name,
@@ -2859,7 +2859,7 @@ export function buildCampaignCueApiError(error: unknown, fallbackMessage: string
 
 export function logCampaignCueServerError(message: string, error: unknown, metadata: Record<string, unknown>) {
     logger.error(message, error, {
-        productId: CAMPAIGNCUE_PRODUCT_ID,
+        productId: CAMPAIGNCUE_PRODUCT_CODE,
         ...metadata,
     });
 }

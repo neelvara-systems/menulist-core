@@ -34,7 +34,7 @@
 
 Core URL routing infrastructure for MenuList's public pages:
 
-- **Product-domain separation** (`menulist.ai` = MenuList, `answerlattice.com` = Answerlattice, `campaigncue.ai` = CampaignCue, `menulist.digital` = MyCodex)
+- **Product-domain separation** (`menulist.ai` = MenuList, `constantlayer.in` = ConstantLayer, `answerlattice.com` = Answerlattice, `campaigncue.ai` = CampaignCue, `menulist.digital` = MyCodex)
 - **Product site vs product app separation** (`src/app/sites/[productId]` is public website only; owner/product dashboards live in product route groups such as `src/app/(answerlattice)/answerlattice` or `src/app/(campaigncue)/campaigncue`)
 - **Brand-level subdomain ownership** (subdomain = brand, not individual location)
 - **Multi-store location routing** (`brand.menulist.ai/pune/menu`)
@@ -82,7 +82,7 @@ Tenant (account container — billing, stores list)
 
 Requests are classified before tenant routing:
 
-1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, Answerlattice, CampaignCue, and MyCodex by deployment stage.
+1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, ConstantLayer, Answerlattice, CampaignCue, and MyCodex by deployment stage.
 2. `src/constants/productDomains.ts` registers enabled product sites and maps product hosts to `/sites/{productId}` route groups.
 3. `src/lib/multiTenant/domainResolver.ts` checks `resolveProductSiteByHostname()` before treating a host as a platform, subdomain, or custom tenant domain.
 4. `src/middleware.ts` rewrites product domains directly to their product route group and never sends them through `/client`.
@@ -91,6 +91,7 @@ Requests are classified before tenant routing:
 | Host                                    | Classification | Rewrite / Behavior                 |
 | --------------------------------------- | -------------- | ---------------------------------- |
 | `menulist.ai` / `www.menulist.ai` | Platform | MenuList website / platform routes |
+| `constantlayer.in` / `www.constantlayer.in` | Product | Public site: `/sites/constantlayer` |
 | `answerlattice.com` / `www.answerlattice.com` | Product | Public site: `/sites/answerlattice`; app routes: `/answerlattice/*` |
 | `campaigncue.ai` / `www.campaigncue.ai` | Product | Public site: `/sites/campaigncue`; owner app: `/campaigncue/app` |
 | `menulist.digital` / `www.menulist.digital` | Product | `/sites/mycodex` |
@@ -122,6 +123,7 @@ Authenticated owner dashboards, product workspaces, admin tools, and paid/runtim
 
 | Product | Public site folder | Owner/product app folder | Product-domain mapping |
 | --- | --- | --- | --- |
+| ConstantLayer | `src/app/sites/constantlayer` | None | Static entity/trust site only; no product app route. |
 | Answerlattice | `src/app/sites/answerlattice` | `src/app/(answerlattice)/answerlattice` | Dashboard roots rewrite to `/answerlattice/*`. |
 | CampaignCue | `src/app/sites/campaigncue` | `src/app/(campaigncue)/campaigncue` | `/app` rewrites to `/campaigncue/app`; local `/__campaigncue/app` also rewrites to `/campaigncue/app`. |
 

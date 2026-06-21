@@ -2,8 +2,8 @@
 
 > **Feature:** Printable Asset Templates  
 > **Status:** Implemented - desktop and mobile route live behind feature flag  
-> **Last Updated:** June 17, 2026
-> **Version:** 1.3
+> **Last Updated:** June 21, 2026
+> **Version:** 1.4
 
 ---
 
@@ -24,7 +24,7 @@
 
 ## What Is This Feature?
 
-**One-liner:** A dedicated Assets screen where owners choose a finished print style and download branded files for tables, counters, entrances, feedback, campaigns, small cards, postcards, product tags, and paper menus.
+**One-liner:** A dedicated Assets screen where owners choose a finished print style and download branded files for tables, counters, entrances, feedback, campaigns, business cards, ID cards, postcards, product tags, and paper menus.
 
 **Problem Solved:** SMB owners care deeply about printed table cards and menu files because customers see those before they talk to staff. The current files are functional, but the owner still needs stronger choice and polish without hiring a designer or learning a design tool.
 
@@ -96,7 +96,8 @@ The existing `ENABLE_PRINT_ASSETS_ROUTE`, `ENABLE_PRINT_MENU_SURFACES`, `ENABLE_
 
 | Version | Date | Changes |
 | --- | --- | --- |
-| 1.3 | June 17, 2026 | Added extended Assets catalog: flyer, gift certificate, business card, invitation, postcard, product tag, and campaign poster through the same editor-backed renderer. |
+| 1.4 | June 21, 2026 | Added front/back business card output as one file, portrait ID card assets, and upgraded business-card styling to match the richer card references. |
+| 1.3 | June 17, 2026 | Added first extended Assets catalog: flyer, gift certificate, business card front, invitation, postcard, product tag, and campaign poster through the same editor-backed renderer. |
 | 1.2 | June 15, 2026 | Added Saved designs for explicitly saved Creative Editor documents, backed by the Creative Editor Template Registry. |
 | 1.1 | June 15, 2026 | Added Creative Editor document renderer for non-menu printable assets and desktop governed customization. |
 | 1.0 | June 6, 2026 | Implemented `/assets`, compatibility route, desktop catalog, mobile shell integration, shared renderer adapter, and verifier. |

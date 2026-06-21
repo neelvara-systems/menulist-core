@@ -4,6 +4,8 @@
     "menulist-qa": "ecomsai",
     "menulist-prod": "menulist",
     "answerlattice-qa": "answerlattice-qa",
-    "answerlattice-prod": "answerlattice"
+    "answerlattice-prod": "answerlattice",
+    "campaigncue-qa": "campaigncue-qa",
+    "campaigncue-prod": "campaigncue"
   }
 }

@@ -1,6 +1,6 @@
 import AnswerlatticeConfigNotice from "@template/platform/AnswerlatticeConfigNotice";
 import PlatformKnowledgeBase from "@template/platform/knowledgeBase";
-import { isAnswerlatticeFirebaseConfigured } from "@lib/firebase/answerlatticeFirebaseClient";
+import { isAnswerlatticeFirebaseConfigured } from "@lib/firebase/answerlatticeConfig";
 
 export default function KnowledgeBasePage() {
     if (!isAnswerlatticeFirebaseConfigured) {

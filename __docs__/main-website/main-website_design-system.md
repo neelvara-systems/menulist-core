@@ -50,6 +50,9 @@
     #0284c7 52%,
     #27a8e3 100%
   ); /* Brand mark/accent only */
+  --accent-warm: #de77a1; /* Supporting warmth only, never primary text */
+  --accent-warm-soft: rgba(222, 119, 161, 0.12);
+  --accent-warm-border: rgba(222, 119, 161, 0.28);
 
   /* CTA */
   --cta-default: #0051d1; /* Button default (blue-600) */
@@ -93,6 +96,9 @@ The public website supports system dark mode through the same website tokens. Th
     #38bdf8 48%,
     #5eead4 100%
   );
+  --accent-warm: #ee9abc;
+  --accent-warm-soft: rgba(222, 119, 161, 0.14);
+  --accent-warm-border: rgba(238, 154, 188, 0.34);
 
   /* Shared contrast panels for footer/proof/editorial dark surfaces */
   --panel-contrast: #15181d;
@@ -138,9 +144,17 @@ Brand gradient rule:
 - Website header/footer wordmark text is solid and inherits the surface text color; the logo mark carries the gradient.
 - Keep body copy as `MenuList` unless the context explicitly names an internal AI/product platform setting or legal/account context.
 
+Warm accent rule:
+
+- MenuList keeps the blue trust/infrastructure palette as the primary public identity. External local-service palettes such as deep navy plus pink may inform minor warmth, but they must not replace the current website color system.
+- `--accent-warm` is supporting only. Use it for small illustration details, soft badge accents, small dividers, and restrained hover decoration when a page needs human warmth.
+- Do not use `--accent-warm` for body text, full headings, CTA text, main CTA backgrounds, large page backgrounds, diagonal poster blocks, QR-poster compositions, or high-volume card styling.
+- Pink-on-white fails normal-text contrast at roughly 2.9:1, so it is not approved for readable copy. In dark mode the warmer accent may appear as a decorative detail because contrast is materially stronger.
+- The full website must not adopt a local-service poster style. MenuList should continue to feel like calm public-business truth infrastructure, not a decorative contact-card or QR service brand.
+
 ### 2.3 Contrast Verification
 
-All combinations must pass WCAG AA:
+Readable text combinations must pass WCAG AA. Decorative-only colors are listed here as guardrails so they are not reused for copy by accident:
 
 | Foreground             | Background | Ratio  | Pass?                   |
 | ---------------------- | ---------- | ------ | ----------------------- |
@@ -148,6 +162,8 @@ All combinations must pass WCAG AA:
 | `#0F172A` on `#F8FAFC` | —          | 14.5:1 | ✅ AAA                  |
 | `#475569` on `#FFFFFF` | —          | 7.1:1  | ✅ AA                   |
 | `#475569` on `#F8FAFC` | —          | 6.7:1  | ✅ AA                   |
+| `#DE77A1` on `#FFFFFF` | —          | 2.9:1  | ❌ Decorative only      |
+| `#001871` on `#FFFFFF` | —          | 15.3:1 | ✅ High contrast, not canonical primary |
 | `#FFFFFF` on `#2563EB` | —          | 4.6:1  | ✅ AA                   |
 | `#FFFFFF` on `#1E40AF` | —          | 7.2:1  | ✅ AAA                  |
 | `#94A3B8` on `#FFFFFF` | —          | 3.5:1  | ✅ AA (large text only) |

@@ -115,29 +115,15 @@ export const AI_MENU_MANAGER_ACTION_TYPES = {
 
 export const AI_MENU_MANAGER_EXECUTABLE_ACTIONS: AiMenuManagerActionType[] = [
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_PRICE_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.ITEM_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_NAME_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_DESCRIPTION_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_CATEGORY_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_AVAILABILITY_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_VISIBILITY_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.ITEM_ATTRIBUTE_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.ITEM_ATTRIBUTE_NAME_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.ITEM_ATTRIBUTE_PRICE_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.ITEM_ATTRIBUTE_VISIBILITY_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.ITEM_ATTRIBUTE_ORDER_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_BESTSELLER_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_PREP_TIME_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.ITEM_PROMOTION_WEIGHT_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.ITEM_METADATA_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.ITEM_ORDER_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.ITEM_QUALITY_REVIEW_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.CATEGORY_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.CATEGORY_NAME_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.CATEGORY_VISIBILITY_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.CATEGORY_ICON_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.CATEGORY_TIME_SLOT_UPDATE,
-    AI_MENU_MANAGER_ACTION_TYPES.CATEGORY_ORDER_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.DECISION_BLOCKS_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.MENU_SPECIAL_NOTE_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.MENU_DESIGN_MOOD_UPDATE,
@@ -145,6 +131,8 @@ export const AI_MENU_MANAGER_EXECUTABLE_ACTIONS: AiMenuManagerActionType[] = [
     AI_MENU_MANAGER_ACTION_TYPES.MENU_DESIGN_PRESET_APPLY,
     AI_MENU_MANAGER_ACTION_TYPES.MENU_DESIGN_VISIBILITY_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.MENU_DESIGN_COLOR_UPDATE,
+    AI_MENU_MANAGER_ACTION_TYPES.BULK_PRICE_UPDATE,
+    AI_MENU_MANAGER_ACTION_TYPES.BULK_AVAILABILITY_UPDATE,
 ];
 
 export type AiMenuManagerFieldHandling =
@@ -249,7 +237,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/editItemModal.tsx:554'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_NAME_UPDATE,
@@ -357,7 +345,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/editItemModal.tsx:351'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_ATTRIBUTE_DELETE,
@@ -381,7 +369,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/editItemModal.tsx:373'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_ATTRIBUTE_PRICE_UPDATE,
@@ -393,7 +381,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/editItemModal.tsx:387'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_ATTRIBUTE_VISIBILITY_UPDATE,
@@ -405,7 +393,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Fast card',
         sourceEvidence: ['src/components/mobile/sheets/ItemEditSheet.tsx:821'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_ATTRIBUTE_ORDER_UPDATE,
@@ -417,7 +405,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/mobile/sheets/ItemEditSheet.tsx:637'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_BESTSELLER_UPDATE,
@@ -453,7 +441,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/editItemModal.tsx:747'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_METADATA_UPDATE,
@@ -465,7 +453,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/editItemModal.tsx:769'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_METADATA_GENERATE,
@@ -514,7 +502,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/ReorderMenuModal.tsx:200'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_QUALITY_REVIEW_UPDATE,
@@ -526,7 +514,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Fast card',
         sourceEvidence: ['src/components/mobile/screens/MobileMenuScreen.tsx:995'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_IDENTITY_REFERENCE,
@@ -574,7 +562,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:219'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.CATEGORY_NAME_UPDATE,
@@ -613,7 +601,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:448'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.CATEGORY_IMAGE_UPDATE,
@@ -637,7 +625,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:131'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.CATEGORY_TIME_SLOT_PRESET_CREATE,
@@ -673,7 +661,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         costClass: 'C1 single project save',
         mobileBehavior: 'Card approve/edit',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/ReorderMenuModal.tsx:190'],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.CATEGORY_IDENTITY_REFERENCE,
@@ -894,7 +882,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
             'src/components/templates/main-app/projects/jobScreens/ExtractionJobReviewScreen.tsx:304',
             'src/lib/extraction/applyChanges.ts:422',
         ],
-        readiness: 'ready_adapter',
+        readiness: 'needs_adapter_glue',
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.SPECIAL_MENU_CREATE,

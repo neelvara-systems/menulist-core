@@ -6,6 +6,113 @@
 
 ---
 
+## June 21, 2026 - Assets Business Card Output
+
+### Changed
+
+- **Business Card is one front/back asset** - The Assets catalog now keeps one owner-facing Business Card type and generates both front and back 90 x 55 mm faces in a single print-ready output file.
+- **Separate back-side card removed from the catalog** - The separate back-side asset type was removed from desktop, mobile, printable template docs, and verification so owners do not need to choose front/back as separate files.
+- **ID Card remains separate** - Portrait ID cards stay as their own identity asset because they are a different physical item and print size.
+
+### Verification
+
+- `npm run verify:printable-asset-templates`: pass.
+- Editor-backed document smoke: pass for 13 supported editor-backed assets, including the combined `2166 x 650` Business Card output.
+
+### Cost
+
+- **No Firebase operation added** - This changes catalog metadata, client-side template generation, docs, and verification only. It adds no Firestore reads/writes, Storage writes, Cloud Functions, rules, indexes, or deploys.
+
+---
+
+## June 21, 2026 - ConstantLayer Scroll Reveal
+
+### Added
+
+- **ConstantLayer viewport-entry reveal added** - Homepage and secondary-page sections now appear with a restrained one-time reveal as they enter the viewport, using a local IntersectionObserver controller instead of a global scroll behavior or animation dependency.
+
+### Boundaries
+
+- **Reduced-motion and no-JavaScript fallbacks preserved** - Reduced-motion users receive visible static sections, and content remains visible if client JavaScript does not run.
+- **No Firebase operation added** - Static website motion adds no Firestore reads/writes/deletes, Storage writes, Cloud Functions, provider calls, rules, indexes, or Firebase deploys.
+
+---
+
+## June 20, 2026 - ConstantLayer Parent Website Implementation
+
+### Added
+
+- **ConstantLayer main website is implemented in the shared Next/Vercel app** - Added `src/app/sites/constantlayer/` with static pages for Home, Products, About, Contact, Legal, Privacy, and Terms.
+- **ConstantLayer product-site routing added** - Added route/domain constants, deployment targets, local `/__constantlayer/` routing, sitemap, robots, and a no-Firebase env validation entry.
+- **Premium entity-trust UI system added** - Added centralized site data, shared layout, header/footer, editorial hero, system-scene visual layer, row-based sections, responsive design-token CSS, structured data, and site icon.
+- **ConstantLayer portfolio lineup added** - The parent website now presents MenuList, Answerlattice, and CampaignCue as product surfaces in the ConstantLayer Systems lineup, with future products gated by public-surface or approved-reference review.
+- **ConstantLayer not-found response added** - Unmatched ConstantLayer URLs now return a plain branded `404` response with noindex metadata.
+- **Implementation validation report corrected** - Updated `constantlayer-main-website_validation.md` with Next/Vercel architecture, UI, security, Firebase cost, and route QA status.
+
+### Fixed
+
+- **ConstantLayer product-section visual issue fixed** - Replaced the oversized `Portfolio` wordmark with a dark portfolio summary band so the word no longer splits and the homepage has a stronger visual rhythm.
+- **ConstantLayer legal/privacy/terms content tightened** - Expanded parent-site legal, privacy, and terms copy to clarify technical logs, visitor-initiated email handling, product-policy separation, and paid-service deferral without adding forms or product terms.
+- **ConstantLayer structured data legal overclaim removed** - Replaced product-lineup JSON-LD `owns` with safer association wording so metadata matches the approved relationship language.
+- **ConstantLayer UI/UX audit findings resolved** - Replaced internal design-critique copy with public entity language, moved the entity ledger out of the hero, compacted short/mobile first screens, reduced scene collision, added active nav state, and brought visible links/buttons to 44px target sizing.
+- **MenuList-only parent-site framing removed** - Updated runtime copy and docs so ConstantLayer is the company layer for the product lineup, not a MenuList-only parent page.
+- **ConstantLayer static-page boundary restored** - Removed server header usage from shared page chrome; local `/__constantlayer` links are now handled by the client link layer.
+- **Products page dead-end removed** - Product rows now link to MenuList, Answerlattice, and CampaignCue canonical product websites, and the Products page final CTA no longer links to itself.
+
+### Boundaries
+
+- **No database product id added** - ConstantLayer was not added to `PRODUCT_IDS`, billing, Firestore, owner notifications, product plans, or Firebase projects.
+- **No Firebase surface added** - The site has no Firestore, Auth, Storage, Cloud Functions, rules, indexes, provider calls, API routes, forms, accounts, or analytics.
+- **No deploy performed** - Vercel deployment remains pending until explicitly requested.
+
+### Verification
+
+- `npx tsc --noEmit --incremental false --pretty false`: pass.
+- Local route checks returned 200 for Home, Products, About, Contact, Legal, Privacy, Terms, `robots.txt`, and `sitemap.xml`.
+- Browser checks at 1440x900, 1280x720, 768x1024, 390x844, and 320x568 passed with no document-level horizontal overflow, no clipped text, no small visible tap targets, valid active nav state, hero brand wrapping, and first-viewport section reveal.
+
+### Cost
+
+- **No Firebase operation added** - Static website implementation adds no Firestore reads/writes/deletes, Storage writes, Cloud Functions, provider calls, schedulers, rules, indexes, or Firebase deploys.
+
+---
+
+## June 20, 2026 - ConstantLayer Parent Website Documentation
+
+### Added
+
+- **ConstantLayer main website docs now define the parent/entity trust site** - Added the docs-first packet for a standalone ConstantLayer Systems website covering scope, implementation, website copy, marketing language, help/support routing, Firebase cost, mobile support, test cases, and the captured ChatGPT transcript.
+- **ConstantLayer stays outside current product runtime registries** - The docs record that ConstantLayer is not a product id, product domain target, deployment target, Firebase project, or MenuList owner/mobile feature in v1.
+- **Portfolio relationship wording is fixed for the parent site** - The docs preserve the approved public relationship line for MenuList, Answerlattice, and CampaignCue in the ConstantLayer Systems lineup.
+
+### Boundaries
+
+- **No implementation added** - This is documentation only. No route, product id, deployment target, domain registry entry, Firebase config, Cloud Function, or website runtime code was added.
+- **No public legal identity overclaim** - The docs require CA/legal review before displaying GSTIN, PAN, address, incorporation wording, or stronger parent-company claims.
+
+### Cost
+
+- **No Firebase operation added** - This is documentation only. The recommended v1 site is static and adds no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, indexes, routes, app code, or deploys.
+
+---
+
+## June 20, 2026 - Product Code And Environment Naming
+
+### Changed
+
+- **CampaignCue now has the internal product code `CC`** - `CC` is used for CampaignCue stored product identity and product-scoped metadata. The public/product route slug remains `campaigncue`.
+- **MyCodex now has the reserved internal product code `MC`** - `MC` is available for internal product metadata and platform alert labeling. The private reader runtime stays on the `mycodex` slug and does not create Firebase data.
+- **CampaignCue env keys and infrastructure names stay descriptive** - `CAMPAIGNCUE_*`, Firebase project ids, route paths, Storage prefixes, and public domains are unchanged.
+- **MyCodex env keys stay static-reader only** - The setup contract uses `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET`; no MyCodex Firebase env keys are allowed.
+- **CampaignCue billing fails closed under `CC`** - Shared billing helpers now preserve `CC` and return no CampaignCue plans or credit packs while billing checkout is disabled, instead of falling back to MenuList billing.
+- **MyCodex billing fails closed under `MC`** - Shared billing helpers preserve `MC` internally but expose no billing plans, credit packs, subscriptions, or payment audit writes for MyCodex.
+
+### Cost
+
+- **No Firebase operation added** - This is a constant, metadata, documentation, and verifier alignment change. It adds no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, schedulers, rules, indexes, or deploys.
+
+---
+
 ## June 20, 2026 - Growth Kits And KitStamp Documentation Cleanup
 
 ### Changed

@@ -68,6 +68,8 @@ const PRODUCT_LABELS: Record<PlatformNotificationProductId, string> = {
     PLATFORM: 'Platform',
     ML: 'MenuList',
     AL: 'Answerlattice',
+    CC: 'CampaignCue',
+    MC: 'MyCodex',
 };
 
 const SEVERITY_COLORS: Record<PlatformNotificationSeverity, string> = {

@@ -1,7 +1,7 @@
 # Print Assets Test Cases
 
 **Status:** Implemented
-**Last Updated:** June 17, 2026
+**Last Updated:** June 21, 2026
 
 ## Automated
 
@@ -30,7 +30,8 @@
 | Feedback QR | Shows only when feedback is enabled. |
 | Flyer | Downloads the A5 campaign file. |
 | Gift Certificate | Downloads the landscape voucher file. |
-| Business Card | Downloads the 90 x 55 mm identity card. |
+| Business Card | Downloads one file containing front and back 90 x 55 mm business card faces. |
+| ID Card | Downloads the 54 x 85 mm portrait identity card. |
 | Invitation | Downloads the A6 invitation file. |
 | Postcard | Downloads the A6 landscape postcard file. |
 | Product Tag | Downloads the small item tag file. |

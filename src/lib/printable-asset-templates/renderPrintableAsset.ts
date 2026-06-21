@@ -51,7 +51,8 @@ function getImagePdfPage(assetTypeId: PrintableAssetTypeId, width: number, heigh
     heightMm: number;
     widthMm: number;
 } {
-    if (assetTypeId === 'business_card') return { widthMm: 90, heightMm: 55 };
+    if (assetTypeId === 'business_card') return { widthMm: 183, heightMm: 55 };
+    if (assetTypeId === 'staff_id_card') return { widthMm: 54, heightMm: 85 };
     if (assetTypeId === 'product_tag') return { widthMm: 90, heightMm: 50 };
     if (assetTypeId === 'gift_certificate') return { widthMm: 210, heightMm: 99 };
     if (assetTypeId === 'postcard') return { widthMm: 148, heightMm: 105 };

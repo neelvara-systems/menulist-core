@@ -103,6 +103,7 @@ const assetTypes = read('src/lib/printable-asset-templates/assetTypes.ts');
   'campaign_flyer',
   'gift_certificate',
   'business_card',
+  'staff_id_card',
   'event_invitation',
   'postcard',
   'product_tag',
@@ -169,6 +170,7 @@ const editorAdapter = read('src/lib/printable-asset-templates/editorDocumentAdap
   'campaign_flyer',
   'gift_certificate',
   'business_card',
+  'staff_id_card',
   'event_invitation',
   'postcard',
   'product_tag',
@@ -329,9 +331,20 @@ const templateRegistryDal = read('src/lib/creative-editor/templateRegistryDal.ts
   'requestBodyComposer',
   'readIndexRecords',
   'recordMatchesRequest',
+  'filterRecordsForRequest',
   'getTemplateRegistryErrorMessage',
   'storage/quota-exceeded',
 ].forEach((token) => requireToken(templateRegistryDal, token, 'creative editor template registry DAL'));
+
+const platformListFunction = templateRegistryDal.match(/async function listCreativeEditorPlatformTemplates[\s\S]*?async function listCreativeEditorUserTemplates/);
+if (!platformListFunction || !platformListFunction[0].includes('filterRecordsForRequest(')) {
+  failures.push('platform template list must filter the single category document by product, source surface, and asset type');
+}
+
+const userListFunction = templateRegistryDal.match(/async function listCreativeEditorUserTemplates[\s\S]*?async function listCreativeEditorTemplatesRaw/);
+if (!userListFunction || !userListFunction[0].includes('filterRecordsForRequest(')) {
+  failures.push('store template list must filter the single store document by product, source surface, and asset type');
+}
 
 const listTemplateFunction = templateRegistryDal.match(/export async function listCreativeEditorTemplates[\s\S]*?\n}\n/);
 if (listTemplateFunction && listTemplateFunction[0].includes('showErrorToast')) {

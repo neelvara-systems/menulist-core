@@ -2,7 +2,7 @@
 
 > Like a book index: find any doc across any feature instantly.
 >
-> **Last Updated:** June 7, 2026 | **Total Features:** 31+ | **Doc Types:** 7 per feature
+> **Last Updated:** June 20, 2026 | **Total Features:** 32+ | **Doc Types:** 7 per feature
 
 ---
 
@@ -65,6 +65,7 @@
 
 | #   | Feature                          | Folder                    | spec | impl | marketing | website | helpdoc | firebase | README |
 | --- | -------------------------------- | ------------------------- | :--: | :--: | :-------: | :-----: | :-----: | :------: | :----: |
+| C0  | **ConstantLayer Main Website**   | `constantlayer-main-website/` |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 | C1  | **Main Website (menulist.ai)**   | `main-website/`           |  ✅  |  ✅  |    ✅     |   ➖    |   ➖    |    ➖    |   ✅   |
 | C2  | **Official Business Page (OBP)** | `official-business-page/` |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 

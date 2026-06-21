@@ -11,6 +11,7 @@ export type PrintableAssetTypeId =
     | 'campaign_flyer'
     | 'gift_certificate'
     | 'business_card'
+    | 'staff_id_card'
     | 'event_invitation'
     | 'postcard'
     | 'product_tag'
@@ -73,6 +74,11 @@ export type PrintableAssetRenderInput = {
     brandColor?: string | null;
     businessCategory?: string;
     businessType?: string;
+    contactAddress?: string | null;
+    contactEmail?: string | null;
+    contactName?: string | null;
+    contactPhone?: string | null;
+    contactRole?: string | null;
     feedbackUrl?: string | null;
     lastPublishedAt?: Date;
     locale?: string;
@@ -83,6 +89,7 @@ export type PrintableAssetRenderInput = {
     printMenuOptions?: MenuPdfOptions;
     projectId?: string | null;
     shortLink: string;
+    socialHandle?: string | null;
     storeName: string;
     templateFamilyId: PrintableTemplateFamilyId;
 };

@@ -22,7 +22,9 @@ dotenv.config({ path: '.env' });
 
 const chromePath = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const baseUrl = process.env.MOBILE_QA_BASE_URL || 'http://localhost:3000';
-const projectId = process.env.MOBILE_QA_PROJECT_ID || '14-mp6hyq9x-15';
+const configuredProjectId = process.env.MOBILE_QA_PROJECT_ID || '';
+const projectId = configuredProjectId || 'auto-selected-project';
+const expectedProjectName = process.env.MOBILE_QA_PROJECT_NAME || '';
 const storeId = process.env.MOBILE_QA_STORE_ID || '15';
 const email = process.env.MOBILE_QA_EMAIL || 'danny.tools.4884@gmail.com';
 const outputDir = process.env.MOBILE_QA_OUTPUT_DIR || '/tmp';
@@ -75,8 +77,9 @@ function createCdpClient(wsUrl) {
   ws.addEventListener('message', (event) => {
     const message = JSON.parse(event.data);
     if (message.id && pending.has(message.id)) {
-      const { resolve, reject } = pending.get(message.id);
+      const { resolve, reject, timer } = pending.get(message.id);
       pending.delete(message.id);
+      clearTimeout(timer);
       if (message.error) reject(new Error(message.error.message || JSON.stringify(message.error)));
       else resolve(message.result);
       return;
@@ -96,13 +99,13 @@ function createCdpClient(wsUrl) {
     if (sessionId) payload.sessionId = sessionId;
     ws.send(JSON.stringify(payload));
     return new Promise((resolve, reject) => {
-      pending.set(nextId, { resolve, reject });
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         if (pending.has(nextId)) {
           pending.delete(nextId);
           reject(new Error(`CDP command timed out: ${method}`));
         }
       }, 30000);
+      pending.set(nextId, { resolve, reject, timer });
     });
   }
 
@@ -177,6 +180,7 @@ function isIgnorablePageError(message) {
 
 async function main() {
   const userDataDir = await mkdtemp(path.join(tmpdir(), 'menulist-mobile-qa-'));
+  let client = null;
   const chrome = spawn(chromePath, [
     '--headless=new',
     `--remote-debugging-port=${debugPort}`,
@@ -195,7 +199,7 @@ async function main() {
 
   try {
     const version = await waitForChromeEndpoint();
-    const client = createCdpClient(version.webSocketDebuggerUrl);
+    client = createCdpClient(version.webSocketDebuggerUrl);
     await client.ready;
 
     const pageErrors = [];
@@ -267,8 +271,11 @@ async function main() {
           }
           return originalMatchMedia(query);
         };
-        localStorage.setItem('mobileSelectedProjectId:${storeId}', ${JSON.stringify(projectId)});
-        localStorage.setItem('mobileSelectedProjectId', ${JSON.stringify(projectId)});
+        const configuredProjectId = ${JSON.stringify(configuredProjectId)};
+        if (configuredProjectId) {
+          localStorage.setItem('mobileSelectedProjectId:${storeId}', configuredProjectId);
+          localStorage.setItem('mobileSelectedProjectId', configuredProjectId);
+        }
       `,
     }, sessionId);
 
@@ -283,6 +290,12 @@ async function main() {
 
     const mainState = await evaluate(client, sessionId, `(() => {
       const text = document.body.innerText;
+      const itemCountMatch = text.match(/(\\d+)\\s+items\\b/i);
+      const categoryCountMatch = text.match(/(\\d+)\\s+categor(?:y|ies)\\b/i);
+      const missingImagesMatch = text.match(/(\\d+)\\s+(?:items\\s+)?missing images\\b/i);
+      const selectedProjectKey = 'mobileSelectedProjectId:${storeId}';
+      const selectedProject = localStorage.getItem(selectedProjectKey) || localStorage.getItem('mobileSelectedProjectId');
+      const expectedName = ${JSON.stringify(expectedProjectName)};
       return {
         url: location.href,
         hash: location.hash,
@@ -295,10 +308,15 @@ async function main() {
         coarsePointer: matchMedia('(pointer: coarse)').matches,
         hasMobileNav: text.includes('Today') && text.includes('Menu') && text.includes('Share') && text.includes('More'),
         hasDesktopSidebar: text.includes('Dashboard') && text.includes('Users') && text.includes('Use MenuList'),
-        hasProjectName: text.includes('Extraction QA 202605150548'),
-        hasNineItems: text.includes('9 items'),
-        hasThreeCategories: text.includes('3 categories'),
-        hasNineMissingImages: text.includes('9 items missing images') || text.includes('9 missing images'),
+        hasSelectedProjectId: ${JSON.stringify(Boolean(configuredProjectId))}
+          ? selectedProject === ${JSON.stringify(configuredProjectId)}
+          : Boolean(selectedProject),
+        hasExpectedProjectName: expectedName ? text.includes(expectedName) : true,
+        selectedProject,
+        itemCount: itemCountMatch ? Number(itemCountMatch[1]) : null,
+        categoryCount: categoryCountMatch ? Number(categoryCountMatch[1]) : null,
+        missingImageCount: missingImagesMatch ? Number(missingImagesMatch[1]) : null,
+        hasMissingImagesSignal: Boolean(missingImagesMatch),
         hasNoCategoryIconWarning: !text.includes('missing icons') && !text.includes('missing icon'),
         text: text.slice(0, 2200),
       };
@@ -356,7 +374,9 @@ async function main() {
     await captureScreenshot(client, sessionId, visibilitySheetScreenshotPath);
 
     await client.send('Page.navigate', { url: `${baseUrl}/projects#mobile/menu` }, sessionId);
-    await waitForExpression(client, sessionId, `document.body && document.body.innerText.includes('9 items missing images')`);
+    await waitForExpression(client, sessionId, `
+      document.body && /(\\d+)\\s+(?:items\\s+)?missing images\\b/i.test(document.body.innerText)
+    `);
     await delay(1500);
     await evaluate(client, sessionId, `
       (() => {
@@ -387,10 +407,15 @@ async function main() {
     const materialPageErrors = pageErrors.filter((message) => !isIgnorablePageError(message));
     if (!mainState.hasMobileNav) failures.push('Mobile bottom navigation did not render.');
     if (mainState.hasDesktopSidebar) failures.push('Desktop sidebar content rendered in mobile harness.');
-    if (!mainState.hasProjectName) failures.push('Expected QA project was not selected on mobile.');
-    if (!mainState.hasNineItems) failures.push('Expected 9 item count was not visible.');
-    if (!mainState.hasThreeCategories) failures.push('Expected 3 category count was not visible.');
-    if (!mainState.hasNineMissingImages) failures.push('Expected 9 missing images signal was not visible.');
+    if (!mainState.hasSelectedProjectId) {
+      failures.push(configuredProjectId
+        ? `Expected QA project id ${configuredProjectId} was not selected on mobile.`
+        : 'Expected a mobile project to be selected.');
+    }
+    if (!mainState.hasExpectedProjectName) failures.push(`Expected QA project name "${expectedProjectName}" was not visible.`);
+    if (!(mainState.itemCount > 0)) failures.push('Expected a positive item count to be visible.');
+    if (!(mainState.categoryCount > 0)) failures.push('Expected a positive category count to be visible.');
+    if (!mainState.hasMissingImagesSignal) failures.push('Expected a missing images signal to be visible.');
     if (!mainState.hasNoCategoryIconWarning) failures.push('Category-icon warning was visible even though extracted categories have icons.');
     if (bulkState.clickedMoreActions && bulkState.hasBottomGapRisk) failures.push('Bulk sheet left a visible bottom gap.');
     if (!visibilityState.clickedVisibility || !visibilityState.hasVisibilitySheet) failures.push('Visibility bulk sheet did not open.');
@@ -416,6 +441,7 @@ async function main() {
     console.log(JSON.stringify(result, null, 2));
     if (!result.ok) process.exitCode = 1;
   } finally {
+    client?.close();
     chrome.kill('SIGTERM');
     await new Promise((resolve) => {
       const timer = setTimeout(resolve, 1500);

@@ -1,11 +1,11 @@
 # Print Assets Spec
 
 **Status:** Implemented
-**Last Updated:** June 17, 2026
+**Last Updated:** June 21, 2026
 
 ## Problem
 
-SMB owners need physical assets customers can see in the shop: table cards, counter QR, entrance posters, feedback QR, paper menus, campaign flyers, gift certificates, business cards, invitations, postcards, product tags, and offer posters. These assets are operationally important, but they were scattered inside Use MenuList and mobile Share or were missing from the first Assets catalog.
+SMB owners need physical assets customers can see, scan, or carry from the shop: table cards, counter QR, entrance posters, feedback QR, paper menus, campaign flyers, gift certificates, front/back business cards, ID cards, invitations, postcards, product tags, and offer posters. These assets are operationally important, but they were scattered inside Use MenuList and mobile Share or were missing from the first Assets catalog.
 
 ## Goal
 
@@ -28,7 +28,8 @@ Create one focused owner workspace for printables while keeping Use MenuList as 
 | Feedback QR | Private feedback scan point when enabled. |
 | Flyer | A5 handout or delivery insert for offers, launches, and events. |
 | Gift Certificate | Voucher-style file for gift, credit, or prepaid offer use. |
-| Business Card | Small identity/contact card with QR. |
+| Business Card | Front and back business card in one print-ready output file. |
+| ID Card | Portrait owner, staff, or service identity card. |
 | Invitation | A6 card for events, openings, workshops, or specials. |
 | Postcard | A6 landscape mailer for thanks, reminders, offers, or local drops. |
 | Product Tag | Small retail, bakery, pickup, or counter item tag. |
@@ -64,5 +65,5 @@ Create one focused owner workspace for printables while keeping Use MenuList as 
 - Multiple projects use the same project selector behavior as Use MenuList/mobile Share.
 - Menu Kit asset indices are centralized in `src/lib/print-assets/printAssetCatalog.ts`.
 - Readiness, print-shop handoff, and reprint guidance come from shared print-assets helpers on desktop and mobile.
-- Table/card/sticker/poster/flyer/gift/card/invitation/postcard/tag previews render by semantic asset key and do not build the full ZIP.
+- Table/card/sticker/poster/flyer/gift/business-card/ID-card/invitation/postcard/tag previews render by semantic asset key and do not build the full ZIP.
 - Firebase cost remains zero for generated printable assets. Saved owner templates are optional explicit saves with bounded registry metadata and Storage JSON cost.

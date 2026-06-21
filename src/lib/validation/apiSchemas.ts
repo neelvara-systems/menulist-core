@@ -27,7 +27,7 @@ const languageObjectSchema = z.object({
 const contentLengthSchema = z.enum(['Standard', 'Detailed']);
 
 const actionSchema = z.enum(['generate', 'translate', 'describe']);
-const billingProductIdSchema = z.enum(['ML', 'AL']).optional();
+const billingProductIdSchema = z.enum(['ML', 'AL', 'CC']).optional();
 const MAX_AI_REFERENCE_IMAGE_URL_LENGTH = 15 * 1024 * 1024;
 const imageAspectRatioSchema = z.enum(['1:1', '16:9', '9:16', '4:3', '3:4']);
 const imageStringArraySchema = z.array(z.string().min(1).max(100)).max(20);

@@ -715,8 +715,8 @@ function resolveItemDescriptionCommand(text: string, context: AiMenuManagerConte
     const normalized = normalizeText(text);
     if (!/\b(description|describe)\b/.test(normalized)) return null;
 
-    const match = text.match(/^\s*(?:set|change|update|add|write)?\s*(.+?)\s+(?:description|desc)\s*(?:to|as|:|-)\s*(.+)$/i)
-        || text.match(/^\s*(?:set|change|update|add|write)?\s*(?:description|desc)\s+(?:for|of)\s+(.+?)\s*(?:to|as|:|-)\s*(.+)$/i);
+    const match = text.match(/^\s*(?:set|change|update|add|write)?\s*(.+?)\s+(?:description|desc)\s*(?::|-|\s+(?:to|as)\s+)\s*(.+)$/i)
+        || text.match(/^\s*(?:set|change|update|add|write)?\s*(?:description|desc)\s+(?:for|of)\s+(.+?)\s*(?::|-|\s+(?:to|as)\s+)\s*(.+)$/i);
     if (!match) return null;
 
     const item = findAiMenuManagerItemByName(context, match[1]);
@@ -2707,8 +2707,8 @@ export function resolveAiMenuManagerCommand(params: {
         || resolveDesignCommand(params.text, params.context)
         || resolveBulkPriceCommand(params.text, params.context)
         || resolveBulkAvailabilityCommand(params.text, params.context)
-        || resolveCategoryRenameCommand(params.text, params.context)
         || resolveItemRenameCommand(params.text, params.context)
+        || resolveCategoryRenameCommand(params.text, params.context)
         || resolveItemDescriptionCommand(params.text, params.context)
         || resolveItemCategoryMoveCommand(params.text, params.context)
         || resolveBestSellerCommand(params.text, params.context)

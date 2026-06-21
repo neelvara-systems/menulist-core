@@ -104,7 +104,8 @@ See [campaigncue_founder-research-addendum.md](../campaigncue_founder-research-a
 
 | Decision | Value |
 | --- | --- |
-| Product id | `campaigncue` |
+| Product code | `CC` |
+| Product slug | `campaigncue` |
 | Local route | `/__campaigncue` |
 | Internal route | `/sites/campaigncue` |
 | Preview host | `campaigncue.menulist.online` |

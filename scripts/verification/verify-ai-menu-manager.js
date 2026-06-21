@@ -208,6 +208,10 @@ assert(!commandResolver.includes("actionType: 'system_manual_task_create'"), 'Kn
 assert(commandResolver.includes("'menu_share_copy_link'") && commandResolver.includes("'menu_qr_download'") && commandResolver.includes("'customer_app_install_link_share'") && commandResolver.includes("'digital_screen_link_share'") && commandResolver.includes("type: 'copy_text'") && commandResolver.includes("type: 'download_text'"), 'Local export resolvers must expose exact copy/download actions');
 
 const { resolveAiMenuManagerCommand } = require(path.join(root, 'src/lib/ai-menu-manager/commandResolver'));
+const {
+  AI_MENU_MANAGER_ACTION_DEFINITIONS,
+  AI_MENU_MANAGER_EXECUTABLE_ACTIONS,
+} = require(path.join(root, 'src/lib/ai-menu-manager/actionTypes'));
 const resolverFixtureContext = {
   projectId: 'project-1',
   defaultLanguage: 'en',
@@ -229,7 +233,7 @@ const resolverFixtureContext = {
     { id: 'item-paneer', name: 'Paneer tikka', aliases: ['paneer tikka', 'paneer'], categoryId: 'cat-starters', categoryName: 'Starters', fileUid: 'f1', price: '180', available: true, active: true, hasImage: false, hasDescription: false, isBestSeller: false, duration: 15 },
   ],
   categories: [
-    { id: 'cat-drinks', name: 'Drinks', aliases: ['drinks'], active: true, fileUid: 'f1', hasImage: false, timeSlotsCount: 0, orderIndex: 1 },
+    { id: 'cat-drinks', name: 'Drinks', aliases: ['drinks', 'tea'], active: true, fileUid: 'f1', hasImage: false, timeSlotsCount: 0, orderIndex: 1 },
     { id: 'cat-starters', name: 'Starters', aliases: ['starters'], active: true, fileUid: 'f1', hasImage: false, timeSlotsCount: 0, orderIndex: 2 },
   ],
 };
@@ -242,8 +246,10 @@ const resolverFixtures = [
   ['deactivate Cold coffee item', 'item_visibility_update', 'proposal'],
   ['deactivate Drinks category', 'category_visibility_update', 'proposal'],
   ['rename Cold coffee to Iced coffee', 'item_name_update', 'proposal'],
+  ['rename Masala Tea to Kadak Masala Tea', 'item_name_update', 'proposal'],
   ['rename Drinks category to Beverages', 'category_name_update', 'proposal'],
   ['Cold coffee description to Chilled creamy coffee', 'item_description_update', 'proposal'],
+  ['Add description for Masala Tea: Strong tea with fresh spices.', 'item_description_update', 'proposal'],
   ['move Cold coffee to Starters', 'item_category_update', 'proposal'],
   ['mark Cold coffee as bestseller', 'item_bestseller_update', 'proposal'],
   ['set Cold coffee prep time to 10 minutes', 'item_prep_time_update', 'proposal'],
@@ -327,6 +333,31 @@ for (const [text, expectedActionType, expectedKind] of resolverFixtures) {
   assert(
     result.card.actionType === expectedActionType && result.card.kind === expectedKind,
     `Resolver fixture failed for "${text}": expected ${expectedActionType}/${expectedKind}, got ${result.card.actionType}/${result.card.kind}`,
+  );
+}
+const resolverCoveredActionTypes = new Set(resolverFixtures
+  .filter(([, , expectedKind]) => expectedKind === 'proposal')
+  .map(([, expectedActionType]) => expectedActionType));
+for (const actionType of AI_MENU_MANAGER_EXECUTABLE_ACTIONS) {
+  assert(
+    resolverCoveredActionTypes.has(actionType),
+    `Executable AMM action lacks resolver fixture coverage: ${actionType}`,
+  );
+}
+const readyClientMutationActions = AI_MENU_MANAGER_ACTION_DEFINITIONS
+  .filter((definition) => definition.readiness === 'ready_adapter' && definition.executionMode === 'client_project_mutation')
+  .map((definition) => definition.actionType);
+for (const actionType of readyClientMutationActions) {
+  assert(
+    AI_MENU_MANAGER_EXECUTABLE_ACTIONS.includes(actionType),
+    `Ready client mutation action is not listed as executable: ${actionType}`,
+  );
+}
+for (const actionType of AI_MENU_MANAGER_EXECUTABLE_ACTIONS) {
+  const definition = AI_MENU_MANAGER_ACTION_DEFINITIONS.find((entry) => entry.actionType === actionType);
+  assert(
+    definition?.readiness === 'ready_adapter' && definition?.executionMode === 'client_project_mutation',
+    `Executable AMM action must be a ready client mutation adapter: ${actionType}`,
   );
 }
 for (const text of [

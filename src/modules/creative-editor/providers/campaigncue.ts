@@ -5,6 +5,7 @@ import type {
     CampaignCueOutput,
     CampaignCueWorkspace,
 } from "@type/campaigncue";
+import { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
 import {
     buildCreativeEditorImageElement,
     buildCreativeEditorQrElement,
@@ -44,7 +45,7 @@ const campaignCueSourceRefs = (params: {
         channel: params.output?.channel,
         label: sourceRef,
         outputId: params.output?.id,
-        productId: "campaigncue",
+        productId: CAMPAIGNCUE_PRODUCT_CODE,
         sourceRef,
     }));
 };
@@ -166,7 +167,7 @@ export function buildCampaignCueBlankCreativeDocument(params: {
         brandName: params.businessBrain.name,
         primaryColor: brandColor,
         productContext: {
-            productId: "campaigncue",
+            productId: CAMPAIGNCUE_PRODUCT_CODE,
             sourceSurface: "asset-library",
             workspaceId: params.workspace.workspaceId,
         },
@@ -312,7 +313,7 @@ export function buildCampaignCueOutputCreativeDocument(params: {
             trustGate: params.output.trustGate,
         },
         productContext: {
-            productId: "campaigncue",
+            productId: CAMPAIGNCUE_PRODUCT_CODE,
             sourceSurface: "campaign-output",
             workspaceId: params.workspace.workspaceId,
         },

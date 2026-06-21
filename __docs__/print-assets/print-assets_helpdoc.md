@@ -1,7 +1,7 @@
 # Assets Help
 
 **Status:** Owner Help
-**Last Updated:** June 17, 2026
+**Last Updated:** June 21, 2026
 
 ## What It Does
 
@@ -27,6 +27,8 @@ Assets gives you the files customers scan, read, or carry from your business.
 
 Check **Print readiness** first. It shows whether the live link, logo, brand color, business name, and feedback QR are ready for printing.
 
+Business cards and ID cards use saved phone, email, and address details when they are available. If a detail is missing, open **Customize in editor** on desktop and replace the placeholder before printing.
+
 Open a template first. The preview appears before download, and the same template can be saved as PDF or image where supported.
 
 On desktop, supported single assets also have **Customize in editor**. Use it for small copy or layout adjustments. The QR link stays protected.
@@ -44,7 +46,8 @@ Use **Printer Message** when sending files to a local printer. It copies the fil
 | Feedback QR | Exit or counter when feedback is enabled. |
 | Flyer | Offer handout, delivery insert, or local campaign card. |
 | Gift Certificate | Gift, credit, or prepaid offer voucher. |
-| Business Card | Contact card with your latest link. |
+| Business Card | Front and back contact card with your latest link. |
+| ID Card | Owner, staff, or service identity card. |
 | Invitation | Event, opening, workshop, or special invite. |
 | Postcard | Small mailer-style card for thanks, reminders, or offers. |
 | Product Tag | Retail, bakery, pickup, or counter item tag. |

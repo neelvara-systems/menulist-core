@@ -1,7 +1,6 @@
 'use client';
 
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { answerlatticeFunctions } from './answerlatticeFirebaseClient';
 import { firebaseApp } from './firebaseClient';
 
 // MenuList Cloud Functions (ecomsai locally/preview; menulist in production)
@@ -9,6 +8,7 @@ const functions = getFunctions(firebaseApp);
 
 // Answerlattice Cloud Functions — answerlattice-qa locally/preview; answerlattice in production
 export const regenerateEmbedding = async (articleId: string) => {
+    const { answerlatticeFunctions } = await import('./answerlatticeFirebaseClient');
     const regenerateEmbeddingFn = httpsCallable(answerlatticeFunctions, 'regenerateEmbedding');
     try {
         const result = await regenerateEmbeddingFn({ articleId });
@@ -22,6 +22,7 @@ export const regenerateEmbedding = async (articleId: string) => {
 export type PublishApprovedJobPayload = { jobId: string; finalCategories: any; }
 
 export const publishApprovedJob = async (payload: PublishApprovedJobPayload) => {
+    const { answerlatticeFunctions } = await import('./answerlatticeFirebaseClient');
     const publishApprovedJobFn = httpsCallable(answerlatticeFunctions, 'publishApprovedJobFn');
     try {
         const result = await publishApprovedJobFn(payload);

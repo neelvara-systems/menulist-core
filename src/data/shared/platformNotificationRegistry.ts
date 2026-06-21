@@ -8,7 +8,7 @@
  * Functions emitters migrate to the same registry.
  */
 
-export type PlatformNotificationProductId = 'PLATFORM' | 'ML' | 'AL';
+export type PlatformNotificationProductId = 'PLATFORM' | 'ML' | 'AL' | 'CC' | 'MC';
 export type PlatformNotificationSeverity = 'info' | 'warning' | 'critical';
 export type PlatformNotificationCategory =
   | 'cost'

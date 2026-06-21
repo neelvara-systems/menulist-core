@@ -1,6 +1,6 @@
 import ChangelogTemplate from '@template/platform/changelog';
 import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice';
-import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient';
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeConfig';
 
 function ChangelogPage() {
     if (!isAnswerlatticeFirebaseConfigured) {

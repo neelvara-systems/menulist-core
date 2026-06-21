@@ -47,6 +47,9 @@ function verifyEnvironmentTargets() {
   const envValidation = read('src/lib/env/validateEnv.ts');
   const middleware = read('src/middleware.ts');
   const deploymentTargets = read('src/constants/deploymentTargets.ts');
+  const productIds = read('src/constants/product.ts');
+  const myCodexAuth = read('src/lib/mycodex/auth.ts');
+  const myCodexDocs = read('src/lib/mycodex/docs.ts');
   const publicApiAuth = read('src/lib/publicApi/auth.ts');
   const widgetConfigRoute = read('src/app/api/widget/config/route.ts');
   const widgetSearchRoute = read('src/app/api/widget/search/route.ts');
@@ -61,30 +64,63 @@ function verifyEnvironmentTargets() {
   const documentComposer = read('src/lib/answerlattice/documentComposer.ts');
   const answerlatticeDashboardLayout = read('src/components/answerlattice/AnswerlatticeDashboardLayout.tsx');
   const setClaimsRoute = read('src/app/api/auth/set-claims/route.ts');
+  const envStagingExample = read('.env.staging.example');
+  const envProductionExample = read('.env.production.example');
+  const productSetupDoc = read('__docs__/deployment/three-product-environment-setup.md');
   const firebaserc = JSON.parse(read('.firebaserc'));
   const answerlatticeFunctionsPackage = JSON.parse(read('functions-answerlattice/package.json'));
 
   assert(DEPLOYMENT_TARGETS.local.menulist.url === 'http://localhost:3000/', 'Local MenuList URL must be localhost root');
+  assert(DEPLOYMENT_TARGETS.local.constantlayer.url === 'http://localhost:3000/__constantlayer/', 'Local ConstantLayer URL must be /__constantlayer');
   assert(DEPLOYMENT_TARGETS.local.answerlattice.url === 'http://localhost:3000/__answerlattice/', 'Local Answerlattice URL must be /__answerlattice');
+  assert(DEPLOYMENT_TARGETS.local.campaigncue.url === 'http://localhost:3000/__campaigncue/', 'Local CampaignCue URL must be /__campaigncue');
+  assert(DEPLOYMENT_TARGETS.local.mycodex.url === 'http://localhost:3000/__mycodex/', 'Local MyCodex URL must be /__mycodex');
+  assert(getProductDeploymentTarget('constantlayer', 'local').devPathPrefix === '/__constantlayer', 'Local ConstantLayer dev prefix must be /__constantlayer');
   assert(getProductDeploymentTarget('answerlattice', 'local').devPathPrefix === '/__answerlattice', 'Local Answerlattice dev prefix must be /__answerlattice');
+  assert(getProductDeploymentTarget('campaigncue', 'local').devPathPrefix === '/__campaigncue', 'Local CampaignCue dev prefix must be /__campaigncue');
+  assert(getProductDeploymentTarget('mycodex', 'local').devPathPrefix === '/__mycodex', 'Local MyCodex dev prefix must be /__mycodex');
   assert(getExpectedFirebaseProjectId('menulist', 'local') === 'ecomsai', 'Local MenuList Firebase project must be ecomsai');
+  assert(getExpectedFirebaseProjectId('constantlayer', 'local') === '', 'Local ConstantLayer must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'local') === 'answerlattice-qa', 'Local Answerlattice Firebase project must be answerlattice-qa');
+  assert(getExpectedFirebaseProjectId('campaigncue', 'local') === 'campaigncue-qa', 'Local CampaignCue Firebase project must be campaigncue-qa');
+  assert(getExpectedFirebaseProjectId('mycodex', 'local') === '', 'Local MyCodex must not require a Firebase project');
 
   assert(DEPLOYMENT_TARGETS.preview.menulist.domains.includes('menulist.online'), 'Preview MenuList domain must include menulist.online');
+  assert(DEPLOYMENT_TARGETS.preview.constantlayer.domains.includes('constantlayer.menulist.online'), 'Preview ConstantLayer domain must include constantlayer.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.answerlattice.domains.includes('ecomsai.com'), 'Preview Answerlattice domain must include ecomsai.com');
+  assert(DEPLOYMENT_TARGETS.preview.campaigncue.domains.includes('campaigncue.menulist.online'), 'Preview CampaignCue domain must include campaigncue.menulist.online');
+  assert(DEPLOYMENT_TARGETS.preview.mycodex.domains.includes('menulist.digital'), 'Preview MyCodex domain must include menulist.digital');
   assert(getExpectedFirebaseProjectId('menulist', 'preview') === 'ecomsai', 'Preview MenuList Firebase project must be ecomsai');
+  assert(getExpectedFirebaseProjectId('constantlayer', 'preview') === '', 'Preview ConstantLayer must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'preview') === 'answerlattice-qa', 'Preview Answerlattice Firebase project must be answerlattice-qa');
+  assert(getExpectedFirebaseProjectId('campaigncue', 'preview') === 'campaigncue-qa', 'Preview CampaignCue Firebase project must be campaigncue-qa');
+  assert(getExpectedFirebaseProjectId('mycodex', 'preview') === '', 'Preview MyCodex must not require a Firebase project');
 
   assert(DEPLOYMENT_TARGETS.production.menulist.domains.includes('menulist.ai'), 'Production MenuList domain must include menulist.ai');
+  assert(DEPLOYMENT_TARGETS.production.constantlayer.domains.includes('constantlayer.in'), 'Production ConstantLayer domain must include constantlayer.in');
   assert(DEPLOYMENT_TARGETS.production.answerlattice.domains.includes('answerlattice.com'), 'Production Answerlattice domain must include answerlattice.com');
+  assert(DEPLOYMENT_TARGETS.production.campaigncue.domains.includes('campaigncue.ai'), 'Production CampaignCue domain must include campaigncue.ai');
+  assert(DEPLOYMENT_TARGETS.production.mycodex.domains.includes('menulist.digital'), 'Production MyCodex domain must include menulist.digital');
   assert(getExpectedFirebaseProjectId('menulist', 'production') === 'menulist', 'Production MenuList Firebase project must be menulist');
+  assert(getExpectedFirebaseProjectId('constantlayer', 'production') === '', 'Production ConstantLayer must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'production') === 'answerlattice', 'Production Answerlattice Firebase project must be answerlattice');
+  assert(getExpectedFirebaseProjectId('campaigncue', 'production') === 'campaigncue', 'Production CampaignCue Firebase project must be campaigncue');
+  assert(getExpectedFirebaseProjectId('mycodex', 'production') === '', 'Production MyCodex must not require a Firebase project');
 
   assert(ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX === '/__answerlattice', 'Answerlattice local dev prefix constant');
   assert(ANSWERLATTICE_STAGING_DOMAINS.includes('ecomsai.com'), 'Answerlattice staging domain constant');
   assert(ANSWERLATTICE_PRODUCTION_DOMAINS.includes('answerlattice.com'), 'Answerlattice production domain constant');
   assertIncludes(productDomains, "getActiveProductDomains('answerlattice')", 'Product domain registry');
   assertIncludes(productDomains, "getActiveProductDomains('menulist')", 'Product domain registry');
+  assertIncludes(productDomains, "getActiveProductDomains('mycodex')", 'Product domain registry');
+  assertIncludes(productDomains, 'Route/domain product slug, not the two-character pId code.', 'Product domain registry slug boundary');
+  assertIncludes(productIds, "MYCODEX: 'MC'", 'MyCodex internal product code');
+  assertIncludes(myCodexAuth, 'MYCODEX_PRODUCT_CODE = PRODUCT_IDS.MYCODEX', 'MyCodex product code boundary');
+  assertIncludes(myCodexAuth, "MYCODEX_PRODUCT_SLUG = 'mycodex'", 'MyCodex product slug boundary');
+  assertIncludes(myCodexAuth, 'product: MYCODEX_PRODUCT_SLUG', 'MyCodex session uses route slug');
+  assertNotIncludes(myCodexAuth, 'product: MYCODEX_PRODUCT_CODE', 'MyCodex session must not use pId code');
+  assertNotIncludes(myCodexDocs, 'firebase', 'MyCodex docs loader must not import Firebase');
+  assertNotIncludes(myCodexDocs, 'firestore', 'MyCodex docs loader must not import Firestore');
   assertIncludes(urls, 'QA: menulist.online', 'Platform URL domain contract');
   assertIncludes(urls, 'QA: ecomsai.com', 'Platform URL domain contract');
   assertIncludes(envValidation, 'getExpectedFirebaseProjectId', 'Environment validation');
@@ -112,6 +148,32 @@ function verifyEnvironmentTargets() {
   assert(firebaserc.projects['menulist-prod'] === 'menulist', '.firebaserc MenuList production alias');
   assert(firebaserc.projects['answerlattice-qa'] === 'answerlattice-qa', '.firebaserc Answerlattice QA alias');
   assert(firebaserc.projects['answerlattice-prod'] === 'answerlattice', '.firebaserc Answerlattice production alias');
+  assert(firebaserc.projects['campaigncue-qa'] === 'campaigncue-qa', '.firebaserc CampaignCue QA alias');
+  assert(firebaserc.projects['campaigncue-prod'] === 'campaigncue', '.firebaserc CampaignCue production alias');
+  assert(exists('firebase-campaigncue.json'), 'CampaignCue Firebase deploy config must exist');
+  assertIncludes(read('firebase-campaigncue.json'), 'firestore-campaigncue.rules', 'CampaignCue Firebase config');
+  assertIncludes(read('firebase-campaigncue.json'), 'storage-campaigncue.rules', 'CampaignCue Firebase config');
+  for (const [label, content] of [
+    ['Staging env template', envStagingExample],
+    ['Production env template', envProductionExample],
+  ]) {
+    assertIncludes(content, 'ANSWERLATTICE_FIREBASE_PROJECT_ID', `${label} product env-key naming`);
+    assertIncludes(content, 'CAMPAIGNCUE_FIREBASE_PROJECT_ID', `${label} product env-key naming`);
+    assertIncludes(content, 'MYCODEX_BASIC_AUTH_USER', `${label} MyCodex static auth env`);
+    assertIncludes(content, 'MYCODEX_BASIC_AUTH_PASSWORD', `${label} MyCodex static auth env`);
+    assertIncludes(content, 'MYCODEX_SESSION_SECRET', `${label} MyCodex static auth env`);
+    assertNotIncludes(content, 'NEXT_PUBLIC_AL_', `${label} must not use shorthand Answerlattice env keys`);
+    assertNotIncludes(content, 'AL_FIREBASE_PROJECT_ID', `${label} must not use shorthand Answerlattice env keys`);
+    assertNotIncludes(content, 'NEXT_PUBLIC_CC_', `${label} must not use shorthand CampaignCue env keys`);
+    assertNotIncludes(content, 'CC_FIREBASE_PROJECT_ID', `${label} must not use shorthand CampaignCue env keys`);
+    assertNotIncludes(content, 'NEXT_PUBLIC_MYCODEX_FIREBASE_PROJECT_ID', `${label} must not define MyCodex Firebase env keys`);
+    assertNotIncludes(content, 'MYCODEX_FIREBASE_PROJECT_ID', `${label} must not define MyCodex Firebase env keys`);
+    assertNotIncludes(content, 'NEXT_PUBLIC_MC_', `${label} must not use shorthand MyCodex env keys`);
+    assertNotIncludes(content, 'MC_FIREBASE_PROJECT_ID', `${label} must not use shorthand MyCodex env keys`);
+  }
+  assertIncludes(productSetupDoc, 'Use full product names in environment variable keys', 'Product setup doc env-key naming contract');
+  assertIncludes(productSetupDoc, 'CampaignCue uses `CC` as its internal product code and `campaigncue` as its runtime product slug', 'Product setup doc CampaignCue product-code boundary');
+  assertIncludes(productSetupDoc, 'MyCodex uses `MC` as its reserved internal product code and `mycodex` as its runtime product slug', 'Product setup doc MyCodex product-code boundary');
   assertIncludes(answerlatticeFunctionsPackage.scripts['deploy:qa'], '--project answerlattice-qa', 'Answerlattice Functions QA deploy script');
   assertIncludes(answerlatticeFunctionsPackage.scripts['deploy:prod'], '--project answerlattice', 'Answerlattice Functions production deploy script');
 }

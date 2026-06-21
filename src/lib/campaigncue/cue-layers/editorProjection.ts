@@ -1,4 +1,5 @@
 import { CAMPAIGNCUE_CUE_LAYERS } from "@constant/campaigncue/cueLayers";
+import { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
 import type { CampaignCueBusinessBrain } from "@type/campaigncue";
 import type {
     CampaignCueCreativeEditorDocumentSnapshot,
@@ -28,7 +29,7 @@ const scaleToEditorCanvas = (width: number, height: number) => {
 const sourceRef = (asset: CampaignCueCueLayerAssetRef, label: string): CreativeEditorSourceRef => ({
     label,
     locked: true,
-    productId: "campaigncue",
+    productId: CAMPAIGNCUE_PRODUCT_CODE,
     sourceRef: asset.assetUri,
 });
 
@@ -98,7 +99,7 @@ export function buildCampaignCueCueLayerProjection(params: {
             updatedAt: now,
         },
         productContext: {
-            productId: "campaigncue",
+            productId: CAMPAIGNCUE_PRODUCT_CODE,
             sourceSurface: "cue-layers",
             workspaceId: params.sourcePackage.workspaceId,
         },

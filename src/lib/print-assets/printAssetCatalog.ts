@@ -36,6 +36,7 @@ export type PrintAssetId =
     | 'campaign_flyer'
     | 'gift_certificate'
     | 'business_card'
+    | 'staff_id_card'
     | 'event_invitation'
     | 'postcard'
     | 'product_tag'
@@ -125,11 +126,18 @@ export const PRINT_ASSET_CATALOG: PrintAssetCatalogItem[] = [
         title: 'Gift Certificate',
     },
     {
-        description: 'Small card with business identity, contact, and QR.',
+        description: 'Front and back business card in one print-ready file.',
         id: 'business_card',
         placement: 'identity',
-        size: '90 x 55 mm',
+        size: '2 x 90 x 55 mm',
         title: 'Business Card',
+    },
+    {
+        description: 'Portrait ID card for owners, staff, service teams, or events.',
+        id: 'staff_id_card',
+        placement: 'identity',
+        size: '54 x 85 mm',
+        title: 'ID Card',
     },
     {
         description: 'Invite card for events, openings, workshops, or specials.',
@@ -209,7 +217,7 @@ export const PRINT_ASSET_GROUPS: Array<{
         title: 'Gift',
     },
     {
-        description: 'Small identity cards for contact and quick scan handoff.',
+        description: 'Business cards, ID cards, and quick identity handoffs.',
         id: 'identity',
         title: 'Identity',
     },

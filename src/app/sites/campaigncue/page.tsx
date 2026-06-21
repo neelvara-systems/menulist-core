@@ -71,6 +71,35 @@ type OutputFormat = {
     status: string;
 };
 
+type FitCheckItem = {
+    challenge: string;
+    response: string;
+    proof: string;
+    icon: IconType;
+};
+
+type HeroAsset = {
+    label: string;
+    title: string;
+    meta: string;
+    tone: string;
+};
+
+type PowerhouseFeature = {
+    label: string;
+    title: string;
+    description: string;
+    icon: IconType;
+    tone: string;
+};
+
+type CampaignWallAsset = {
+    label: string;
+    title: string;
+    note: string;
+    tone: string;
+};
+
 type PromptExample = {
     title: string;
     detail: string;
@@ -100,9 +129,9 @@ type FooterGroup = {
 
 const NAV_LINKS = [
     { label: 'Today', href: '#daily-desk' },
+    { label: 'Fit', href: '#fit-check' },
     { label: 'Packs', href: '#studio' },
     { label: 'Index', href: '#catalog' },
-    { label: 'Examples', href: '#starts' },
     { label: 'Trust', href: '#trust' },
     { label: 'FAQ', href: '#faq' },
 ];
@@ -120,6 +149,66 @@ const FIT_ITEMS = [
     'Creative + print',
     'Manual handoff',
     'Result memory',
+];
+
+const FIT_CHECK_ITEMS: FitCheckItem[] = [
+    {
+        challenge: 'I need something useful to promote today.',
+        response: 'CampaignCue starts with one current cue from offers, services, photos, hours, and owner notes.',
+        proof: 'Today cue',
+        icon: LuRadar,
+    },
+    {
+        challenge: 'I have the facts, but no ready channel pack.',
+        response: 'One source-backed pack covers WhatsApp, Google, social creative, print, video brief, and staff handoff.',
+        proof: 'Pack ready',
+        icon: LuWorkflow,
+    },
+    {
+        challenge: 'I worry the copy may say the wrong thing.',
+        response: 'Prices, links, photo rights, consent, sensitive claims, ranking claims, and spend are checked before use.',
+        proof: 'Review visible',
+        icon: LuShieldCheck,
+    },
+    {
+        challenge: 'I want files and text, not connected posting.',
+        response: 'Day one stays export-first: download assets, copy text, schedule manual work, and mark what happened.',
+        proof: 'No direct post',
+        icon: LuDownload,
+    },
+];
+
+const HERO_FLOATING_ASSETS: HeroAsset[] = [
+    {
+        label: 'Story',
+        title: 'Lunch combo',
+        meta: '1080 x 1920',
+        tone: 'rose',
+    },
+    {
+        label: 'Poster',
+        title: 'Book today',
+        meta: 'Print ready',
+        tone: 'pink',
+    },
+    {
+        label: 'Google',
+        title: 'Local update',
+        meta: 'Source checked',
+        tone: 'blue',
+    },
+    {
+        label: 'Script',
+        title: '15 sec reel',
+        meta: 'Shoot list',
+        tone: 'purple',
+    },
+    {
+        label: 'Trust',
+        title: 'Claim review',
+        meta: 'Owner check',
+        tone: 'cream',
+    },
 ];
 
 const OUTPUTS: OutputFormat[] = [
@@ -339,6 +428,51 @@ const PRODUCT_CAPABILITIES: IconCard[] = [
     },
 ];
 
+const POWERHOUSE_FEATURES: PowerhouseFeature[] = [
+    {
+        label: 'Generate',
+        title: 'Campaign packs',
+        description: 'Turn one local cue into WhatsApp, Google, social, print, reel, and staff handoff outputs.',
+        icon: LuSparkles,
+        tone: 'rose',
+    },
+    {
+        label: 'Reuse',
+        title: 'Existing images',
+        description: 'Use generated assets or uploaded images as editable candidates through Creative Studio and CueLayers.',
+        icon: LuLayers,
+        tone: 'blue',
+    },
+    {
+        label: 'Local',
+        title: 'Google and in-store',
+        description: 'Prepare local update copy, counter cards, QR notes, and staff scripts from the same source.',
+        icon: LuSearchCheck,
+        tone: 'cream',
+    },
+    {
+        label: 'Video',
+        title: 'Reel and UGC briefs',
+        description: 'Create hooks, shot lists, creator instructions, and safe caption notes without rendering spend.',
+        icon: LuVideo,
+        tone: 'pink',
+    },
+    {
+        label: 'Check',
+        title: 'Creative trust',
+        description: 'Keep price, proof, rights, consent, sensitive wording, and spend decisions visible before export.',
+        icon: LuShieldCheck,
+        tone: 'ink',
+    },
+    {
+        label: 'Learn',
+        title: 'Result memory',
+        description: 'Mark used, skipped, booked, sold, or follow-up so the next campaign starts with better context.',
+        icon: LuBarChart3,
+        tone: 'purple',
+    },
+];
+
 const STARTING_POINTS: PromptExample[] = [
     {
         title: 'Restaurant',
@@ -371,6 +505,69 @@ const STARTING_POINTS: PromptExample[] = [
     {
         title: 'Multi-location',
         detail: 'Create one campaign with location-safe variants, local hours, local offers, and partial approval.',
+    },
+];
+
+const CAMPAIGN_WALL_ASSETS: CampaignWallAsset[] = [
+    {
+        label: 'WhatsApp',
+        title: 'Lunch combo status',
+        note: 'Price checked',
+        tone: 'rose',
+    },
+    {
+        label: 'Story',
+        title: 'Salon slot fill',
+        note: 'Booking link ready',
+        tone: 'pink',
+    },
+    {
+        label: 'Poster',
+        title: 'Weekend retail offer',
+        note: 'Print handoff',
+        tone: 'blue',
+    },
+    {
+        label: 'Google',
+        title: 'Local update draft',
+        note: 'Manual publish',
+        tone: 'cream',
+    },
+    {
+        label: 'Reel',
+        title: '15 second shot list',
+        note: 'Staff script',
+        tone: 'purple',
+    },
+    {
+        label: 'QR',
+        title: 'Table card brief',
+        note: 'Offer page',
+        tone: 'ink',
+    },
+    {
+        label: 'UGC',
+        title: 'Creator prompt',
+        note: 'No fake result claim',
+        tone: 'blush',
+    },
+    {
+        label: 'Ad',
+        title: 'Spend-gated copy',
+        note: 'Approval required',
+        tone: 'mint',
+    },
+    {
+        label: 'Clinic',
+        title: 'Reminder copy',
+        note: 'Cautious wording',
+        tone: 'white',
+    },
+    {
+        label: 'Agency',
+        title: 'Client approval note',
+        note: 'Source linked',
+        tone: 'peach',
     },
 ];
 
@@ -539,6 +736,15 @@ function SectionIntro({
 function HeroProductPreview() {
     return (
         <div className="campaigncue-hero-visual" aria-label="CampaignCue product preview">
+            <div className="campaigncue-hero-cloud" aria-hidden="true">
+                {HERO_FLOATING_ASSETS.map((asset, index) => (
+                    <div className={`campaigncue-floating-asset is-${asset.tone} is-${index + 1}`} key={asset.title}>
+                        <span>{asset.label}</span>
+                        <strong>{asset.title}</strong>
+                        <em>{asset.meta}</em>
+                    </div>
+                ))}
+            </div>
             <div className="campaigncue-preview-window">
                 <div className="campaigncue-window-bar">
                     <span />
@@ -621,6 +827,71 @@ function WorkflowRail() {
     );
 }
 
+function CampaignCueFitCheck() {
+    return (
+        <section className="campaigncue-fit-check" id="fit-check" aria-label="CampaignCue quick fit check">
+            <div className="campaigncue-fit-check-copy">
+                <span>Quick fit check</span>
+                <h2>Pick the problem you recognize.</h2>
+                <p>
+                    Campaign tools usually start with a blank generator. CampaignCue starts with the owner&apos;s
+                    daily bottleneck and turns it into a checked campaign pack.
+                </p>
+            </div>
+            <div className="campaigncue-fit-check-list">
+                {FIT_CHECK_ITEMS.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                        <div className="campaigncue-fit-check-row" key={item.challenge}>
+                            <Icon aria-hidden="true" />
+                            <div>
+                                <strong>{item.challenge}</strong>
+                                <p>{item.response}</p>
+                            </div>
+                            <span>{item.proof}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
+function CreativePowerhouse() {
+    return (
+        <section className="campaigncue-powerhouse" id="powerhouse" aria-label="CampaignCue creative powerhouse">
+            <div className="campaigncue-powerhouse-heading">
+                <span>Creative output system</span>
+                <h2>Your local campaign powerhouse.</h2>
+                <p>
+                    CampaignCue should feel like work is being produced. Each source-backed cue becomes channel
+                    assets, reuse paths, review checks, and export files the owner can actually use.
+                </p>
+            </div>
+            <div className="campaigncue-powerhouse-grid">
+                {POWERHOUSE_FEATURES.map((feature) => {
+                    const Icon = feature.icon;
+                    return (
+                        <article className={`campaigncue-powerhouse-card is-${feature.tone}`} key={feature.title}>
+                            <div className="campaigncue-powerhouse-card-top">
+                                <span>{feature.label}</span>
+                                <Icon aria-hidden="true" />
+                            </div>
+                            <div className="campaigncue-powerhouse-visual" aria-hidden="true">
+                                <span />
+                                <span />
+                                <span />
+                            </div>
+                            <strong>{feature.title}</strong>
+                            <p>{feature.description}</p>
+                        </article>
+                    );
+                })}
+            </div>
+        </section>
+    );
+}
+
 function BenefitList({ cards }: { cards: IconCard[] }) {
     return (
         <div className="campaigncue-benefit-list">
@@ -696,6 +967,30 @@ function PromptStarts() {
                 </div>
             ))}
         </div>
+    );
+}
+
+function CampaignAssetWall() {
+    return (
+        <section className="campaigncue-asset-wall" aria-label="CampaignCue generated asset examples">
+            <div className="campaigncue-asset-wall-copy">
+                <span>Generated campaign handoff</span>
+                <h2>It should look like finished work, not another prompt page.</h2>
+                <p>
+                    These are example campaign artifacts CampaignCue prepares from the same source-backed cue.
+                    Owners still review, export, and post manually.
+                </p>
+            </div>
+            <div className="campaigncue-asset-wall-grid">
+                {CAMPAIGN_WALL_ASSETS.map((asset) => (
+                    <div className={`campaigncue-asset-tile is-${asset.tone}`} key={asset.title}>
+                        <span>{asset.label}</span>
+                        <strong>{asset.title}</strong>
+                        <em>{asset.note}</em>
+                    </div>
+                ))}
+            </div>
+        </section>
     );
 }
 
@@ -893,6 +1188,10 @@ export default function CampaignCueHomePage() {
                 ))}
             </section>
 
+            <CampaignCueFitCheck />
+
+            <CreativePowerhouse />
+
             <RealWorkProof />
 
             <CampaignCueCatalog />
@@ -1031,6 +1330,8 @@ export default function CampaignCueHomePage() {
                 </SectionIntro>
                 <PromptStarts />
             </section>
+
+            <CampaignAssetWall />
 
             <section className="campaigncue-section campaigncue-split" id="trust">
                 <div>

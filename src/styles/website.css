@@ -29,6 +29,9 @@
   --ws-brand-secondary: #0051d1;
   --ws-brand-light: #dbeafe;
   --ws-brand-gradient: linear-gradient(90deg, #0051d1 0%, #0284c7 52%, #27a8e3 100%);
+  --ws-accent-warm: #de77a1;
+  --ws-accent-warm-soft: rgba(222, 119, 161, 0.12);
+  --ws-accent-warm-border: rgba(222, 119, 161, 0.28);
 
   /* Contrast panels */
   --ws-panel-contrast: #0f172a;
@@ -132,6 +135,9 @@
     --ws-brand-secondary: #6daefa;
     --ws-brand-light: rgba(109, 174, 250, 0.18);
     --ws-brand-gradient: linear-gradient(90deg, #7aa7ff 0%, #38bdf8 48%, #5eead4 100%);
+    --ws-accent-warm: #ee9abc;
+    --ws-accent-warm-soft: rgba(222, 119, 161, 0.14);
+    --ws-accent-warm-border: rgba(238, 154, 188, 0.34);
 
     /* Contrast panels */
     --ws-panel-contrast: #15181d;
@@ -198,6 +204,9 @@
   --ws-brand-secondary: #6daefa;
   --ws-brand-light: rgba(109, 174, 250, 0.18);
   --ws-brand-gradient: linear-gradient(90deg, #7aa7ff 0%, #38bdf8 48%, #5eead4 100%);
+  --ws-accent-warm: #ee9abc;
+  --ws-accent-warm-soft: rgba(222, 119, 161, 0.14);
+  --ws-accent-warm-border: rgba(238, 154, 188, 0.34);
 
   /* Contrast panels */
   --ws-panel-contrast: #15181d;

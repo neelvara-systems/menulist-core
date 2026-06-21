@@ -2,7 +2,7 @@
 
 **Status:** Production checklist - initial registry implemented
 **Audience:** Engineering / Product / QA
-**Last Updated:** June 17, 2026
+**Last Updated:** June 20, 2026
 **Owner:** MenuList AMM action registry
 
 ---
@@ -23,6 +23,8 @@ This checklist answers four questions for every supported owner command:
 This file must be updated whenever AMM gains a new action adapter or when an existing manual MenuList flow changes.
 
 Current implementation note: Mobile More/manual surfaces are recognized by a table-driven resolver and mapped to exact action-family cards, not the generic `system_manual_task_create` placeholder. Known flows include business profile, official page, social links, attributes, customer app, search/discovery, domain, business copy, SEO, analytics, locale, working hours, time slots, temporary status, locations, staff, roles, billing, transactions, Business Health, past activity, help, print/export, digital screens, POS sync, integrations, and blocked platform/reseller/Answerlattice/internal screens. Browser-local exports use dedicated actions such as `menu_share_copy_link`, `menu_qr_download`, `public_presence_link_share`, `public_presence_qr_download`, `feedback_link_share`, `feedback_qr_download`, `customer_app_install_link_share`, `digital_screen_link_share`, `pos_sync_setup_info_copy`, `pos_sync_technical_summary_copy`, and `pos_sync_sample_payload_download`. `system_manual_task_create` is reserved for true ad hoc owner tasks that do not map to a known MenuList action family.
+
+Current executable write boundary, June 20, 2026: the production executable client-project mutation list is limited to owner-reachable deterministic adapters exported from `AI_MENU_MANAGER_EXECUTABLE_ACTIONS`: `item_price_update`, `item_name_update`, `item_description_update`, `item_category_update`, `item_availability_update`, `item_visibility_update`, `item_bestseller_update`, `item_prep_time_update`, `category_name_update`, `category_visibility_update`, `decision_blocks_update`, `menu_special_note_update`, `menu_design_mood_update`, `menu_design_layout_update`, `menu_design_preset_apply`, `menu_design_visibility_update`, `menu_design_color_update`, `bulk_price_update`, and `bulk_availability_update`. Lower-level field coverage rows remain documented below, but they are not production executable until the context packet carries the required entity detail and a resolver/card fixture proves the full owner journey.
 
 ---
 
@@ -211,7 +213,7 @@ Cost rules:
 
 | State | Meaning |
 | --- | --- |
-| `ready_adapter` | Manual flow and mutation path exist. AMM can add an adapter that reuses them. |
+| `ready_adapter` | Current AMM implementation has a registered, owner-reachable, tested adapter/card path for this action or a safe browser-local/read-only card. |
 | `needs_adapter_glue` | Manual flow exists, but AMM needs a wrapper, card schema, or stricter policy before enablement. |
 | `existing_api_only` | AMM may call only the existing protected API/job, never direct-write. |
 | `manual_task_only` | AMM can prepare an exact existing-screen task/export/receipt, not execute protected or unsupported work. |
@@ -224,7 +226,7 @@ Cost rules:
 | Action type | Owner command examples | Manual equivalent | Execution mode | Approval | Mobile | Cost | State |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `item_create` | "Add masala tea for 30 rupees" | Editor add item helper. Evidence: `src/components/templates/main-app/projects/editorView/utils/editorOperations.ts:64` | `manual_task_card` until the create-item patch adapter is connected; then `client_project_mutation` through the editor helper path | `confirm` | Task card now; card approve/edit after adapter | Compact proposal/session write now; then `C1 single project save` | `needs_adapter_glue` |
-| `item_update` | "Update paneer roll details" | Edit item modal save. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:554` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
+| `item_update` | "Update paneer roll details" | Edit item modal save. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:554` | `client_project_mutation` after exact field resolver/card glue exists | `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
 | `item_name_update` | "Rename chai to masala chai" | Item field edit. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:351` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
 | `item_description_update` | "Change this description" | Item field edit. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:351` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
 | `item_category_update` | "Move samosa to snacks" | Item category selector. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:57` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
@@ -232,24 +234,24 @@ Cost rules:
 | `item_description_refresh` | "Refresh generated descriptions" | Description generation modal. Evidence: `src/components/templates/main-app/projects/editorView/DescriptionGenerationModal.tsx:86` | `existing_api_job` | `bulk_confirm` | Summary card | `C2 job/storage` | `needs_adapter_glue` |
 | `item_price_update` | "Make samosa 25" | Item price field edit. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:351` | `client_project_mutation` | `high_confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
 | `item_attribute_create` | "Add half plate price" | Attribute add helper. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:425` | `manual_task_card` until add-attribute construction is connected | `high_confirm` when price-bearing, otherwise `confirm` | Task card | Compact proposal/session write | `needs_adapter_glue` |
-| `item_attribute_update` | "Change large size to 180" | Attribute field edit. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:351` | `client_project_mutation` | `high_confirm` when price-bearing, otherwise `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
-| `item_attribute_name_update` | "Rename large size to family pack" | Attribute name field edit. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:373` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
-| `item_attribute_price_update` | "Make large size 180" | Attribute price field edit. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:387` | `client_project_mutation` | `high_confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
-| `item_attribute_visibility_update` | "Deactivate small size" | Attribute active toggle. Evidence: `src/components/mobile/sheets/ItemEditSheet.tsx:821` | `client_project_mutation` | `confirm` | Fast card | `C1 single project save` | `ready_adapter` |
-| `item_attribute_order_update` | "Move regular size above large" | Attribute order handling. Evidence: `src/components/mobile/sheets/ItemEditSheet.tsx:637` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
+| `item_attribute_update` | "Change large size to 180" | Attribute field edit. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:351` | `client_project_mutation` after attribute ids/options are present in AMM context | `high_confirm` when price-bearing, otherwise `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
+| `item_attribute_name_update` | "Rename large size to family pack" | Attribute name field edit. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:373` | `client_project_mutation` after attribute entity resolver is connected | `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
+| `item_attribute_price_update` | "Make large size 180" | Attribute price field edit. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:387` | `client_project_mutation` after attribute entity resolver is connected | `high_confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
+| `item_attribute_visibility_update` | "Deactivate small size" | Attribute active toggle. Evidence: `src/components/mobile/sheets/ItemEditSheet.tsx:821` | `client_project_mutation` after attribute entity resolver is connected | `confirm` | Fast card | `C1 single project save` | `needs_adapter_glue` |
+| `item_attribute_order_update` | "Move regular size above large" | Attribute order handling. Evidence: `src/components/mobile/sheets/ItemEditSheet.tsx:637` | `client_project_mutation` after attribute ordering resolver is connected | `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
 | `item_attribute_delete` | "Remove small size" | Attribute delete helper. Evidence: `src/components/templates/main-app/projects/editorView/utils/editorOperations.ts:212` | `manual_task_card` until destructive remove-card adapter is connected | `destructive_confirm` | Destructive task card | Compact proposal/session write | `needs_adapter_glue` |
 | `item_visibility_update` | "Hide burger from menu" | Item active toggle. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:673` | `client_project_mutation` | `confirm` | Fast card | `C1 single project save` | `ready_adapter` |
 | `item_availability_update` | "Mark biryani sold out" | Item available toggle. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:673` | `client_project_mutation` | `confirm` | Fast card | `C1 single project save` | `ready_adapter` |
 | `item_availability_update` | "Make biryani available again" | Same availability adapter; sets `available: true`. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:673` | `client_project_mutation` | `confirm` | Fast card | `C1 single project save` | `ready_adapter` |
 | `item_bestseller_update` | "Mark masala tea as bestseller" | Bestseller toggle. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:696` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
 | `item_prep_time_update` | "Set pizza prep time to 20 minutes" | Prep-time controls. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:727` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
-| `item_promotion_weight_update` | "Feature this item more" | OwnerBoost controls. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:727` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
-| `item_metadata_update` | "Add spicy and vegetarian tags" | Metadata facts in item modal. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:784` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
+| `item_promotion_weight_update` | "Feature this item more" | OwnerBoost controls. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:727` | `client_project_mutation` after ownerBoost resolver/card copy is connected | `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
+| `item_metadata_update` | "Add spicy and vegetarian tags" | Metadata facts in item modal. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:784` | `client_project_mutation` after metadata field/value resolver is connected | `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
 | `item_metadata_generate` | "Create title, tags, and description for this new item" | New item metadata API. Evidence: `src/app/api/new-item-metadata/route.ts:39`, `src/app/api/new-item-metadata/route.ts:336` | `existing_api_job` then `client_project_mutation` | `confirm` | Draft card | `C2 job/storage` plus `C1 single project save` if applied | `needs_adapter_glue` |
 | `item_translation_repair` | "Translate this item" | Retry item translation. Evidence: `src/components/templates/main-app/projects/editorView/editItemModal.tsx:402` | `existing_api_job` | `confirm` | Draft card | `C2 job/storage` | `needs_adapter_glue` |
 | `item_image_update` | "Change masala tea photo" | Item image upload/apply flow. Evidence: `src/components/templates/main-app/projects/editorView/uploadedImagesList.tsx` | `manual_task_card` unless the request uses the generated-image draft/apply adapter | `confirm` | Image task card | `C5 manual only` | `manual_task_only` |
-| `item_order_update` | "Move samosa above pakora" | Reorder menu modal. Evidence: `src/components/templates/main-app/projects/editorView/ReorderMenuModal.tsx:200` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
-| `item_quality_review_update` | "Mark this price warning checked" | Price warning review marker. Evidence: `src/components/mobile/screens/MobileMenuScreen.tsx:995` | `client_project_mutation` | `confirm` | Fast card | `C1 single project save` | `ready_adapter` |
+| `item_order_update` | "Move samosa above pakora" | Reorder menu modal. Evidence: `src/components/templates/main-app/projects/editorView/ReorderMenuModal.tsx:200` | `client_project_mutation` after ordering resolver and before/after order card are connected | `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
+| `item_quality_review_update` | "Mark this price warning checked" | Price warning review marker. Evidence: `src/components/mobile/screens/MobileMenuScreen.tsx:995` | `client_project_mutation` after quality-review resolver is connected | `confirm` | Fast card | `C1 single project save` | `needs_adapter_glue` |
 | `item_identity_reference` | "Show item id" | System identity reference only. Evidence: `src/components/templates/main-app/projects/types/extractedData.types.ts:70` | `read_only_card` | `none` | Read-only card | `C0 local` | `blocked` |
 | `item_delete` | "Delete old combo" | Item delete helper. Evidence: `src/components/templates/main-app/projects/editorView/utils/editorOperations.ts:191` | `manual_task_card` until destructive remove-card adapter is connected | `destructive_confirm` | Destructive task card | Compact proposal/session write | `needs_adapter_glue` |
 
@@ -260,15 +262,15 @@ Cost rules:
 | Action type | Owner command examples | Manual equivalent | Execution mode | Approval | Mobile | Cost | State |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `category_create` | "Add breakfast category" | Create category helper. Evidence: `src/components/templates/main-app/projects/editorView/utils/editorOperations.ts:28` | `manual_task_card` until category construction is connected | `confirm` | Task card | Compact proposal/session write | `needs_adapter_glue` |
-| `category_update` | "Update snacks category" | Category modal save. Evidence: `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:219` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
+| `category_update` | "Update snacks category" | Category modal save. Evidence: `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:219` | `client_project_mutation` after exact category field resolver/card glue exists | `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
 | `category_name_update` | "Rename starters to snacks" | Category modal save. Evidence: `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:219` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
 | `category_visibility_update` | "Deactivate desserts category" | Category active toggle. Evidence: `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:437`, `src/components/mobile/screens/MobileMenuScreen.tsx:3450` | `client_project_mutation` | `confirm` | Fast card | `C1 single project save` | `ready_adapter` |
-| `category_icon_update` | "Set tea icon for beverages" | Category icon picker. Evidence: `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:448` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
+| `category_icon_update` | "Set tea icon for beverages" | Category icon picker. Evidence: `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:448` | `client_project_mutation` after icon option resolver/card is connected | `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
 | `category_image_update` | "Add image for beverages category" | Category image data field. Evidence: `src/components/templates/main-app/projects/types/extractedData.types.ts:35` | `manual_task_card` until category image UI/storage path is connected | `confirm` | Task card | `C5 manual only` | `manual_task_only` |
-| `category_time_slot_update` | "Show breakfast only in morning" | Category time-slot controls. Evidence: `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:131` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
+| `category_time_slot_update` | "Show breakfast only in morning" | Category time-slot controls. Evidence: `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:131` | `client_project_mutation` after category time-slot resolver/card is connected | `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
 | `category_time_slot_preset_create` | "Create morning menu time slot" | Preset create in category modal. Evidence: `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:166` | `existing_client_dal` | `confirm` | Card approve/edit | `C3 summary/store write` | `needs_adapter_glue` |
 | `category_translation_repair` | "Translate category names" | Category translation generation. Evidence: `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:276` | `existing_api_job` | `bulk_confirm` | Summary card | `C2 job/storage` | `needs_adapter_glue` |
-| `category_order_update` | "Move desserts above drinks" | Reorder menu modal. Evidence: `src/components/templates/main-app/projects/editorView/ReorderMenuModal.tsx:190` | `client_project_mutation` | `confirm` | Card approve/edit | `C1 single project save` | `ready_adapter` |
+| `category_order_update` | "Move desserts above drinks" | Reorder menu modal. Evidence: `src/components/templates/main-app/projects/editorView/ReorderMenuModal.tsx:190` | `client_project_mutation` after ordering resolver and before/after order card are connected | `confirm` | Card approve/edit | `C1 single project save` | `needs_adapter_glue` |
 | `category_identity_reference` | "Show category id" | System category identity reference only. Evidence: `src/components/templates/main-app/projects/types/extractedData.types.ts:30` | `read_only_card` | `none` | Read-only card | `C0 local` | `blocked` |
 | `category_delete` | "Delete old lunch category" | Category delete helper. Evidence: `src/components/templates/main-app/projects/editorView/utils/editorOperations.ts:160` | `manual_task_card` until destructive remove-card adapter is connected | `destructive_confirm` | Destructive task card | Compact proposal/session write | `needs_adapter_glue` |
 
@@ -287,20 +289,20 @@ Adding a new item/category/attribute key requires adding a row here and a matchi
 | `active` | `category_visibility_update` | Direct project patch after approval. Supports owner wording such as "deactivate desserts category". |
 | `name` | `category_name_update` | Direct project patch after approval. |
 | `extractionIdAliases` | `category_identity_reference` | System-protected import/re-extraction identity. AMM must not edit it. |
-| `icon` | `category_icon_update` | Direct project patch after approval. |
+| `icon` | `category_icon_update` | Field coverage only today; requires icon option resolver/card before direct project patch is enabled. |
 | `images` | `category_image_update` | Manual task until a category image UI/storage path exists. |
-| `timeSlots` | `category_time_slot_update` | Direct project patch after approval; preset creation stays on the existing store preset DAL. |
-| `orderIndex` | `category_order_update` | Direct project patch after approval. |
+| `timeSlots` | `category_time_slot_update` | Field coverage only today; requires category time-slot resolver/card before direct project patch is enabled. Preset creation stays on the existing store preset DAL. |
+| `orderIndex` | `category_order_update` | Field coverage only today; requires ordering resolver/card before direct project patch is enabled. |
 
 ### Attribute Keys
 
 | Data key | AMM action type | Handling |
 | --- | --- | --- |
 | `id` | `item_identity_reference` | System-protected read-only reference. AMM must not edit it. |
-| `name` | `item_attribute_name_update` | Direct nested attribute patch after approval. |
-| `price` | `item_attribute_price_update` | Direct nested attribute patch after high-confirm approval. |
-| `active` | `item_attribute_visibility_update` | Direct nested attribute patch after approval. |
-| `orderIndex` | `item_attribute_order_update` | Direct nested attribute patch after approval. |
+| `name` | `item_attribute_name_update` | Field coverage only today; requires attribute entity resolver/card before nested patch is enabled. |
+| `price` | `item_attribute_price_update` | Field coverage only today; requires attribute entity resolver/card before high-confirm nested price patch is enabled. |
+| `active` | `item_attribute_visibility_update` | Field coverage only today; requires attribute entity resolver/card before nested patch is enabled. |
+| `orderIndex` | `item_attribute_order_update` | Field coverage only today; requires attribute ordering resolver/card before nested patch is enabled. |
 
 ### Item Keys
 
@@ -308,29 +310,29 @@ Adding a new item/category/attribute key requires adding a row here and a matchi
 | --- | --- | --- |
 | `id` | `item_identity_reference` | System-protected read-only reference. AMM must not edit it. |
 | `extractionIdAliases` | `item_identity_reference` | System-protected import/re-extraction identity. AMM must not edit it. |
-| `attributes` | `item_attribute_update` | Nested attribute patch after approval; create/delete remain adapter-glue until construction/removal cards are connected. |
+| `attributes` | `item_attribute_update` | Field coverage only today; nested attribute patch requires attribute ids/options in the AMM context packet. Create/delete remain adapter-glue until construction/removal cards are connected. |
 | `category` | `item_category_update` | Direct project patch after approval. |
 | `name` | `item_name_update` | Direct project patch after approval. |
 | `description` | `item_description_update` | Direct project patch after approval. |
 | `descriptionSource` | `item_description_update` | System-set when description changes; not a standalone owner action. |
 | `price` | `item_price_update` | Direct project patch after high-confirm approval. |
 | `images` | `item_image_update`, `image_item_generate`, `image_item_apply_generated` | Existing image generation/apply flow or manual task; generated images stay draft until owner applies. |
-| `tags` | `item_metadata_update` | Direct project patch after approval. |
+| `tags` | `item_metadata_update` | Field coverage only today; metadata value resolver/card is required before direct project patch is enabled. |
 | `active` | `item_visibility_update` | Direct project patch after approval. Supports owner wording such as "deactivate masala tea item". |
 | `available` | `item_availability_update` | Direct project patch after approval. |
 | `isBestSeller` | `item_bestseller_update` | Direct project patch after approval. |
-| `decisionFacts` | `item_metadata_update` | Direct project patch after approval. |
-| `allergens` | `item_metadata_update` | Direct project patch after approval. |
-| `dietaryTags` | `item_metadata_update` | Direct project patch after approval. |
-| `spiceLevel` | `item_metadata_update` | Direct project patch after approval. |
-| `nutritionInfo` | `item_metadata_update` | Direct project patch after approval. |
-| `skillLevel` | `item_metadata_update` | Direct project patch after approval. |
-| `targetAudience` | `item_metadata_update` | Direct project patch after approval. |
-| `materials` | `item_metadata_update` | Direct project patch after approval. |
-| `warranty` | `item_metadata_update` | Direct project patch after approval. |
+| `decisionFacts` | `item_metadata_update` | Field coverage only today; metadata value resolver/card is required before direct project patch is enabled. |
+| `allergens` | `item_metadata_update` | Field coverage only today; metadata value resolver/card is required before direct project patch is enabled. |
+| `dietaryTags` | `item_metadata_update` | Field coverage only today; metadata value resolver/card is required before direct project patch is enabled. |
+| `spiceLevel` | `item_metadata_update` | Field coverage only today; metadata value resolver/card is required before direct project patch is enabled. |
+| `nutritionInfo` | `item_metadata_update` | Field coverage only today; metadata value resolver/card is required before direct project patch is enabled. |
+| `skillLevel` | `item_metadata_update` | Field coverage only today; metadata value resolver/card is required before direct project patch is enabled. |
+| `targetAudience` | `item_metadata_update` | Field coverage only today; metadata value resolver/card is required before direct project patch is enabled. |
+| `materials` | `item_metadata_update` | Field coverage only today; metadata value resolver/card is required before direct project patch is enabled. |
+| `warranty` | `item_metadata_update` | Field coverage only today; metadata value resolver/card is required before direct project patch is enabled. |
 | `duration` | `item_prep_time_update` | Direct project patch after approval. |
-| `ownerBoost` | `item_promotion_weight_update` | Direct project patch after approval. |
-| `orderIndex` | `item_order_update` | Direct project patch after approval. |
+| `ownerBoost` | `item_promotion_weight_update` | Field coverage only today; ownerBoost resolver/card copy is required before direct project patch is enabled. |
+| `orderIndex` | `item_order_update` | Field coverage only today; ordering resolver/card is required before direct project patch is enabled. |
 | `qualityReview` | `item_quality_review_update` | Direct project patch only for the existing price-warning reviewed marker. |
 
 ---

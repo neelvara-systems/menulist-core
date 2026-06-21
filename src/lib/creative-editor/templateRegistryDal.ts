@@ -403,6 +403,11 @@ const recordMatchesRequest = (
     && (!params.assetTypeId || record.assetTypeId === params.assetTypeId)
 );
 
+const filterRecordsForRequest = (
+    records: CreativeEditorTemplateRecord[],
+    params: { assetTypeId?: string; productId: string; sourceSurface: string },
+) => records.filter((record) => recordMatchesRequest(record, params));
+
 const toPlatformRecord = (
     record: CreativeEditorTemplateRecord,
     businessCategory: string,
@@ -466,8 +471,11 @@ async function listCreativeEditorPlatformTemplates(
     const requestedCategory = params.businessCategory || PLATFORM_TEMPLATE_GENERIC_CATEGORY;
     const catalog = await getDoc(getPlatformCatalogRef(requestedCategory));
     const catalogData = catalog.exists() ? catalog.data() as CreativeEditorPlatformCatalogRecord : null;
-    const records = readIndexRecords(catalogData, params)
-        .map((record) => toPlatformRecord(record, requestedCategory, params));
+    const records = filterRecordsForRequest(
+        readIndexRecords(catalogData, params)
+            .map((record) => toPlatformRecord(record, requestedCategory, params)),
+        params,
+    );
 
     const sortedRecords = sortPlatformRecords(dedupePlatformRecords(records) as CreativeEditorPlatformTemplateRecord[])
         .filter((record) => (record.status || "published") === "published")
@@ -485,7 +493,7 @@ async function listCreativeEditorUserTemplates(
 ): Promise<CreativeEditorTemplateSummary[]> {
     const indexDoc = await getDoc(getStoreTemplateIndexRef(scope));
     if (!indexDoc.exists()) return [];
-    const records = sortRecords(readIndexRecords(indexDoc.data()))
+    const records = sortRecords(filterRecordsForRequest(readIndexRecords(indexDoc.data()), params))
         .filter((record) => (record.status || "published") !== "archived")
         .slice(0, params.limit)
         .map((record) => ({
@@ -526,15 +534,19 @@ export async function listCreativeEditorPlatformTemplateCatalog(params: {
 }): Promise<CreativeEditorTemplateSummary[]> {
     try {
         const businessCategory = buildPlatformCategoryKey(params.businessCategory);
+        const requestMatch = {
+            productId: "menulist",
+            sourceSurface: "printable-asset-templates",
+        };
         const catalog = await getDoc(getPlatformCatalogRef(businessCategory));
         const catalogData = catalog.exists() ? catalog.data() as CreativeEditorPlatformCatalogRecord : null;
         const records = readIndexRecords(catalogData, {
-            productId: "menulist",
-            sourceSurface: "printable-asset-templates",
+            productId: requestMatch.productId,
+            sourceSurface: requestMatch.sourceSurface,
         }).map((record) => toPlatformRecord(record, businessCategory, {
             productId: record.productId || "menulist",
             sourceSurface: record.sourceSurface || "printable-asset-templates",
-        }));
+        })).filter((record) => recordMatchesRequest(record, requestMatch));
         const filteredRecords = params.includeArchived
             ? records
             : records.filter((record) => (record.status || "published") !== "archived");

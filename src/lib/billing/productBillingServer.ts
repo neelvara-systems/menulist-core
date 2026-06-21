@@ -16,7 +16,11 @@ import type { MinimalStoreDataType } from '@type/platform/store';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { getActivePlanTypeForSubscription, safeSyncStorePlanEntitlementFromSubscription } from './subscriptionEntitlementSync';
 import { validateTransition } from './subscriptionStateMachine';
-import { normalizeBillingProductId, isAnswerlatticeBillingProduct } from './productBillingPlans';
+import {
+    normalizeBillingProductId,
+    isAnswerlatticeBillingProduct,
+    isProductBillingDisabled,
+} from './productBillingPlans';
 
 export type ProductBillingScope = {
     productId: ProductId;
@@ -49,12 +53,21 @@ const sanitizeForAdminFirestore = (value: any): any => {
     return value;
 };
 
+const getDisabledBillingMessage = (productId: ProductId): string => (
+    productId === PRODUCT_IDS.MYCODEX
+        ? 'MyCodex billing is not configured.'
+        : 'CampaignCue billing is not configured.'
+);
+
 export const getBillingFirestoreAdminForProduct = (productId: ProductId): FirebaseFirestore.Firestore => {
     if (productId === PRODUCT_IDS.ANSWERLATTICE) {
         if (!answerlatticeFirestoreAdmin || typeof (answerlatticeFirestoreAdmin as any).collection !== 'function') {
             throw new Error('Answerlattice Firebase is not configured.');
         }
         return answerlatticeFirestoreAdmin;
+    }
+    if (isProductBillingDisabled(productId)) {
+        throw new Error(getDisabledBillingMessage(productId));
     }
 
     return firestoreAdmin;
@@ -67,6 +80,7 @@ export const resolveBillingScopeFromSession = (
     const productId = normalizeBillingProductId(rawProductId);
     const userId = session?.user?.id;
     if (!userId) return null;
+    if (isProductBillingDisabled(productId)) return null;
 
     if (productId === PRODUCT_IDS.ANSWERLATTICE) {
         if (!canUseAnswerlatticeManagement(session)) return null;
@@ -180,6 +194,10 @@ export const createProductInitialSubscription = async (
     providerSubscriptionId: string,
     data: Omit<FirestoreSubscriptionDoc, 'id'>,
 ): Promise<void> => {
+    if (isProductBillingDisabled(productId)) {
+        throw new Error(getDisabledBillingMessage(productId));
+    }
+
     if (!isAnswerlatticeBillingProduct(productId)) {
         await createMenuListInitialSubscription(providerSubscriptionId, data);
         return;
@@ -196,6 +214,10 @@ export const updateProductSubscription = async (
     subscriptionId: string,
     data: Partial<FirestoreSubscriptionDoc>,
 ): Promise<void> => {
+    if (isProductBillingDisabled(productId)) {
+        throw new Error(getDisabledBillingMessage(productId));
+    }
+
     if (!isAnswerlatticeBillingProduct(productId)) {
         await updateMenuListSubscription(subscriptionId, data);
         return;
@@ -211,6 +233,10 @@ export const getProductSubscriptionById = async (
     productId: ProductId,
     id: string,
 ): Promise<FirestoreSubscriptionDoc | null> => {
+    if (isProductBillingDisabled(productId)) {
+        return null;
+    }
+
     if (!isAnswerlatticeBillingProduct(productId)) {
         return await getMenuListSubscriptionById(id);
     }
@@ -294,6 +320,10 @@ export const getDirectActiveProductSubscriptionForStore = async (
     tenantId: number,
     storeId: number,
 ): Promise<FirestoreSubscriptionDoc | null> => {
+    if (isProductBillingDisabled(productId)) {
+        return null;
+    }
+
     if (!isAnswerlatticeBillingProduct(productId)) {
         return await getMenuListDirectActiveSubscriptionForStore(tenantId, storeId);
     }
@@ -309,6 +339,10 @@ export const getActiveProductSubscriptionForStore = async (
     storeId: number,
     tenantStoresList?: MinimalStoreDataType[],
 ): Promise<FirestoreSubscriptionDoc | null> => {
+    if (isProductBillingDisabled(productId)) {
+        return null;
+    }
+
     if (!isAnswerlatticeBillingProduct(productId)) {
         return await getMenuListActiveSubscriptionForStore(tenantId, storeId, tenantStoresList);
     }
@@ -320,6 +354,10 @@ export const writeProductPaymentTransactionAudit = async (
     productId: ProductId,
     data: any,
 ): Promise<string> => {
+    if (isProductBillingDisabled(productId)) {
+        throw new Error(getDisabledBillingMessage(productId));
+    }
+
     const db = getBillingFirestoreAdminForProduct(productId);
     const tenantId = Number(data?.tenantId ?? data?.tId);
     const storeId = Number(data?.storeId ?? data?.sId);
@@ -390,6 +428,10 @@ export async function safeSyncProductSubscriptionEntitlementFromSubscription(
     subscription: FirestoreSubscriptionDoc,
     source: string,
 ): Promise<void> {
+    if (isProductBillingDisabled(productId)) {
+        return;
+    }
+
     if (!isAnswerlatticeBillingProduct(productId)) {
         await safeSyncStorePlanEntitlementFromSubscription(subscription, source);
         return;

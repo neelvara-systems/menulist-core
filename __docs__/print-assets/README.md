@@ -2,9 +2,9 @@
 
 **Status:** Freeze-ready
 **Owner:** MenuList
-**Last Updated:** June 17, 2026
+**Last Updated:** June 21, 2026
 
-Assets is the focused owner workspace for every printable customer-facing asset: table tents, single table/counter cards, counter stickers, entrance posters, feedback QR, campaign flyers, gift certificates, business cards, invitations, postcards, product tags, campaign posters, full menu PDF, and the complete Menu Kit bundle. The older "Print Assets" name remains only for compatibility route/docs context. It also shows print readiness, image-first generated preview, print-shop handoff text, reprint guidance, and governed desktop customization for supported single print assets.
+Assets is the focused owner workspace for every printable customer-facing asset: table tents, single table/counter cards, counter stickers, entrance posters, feedback QR, campaign flyers, gift certificates, front/back business cards, ID cards, invitations, postcards, product tags, campaign posters, full menu PDF, and the complete Menu Kit bundle. The older "Print Assets" name remains only for compatibility route/docs context. It also shows print readiness, image-first generated preview, print-shop handoff text, reprint guidance, and governed desktop customization for supported single print assets.
 
 ## Document Index
 

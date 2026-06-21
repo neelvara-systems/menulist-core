@@ -13,7 +13,7 @@
 
 AI Menu Manager lets an owner tell MenuList what changed and receive a prepared operation card.
 
-The owner should not need to remember whether the work lives in editor, settings, image generation, menu import, special menus, sharing, or publishing. AMM resolves the request, shows what will change, asks for approval when needed, and applies approved work through existing MenuList systems.
+The owner should not need to remember whether the work lives in editor, settings, image generation, menu import, special menus, sharing, or publishing. AMM resolves the request, shows what will change, asks for approval when needed, and applies supported approved work through existing MenuList systems.
 
 The product is not a chatbot. It is a controlled, proposal-driven, approval-safe menu operations layer.
 

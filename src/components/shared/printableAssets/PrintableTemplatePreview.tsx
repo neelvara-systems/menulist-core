@@ -39,6 +39,7 @@ function getSheetKind(assetTypeId: PrintableAssetTypeId): SheetKind {
         || assetTypeId === 'postcard'
         || assetTypeId === 'product_tag'
     ) return 'landscape';
+    if (assetTypeId === 'staff_id_card') return 'portrait';
     if (assetTypeId === 'complete_menu_kit') return 'kit';
     return 'portrait';
 }
@@ -49,6 +50,7 @@ function getPreviewTitle(assetTypeId: PrintableAssetTypeId, actionLabel: string)
     if (assetTypeId === 'campaign_flyer') return 'Flyer';
     if (assetTypeId === 'gift_certificate') return 'Gift Certificate';
     if (assetTypeId === 'business_card') return 'Business Card';
+    if (assetTypeId === 'staff_id_card') return 'ID Card';
     if (assetTypeId === 'event_invitation') return 'Invitation';
     if (assetTypeId === 'postcard') return 'Postcard';
     if (assetTypeId === 'product_tag') return 'Product Tag';

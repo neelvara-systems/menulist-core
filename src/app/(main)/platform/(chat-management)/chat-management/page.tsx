@@ -1,6 +1,6 @@
 import AnswerlatticeConfigNotice from "@template/platform/AnswerlatticeConfigNotice";
 import ChatManagementTemplate from "@template/platform/chatManagement";
-import { isAnswerlatticeFirebaseConfigured } from "@lib/firebase/answerlatticeFirebaseClient";
+import { isAnswerlatticeFirebaseConfigured } from "@lib/firebase/answerlatticeConfig";
 
 export default function ChatManagementPage() {
     if (!isAnswerlatticeFirebaseConfigured) {

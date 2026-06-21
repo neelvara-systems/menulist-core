@@ -1,6 +1,6 @@
 import FeedbackAdminTemplate from '@template/platform/feedbackAdmin';
 import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice';
-import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient';
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeConfig';
 
 function FeedbackAdminPage() {
     if (!isAnswerlatticeFirebaseConfigured) {

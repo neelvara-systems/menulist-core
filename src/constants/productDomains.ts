@@ -22,6 +22,7 @@
  *
  * Local Dev:
  *   - Default (localhost:3000) → MenuList website
+ *   - localhost:3000/__constantlayer/ → ConstantLayer website
  *   - localhost:3000/__answerlattice/pricing → Answerlattice website
  *   - localhost:3000/__campaigncue/ → CampaignCue website
  *   - No /etc/hosts configuration needed
@@ -42,23 +43,33 @@ import {
     CAMPAIGNCUE_SITE_INTERNAL_BASE_PATH,
 } from '@constant/campaigncue/domains';
 import {
-    CAMPAIGNCUE_PRODUCT_ID,
     CAMPAIGNCUE_PRODUCT_NAME,
+    CAMPAIGNCUE_PRODUCT_SLUG,
 } from '@constant/campaigncue/product';
+import {
+    ACTIVE_CONSTANTLAYER_PRODUCT_DOMAINS,
+    CONSTANTLAYER_LOCAL_DEV_PATH_PREFIX,
+    CONSTANTLAYER_SITE_INTERNAL_BASE_PATH,
+} from '@constant/constantlayer/domains';
+import {
+    CONSTANTLAYER_PRODUCT_NAME,
+    CONSTANTLAYER_PRODUCT_SLUG,
+} from '@constant/constantlayer/product';
 
 // ═══════════════════════════════════════════════════════════════
 // Product Identifiers
 // ═══════════════════════════════════════════════════════════════
 
-export type ProductId = 'menulist' | 'answerlattice' | 'campaigncue' | 'surfaceos' | 'growthOS' | 'kitstamp' | 'mycodex';
+export type ProductSiteId = 'menulist' | 'constantlayer' | 'answerlattice' | 'campaigncue' | 'surfaceos' | 'growthOS' | 'kitstamp' | 'mycodex';
+export type ProductId = ProductSiteId;
 
 // ═══════════════════════════════════════════════════════════════
 // Product Domain Configuration
 // ═══════════════════════════════════════════════════════════════
 
 export interface ProductDomainConfig {
-    /** Unique product identifier */
-    id: ProductId;
+    /** Route/domain product slug, not the two-character pId code. */
+    id: ProductSiteId;
     /** Display name */
     name: string;
     /** Production domains (hostname without protocol) */
@@ -85,6 +96,14 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
         enabled: true,
     },
     {
+        id: CONSTANTLAYER_PRODUCT_SLUG,
+        name: CONSTANTLAYER_PRODUCT_NAME,
+        domains: ACTIVE_CONSTANTLAYER_PRODUCT_DOMAINS,
+        devPathPrefix: CONSTANTLAYER_LOCAL_DEV_PATH_PREFIX,
+        internalBasePath: CONSTANTLAYER_SITE_INTERNAL_BASE_PATH,
+        enabled: true,
+    },
+    {
         id: 'answerlattice',
         name: 'AnswerLattice',
         domains: getActiveProductDomains('answerlattice'),
@@ -93,7 +112,7 @@ export const PRODUCT_SITES: ProductDomainConfig[] = [
         enabled: true,
     },
     {
-        id: CAMPAIGNCUE_PRODUCT_ID,
+        id: CAMPAIGNCUE_PRODUCT_SLUG,
         name: CAMPAIGNCUE_PRODUCT_NAME,
         domains: ACTIVE_CAMPAIGNCUE_PRODUCT_DOMAINS,
         devPathPrefix: CAMPAIGNCUE_LOCAL_DEV_PATH_PREFIX,
@@ -198,6 +217,6 @@ export function resolveProductSiteByDevPath(pathname: string): {
 /**
  * Get a product site config by ID.
  */
-export function getProductSiteById(id: ProductId): ProductDomainConfig | undefined {
+export function getProductSiteById(id: ProductSiteId): ProductDomainConfig | undefined {
     return PRODUCT_SITES.find(p => p.id === id);
 }

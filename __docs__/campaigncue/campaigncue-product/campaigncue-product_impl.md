@@ -17,10 +17,10 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Public website | `src/app/sites/campaigncue` and local `/__campaigncue` route. |
 | Workspace app | `src/app/(campaigncue)/campaigncue/app`; local `/__campaigncue/app` and product-domain `/app` rewrite to `/campaigncue/app`. |
 | Dashboard shell | CampaignCue uses the same `LocalisationProvider`, Redux persisted theme state, `AntdThemeProvider`, global shortcuts, network status provider, shared dashboard header/sidebar primitives, profile menu, and App Settings drawer as MenuList. The shell applies shared dark/light, RTL, language, timezone, profile, and settings behavior. Sidebar/header chrome labels live in the shared locale files under `CampaignCue.Navigation`; the inner workspace content remains CampaignCue-specific. |
-| Product id | `campaigncue` added to product/domain/deployment registries. |
+| Product identity | `CC` added as the internal product code; `campaigncue` remains the product/domain/deployment slug. |
 | Firebase | Separate project ids selected: `campaigncue-qa` and `campaigncue`; config/rules files added through `firebase-campaigncue.json`. |
 | Functions | No CampaignCue Cloud Function is required for the current export/download-first runtime. Scheduled/provider workers remain disabled until external credentials, consent, quotas, idempotency, and leases are configured. |
-| Billing | Product-aware billing with `productId: "campaigncue"` or approved short code. |
+| Billing | Billing checkout remains disabled. Future product-aware billing must use the approved CampaignCue product code `CC`; current shared billing helpers fail closed for `CC` instead of falling back to MenuList. Route/domain/env namespaces stay on the `campaigncue` slug. |
 | Auth | Same NextAuth login/session guard as MenuList; inactive, deleted, unverified, or platform-blocked accounts redirect before workspace render. The shell intentionally avoids MenuList store/subscription bootstrap reads just to draw CampaignCue chrome. CampaignCue APIs still require tenant/store workspace scope. |
 | Data access | Server-side product APIs for source, generation, publishing, billing, and trust actions. |
 

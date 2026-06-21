@@ -1,6 +1,6 @@
 'use client'
 
-import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient';
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeConfig';
 import { setForceDesktopRoute } from '@lib/mobile/forceDesktopMode';
 import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice';
 import type { TenantDataType } from '@type/platform/tenant';

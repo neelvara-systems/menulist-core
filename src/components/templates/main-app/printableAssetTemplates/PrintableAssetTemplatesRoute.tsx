@@ -17,6 +17,7 @@ import {
     stripPrintableAssetEditorAttributionLayers,
 } from '@lib/printable-asset-templates/editorDocumentAdapter';
 import { renderPrintableAsset } from '@lib/printable-asset-templates/renderPrintableAsset';
+import { buildPrintableStoreContactFields } from '@lib/printable-asset-templates/storeContact';
 import { getPrintableTemplateFamiliesForAsset, getPrintableTemplateFamily, normalizePrintableTemplateFamilyId } from '@lib/printable-asset-templates/templateFamilies';
 import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetType, PrintableAssetTypeId, PrintableTemplateFamily, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
 import {
@@ -38,7 +39,7 @@ import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LuBadge, LuBadgePercent, LuCalendarDays, LuDownload, LuFileText, LuGift, LuMail, LuMegaphone, LuPackage, LuPrinter, LuQrCode, LuSparkles, LuTag, LuTrash2, LuX } from 'react-icons/lu';
+import { LuBadge, LuBadgePercent, LuCalendarDays, LuContact, LuDownload, LuFileText, LuGift, LuMail, LuMegaphone, LuPackage, LuPrinter, LuQrCode, LuSparkles, LuTag, LuTrash2, LuX } from 'react-icons/lu';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../../shared/ProjectSelector';
 
 const { Paragraph, Text, Title } = Typography;
@@ -119,6 +120,7 @@ function getAssetIcon(assetId: PrintableAssetTypeId) {
     if (assetId === 'campaign_flyer') return <LuMegaphone size={18} />;
     if (assetId === 'gift_certificate') return <LuGift size={18} />;
     if (assetId === 'business_card') return <LuBadge size={18} />;
+    if (assetId === 'staff_id_card') return <LuContact size={18} />;
     if (assetId === 'event_invitation') return <LuCalendarDays size={18} />;
     if (assetId === 'postcard') return <LuMail size={18} />;
     if (assetId === 'product_tag') return <LuTag size={18} />;
@@ -161,14 +163,17 @@ function getPrintablePreviewFormat(asset: PrintableAssetType): PrintableAssetOut
 
 function getPrintableActionModalWidth(assetId: PrintableAssetTypeId): number {
     if (assetId === 'table_tent') return 640;
-    if (assetId === 'gift_certificate' || assetId === 'business_card' || assetId === 'postcard' || assetId === 'product_tag') return 620;
+    if (assetId === 'business_card') return 720;
+    if (assetId === 'gift_certificate' || assetId === 'postcard' || assetId === 'product_tag') return 620;
     if (assetId === 'counter_sticker' || assetId === 'feedback_qr') return 500;
     return 540;
 }
 
 function getPrintableActionPreviewHeight(assetId: PrintableAssetTypeId): number {
     if (assetId === 'table_tent') return 340;
-    if (assetId === 'gift_certificate' || assetId === 'business_card' || assetId === 'postcard' || assetId === 'product_tag') return 300;
+    if (assetId === 'business_card') return 260;
+    if (assetId === 'gift_certificate' || assetId === 'postcard' || assetId === 'product_tag') return 300;
+    if (assetId === 'staff_id_card') return 420;
     if (assetId === 'counter_sticker' || assetId === 'feedback_qr') return 330;
     if (assetId === 'print_menu' || assetId === 'entrance_poster') return 420;
     return 420;
@@ -546,12 +551,14 @@ export default function PrintableAssetTemplatesRoute() {
 
     const buildRenderInput = async (templateFamilyId: PrintableTemplateFamilyId): Promise<PrintableAssetRenderInput | null> => {
         if (!data) return null;
+        const contactFields = buildPrintableStoreContactFields(storeDetails);
         const baseInput: PrintableAssetRenderInput = {
             activePlanType: (storeDetails as any)?.activePlanType,
             assetTypeId: selectedAssetId,
             brandColor: storeBrandColor,
             businessCategory: platformBusinessCategory,
             businessType: (storeDetails as any)?.businessType || data.businessType,
+            ...contactFields,
             feedbackUrl: data.feedbackQrLink,
             lastPublishedAt: parseTimestamp(data.menuModifiedOn),
             logoUrl: data.storeLogo || undefined,

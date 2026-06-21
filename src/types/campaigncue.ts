@@ -1,4 +1,5 @@
 import type { CAMPAIGNCUE_CHANNELS } from "@constant/campaigncue/channels";
+import type { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
 import type {
     CampaignCueDailyDeskActionTarget,
     CampaignCueDailyDeskMissingInputType,
@@ -71,7 +72,7 @@ export interface CampaignCueTimestamped {
 export interface CampaignCueWorkspace extends CampaignCueTimestamped {
     id: string;
     workspaceId: string;
-    productId: "campaigncue";
+    productId: typeof CAMPAIGNCUE_PRODUCT_CODE;
     tId: string;
     sId: string;
     name: string;

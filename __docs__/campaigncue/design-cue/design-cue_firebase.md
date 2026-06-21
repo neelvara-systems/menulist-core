@@ -34,7 +34,7 @@ Persistent storage is only justified when the design already has a durable produ
 type DesignCueThreadDoc = {
   id: string;
   workspaceId: string;
-  productId: "campaigncue";
+  productId: "CC";
   documentId?: string;
   designId?: string;
   status: "open" | "resolved" | "archived";

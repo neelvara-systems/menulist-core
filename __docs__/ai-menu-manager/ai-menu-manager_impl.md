@@ -2,7 +2,7 @@
 
 **Status:** Initial implementation validated - enabled behind AMM feature flags in current config
 **Audience:** Engineering / implementation maintainers
-**Last Updated:** June 19, 2026
+**Last Updated:** June 20, 2026
 
 ---
 
@@ -204,18 +204,17 @@ Hard requirements:
 
 ### Client Project Mutation Mode
 
-Use for actions already handled by existing project editor/save behavior:
+Use for actions already handled by existing project editor/save behavior and explicitly exported in `AI_MENU_MANAGER_EXECUTABLE_ACTIONS`:
 
 - price update
 - availability update
 - item active/hidden
 - category active/hidden
-- item/category name, order, and metadata updates where the existing editor path owns the field
-- nested attribute name, price, active, and order updates
+- item/category name, item description, item category assignment, bestseller, and prep-time updates
+- Featured section / decision block updates
 - menu design update
-- generated image apply
-- description patch
-- special menu metadata patch where the current editor path already supports it
+
+Lower-level extracted-data fields such as nested attributes, tags, metadata, quality-review flags, category icons, category time slots, and category/order fields stay in the checklist as field coverage until resolver/card fixtures prove the exact owner journey. Image apply, import review apply, publish, and special-menu writes also stay outside the current executable list until their existing API/job adapters are connected and verified.
 
 Flow:
 
@@ -705,7 +704,7 @@ The exact action adapter catalog lives in [ai-menu-manager_action-type-checklist
 
 Adapter metadata must include desktop/manual evidence, mobile handling, Firebase cost class, and unsupported-surface behavior. Mobile PWA actions discovered from `MobileShell` screens are first-class registry entries; account, billing, platform, reseller, Answerlattice, and internal screens are explicit unsupported/handoff surfaces, not hidden future actions.
 
-Implementation note, June 17, 2026 production hardening: current code-level adapter definitions include `manualEquivalent`, `executionMode`, `approvalLevel`, `costClass`, `mobileBehavior`, `sourceEvidence`, and readiness. The dedicated verifier fails if any current adapter definition omits these fields.
+Implementation note, June 20, 2026 production hardening: current code-level adapter definitions include `manualEquivalent`, `executionMode`, `approvalLevel`, `costClass`, `mobileBehavior`, `sourceEvidence`, and readiness. The dedicated verifier fails if any current adapter definition omits these fields.
 
 The checklist currently covers these adapter families:
 
@@ -716,12 +715,19 @@ The checklist currently covers these adapter families:
 - menu design, temporary status, publish, share, export, and print actions.
 - special menu, outlet, public presence, store, domain, customer app, digital screen, feedback, POS sync, integration-status, staff, AMM system, and rule actions.
 
-The first executable adapters should follow the priority order in the checklist, starting with:
+The current production executable client-project mutation list is the `AI_MENU_MANAGER_EXECUTABLE_ACTIONS` export in `src/lib/ai-menu-manager/actionTypes.ts`. As of June 20, 2026 it is limited to:
 
 - `item_price_update`
+- `item_name_update`
+- `item_description_update`
+- `item_category_update`
 - `item_availability_update`
 - `item_visibility_update`
+- `item_bestseller_update`
+- `item_prep_time_update`
+- `category_name_update`
 - `category_visibility_update`
+- `decision_blocks_update`
 - `menu_special_note_update`
 - `menu_design_mood_update`
 - `menu_design_layout_update`
@@ -730,14 +736,8 @@ The first executable adapters should follow the priority order in the checklist,
 - `menu_design_visibility_update`
 - `bulk_price_update`
 - `bulk_availability_update`
-- `image_item_generate`
-- `image_item_apply_generated`
-- `menu_file_upload`
-- `menu_link_import`
-- `menu_import_review_apply`
-- `special_menu_create`
-- `special_menu_activate`
-- `menu_publish`
+
+Every action in that list must have resolver fixture coverage, an approval/card path, and approved-patch verification through the existing project update path. The broader production priority order remains in the checklist for future adapter connection, but it is not a claim that image, import, publish, special-menu, staff, domain, compliance, or integration actions are directly executable from AMM today.
 
 ---
 
@@ -768,7 +768,9 @@ npm run verify:ai-menu-manager
 Verifier should check:
 
 - feature flags exist.
-- action registry includes every executable action type marked `ready_adapter`, `existing_api_only`, or approved `needs_adapter_glue` in `ai-menu-manager_action-type-checklist.md`.
+- action registry metadata includes every action type in the checklist.
+- `AI_MENU_MANAGER_EXECUTABLE_ACTIONS` includes only owner-reachable `ready_adapter` + `client_project_mutation` actions.
+- every current executable action type has resolver fixture coverage and approved-patch verification.
 - every adapter declares manual equivalent.
 - every write adapter declares execution mode.
 - all protected APIs use auth/tenant validation/rate limits where required.

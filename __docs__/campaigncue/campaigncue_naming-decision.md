@@ -42,6 +42,7 @@ Domain availability can change at any time. During live validation:
 
 - Use `CampaignCue` as the product display name.
 - Use `campaigncue` as the product slug.
-- Use `CC` only as an internal short code if implementation needs one.
+- Use `CC` as the internal product code for stored product identity and product-scoped metadata.
+- Do not use `CC` as an env-key prefix, route slug, Firebase file prefix, Storage path prefix, or public domain label.
 - Do not use `GrowthOS`, `SignalPack`, `Local Business Campaign Engine`, or `Campaign Engine` as public names.
 - Do not market it as "AI Canva", "UGC generator", "social scheduler", or "MenuList marketing".

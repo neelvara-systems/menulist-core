@@ -7,7 +7,7 @@
  * @see __docs__/url-routing-architecture/README.md ADR-4
  */
 
-import { CAMPAIGNCUE_PRODUCT_ID } from '@constant/campaigncue/product';
+import { CAMPAIGNCUE_PRODUCT_SLUG } from '@constant/campaigncue/product';
 
 /**
  * Reserved project slugs — blocked at project creation/rename time.
@@ -65,7 +65,7 @@ export const RESERVED_PROJECT_SLUGS: readonly string[] = [
     'pwa',             // future shortcut handoff base path
 
     // Separate product surfaces
-    CAMPAIGNCUE_PRODUCT_ID,
+    CAMPAIGNCUE_PRODUCT_SLUG,
 ] as const;
 
 /**
@@ -91,7 +91,7 @@ export const RESERVED_SUBDOMAINS: readonly string[] = [
     'help', 'support', 'status', 'menu', 'screen', 'feedback',
     'auth', 'login', 'signup', 'webhook', 'health', 'cdn',
     'dev', 'staging', 'test', 'demo', 'docs', 'billing',
-    CAMPAIGNCUE_PRODUCT_ID,
+    CAMPAIGNCUE_PRODUCT_SLUG,
 ] as const;
 
 /**

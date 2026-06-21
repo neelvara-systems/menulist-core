@@ -1,6 +1,6 @@
 # CampaignCue Product - Website Content
 
-**Last production-site pass:** June 18, 2026
+**Last production-site pass:** June 21, 2026
 **Source of truth:** `src/app/sites/campaigncue/page.tsx`, `src/app/sites/campaigncue/styles.css`, and `src/constants/campaigncue/website.ts`
 
 ## Current Verdict
@@ -40,6 +40,12 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | Google helpful content guidance: https://developers.google.com/search/docs/fundamentals/creating-helpful-content | Helpful pages are people-first, original, specific, useful, trustworthy, and not made mainly to capture search traffic. | Public copy must show concrete CampaignCue workflows, proof notes, and product boundaries instead of generic AI/category claims. |
 | Nielsen Norman Group GenAI content design: https://www.nngroup.com/videos/genai-content-design/ | Product-specific generated content still needs concise, scannable web writing, inverted-pyramid structure, and plain language. | Keep CampaignCue sections short, owner-readable, and evidence-led; avoid diagnostic jargon and abstract automation copy. |
 | Seesaw design tools category: https://www.seesaw.website/category/design-tools | Search-first header, category rail, short product descriptions, and quick scanning make the page easy to browse. | Use that scan speed as a CampaignCue Pack index with owner-job categories and compact ledger rows, but do not turn the homepage into a third-party directory or a wall of cards. |
+| AdCreative home: https://www.adcreative.ai/ | Strong marketing-product taxonomy, quick business fit check, visible feature clusters, proof story, scan-website CTA, and repeated product preview surfaces. | Add a CampaignCue quick fit check that starts from owner bottlenecks, not generic ad-performance claims; keep proof/source checks instead of fake logos or unsupported conversion metrics. |
+| AdCreative feature pages: https://www.adcreative.ai/ad-creatives, https://www.adcreative.ai/instant-ads, https://www.adcreative.ai/generate-texts-headlines, https://www.adcreative.ai/ai-ugc-videos | Each nested page has one capability promise, an input/output demo, proof logos, and benefit sections for performance, multi-platform outputs, customization, and speed. | Keep CampaignCue's homepage preview and output ledgers concrete: source input -> checked pack -> export, while rejecting direct account push and guaranteed performance language. |
+| AdCreative analysis/trust pages: https://www.adcreative.ai/creative-insights, https://www.adcreative.ai/competitor-insights-ai, https://www.adcreative.ai/compliance-checker, https://www.adcreative.ai/creative-scoring | The analysis pages explain creative insights, competitor monitoring, compliance checks, and pre-launch scoring as separate proof surfaces. | CampaignCue should make Trust Center, result memory, source checks, and blocked claims obvious; do not claim predictive ad scoring until real model/evidence infrastructure exists. |
+| AdCreative asset/tool pages: https://www.adcreative.ai/generate-product-photoshoots, https://www.adcreative.ai/product-videoshoot-ai, https://www.adcreative.ai/creative-utility-suite, https://www.adcreative.ai/custom-templates | Upload-based product photos, product videos, utility tools, and templates are shown with before/after or layer-style demos. | Use this as support for Creative Studio and CueLayers messaging: reuse uploaded/generated assets and export safely, but do not imply rendered provider video/photo generation is active. |
+| AdCreative use-case/ROI pages: https://www.adcreative.ai/use-case/small-business, https://www.adcreative.ai/use-case/e-commerce, https://www.adcreative.ai/use-case/agencies, https://www.adcreative.ai/roi-calculator | Separate use-case pages and calculator frame the product by customer type and business value. | CampaignCue can use owner-type examples and future ROI education, but the current public site must avoid pricing/savings calculators until billing and real benchmark assumptions are configured. |
+| AdCreative full-page visual system screenshot review | The page feels creative because it shows floating artifacts around the hero, colorful product tiles, visual feature cards, a mid-page asset wall, and real product screenshots before heavy explanation. | CampaignCue must not remain a text-only ledger page. Add creative artifact visuals that show campaign work being produced while preserving the export-first and source-check boundaries. |
 
 ## Implemented Homepage Structure
 
@@ -48,7 +54,10 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | Navigation | Product anchors plus app CTA. Public site only; owner app remains outside `sites/`. |
 | Hero | H1 is `CampaignCue`; supporting copy promises today's promotion, multi-channel pack, and source-backed checks with one primary CTA rhythm. |
 | Product preview | A compact screenshot-like Daily Desk and Campaign Pack preview shows a lunch-combo campaign with price check, Google draft, WhatsApp copy, and poster download. |
+| Floating hero artifacts | CampaignCue-specific visual thumbnails around the hero show story, poster, Google update, reel script, and trust review outputs. They are illustrative UI artifacts, not proof logos or external results. |
 | Flow strip | Today cue, checked facts, WhatsApp + Google, creative + print, manual handoff, and result memory appear as a quiet proof row instead of boxed micro-cards. |
+| Quick fit check | AdCreative-inspired bottleneck chooser adapted for CampaignCue: owners pick the problem they recognize, then see the source-backed response and safe proof tag. |
+| Creative powerhouse | Colorful six-card product system section: campaign packs, existing image reuse, local/in-store outputs, video briefs, trust checks, and result memory. |
 | Real work proof | Dark proof band with ledger rows: concrete local-business examples name the fact, output, and proof note behind each campaign pack without using separate example cards. |
 | Pack index | Seesaw-inspired compact catalog with Start, Pack, Review, and Handoff categories shown as grouped ledger rows so owners can scan what CampaignCue prepares. |
 | Owner path | Connected four-step sequence: open Today, confirm facts, download the pack, and mark what happened. |
@@ -58,6 +67,7 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | Creative Studio | Shows the shared editor, source-locked design context, Design Cue actions, and export checks. |
 | CueLayers | Explains image upload/generated-flat reuse with editable layer candidates and flat-safe fallback. |
 | Examples | Restaurant, salon, retail, local-service, fitness, clinic, agency, and multi-location examples shown as compact prompt-start rows. |
+| Campaign artifact wall | Visual wall of example handoff artifacts: WhatsApp status, story, poster, Google draft, reel list, QR card, UGC prompt, spend-gated ad copy, clinic reminder, and agency approval note. |
 | Trust and Safety | Source checks, unsafe claim warnings, spend gates, and the concrete check matrix. |
 | Delivery Boundary | Explicit no-direct-posting section aligned with day-one product rules. |
 | Use Cases | Product capability ledger for Daily Desk, Business Brain, Campaign Studio, Creative Studio, CueLayers, and Trust Center. |
@@ -74,6 +84,7 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 - **Secondary CTA:** `See pack examples` -> `#studio`
 - **Boundary pills:** Starts from real business facts, exports before it posts, risky claims stay visible.
 - **Hero preview rule:** One clean product-preview surface in the first viewport. Avoid stacked hero checkpoint boxes, oversized dashboard chrome, or multiple card bands before the product story starts.
+- **Fit-check rule:** If a page uses an interactive-style chooser, the options must map to real owner bottlenecks and active CampaignCue outputs. Do not add fake ROI, predictive conversion score, or direct-posting promises.
 
 ## SEO Meta
 
@@ -85,18 +96,66 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 
 ## Visual Direction
 
-The site uses an operational SaaS layout with a product preview as the primary visual. The current production pass follows Blank for restraint, Ploy for proof/activity records, Linear for editorial product rhythm, and Seesaw for fast scanning. The homepage should feel like a product operating desk: restrained first viewport, large brand-led typography, one lime accent, screenshot-like product surfaces, connected sequences, and ledgers instead of repeated card grids. It intentionally avoids:
+The site uses an operational SaaS layout with product and campaign artifacts as the primary visuals. The current production pass follows Blank for restraint, Ploy for proof/activity records, Linear for editorial product rhythm, Seesaw for fast scanning, and AdCreative for creative artifact density. The homepage should feel like a creative operating desk: restrained first viewport, large brand-led typography, screenshot-like product surfaces, colorful campaign thumbnails, connected sequences, and proof ledgers. Use ledgers instead of repeated card grids when listing source proof, owner steps, or output inventories, but use visual product tiles when showing CampaignCue's creative moat. It intentionally avoids:
 
 - Generic abstract AI imagery.
 - Broad "make anything" claims.
 - Fake social proof, fake metrics, unsupported customer outcomes, or unverified logos.
 - Vague automation phrases without showing the exact owner action and output.
 - One-note purple/blue gradient branding.
-- Overbuilt first-viewport card clusters, repeated equal-weight card grids, random accent colors, or decorative gradients that make the page feel like a student collage.
+- Text-only ledgers that make CampaignCue feel like a documentation page instead of a campaign asset product.
+- Overbuilt first-viewport card clusters, repeated equal-weight card grids without product visuals, random accent colors, or decorative gradients that make the page feel like a student collage.
 - Public claims about billing, direct integrations, direct account posting, or social-account connection.
 - Internal implementation or Firebase wording.
 
 The design should stay practical and owner-readable: concrete output examples, short headings, visible safety state, proof notes, and no broken footer links. Every major section should answer one SMB-owner question: what fact is used, what pack is prepared, what review is required, and what the owner can do next.
+
+### CampaignCue Palette
+
+The active CampaignCue website palette follows the provided business-card reference: deep navy for authority surfaces, navy for primary text and product UI, rose pink for campaign accents, soft pink for supporting surfaces, and white for clean workspace contrast. Current CSS tokens:
+
+- `--cc-ink: #061a78`
+- `--cc-deep-navy: #020c4f`
+- `--cc-navy-soft: #152567`
+- `--cc-pink: #d96f9f`
+- `--cc-pink-soft: #f4d2e2`
+- `--cc-bg: #fbf7fa`
+- `--cc-surface: #ffffff`
+
+Do not reintroduce the previous lime/green accent family or mixed pastel asset-wall colors on the CampaignCue public site. Visual variety should come from navy, rose, soft pink, white, spacing, product previews, and artifact composition.
+
+### Scroll Motion
+
+CampaignCue uses a lightweight viewport reveal on public website sections, preview panels, ledger rows, creative cards, asset tiles, trust panels, the final CTA, and footer groups. The motion should feel like finished work entering the page, not a distracting parallax or global smooth-scroll layer.
+
+Implementation rules:
+
+- `src/app/sites/campaigncue/styles.css` and `src/app/sites/campaigncue/scroll-reveal.css` are root-loaded from `src/app/layout.tsx` so clean local sessions do not request a missing nested `app/sites/campaigncue/layout.css` chunk.
+- `CampaignCueScrollReveal` is the only public-site client island for reveal motion.
+- content remains visible by default. The hidden pending state is added only after the client observer mounts.
+- Reduced-motion users see static content with no blur, translate, or transition.
+- Visible elements must return to `transform: none` and `will-change: auto` so the page does not keep unnecessary compositor layers while scrolling.
+- Do not add global smooth scrolling, heavy animation libraries, or scroll-jacking.
+
+## AdCreative Adoption Notes
+
+CampaignCue should adopt:
+
+- quick-fit entry based on owner bottlenecks;
+- capability taxonomy that is easy to scan;
+- concrete input/output product previews;
+- floating hero artifacts when they represent real CampaignCue outputs;
+- colorful product tiles and asset-wall examples that show the kinds of work CampaignCue prepares;
+- separate proof surfaces for trust, results, and asset reuse;
+- use-case language for small business, e-commerce-like retail, agencies, and multi-location work.
+
+CampaignCue should reject or soften:
+
+- guaranteed conversion/ROAS claims;
+- fake or unverified logo/proof strips;
+- direct ad-account push, social-account posting, or WhatsApp send language;
+- pricing, trial, credit, or ROI calculator claims before billing is configured;
+- broad all-in-one creative-tool positioning that hides CampaignCue's source-backed campaign-pack boundary.
 
 ## Route And Product Boundary
 

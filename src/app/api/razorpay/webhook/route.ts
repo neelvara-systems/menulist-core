@@ -787,7 +787,7 @@ export async function POST(request: Request) {
                 sId: event?.storeId ? String(event.storeId) : undefined,
                 tId: event?.tenantId ? String(event.tenantId) : undefined,
                 triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.PAYMENT_WEBHOOK_FAILURE,
-                productId: 'ML',
+                productId: eventProductId,
                 category: 'payments',
             });
         } catch { /* non-blocking */ }

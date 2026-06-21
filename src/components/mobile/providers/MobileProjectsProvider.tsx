@@ -281,16 +281,16 @@ export default function MobileProjectsProvider({
 
         const nextProject = removeObjRef(project);
 
-        setProjectsById((prev) => ({
-            ...prev,
+        projectsByIdRef.current = {
+            ...projectsByIdRef.current,
             [nextProject.projectId]: nextProject,
-        }));
+        };
 
-        setProjectsList((prev) => {
-            const existingIndex = prev.findIndex((entry) => entry.projectId === nextProject.projectId);
+        const nextProjectsList = (() => {
+            const existingIndex = projectsListRef.current.findIndex((entry) => entry.projectId === nextProject.projectId);
             const nextSummary = existingIndex >= 0
                 ? {
-                    ...prev[existingIndex],
+                    ...projectsListRef.current[existingIndex],
                     ...nextProject,
                     projectId: nextProject.projectId,
                 }
@@ -300,22 +300,35 @@ export default function MobileProjectsProvider({
                 };
 
             if (existingIndex >= 0) {
-                const copy = [...prev];
+                const copy = [...projectsListRef.current];
                 copy[existingIndex] = nextSummary;
                 return copy;
             }
 
-            return [...prev, nextSummary];
-        });
+            return [...projectsListRef.current, nextSummary];
+        })();
+        projectsListRef.current = nextProjectsList;
+
+        setProjectsById((prev) => ({
+            ...prev,
+            [nextProject.projectId]: nextProject,
+        }));
+
+        setProjectsList(nextProjectsList);
     }, []);
 
     const removeCachedProject = useCallback((projectId: string) => {
+        const nextProjectsById = { ...projectsByIdRef.current };
+        delete nextProjectsById[projectId];
+        projectsByIdRef.current = nextProjectsById;
+        projectsListRef.current = projectsListRef.current.filter((project) => project.projectId !== projectId);
+
         setProjectsById((prev) => {
             const next = { ...prev };
             delete next[projectId];
             return next;
         });
-        setProjectsList((prev) => prev.filter((project) => project.projectId !== projectId));
+        setProjectsList(projectsListRef.current);
         setSelectedProjectId((prev) => prev === projectId ? null : prev);
     }, []);
 

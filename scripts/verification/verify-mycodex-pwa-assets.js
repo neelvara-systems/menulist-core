@@ -165,6 +165,13 @@ function verifyMetadataAndRegistration() {
   const middleware = read('src/middleware.ts');
   const domainResolver = read('src/lib/multiTenant/domainResolver.ts');
   const auth = read('src/lib/mycodex/auth.ts');
+  const productIds = read('src/constants/product.ts');
+  const docsLoader = read('src/lib/mycodex/docs.ts');
+  const documentRoute = read('src/app/sites/mycodex/api/document/route.ts');
+  const sessionRoute = read('src/app/sites/mycodex/api/session/route.ts');
+  const apiSchemas = read('src/lib/validation/apiSchemas.ts');
+  const billingPlans = read('src/lib/billing/productBillingPlans.ts');
+  const billingServer = read('src/lib/billing/productBillingServer.ts');
   const nextConfig = read('next.config.js');
 
   assertIncludes(layout, 'MYCODEX_MANIFEST_PATH', 'MyCodex layout metadata');
@@ -175,9 +182,28 @@ function verifyMetadataAndRegistration() {
   assertIncludes(serviceWorkerRegister, "resolved.productSite?.id === 'mycodex'", 'service worker registration');
   assertIncludes(middleware, 'mycodex-sw\\\\.js', 'middleware matcher');
   assertIncludes(domainResolver, "'/mycodex-sw.js'", 'domain resolver bypass');
+  assertIncludes(productIds, "MYCODEX: 'MC'", 'MyCodex internal product code');
+  assertIncludes(auth, 'MYCODEX_PRODUCT_CODE = PRODUCT_IDS.MYCODEX', 'MyCodex product code boundary');
+  assertIncludes(auth, "MYCODEX_PRODUCT_SLUG = 'mycodex'", 'MyCodex route slug boundary');
+  assertIncludes(auth, 'product: MYCODEX_PRODUCT_SLUG', 'MyCodex session slug boundary');
+  assertNotIncludes(auth, 'product: MYCODEX_PRODUCT_CODE', 'MyCodex session must not store the pId code');
   assertIncludes(auth, "MYCODEX_OFFLINE_PATH = '/offline'", 'MyCodex auth bypass');
+  assertNotIncludes(apiSchemas, "['ML', 'AL', 'CC', 'MC']", 'MyCodex must not be exposed as a billing API product');
+  assertIncludes(billingPlans, 'normalized === PRODUCT_IDS.MYCODEX', 'MyCodex billing normalizer boundary');
+  assertIncludes(billingPlans, 'isProductBillingDisabled', 'MyCodex disabled billing boundary');
+  assertIncludes(billingServer, 'MyCodex billing is not configured.', 'MyCodex billing fails closed');
   assertIncludes(nextConfig, 'outputFileTracingIncludes', 'MyCodex Vercel filesystem tracing');
   assertIncludes(nextConfig, "'/sites/mycodex/**/*': ['./__docs__/**/*']", 'MyCodex Vercel filesystem tracing');
+
+  for (const [label, content] of [
+    ['MyCodex docs loader', docsLoader],
+    ['MyCodex document API', documentRoute],
+    ['MyCodex session API', sessionRoute],
+  ]) {
+    const lowerContent = content.toLowerCase();
+    assert(!lowerContent.includes('firestore'), `${label} must not import or reference Firestore`);
+    assert(!lowerContent.includes('firebase'), `${label} must not import or reference Firebase`);
+  }
 }
 
 function verifyServiceWorkerPrivacy() {

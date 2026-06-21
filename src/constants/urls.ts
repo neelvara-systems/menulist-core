@@ -7,12 +7,15 @@
  * Domain Architecture (Multi-Product):
  *   Local: localhost:3000     — MenuList marketing/app shell
  *   Local tenant URL host: menulist.online — local generated customer links mirror staging
+ *   Local: /__constantlayer       — ConstantLayer website
  *   Local: /__answerlattice        — Answerlattice website
  *   Local: /__campaigncue          — CampaignCue website
  *   QA: menulist.online       — MenuList preview/staging
+ *   QA: constantlayer.menulist.online — ConstantLayer preview/staging
  *   QA: ecomsai.com           — Answerlattice preview/staging
  *   QA: campaigncue.menulist.online — CampaignCue preview/staging
  *   Prod: menulist.ai         — MenuList production
+ *   Prod: constantlayer.in    — ConstantLayer production
  *   Prod: answerlattice.com        — Answerlattice production
  *   Prod: campaigncue.ai      — CampaignCue production
  *   [future product domains] — SurfaceOS / GrowthOS / KitStamp websites
@@ -29,7 +32,8 @@
  */
 
 import { ALL_PRODUCT_DOMAINS } from './productDomains';
-import { CAMPAIGNCUE_PRODUCT_ID } from '@constant/campaigncue/product';
+import { CAMPAIGNCUE_PRODUCT_SLUG } from '@constant/campaigncue/product';
+import { CONSTANTLAYER_PRODUCT_SLUG } from '@constant/constantlayer/product';
 import {
     getActiveProductDomains,
     getDeploymentStage,
@@ -260,5 +264,6 @@ export const RESERVED_SUBDOMAINS = [
     HELP_SUBDOMAIN,
     SUPPORT_SUBDOMAIN,
     'status',
-    CAMPAIGNCUE_PRODUCT_ID,
+    CONSTANTLAYER_PRODUCT_SLUG,
+    CAMPAIGNCUE_PRODUCT_SLUG,
 ];

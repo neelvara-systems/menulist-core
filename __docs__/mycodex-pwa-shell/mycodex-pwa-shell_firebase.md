@@ -4,6 +4,8 @@
 
 No Firebase impact.
 
+MyCodex reserves `MC` as its internal product code in `src/constants/product.ts`, but the reader runtime uses the `mycodex` route/session slug and has no Firebase project, no Firestore collections, no Storage bucket, and no product `pId` writes.
+
 | Operation | Count | Reason |
 | --- | ---: | --- |
 | Firestore reads | 0 | CSS/layout-only change. |
@@ -15,4 +17,6 @@ No Firebase impact.
 
 ## Cost Boundary
 
-Safe-area handling is CSS and JSX class wiring only.
+Safe-area handling, private reader auth, and browser-local reader state are CSS, JSX, filesystem-read, cookie, and `localStorage` behavior only.
+
+Do not add `MYCODEX_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_MYCODEX_FIREBASE_PROJECT_ID`, `MC_FIREBASE_PROJECT_ID`, or `NEXT_PUBLIC_MC_*` env keys. MyCodex setup only needs `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET` on Vercel.

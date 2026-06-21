@@ -12,6 +12,9 @@ Defines the required environment variables for domain-aware URL generation acros
 - Preview/Staging (`menulist.online`)
 - Local development (`localhost`)
 
+For the full product staging/production setup, including the static MyCodex reader, see
+[`three-product-environment-setup.md`](./three-product-environment-setup.md).
+
 These values are used by:
 - `src/constants/urls.ts`
 - Domain/subdomain settings UI labels
@@ -41,17 +44,17 @@ No other app URL variables are required for this path.
 
 ```env
 NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.ai
-NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=www.menulist.ai,menulist.online,www.menulist.online
+NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=menulist.ai,www.menulist.ai
 NEXT_PUBLIC_APP_URL=https://menulist.ai
 ```
 
 ---
 
-## Preview/Staging (Vercel Preview)
+## Preview/Staging (Vercel custom `staging` or Preview branch mapping)
 
 ```env
 NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.online
-NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=www.menulist.online,menulist.ai,www.menulist.ai
+NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=menulist.online,www.menulist.online
 NEXT_PUBLIC_APP_URL=https://menulist.online
 ```
 
@@ -61,7 +64,7 @@ NEXT_PUBLIC_APP_URL=https://menulist.online
 
 ```env
 NEXT_PUBLIC_PLATFORM_DOMAIN=menulist.online
-NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=www.menulist.online,menulist.ai,www.menulist.ai
+NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES=menulist.online,www.menulist.online
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
@@ -74,7 +77,8 @@ Notes:
 ## Vercel Scope Mapping
 
 - Add **Production** values in Vercel Environment Variables with scope: `Production`.
-- Add **Preview/Staging** values in Vercel Environment Variables with scope: `Preview`.
+- Add **Preview/Staging** values in Vercel Environment Variables with scope: a custom `staging` environment, or `Preview` if staging is implemented as a Preview branch/domain mapping.
+- Keep `NEXT_PUBLIC_ENV=preview` for staging unless the deployment target matrix is extended to support a separate `staging` stage.
 - Keep local values only in `.env.local` (do not commit).
 
 ---

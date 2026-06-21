@@ -1,6 +1,6 @@
 'use client'
 
-import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeFirebaseClient';
+import { isAnswerlatticeFirebaseConfigured } from '@lib/firebase/answerlatticeConfig';
 import AnswerlatticeConfigNotice from '@template/platform/AnswerlatticeConfigNotice';
 import { theme } from 'antd';
 import dynamic from 'next/dynamic';

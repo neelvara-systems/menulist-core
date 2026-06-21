@@ -1,4 +1,4 @@
-import { CAMPAIGNCUE_PRODUCT_ID } from "./product";
+import { CAMPAIGNCUE_SIGNIN_PRODUCT_PARAM } from "./product";
 
 export const CAMPAIGNCUE_API_BASE_PATH = "/api/campaigncue";
 
@@ -45,5 +45,5 @@ export function getCampaignCueCueLayersExportApiPath(designId: string): string {
 }
 
 export function buildCampaignCueAuthLaunchUrl(signInUrl: string): string {
-    return `${signInUrl}?product=${CAMPAIGNCUE_PRODUCT_ID}`;
+    return `${signInUrl}?product=${CAMPAIGNCUE_SIGNIN_PRODUCT_PARAM}`;
 }

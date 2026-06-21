@@ -2,7 +2,7 @@
 
 ## Quick Summary
 
-Assets gives you downloadable files for tables, counters, entrances, feedback, campaigns, small cards, postcards, product tags, and paper menus. Choose the file, choose a style, and download.
+Assets gives you downloadable files for tables, counters, entrances, feedback, campaigns, business cards, ID cards, postcards, product tags, and paper menus. Choose the file, choose a style, and download.
 
 ## Getting Started
 
@@ -11,6 +11,7 @@ Assets gives you downloadable files for tables, counters, entrances, feedback, c
 - Your menu should be published.
 - Your store name should be correct.
 - Add your logo and brand color in Business Profile for a better result.
+- Add phone, email, and address details in the business profile before downloading business cards or ID cards.
 
 ## Open Assets
 
@@ -35,7 +36,7 @@ Assets gives you downloadable files for tables, counters, entrances, feedback, c
 
 ## Adjust a File on Desktop
 
-For Table Tent, Single Table / Counter Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, Invitation, Postcard, Product Tag, and Campaign Poster, click **Customize in editor** after opening a style.
+For Table Tent, Single Table / Counter Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, and Campaign Poster, click **Customize in editor** after opening a style.
 
 Use this when you need to move text slightly, shorten a phrase, or adjust the layout. The QR link stays protected so the printed file still opens the right page.
 
@@ -59,7 +60,8 @@ The file will use your current store name, logo, color, and menu link.
 | Feedback QR | Asking customers to leave private feedback. |
 | Flyer | Offer handout, delivery insert, or local campaign card. |
 | Gift Certificate | Gift, credit, or prepaid offer voucher. |
-| Business Card | Contact card with your latest link. |
+| Business Card | Front and back contact card with your latest link. |
+| ID Card | Owner, staff, or service identity card. |
 | Invitation | Event, opening, workshop, or special invite. |
 | Postcard | Small mailer-style card for thanks, reminders, or offers. |
 | Product Tag | Retail, bakery, pickup, or counter item tag. |

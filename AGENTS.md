@@ -112,6 +112,13 @@ This loop is the default for every non-trivial repo request. The user does not n
 - **3-Product Separation**: MenuList vs GrowthOS vs KitStamp - never merge
 - **Infrastructure Identity**: MenuList is public utility, not SaaS software
 
+### Product Identity and Environment Naming
+
+- **Product codes vs slugs are separate**: `ML`, `AL`, `CC`, and `MC` are internal product codes from `src/constants/product.ts`. Route/domain/session slugs stay full names such as `menulist`, `answerlattice`, `campaigncue`, and `mycodex`.
+- **Environment variables use full product names only**: Use keys such as `ANSWERLATTICE_*`, `CAMPAIGNCUE_*`, and `MYCODEX_*`. Never introduce shorthand env prefixes such as `AL_*`, `CC_*`, `MC_*`, `NEXT_PUBLIC_AL_*`, `NEXT_PUBLIC_CC_*`, or `NEXT_PUBLIC_MC_*`.
+- **Current product matrix is fixed unless deployment sources change**: MenuList uses `ML` with Firebase `ecomsai` staging and `menulist` production; Answerlattice uses `AL` with `answerlattice-qa` and `answerlattice`; CampaignCue uses `CC` with `campaigncue-qa` and `campaigncue`; MyCodex uses reserved code `MC`, slug `mycodex`, domain `menulist.digital`, and no Firebase project.
+- **MyCodex remains static/no DB**: Do not add MyCodex Firestore, Storage, Cloud Functions, billing plans, owner notifications, product `pId` writes, or Firebase env keys. MyCodex Vercel env is limited to `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET` unless the static-reader architecture is explicitly changed first.
+
 ### Technology Stack Decisions
 
 - **Next.js 14.2.5**: Frozen for 3-year period - no upgrades

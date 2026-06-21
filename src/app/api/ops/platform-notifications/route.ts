@@ -80,7 +80,7 @@ const PostActionSchema = z.discriminatedUnion('action', [
     severity: z.enum(['info', 'warning', 'critical']).default('warning'),
     title: z.string().trim().min(3).max(180),
     message: z.string().trim().min(3).max(1200),
-    productId: z.enum(['PLATFORM', 'ML', 'AL']).default('PLATFORM'),
+    productId: z.enum(['PLATFORM', 'ML', 'AL', 'CC', 'MC']).default('PLATFORM'),
     category: z.enum(CATEGORY_VALUES).optional(),
   }),
 ]);

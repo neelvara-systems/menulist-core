@@ -32,7 +32,7 @@
 
 AI Menu Manager is the owner-facing menu operations layer where owners can tell MenuList what changed and approve prepared work.
 
-It is a conversational shortcut over real MenuList actions, not a separate menu system. AMM understands owner input, creates proposal cards, gets approval when needed, and applies approved work through registered MenuList action adapters.
+It is a conversational shortcut over real MenuList actions, not a separate menu system. AMM understands owner input, creates proposal cards, gets approval when needed, and applies supported approved work through registered MenuList action adapters.
 
 AMM can also answer MenuList-domain questions from the loaded selected menu context. These read-only answers use `system_context_answer` cards, do not call an AI provider, do not read extra Firestore documents, and do not mutate menu truth. Examples include "What should I fix today?", "Which items have no photos?", "Is my menu ready to share?", and "What items are unavailable?"
 
@@ -164,7 +164,7 @@ Readiness rule: this catalog is the day-one product contract and production chec
 - staff request
 - customer complaint correction
 - adapter-supported undo/rollback
-- rule suggestion and owner-approved rule execution
+- rule suggestion and future owner-approved rule execution after the rule adapter is available
 - multi-outlet scope approval
 - outlet-local customization
 - public presence and store profile updates

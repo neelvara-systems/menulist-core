@@ -239,14 +239,18 @@ For each tenant:
 | Product  | Local access                 | Preview/QA domains                         | Production domains                         | Purpose                                      |
 | -------- | ---------------------------- | ------------------------------------------ | ------------------------------------------ | -------------------------------------------- |
 | MenuList | `localhost:3000`             | `menulist.online`, `www.menulist.online`   | `menulist.ai`, `www.menulist.ai`           | Marketing, dashboard, client menus           |
+| ConstantLayer | `localhost:3000/__constantlayer` | `constantlayer.menulist.online` | `constantlayer.in`, `www.constantlayer.in` | Static parent/entity trust website |
 | Answerlattice | `localhost:3000/__answerlattice`  | `ecomsai.com`, `www.ecomsai.com`           | `answerlattice.com`, `www.answerlattice.com`         | Answerlattice website and product routes          |
+| CampaignCue | `localhost:3000/__campaigncue` | `campaigncue.menulist.online` | `campaigncue.ai`, `www.campaigncue.ai` | CampaignCue website and workspace routes |
 | MyCodex  | `localhost:3000/__mycodex`   | `menulist.digital`, `www.menulist.digital` | `menulist.digital`, `www.menulist.digital` | Internal documentation reader on Vercel      |
 
 Source of truth: `src/constants/deploymentTargets.ts`.
 
+ConstantLayer is deliberately a product-domain site route, not a MenuList tenant/custom domain and not a database-backed product. It rewrites to `/sites/constantlayer`, has no owner/product app route, and uses an empty Firebase project id in `src/constants/deploymentTargets.ts`.
+
 `menulist.digital` is deliberately a product domain, not a MenuList tenant/custom domain. Middleware must rewrite it to `/sites/mycodex` before the client-domain branch can treat unknown hosts as restaurant custom domains.
 
-MyCodex is an internal documentation reader. Outside localhost, `src/middleware.ts` requires a signed MyCodex session cookie before rewriting protected pages to `/sites/mycodex`. Unauthenticated MyCodex requests redirect to `/login`, where `src/app/sites/mycodex/api/session/route.ts` validates `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` server-side and sets an `HttpOnly` `mycodex_session` cookie. MyCodex responses also set no-index/no-follow robot headers and serve a product-scoped disallow-all `robots.txt`; these crawler restrictions are scoped to MyCodex and do not change MenuList tenant/menu SEO or Answerlattice public-site discovery.
+MyCodex is an internal documentation reader. It reserves `MC` as its internal product code, but runtime routing and session checks use the `mycodex` slug. Outside localhost, `src/middleware.ts` requires a signed MyCodex session cookie before rewriting protected pages to `/sites/mycodex`. Unauthenticated MyCodex requests redirect to `/login`, where `src/app/sites/mycodex/api/session/route.ts` validates `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` server-side and sets an `HttpOnly` `mycodex_session` cookie. MyCodex responses also set no-index/no-follow robot headers and serve a product-scoped disallow-all `robots.txt`; these crawler restrictions are scoped to MyCodex and do not change MenuList tenant/menu SEO or Answerlattice public-site discovery.
 
 MyCodex PWA assets are scoped to the MyCodex product host. `src/app/sites/mycodex/layout.tsx` points to `/mycodex.webmanifest`, `/mycodex-logo.svg`, MyCodex PNG icons, and Apple startup images under `/mycodex-splash/`. `src/components/ServiceWorkerRegister.tsx` registers `/mycodex-sw.js` only when `resolveDomain()` returns the `mycodex` product host. The worker is a private-docs offline shell: it caches `/offline` plus static MyCodex logo assets only, and does not cache markdown, `__docs__` pages, or document HTML.
 
@@ -256,7 +260,7 @@ MyCodex reads markdown from `__docs__` at runtime. `next.config.js` therefore in
 | ------- | ------------------ | ------- |
 | `MYCODEX_BASIC_AUTH_USER` | Yes | Server-side username checked by the MyCodex login route |
 | `MYCODEX_BASIC_AUTH_PASSWORD` | Yes | Server-side password checked by the MyCodex login route and used as session-secret fallback |
-| `MYCODEX_SESSION_SECRET` | No | Optional dedicated HMAC secret for signing `mycodex_session`; falls back to `NEXTAUTH_SECRET`, then the MyCodex password |
+| `MYCODEX_SESSION_SECRET` | Yes | Dedicated HMAC secret for signing `mycodex_session`; env validation requires it on Vercel |
 
 ### Key Env Var: `NEXT_PUBLIC_APP_URL`
 

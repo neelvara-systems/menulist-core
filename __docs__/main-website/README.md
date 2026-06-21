@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.64 (SEO/AEO Metadata Parity)
+**Version:** 3.6.65 (External Accent Governance)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 18, 2026
+**Last Updated:** June 21, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.64** | **SEO/AEO Metadata Parity** | **Production canonical metadata, schema URL source, and post-setup noindex guard.** | **ACTIVE** |
+| **3.6.65** | **External Accent Governance** | **Current blue trust system remains canonical; warm pink accent is decorative-only.** | **ACTIVE** |
+
+Version 3.6.65 records the external local-service palette review after comparing the proposed deep navy/pink reference against MenuList's current trust/infrastructure website identity. The site does not adopt the reference palette as a rebrand. The existing blue MenuList system remains canonical, while `src/styles/website.css` now exposes restrained warm-accent tokens for minor illustration details, soft badges, dividers, or hover accents only. The design-system rules explicitly prohibit pink body text, pink headline/CTA treatment, large poster-style diagonal blocks, QR-poster layouts, and replacing MenuList's calm public-business truth positioning with a decorative local-service identity. This is website token/docs governance only; visible website layout, copy, pricing/payment, upload/extraction, owner dashboard runtime, customer menu runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
 Version 3.6.64 aligns the main MenuList website's shared SEO/AEO metadata with the current official-source positioning. Root fallback metadata, website-layout metadata, homepage JSON-LD, and page-level JSON-LD now read from shared MenuList website constants backed by the production `https://menulist.ai` deployment target. `/create-menu/success` is now a server metadata wrapper around the existing client success UI and emits `noindex, nofollow` robots metadata plus a self canonical to the non-query success path so post-setup query URLs do not inherit indexable website metadata. `npm run verify:agent-readiness` now guards the canonical metadata constants, schema URL source, stale fallback title removal, and success-page noindex wrapper. This is static website metadata/discovery/docs work only; public website copy, owner dashboard runtime, menu publishing, auth, pricing/payment, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
@@ -729,6 +731,7 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.65 | June 21, 2026 | Kept the current blue trust/infrastructure palette canonical after external local-service palette review, added decorative-only warm accent tokens, and documented that pink is not approved for body text, CTA text, large headings, or QR-poster-style rebrand treatments. |
 | 3.6.64 | June 18, 2026 | Aligned shared SEO/AEO metadata to production canonical constants, added explicit homepage canonical metadata, moved `/create-menu/success` behind a noindex server metadata wrapper, and hardened `verify:agent-readiness`. |
 | 3.6.63 | June 18, 2026 | Updated the AI Menu Manager public page copy to mention guided item/category/menu-area context selection while preserving natural-language commands, selected project scope, and approval-safe cards. |
 | 3.6.62 | June 18, 2026 | Converted the mobile hamburger feature list into an accordion with Features open by default, nested Start/Publish/Operate groups, current-route highlighting, and no duplicate AI Menu Manager entry. |

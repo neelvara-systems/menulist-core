@@ -1,6 +1,7 @@
 export const CREATIVE_EDITOR_SCHEMA_VERSION = "creative-editor.v1" as const;
 
 export type CreativeEditorProductId =
+    | "CC"
     | "campaigncue"
     | "menulist"
     | "answerlattice"

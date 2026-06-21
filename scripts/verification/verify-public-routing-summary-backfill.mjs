@@ -16,6 +16,9 @@
  *   - 1 storesSummary doc read
  *   - 1 stores query/doc read set
  *   - 1 projects_{storeId} summary doc read per active, public-visible store
+ *   - 1 canonical projects collection query only when the summary document is
+ *     missing/empty, to distinguish a true backfill gap from a store that has
+ *     not created a menu yet
  */
 
 import { getApps, initializeApp } from 'firebase-admin/app';
@@ -186,6 +189,23 @@ function normalizeStore(doc) {
   };
 }
 
+async function loadCanonicalProjectEntries(store) {
+  if (store.tenantId == null || store.storeId == null) return [];
+  const snapshot = await db
+    .collection('projects')
+    .doc(String(store.tenantId))
+    .collection(String(store.storeId))
+    .get();
+  return snapshot.docs.map((doc) => ({
+    projectId: doc.id,
+    ...(doc.data() || {}),
+  }));
+}
+
+function getActiveProjectEntries(projects) {
+  return projects.filter((data) => data?.active !== false && data?.deleted !== true);
+}
+
 function isBlocked(value) {
   return value?.blocked === true || value?.tenantBlocked === true || value?.blockDetails?.blocked === true;
 }
@@ -216,11 +236,23 @@ async function verifyProjectSummary(store) {
   const docId = `projects_${store.storeId}`;
   const snap = await db.collection('platformSummary').doc(docId).get();
   if (!snap.exists) {
+    const canonicalProjects = await loadCanonicalProjectEntries(store);
+    const activeCanonicalProjects = getActiveProjectEntries(canonicalProjects);
+    if (activeCanonicalProjects.length === 0) {
+      findings.push(issue(
+        'warning',
+        'projects-summary-absent-no-projects',
+        `Missing platformSummary/${docId}, but no active canonical projects exist for this store.`,
+        { storeId: store.storeId, tenantId: store.tenantId },
+      ));
+      return findings;
+    }
+
     findings.push(issue(
       'error',
       'projects-summary-missing',
       `Missing platformSummary/${docId}; public project routing cannot rely on summary-only lookup.`,
-      { storeId: store.storeId, tenantId: store.tenantId },
+      { storeId: store.storeId, tenantId: store.tenantId, canonicalActiveProjects: activeCanonicalProjects.length },
     ));
     return findings;
   }
@@ -230,11 +262,23 @@ async function verifyProjectSummary(store) {
     .filter(([, data]) => data?.active !== false && data?.deleted !== true);
 
   if (activeProjects.length === 0) {
+    const canonicalProjects = await loadCanonicalProjectEntries(store);
+    const activeCanonicalProjects = getActiveProjectEntries(canonicalProjects);
+    if (activeCanonicalProjects.length === 0) {
+      findings.push(issue(
+        'warning',
+        'projects-summary-empty-no-projects',
+        `platformSummary/${docId} has no active projects, and no active canonical projects exist for this store.`,
+        { storeId: store.storeId, tenantId: store.tenantId },
+      ));
+      return findings;
+    }
+
     findings.push(issue(
       'error',
       'projects-summary-empty',
       `platformSummary/${docId} has no active projects.`,
-      { storeId: store.storeId, tenantId: store.tenantId },
+      { storeId: store.storeId, tenantId: store.tenantId, canonicalActiveProjects: activeCanonicalProjects.length },
     ));
     return findings;
   }

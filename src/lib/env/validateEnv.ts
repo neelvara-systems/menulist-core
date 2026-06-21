@@ -83,6 +83,7 @@ const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
         'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
         'FIREBASE_PROJECT_ID',
     ],
+    constantlayer: [],
     answerlattice: [
         'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID',
         'ANSWERLATTICE_FIREBASE_PROJECT_ID',
@@ -95,10 +96,12 @@ const PLATFORM_ALIAS_VAR = 'NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES';
 const MYCODEX_AUTH_VARS = [
     'MYCODEX_BASIC_AUTH_USER',
     'MYCODEX_BASIC_AUTH_PASSWORD',
+    'MYCODEX_SESSION_SECRET',
 ] as const;
 
 const describeProduct = (productId: DeploymentProductId) => {
     if (productId === 'menulist') return 'MenuList';
+    if (productId === 'constantlayer') return 'ConstantLayer';
     if (productId === 'answerlattice') return 'Answerlattice';
     if (productId === 'campaigncue') return 'CampaignCue';
     return 'MyCodex';
@@ -214,7 +217,7 @@ export function validateEnvironment(): EnvValidationResult {
     if (isVercel && stage !== 'local') {
         const missingMyCodexAuth = MYCODEX_AUTH_VARS.filter((varName) => !getEnvValue(varName));
         if (missingMyCodexAuth.length > 0) {
-            missing.push(`${missingMyCodexAuth.join(' and ')} required for MyCodex access protection on Vercel`);
+            missing.push(`${missingMyCodexAuth.join(', ')} required for MyCodex access protection on Vercel`);
         }
     }
 

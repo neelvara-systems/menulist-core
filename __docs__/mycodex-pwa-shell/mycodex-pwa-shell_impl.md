@@ -11,6 +11,8 @@
 | `src/app/sites/mycodex/queue/page.tsx` | Adds the private `/queue` read-later page backed by browser-local queued documents. |
 | `src/app/sites/mycodex/api/document/route.ts` | Adds a protected no-store Markdown reader for favorites playback. |
 | `src/lib/mycodex/docs.ts` | Centralizes MyCodex docs tree, document resolution, and heading extraction for document routes, favorites, and the document API. |
+| `src/lib/mycodex/auth.ts` | Keeps `MYCODEX_PRODUCT_CODE = MC` for internal metadata and `MYCODEX_PRODUCT_SLUG = mycodex` for route/session checks. |
+| `src/constants/product.ts` | Reserves `PRODUCT_IDS.MYCODEX = MC` without creating any MyCodex Firebase data path. |
 | `src/app/sites/mycodex/styles.css` | Defines MyCodex safe-area variables and applies mobile-only spacing with `env(safe-area-inset-*)`. |
 | `src/app/sites/mycodex/login/page.tsx` | Adds `mycodex-safe-page`. |
 | `src/app/sites/mycodex/offline/page.tsx` | Adds `mycodex-safe-page`. |
@@ -67,3 +69,5 @@ The approved `public/mycodex-logo.svg` mark remains the source logo. Square PWA 
 ## Boundaries
 
 All safe-area styles are MyCodex-scoped with `mycodex-*` classes. They do not modify global MenuList or Answerlattice shells.
+
+MyCodex is static/private documentation. It has no Firebase project, no Firestore collections, no Storage bucket, no product `pId` writes, and no billing plans or credit packs. The only Vercel-specific env vars are `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET`.

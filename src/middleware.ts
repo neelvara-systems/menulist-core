@@ -42,7 +42,7 @@ import { resolveProductSiteByDevPath } from '@constant/productDomains';
 import { resolveDomain, shouldBypassDomainRouting } from '@lib/multiTenant/domainResolver';
 import {
     MYCODEX_LOGIN_PATH,
-    MYCODEX_PRODUCT_ID,
+    MYCODEX_PRODUCT_SLUG,
     MYCODEX_ROBOTS_TAG,
     MYCODEX_SESSION_COOKIE,
     getMyCodexExpectedCredentials,
@@ -332,7 +332,7 @@ export async function middleware(request: NextRequest) {
     if (domainInfo.type === 'product' && domainInfo.productSite) {
         const productConfig = domainInfo.productSite;
 
-        if (productConfig.id === MYCODEX_PRODUCT_ID) {
+        if (productConfig.id === MYCODEX_PRODUCT_SLUG) {
             const authResponse = await authorizeMyCodexRequest(request);
             if (authResponse) {
                 return applySecurityHeaders(request, authResponse);
@@ -384,7 +384,7 @@ export async function middleware(request: NextRequest) {
         response.headers.set('x-product-name', productConfig.name);
         return applySecurityHeaders(
             request,
-            productConfig.id === MYCODEX_PRODUCT_ID ? setMyCodexResponseHeaders(response) : response,
+            productConfig.id === MYCODEX_PRODUCT_SLUG ? setMyCodexResponseHeaders(response) : response,
         );
     }
 
@@ -402,7 +402,7 @@ export async function middleware(request: NextRequest) {
         const devProductMatch = resolveProductSiteByDevPath(pathname);
         if (devProductMatch) {
             const { product, strippedPath } = devProductMatch;
-            if (product.id === MYCODEX_PRODUCT_ID) {
+            if (product.id === MYCODEX_PRODUCT_SLUG) {
                 const authResponse = await authorizeMyCodexRequest(request);
                 if (authResponse) {
                     return applySecurityHeaders(request, authResponse);
@@ -416,17 +416,18 @@ export async function middleware(request: NextRequest) {
             const campaignCueWorkspacePath = product.id === 'campaigncue'
                 ? getCampaignCueWorkspaceRewritePath(strippedPath)
                 : null;
-            url.pathname = answerlatticeDashboardPath || (
-                product.id === 'answerlattice'
-                    ? buildAnswerlatticeWebsiteRewritePath(product.internalBasePath, strippedPath)
-                    : campaignCueWorkspacePath || `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`
-            );
+            const productWebsitePath = product.id === 'answerlattice'
+                ? buildAnswerlatticeWebsiteRewritePath(product.internalBasePath, strippedPath)
+                : product.id === 'constantlayer' && strippedPath === '/'
+                    ? `${product.internalBasePath}/home`
+                    : `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
+            url.pathname = answerlatticeDashboardPath || campaignCueWorkspacePath || productWebsitePath;
             const response = NextResponse.rewrite(url);
             response.headers.set('x-product-id', product.id);
             response.headers.set('x-product-name', product.name);
             return applySecurityHeaders(
                 request,
-                product.id === MYCODEX_PRODUCT_ID ? setMyCodexResponseHeaders(response) : response,
+                product.id === MYCODEX_PRODUCT_SLUG ? setMyCodexResponseHeaders(response) : response,
             );
         }
 

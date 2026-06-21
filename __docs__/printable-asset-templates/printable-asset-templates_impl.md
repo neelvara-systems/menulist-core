@@ -74,6 +74,7 @@ export type PrintableAssetTypeId =
   | 'campaign_flyer'
   | 'gift_certificate'
   | 'business_card'
+  | 'staff_id_card'
   | 'event_invitation'
   | 'postcard'
   | 'product_tag'
@@ -157,6 +158,7 @@ This extends the current `src/lib/print-assets/printAssetCatalog.ts:26` model wi
 | `campaign_flyer` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
 | `gift_certificate` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
 | `business_card` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
+| `staff_id_card` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
 | `event_invitation` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
 | `postcard` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
 | `product_tag` | `buildPrintableAssetEditorDocument()` plus Creative Editor PNG/PDF render. |
@@ -164,7 +166,7 @@ This extends the current `src/lib/print-assets/printAssetCatalog.ts:26` model wi
 | `print_menu` | Menu Card Export preset/style mapping, using existing `renderPdf`. |
 | `complete_menu_kit` | `generateMenuKit(menuKitInput)` with `templateFamilyId` in `MenuKitInput`. |
 
-Single printable assets support PDF and image downloads from the same selected template. The owner-facing preview is image-first and uses real generated output: table tent, single table card, entrance poster, counter sticker, feedback QR, campaign flyer, gift certificate, business card, invitation, postcard, product tag, and campaign poster use generated Creative Editor PNG previews; Print Menu renders the generated menu PDF first page as PNG. Desktop Print Menu must read the full selected project only when needed, use the no-loader DAL helper, and cache that project data for repeated template preview/download actions. Editor-backed PNG export is wrapped into print-size PDF with `jsPDF` for PDF output. Complete Menu Kit remains ZIP-only.
+Single printable assets support PDF and image downloads from the same selected template. The owner-facing preview is image-first and uses real generated output: table tent, single table card, entrance poster, counter sticker, feedback QR, campaign flyer, gift certificate, front/back business card, ID card, invitation, postcard, product tag, and campaign poster use generated Creative Editor PNG previews; Print Menu renders the generated menu PDF first page as PNG. Desktop Print Menu must read the full selected project only when needed, use the no-loader DAL helper, and cache that project data for repeated template preview/download actions. Editor-backed PNG export is wrapped into print-size PDF with `jsPDF` for PDF output. Complete Menu Kit remains ZIP-only.
 
 ### Editor Document Contract
 

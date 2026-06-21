@@ -1,7 +1,7 @@
 # Print Assets Website Copy
 
 **Status:** Dedicated feature page updated for editor-backed print assets
-**Last Updated:** June 17, 2026
+**Last Updated:** June 21, 2026
 
 ## Placement Decision
 
@@ -12,7 +12,7 @@ The public website should expose the stronger owner value on the dedicated featu
 For non-technical SMB owners, keep this capability practical and outcome-led:
 
 - Homepage source map: keep the compact `Print files` output.
-- Features page: explain paper menu PDF, table card, counter card, feedback QR, flyers, gift certificates, business cards, invitations, postcards, product tags, campaign posters, template choice, and printer handoff packet from the current approved menu.
+- Features page: explain paper menu PDF, table card, counter card, feedback QR, flyers, gift certificates, front/back business cards, ID cards, invitations, postcards, product tags, campaign posters, template choice, and printer handoff packet from the current approved menu.
 - Features page brand group: explain branded table/counter/entrance/takeaway/campaign files with QR code and business color, ready for a local printer.
 - Dedicated feature page: explain the Assets workflow as `pick asset -> choose supported template -> preview -> customize when needed -> download -> place/reprint`.
 - Dedicated feature page visuals: show both the template-list/dashboard view and the editor customization view so owners understand the workflow before reading the details.
@@ -24,7 +24,7 @@ The dashboard and mobile PWA carry the full Assets workspace. The public website
 
 **Headline:** Print-ready menu cards
 
-**Subheadline:** Choose a finished template, customize supported details when needed, and download table cards, counter cards, flyers, gift certificates, business cards, invitations, postcards, product tags, campaign posters, feedback QR, menu PDFs, images, and printer handoff files from the same live menu.
+**Subheadline:** Choose a finished template, customize supported details when needed, and download table cards, counter cards, flyers, gift certificates, front/back business cards, ID cards, invitations, postcards, product tags, campaign posters, feedback QR, menu PDFs, images, and printer handoff files from the same live menu.
 
 ## Benefit Blocks
 
