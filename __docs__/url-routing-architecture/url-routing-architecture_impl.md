@@ -240,7 +240,7 @@ For each tenant:
 | -------- | ---------------------------- | ------------------------------------------ | ------------------------------------------ | -------------------------------------------- |
 | MenuList | `localhost:3000`             | `menulist.online`, `www.menulist.online`   | `menulist.ai`, `www.menulist.ai`           | Marketing, dashboard, client menus           |
 | ConstantLayer | `localhost:3000/__constantlayer` | `constantlayer.menulist.online` | `constantlayer.in`, `www.constantlayer.in` | Static parent/entity trust website |
-| Answerlattice | `localhost:3000/__answerlattice`  | `ecomsai.com`, `www.ecomsai.com`           | `answerlattice.com`, `www.answerlattice.com`         | Answerlattice website and product routes          |
+| Answerlattice | `localhost:3000/__answerlattice`  | `answerlattice.menulist.online`, `www.answerlattice.menulist.online`           | `answerlattice.com`, `www.answerlattice.com`         | Answerlattice website and product routes          |
 | CampaignCue | `localhost:3000/__campaigncue` | `campaigncue.menulist.online` | `campaigncue.ai`, `www.campaigncue.ai` | CampaignCue website and workspace routes |
 | MyCodex  | `localhost:3000/__mycodex`   | `menulist.digital`, `www.menulist.digital` | `menulist.digital`, `www.menulist.digital` | Internal documentation reader on Vercel      |
 

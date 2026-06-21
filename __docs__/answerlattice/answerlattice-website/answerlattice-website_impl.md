@@ -21,7 +21,7 @@
 
 AnswerLattice is the public product brand for this surface. Internal code paths, dashboard routes, constants, and file names may continue using the lowercase `answerlattice` slug or `Answerlattice*` component identifiers until a separate tested runtime migration is planned.
 
-Production canonical URLs use `https://answerlattice.com`. `https://ecomsai.com` remains the Vercel Preview / QA host in deployment-domain routing and must not be promoted to production canonical copy without a deployment-target change. Legacy Canonica public hosts are redirected by middleware to the active AnswerLattice public target so crawlers do not see two public brands for the same product.
+Production canonical URLs use `https://answerlattice.com`. `https://answerlattice.menulist.online` remains the Vercel Preview / QA host in deployment-domain routing and must not be promoted to production canonical copy without a deployment-target change. Legacy Canonica public hosts are redirected by middleware to the active AnswerLattice public target so crawlers do not see two public brands for the same product.
 
 `src/content/answerlatticePublic/` is the shared public-content registry for this release. `src/app/sites/answerlattice/publicContent.ts` remains as a compatibility re-export so existing public pages can keep stable imports while the content source is separated from route code. The module stores:
 
@@ -320,7 +320,7 @@ All product domains are registered here. The middleware reads the hostname and r
 
 ```
 answerlattice.com/*  →  middleware  →  /sites/answerlattice/*        (production)
-ecomsai.com/*   →  middleware  →  /sites/answerlattice/*        (Vercel Preview / QA)
+answerlattice.menulist.online/*   →  middleware  →  /sites/answerlattice/*        (Vercel Preview / QA)
 localhost/__answerlattice/*  →  middleware  →  /sites/answerlattice/*  (dev only)
 ```
 
@@ -331,7 +331,7 @@ Product-host `/` and `/home` requests both rewrite to `/sites/answerlattice`, th
 **File:** `src/middleware.ts`
 
 Priority order:
-1. Active product website domains (QA ecomsai.com / production answerlattice.com → /sites/answerlattice)
+1. Active product website domains (QA answerlattice.menulist.online / production answerlattice.com → /sites/answerlattice)
 2. Dev path prefixes (/__answerlattice → /sites/answerlattice) — local dev only
 3. Client tenant domains (*.client-domain.example → /_client)
 4. Platform domain (platform.example → (website) route group)

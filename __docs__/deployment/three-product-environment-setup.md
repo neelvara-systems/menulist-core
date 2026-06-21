@@ -2,7 +2,7 @@
 
 > Status: setup runbook
 > Scope: MenuList, Answerlattice, CampaignCue, MyCodex
-> Last updated: June 20, 2026
+> Last updated: June 21, 2026
 
 This is the one-time setup path for fresh staging and production infrastructure. The repo is one shared Next.js/Vercel app with product-specific routing. MenuList, Answerlattice, and CampaignCue have product-specific Firebase targets. MyCodex is static/private documentation with no Firebase project. Do not create separate code deployments unless the deployment matrix is changed first.
 
@@ -10,8 +10,8 @@ This is the one-time setup path for fresh staging and production infrastructure.
 
 | Product | Staging URL | Staging Firebase | Production URL | Production Firebase |
 | --- | --- | --- | --- | --- |
-| MenuList | `https://menulist.online` | `ecomsai` | `https://menulist.ai` | `menulist` |
-| Answerlattice | `https://ecomsai.com` | `answerlattice-qa` | `https://answerlattice.com` | `answerlattice` |
+| MenuList | `https://menulist.online` | `menulist-qa` | `https://menulist.ai` | `menulist` |
+| Answerlattice | `https://answerlattice.menulist.online` | `answerlattice-qa` | `https://answerlattice.com` | `answerlattice` |
 | CampaignCue | `https://campaigncue.menulist.online` | `campaigncue-qa` | `https://campaigncue.ai` | `campaigncue` |
 | MyCodex | `https://menulist.digital` | none | `https://menulist.digital` | none |
 
@@ -23,7 +23,7 @@ These project ids are enforced by `src/constants/deploymentTargets.ts` and `src/
 | --- | --- |
 | `.env.staging.example` | Vercel Preview/Staging environment variable checklist |
 | `.env.production.example` | Vercel Production environment variable checklist |
-| `functions/.env.ecomsai.example` | MenuList staging Functions non-secret env template |
+| `functions/.env.menulist-qa.example` | MenuList staging Functions non-secret env template |
 | `functions/.env.menulist.example` | MenuList production Functions non-secret env template |
 | `functions-answerlattice/.env.answerlattice-qa.example` | Answerlattice staging Functions non-secret env template |
 | `functions-answerlattice/.env.answerlattice.example` | Answerlattice production Functions non-secret env template |
@@ -54,7 +54,7 @@ Create or confirm these Firebase projects:
 
 | Product | Staging | Production |
 | --- | --- | --- |
-| MenuList | `ecomsai` | `menulist` |
+| MenuList | `menulist-qa` | `menulist` |
 | Answerlattice | `answerlattice-qa` | `answerlattice` |
 | CampaignCue | `campaigncue-qa` | `campaigncue` |
 | MyCodex | none | none |
@@ -82,8 +82,7 @@ Staging origins:
 
 - `https://menulist.online`
 - `https://www.menulist.online`
-- `https://ecomsai.com`
-- `https://www.ecomsai.com`
+- `https://answerlattice.menulist.online`
 - `https://campaigncue.menulist.online`
 
 Production origins:
@@ -117,8 +116,7 @@ Recommended Vercel shape:
 1. Add staging domains to the staging/custom environment or Preview branch mapping:
    - `menulist.online`
    - `www.menulist.online`
-   - `ecomsai.com`
-   - `www.ecomsai.com`
+   - `answerlattice.menulist.online`
    - `campaigncue.menulist.online`
    - `menulist.digital`
 2. Add production domains to the Production environment:
@@ -145,7 +143,7 @@ Do not run a Vercel deploy from Codex unless explicitly requested in the current
 
 Preview scope must use:
 
-- MenuList: `NEXT_PUBLIC_FIREBASE_PROJECT_ID=ecomsai`, `FIREBASE_PROJECT_ID=ecomsai`
+- MenuList: `NEXT_PUBLIC_FIREBASE_PROJECT_ID=menulist-qa`, `FIREBASE_PROJECT_ID=menulist-qa`
 - Answerlattice: `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa`, `ANSWERLATTICE_FIREBASE_PROJECT_ID=answerlattice-qa`
 - CampaignCue: `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID=campaigncue-qa`, `CAMPAIGNCUE_FIREBASE_PROJECT_ID=campaigncue-qa`
 - MyCodex: no Firebase project env; use `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET`
@@ -166,23 +164,23 @@ Set secrets per Firebase project. Do not put secrets in tracked env files.
 MenuList staging:
 
 ```bash
-firebase functions:secrets:set GEMINI_AI_KEY --project ecomsai
-firebase functions:secrets:set GEMINI_AI_KEY_2 --project ecomsai
-firebase functions:secrets:set GEMINI_AI_KEY_3 --project ecomsai
-firebase functions:secrets:set GEMINI_AI_KEY_4 --project ecomsai
-firebase functions:secrets:set UPSTASH_REDIS_REST_URL --project ecomsai
-firebase functions:secrets:set UPSTASH_REDIS_REST_TOKEN --project ecomsai
-firebase functions:secrets:set RAZORPAY_KEY_ID --project ecomsai
-firebase functions:secrets:set RAZORPAY_KEY_SECRET --project ecomsai
-firebase functions:secrets:set SMTP_HOST --project ecomsai
-firebase functions:secrets:set SMTP_PORT --project ecomsai
-firebase functions:secrets:set SMTP_USER --project ecomsai
-firebase functions:secrets:set SMTP_PASS --project ecomsai
-firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project ecomsai
-firebase functions:secrets:set TELEGRAM_CHAT_ID --project ecomsai
-firebase functions:secrets:set GCP_BUDGET_WEBHOOK_SECRET --project ecomsai
-firebase functions:secrets:set REVALIDATION_SECRET --project ecomsai
-firebase functions:secrets:set SENTRY_DSN --project ecomsai
+firebase functions:secrets:set GEMINI_AI_KEY --project menulist-qa
+firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
+firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
+firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa
+firebase functions:secrets:set UPSTASH_REDIS_REST_URL --project menulist-qa
+firebase functions:secrets:set UPSTASH_REDIS_REST_TOKEN --project menulist-qa
+firebase functions:secrets:set RAZORPAY_KEY_ID --project menulist-qa
+firebase functions:secrets:set RAZORPAY_KEY_SECRET --project menulist-qa
+firebase functions:secrets:set SMTP_HOST --project menulist-qa
+firebase functions:secrets:set SMTP_PORT --project menulist-qa
+firebase functions:secrets:set SMTP_USER --project menulist-qa
+firebase functions:secrets:set SMTP_PASS --project menulist-qa
+firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist-qa
+firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist-qa
+firebase functions:secrets:set GCP_BUDGET_WEBHOOK_SECRET --project menulist-qa
+firebase functions:secrets:set REVALIDATION_SECRET --project menulist-qa
+firebase functions:secrets:set SENTRY_DSN --project menulist-qa
 ```
 
 MenuList production: repeat the same commands with `--project menulist`.
@@ -224,8 +222,8 @@ Only run these after projects, billing, env files, and secrets exist.
 MenuList staging:
 
 ```bash
-firebase deploy --project ecomsai --config firebase.json --only firestore:rules,firestore:indexes,storage
-firebase deploy --project ecomsai --config firebase.json --only functions
+firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,storage
+firebase deploy --project menulist-qa --config firebase.json --only functions
 ```
 
 MenuList production:

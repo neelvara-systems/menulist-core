@@ -250,7 +250,7 @@ Standard MenuList doc. `requestBodyComposer` injects `pId`/`tId`/`sId` from sess
 
 ### Current State
 
-Single Firebase project: **`ecomsai`**. All products share one Firestore, Auth, Storage, Realtime Database, Cloud Functions, Vertex AI, App Check. One billing account.
+Single Firebase project: **`menulist-qa`**. All products share one Firestore, Auth, Storage, Realtime Database, Cloud Functions, Vertex AI, App Check. One billing account.
 
 Answerlattice collections already prefixed `answerlattice_*` (9 collections). MenuList collections unprefixed (legacy).
 
@@ -259,7 +259,7 @@ Answerlattice collections already prefixed `answerlattice_*` (9 collections). Me
 **Two Firebase projects. Not deferred. From day one.**
 
 ```
-Project 1: "ecomsai" (MenuList Ecosystem)
+Project 1: "menulist-qa" (MenuList Ecosystem)
   → MenuList, SurfaceOS, GrowthOS, KitStamp
   → Same user base, same tenants, tightly coupled data
 
@@ -289,7 +289,7 @@ SurfaceOS, GrowthOS, KitStamp are extensions of MenuList:
 
 ### Firebase Services Per Project
 
-| Service         | ecomsai (MenuList)                    | answerlattice (Answerlattice)                              |
+| Service         | menulist-qa (MenuList)                    | answerlattice (Answerlattice)                              |
 | --------------- | ------------------------------------- | ------------------------------------------------ |
 | Firestore       | MenuList + future product collections | `answerlattice_*` collections only                    |
 | Auth            | MenuList users (SMB owners, staff)    | Answerlattice platform users + external client admins |
@@ -327,9 +327,9 @@ src/lib/firebase/answerlatticeFirebaseAdmin.ts       → Answerlattice admin (ne
 ```
 # MenuList
 NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=ecomsai   # local/preview
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=menulist-qa   # local/preview
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=menulist  # production
-FIREBASE_PROJECT_ID=ecomsai               # local/preview
+FIREBASE_PROJECT_ID=menulist-qa               # local/preview
 FIREBASE_PROJECT_ID=menulist              # production
 FIREBASE_PRIVATE_KEY=...
 FIREBASE_CLIENT_EMAIL=...
@@ -369,13 +369,13 @@ MenuList and Answerlattice are separate Firebase projects but same Next.js codeb
 
 1. Create Firebase project `answerlattice` in GCP console
 2. Enable Firestore, Auth, Storage in new project
-3. Export `answerlattice_*` collections from `ecomsai`
+3. Export `answerlattice_*` collections from `menulist-qa`
 4. Import into `answerlattice` Firestore
 5. Backfill `pId = 'AL'` on all imported documents
 6. Add Answerlattice env vars to Vercel
 7. Create `answerlatticeFirebaseClient.ts` and `answerlatticeFirebaseAdmin.ts`
 8. Update all 9 Answerlattice DAL files to use `answerlatticeFirebaseClient`
-9. Delete `answerlattice_*` collections from `ecomsai` after verification
+9. Delete `answerlattice_*` collections from `menulist-qa` after verification
 10. Update security rules in both projects
 
 ### Why `pId` Still Matters With Separate Projects
@@ -393,7 +393,7 @@ MenuList and Answerlattice are separate Firebase projects but same Next.js codeb
 
 ### Current State
 
-MenuList Cloud Functions live in `functions/src/` and deploy to `ecomsai`. Answerlattice has a separate `functions-answerlattice/` package that deploys to the Answerlattice Firebase project. The MenuList store-EOD scheduler (`decisionBlocksScoring.ts`) no longer runs Answerlattice nightly work.
+MenuList Cloud Functions live in `functions/src/` and deploy to `menulist-qa`. Answerlattice has a separate `functions-answerlattice/` package that deploys to the Answerlattice Firebase project. The MenuList store-EOD scheduler (`decisionBlocksScoring.ts`) no longer runs Answerlattice nightly work.
 
 ### Decision: Separate `functions-answerlattice/` Directory From Day One
 
@@ -401,7 +401,7 @@ Two function directories. Two deployments. Two Firebase projects.
 
 ```
 dashboard/
-  functions/                  → MenuList (deploys to "ecomsai")
+  functions/                  → MenuList (deploys to "menulist-qa")
   functions-answerlattice/         → Answerlattice (deploys to "answerlattice")
 ```
 
@@ -433,7 +433,7 @@ Everything else: menu processing, analytics, messaging, billing, monitoring, dec
 ### Deployment
 
 ```bash
-firebase deploy --only functions --project ecomsai
+firebase deploy --only functions --project menulist-qa
 firebase deploy --only functions --project menulist
 firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json
 firebase deploy --only functions:answerlattice --project answerlattice --config firebase-answerlattice.json
@@ -441,7 +441,7 @@ firebase deploy --only functions:answerlattice --project answerlattice --config 
 
 Two `firebase.json` configs at dashboard root:
 
-- `firebase.json` → MenuList targets (`ecomsai` for local/preview, `menulist` for production)
+- `firebase.json` → MenuList targets (`menulist-qa` for local/preview, `menulist` for production)
 - `firebase-answerlattice.json` → Answerlattice targets (`answerlattice-qa` for local/preview, `answerlattice` for production)
 
 ### Client-Side Callable Functions
@@ -488,9 +488,9 @@ Answerlattice cross-product documents (tickets, chat, feedback) are NOT built vi
 
 ### Migration
 
-17. **Export `answerlattice_*` collections** from `ecomsai` → import into `answerlattice` Firestore
+17. **Export `answerlattice_*` collections** from `menulist-qa` → import into `answerlattice` Firestore
 18. **Backfill `pId = 'AL'`** on all imported Answerlattice documents
-19. **Delete `answerlattice_*` collections** from `ecomsai` after verification
+19. **Delete `answerlattice_*` collections** from `menulist-qa` after verification
 20. **Update security rules** in both Firebase projects
 
 ---
@@ -515,7 +515,7 @@ Answerlattice cross-product documents (tickets, chat, feedback) are NOT built vi
 4. **`sourceContext` is required** on all Answerlattice documents from clients. User identity always present; source product scope only for cross-product.
 5. **Answerlattice never reads another product's session directly.** Always via CCT → `AnswerlatticePlatformContext`.
 6. **Client registry from day one.** MenuList is client #1. Every new product/client gets registered.
-7. **Separate Firebase projects.** Answerlattice gets its own Firebase project from day one. MenuList ecosystem (SurfaceOS, GrowthOS, KitStamp) stays in `ecomsai`. No cross-project Firestore queries.
+7. **Separate Firebase projects.** Answerlattice gets its own Firebase project from day one. MenuList ecosystem (SurfaceOS, GrowthOS, KitStamp) stays in `menulist-qa`. No cross-project Firestore queries.
 8. **`traceId` on every CCT and every Answerlattice document.** End-to-end request tracing from session → token → document → audit log.
 9. **Idempotency via `requestId`.** Cross-product write operations (ticket creation, chat, feedback) must include `requestId`. Answerlattice checks for duplicates before writing.
 10. **Graceful degradation.** If Answerlattice Firestore is unavailable, MenuList must continue working. Help center shows "temporarily unavailable". Answerlattice features wrapped in try/catch with fallback UI. Never crash MenuList due to Answerlattice failure.

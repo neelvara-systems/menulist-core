@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import type { IconType } from 'react-icons';
+import { CAMPAIGNCUE_WEBSITE_FEATURE_PATHS } from '@constant/campaigncue/websiteFeatures';
+import { CAMPAIGNCUE_WEBSITE_USE_CASE_PATHS } from '@constant/campaigncue/websiteUseCases';
 import {
     LuArrowRight,
     LuBadgeCheck,
@@ -9,6 +11,7 @@ import {
     LuBrush,
     LuCalendarClock,
     LuCheckCircle2,
+    LuChevronDown,
     LuChevronRight,
     LuClipboardCheck,
     LuCopy,
@@ -55,6 +58,7 @@ type IconCard = {
     title: string;
     description: string;
     icon: IconType;
+    href?: string;
 };
 
 type WorkflowStep = {
@@ -142,12 +146,130 @@ type FooterGroup = {
 };
 
 const NAV_LINKS = [
-    { label: 'Today', href: '#daily-desk' },
-    { label: 'Fit', href: '#fit-check' },
-    { label: 'Packs', href: '#studio' },
-    { label: 'Index', href: '#catalog' },
     { label: 'Trust', href: '#trust' },
     { label: 'FAQ', href: '#faq' },
+];
+
+type MegaMenuLink = {
+    label: string;
+    detail: string;
+    href: string;
+    icon: IconType;
+};
+
+type MegaMenuGroup = {
+    eyebrow: string;
+    links: MegaMenuLink[];
+};
+
+const PRODUCT_MEGA_MENU_GROUPS: MegaMenuGroup[] = [
+    {
+        eyebrow: 'Campaign desk',
+        links: [
+            {
+                label: 'Daily Campaign Desk',
+                detail: 'One useful cue from current facts.',
+                href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.dailyCampaignDesk,
+                icon: LuRadar,
+            },
+            {
+                label: 'Campaign Pack Studio',
+                detail: 'WhatsApp, Google, creative, print, and handoff.',
+                href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.campaignPackStudio,
+                icon: LuMessageSquare,
+            },
+            {
+                label: 'Creative Studio',
+                detail: 'Edit source-backed campaign assets.',
+                href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeStudio,
+                icon: LuPalette,
+            },
+            {
+                label: 'CueLayers',
+                detail: 'Reuse flat images with safe fallbacks.',
+                href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers,
+                icon: LuLayers,
+            },
+        ],
+    },
+    {
+        eyebrow: 'Review and reuse',
+        links: [
+            {
+                label: 'Trust Center',
+                detail: 'Claim, source, risk, and action rows.',
+                href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeTrustCenter,
+                icon: LuShieldCheck,
+            },
+            {
+                label: 'Brand and proof',
+                detail: 'Brand Playbook guidance and proof deck.',
+                href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.brandPlaybookProofDeck,
+                icon: LuBadgeCheck,
+            },
+            {
+                label: 'Reusable templates',
+                detail: 'Repeat useful packs without starting over.',
+                href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.reusablePackTemplates,
+                icon: LuRefreshCcw,
+            },
+        ],
+    },
+];
+
+const USE_CASE_MEGA_MENU_GROUPS: MegaMenuGroup[] = [
+    {
+        eyebrow: 'Owner journeys',
+        links: [
+            {
+                label: 'Small business',
+                detail: 'Full journey from facts to a usable pack.',
+                href: CAMPAIGNCUE_WEBSITE_USE_CASE_PATHS.smallBusiness,
+                icon: LuStore,
+            },
+            {
+                label: 'Restaurants',
+                detail: 'Menu offers, lunch pushes, counter notes.',
+                href: '#starts',
+                icon: LuFileText,
+            },
+            {
+                label: 'Salons',
+                detail: 'Open slots, service pushes, booking reminders.',
+                href: '#starts',
+                icon: LuSparkles,
+            },
+            {
+                label: 'Retail and services',
+                detail: 'New stock, availability, local service areas.',
+                href: '#starts',
+                icon: LuMegaphone,
+            },
+        ],
+    },
+    {
+        eyebrow: 'Team workflows',
+        links: [
+            {
+                label: 'Agencies',
+                detail: 'Proof decks and client-ready manual handoff.',
+                href: '#proof-system',
+                icon: LuBadgeCheck,
+            },
+            {
+                label: 'Multi-location',
+                detail: 'Repeat useful packs with local facts refreshed.',
+                href: '#proof-system',
+                icon: LuRefreshCcw,
+            },
+            {
+                label: 'Manual delivery',
+                detail: 'Copy, download, assign, and record results.',
+                href: '#delivery',
+                icon: LuDownload,
+            },
+        ],
+    },
 ];
 
 const HERO_PILLS = [
@@ -435,31 +557,37 @@ const PRODUCT_CAPABILITIES: IconCard[] = [
         title: 'Daily Campaign Desk',
         description: 'The first screen tells owners what to promote today, what is missing, and what is ready to export.',
         icon: LuLayoutDashboard,
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.dailyCampaignDesk,
     },
     {
         title: 'Saved business facts',
         description: 'Menus, services, brand details, local context, links, and proof stay attached to campaign packs.',
         icon: LuBrain,
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.brandPlaybookProofDeck,
     },
     {
         title: 'Campaign Studio',
         description: 'One local opportunity turns into WhatsApp, Google, social, video, and ad handoff outputs.',
         icon: LuWorkflow,
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.campaignPackStudio,
     },
     {
         title: 'Creative Studio',
         description: 'Editable designs, Design Cue commands, resize presets, and export checks stay in one editor.',
         icon: LuPalette,
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeStudio,
     },
     {
         title: 'CueLayers',
         description: 'Uploaded or generated flat images can become editable layer candidates with safe fallbacks and review flags.',
         icon: LuLayers,
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers,
     },
     {
         title: 'Creative Trust Center',
         description: 'Every risky claim, missing proof, stale detail, or spend action is visible before the owner uses the pack.',
         icon: LuClipboardCheck,
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeTrustCenter,
     },
 ];
 
@@ -468,21 +596,25 @@ const PROOF_SYSTEM_CAPABILITIES: IconCard[] = [
         title: 'Brand Playbook',
         description: 'Brand feel, visual motifs, product focus, and avoid-list wording guide the pack while campaign facts stay separate.',
         icon: LuPalette,
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.brandPlaybookProofDeck,
     },
     {
         title: 'Campaign proof deck',
         description: 'Brand snapshot, source trace, trust checklist, UGC/reel references, and manual delivery notes stay together for review.',
         icon: LuClipboardCheck,
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.brandPlaybookProofDeck,
     },
     {
         title: 'Reusable pack templates',
         description: 'Approved packs can become repeatable starting points for recurring restaurant, salon, retail, agency, and location work.',
         icon: LuWalletCards,
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.reusablePackTemplates,
     },
     {
         title: 'Disclosure and avoid-list checks',
         description: 'UGC and video briefs surface consent, fake testimonial risk, disclosure language, and blocked wording before handoff.',
         icon: LuShieldAlert,
+        href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeTrustCenter,
     },
 ];
 
@@ -760,28 +892,28 @@ const FOOTER_GROUPS: FooterGroup[] = [
     {
         title: 'Product',
         links: [
-            { label: 'Daily Campaign Desk', href: '#daily-desk' },
-            { label: 'Campaign Studio', href: '#studio' },
-            { label: 'Creative Studio', href: '#editor' },
-            { label: 'CueLayers', href: '#cuelayers' },
+            { label: 'Daily Campaign Desk', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.dailyCampaignDesk },
+            { label: 'Campaign Studio', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.campaignPackStudio },
+            { label: 'Creative Studio', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeStudio },
+            { label: 'CueLayers', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers },
         ],
     },
     {
         title: 'Workflows',
         links: [
+            { label: 'Small business', href: CAMPAIGNCUE_WEBSITE_USE_CASE_PATHS.smallBusiness },
             { label: 'Restaurants', href: '#starts' },
             { label: 'Salons', href: '#starts' },
             { label: 'Retail and services', href: '#starts' },
-            { label: 'Agencies', href: '#use-cases' },
         ],
     },
     {
         title: 'Trust',
         links: [
-            { label: 'Safety boundary', href: '#trust' },
-            { label: 'Brand and proof', href: '#proof-system' },
+            { label: 'Trust Center', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeTrustCenter },
+            { label: 'Brand and proof', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.brandPlaybookProofDeck },
+            { label: 'Reusable templates', href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.reusablePackTemplates },
             { label: 'Export-first delivery', href: '#delivery' },
-            { label: 'Source checks', href: '#trust' },
             { label: 'FAQ', href: '#faq' },
         ],
     },
@@ -1070,13 +1202,13 @@ function OutputGrid() {
     );
 }
 
-function CapabilityLedger({ cards }: { cards: IconCard[] }) {
+function CapabilityLedger({ cards, basePath = '' }: { cards: IconCard[]; basePath?: string }) {
     return (
         <div className="campaigncue-capability-ledger">
             {cards.map((card) => {
                 const Icon = card.icon;
-                return (
-                    <div className="campaigncue-capability-row" key={card.title}>
+                const children = (
+                    <>
                         <span aria-hidden="true">
                             <Icon />
                         </span>
@@ -1084,10 +1216,38 @@ function CapabilityLedger({ cards }: { cards: IconCard[] }) {
                             <strong>{card.title}</strong>
                             <p>{card.description}</p>
                         </div>
+                    </>
+                );
+
+                return card.href ? (
+                    <a className="campaigncue-capability-row" href={withBasePath(basePath, card.href)} key={card.title}>
+                        {children}
+                        <LuArrowRight aria-hidden="true" />
+                    </a>
+                ) : (
+                    <div className="campaigncue-capability-row" key={card.title}>
+                        {children}
                     </div>
                 );
             })}
         </div>
+    );
+}
+
+function SmallBusinessUseCaseLink({ basePath }: { basePath: string }) {
+    return (
+        <a
+            className="campaigncue-small-business-link"
+            href={withBasePath(basePath, CAMPAIGNCUE_WEBSITE_USE_CASE_PATHS.smallBusiness)}
+        >
+            <span>For local businesses</span>
+            <strong>See the small-business journey</strong>
+            <p>
+                A focused page shows how restaurants, salons, retail shops, clinics, fitness studios,
+                and local services go from source facts to usable campaign packs.
+            </p>
+            <LuArrowRight aria-hidden="true" />
+        </a>
     );
 }
 
@@ -1208,7 +1368,7 @@ function TemplateReuseFlow() {
     );
 }
 
-function CampaignCueProofSystem() {
+function CampaignCueProofSystem({ basePath }: { basePath: string }) {
     return (
         <section className="campaigncue-section campaigncue-proof-system" id="proof-system">
             <div className="campaigncue-proof-system-copy">
@@ -1230,7 +1390,7 @@ function CampaignCueProofSystem() {
                         Review ready
                     </span>
                 </div>
-                <CapabilityLedger cards={PROOF_SYSTEM_CAPABILITIES} />
+                <CapabilityLedger cards={PROOF_SYSTEM_CAPABILITIES} basePath={basePath} />
             </div>
             <ProofDeckPreview />
             <TemplateReuseFlow />
@@ -1335,6 +1495,99 @@ function TrustMatrix() {
     );
 }
 
+type CampaignCueMegaMenuProps = {
+    basePath: string;
+    label: string;
+    ariaLabel: string;
+    overviewHref: string;
+    overviewTitle: string;
+    overviewDetail: string;
+    groups: MegaMenuGroup[];
+    storyEyebrow: string;
+    storyTitle: string;
+    storyDetail: string;
+    storyStat: string;
+    storyNote: string;
+};
+
+function CampaignCueMegaMenu({
+    basePath,
+    label,
+    ariaLabel,
+    overviewHref,
+    overviewTitle,
+    overviewDetail,
+    groups,
+    storyEyebrow,
+    storyTitle,
+    storyDetail,
+    storyStat,
+    storyNote,
+}: CampaignCueMegaMenuProps) {
+    return (
+        <div className="campaigncue-mega-menu">
+            <button
+                type="button"
+                className="campaigncue-mega-menu-trigger"
+                aria-haspopup="true"
+                aria-label={ariaLabel}
+            >
+                {label}
+                <LuChevronDown aria-hidden="true" />
+            </button>
+            <div className="campaigncue-mega-menu-panel" role="menu" aria-label={ariaLabel}>
+                <a className="campaigncue-mega-menu-overview" href={withBasePath(basePath, overviewHref)} role="menuitem">
+                    <span>
+                        <LuLayoutDashboard aria-hidden="true" />
+                    </span>
+                    <div>
+                        <strong>{overviewTitle}</strong>
+                        <small>{overviewDetail}</small>
+                    </div>
+                    <LuArrowRight aria-hidden="true" />
+                </a>
+                <div className="campaigncue-mega-menu-body">
+                    <div className="campaigncue-mega-menu-groups">
+                        {groups.map((group) => (
+                            <section key={group.eyebrow} aria-label={group.eyebrow}>
+                                <p>{group.eyebrow}</p>
+                                <div>
+                                    {group.links.map((item) => {
+                                        const Icon = item.icon;
+                                        return (
+                                            <a
+                                                className="campaigncue-mega-menu-item"
+                                                href={withBasePath(basePath, item.href)}
+                                                key={item.label}
+                                                role="menuitem"
+                                            >
+                                                <Icon aria-hidden="true" />
+                                                <span>
+                                                    <strong>{item.label}</strong>
+                                                    <small>{item.detail}</small>
+                                                </span>
+                                            </a>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        ))}
+                    </div>
+                    <aside className="campaigncue-mega-menu-story" aria-label="CampaignCue workflow preview">
+                        <span>{storyEyebrow}</span>
+                        <h2>{storyTitle}</h2>
+                        <p>{storyDetail}</p>
+                        <div>
+                            <strong>{storyStat}</strong>
+                            <small>{storyNote}</small>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function FooterLinks({ basePath }: { basePath: string }) {
     return (
         <div className="campaigncue-footer-groups">
@@ -1367,8 +1620,36 @@ export default function CampaignCueHomePage() {
                     <strong>CampaignCue</strong>
                 </a>
                 <nav aria-label="CampaignCue website sections">
+                    <CampaignCueMegaMenu
+                        basePath={basePath}
+                        label="Product"
+                        ariaLabel="CampaignCue product pages"
+                        overviewHref="#catalog"
+                        overviewTitle="Product overview"
+                        overviewDetail="See the complete CampaignCue workflow from cue to checked export."
+                        groups={PRODUCT_MEGA_MENU_GROUPS}
+                        storyEyebrow="Product loop"
+                        storyTitle="One cue becomes a checked campaign pack."
+                        storyDetail="Source facts, creative files, review notes, and manual export stay together before anything leaves the workspace."
+                        storyStat="Export first"
+                        storyNote="No direct account posting in the active delivery mode."
+                    />
+                    <CampaignCueMegaMenu
+                        basePath={basePath}
+                        label="Use cases"
+                        ariaLabel="CampaignCue use-case pages"
+                        overviewHref={CAMPAIGNCUE_WEBSITE_USE_CASE_PATHS.smallBusiness}
+                        overviewTitle="Small-business journey"
+                        overviewDetail="See how local owners go from business facts to a usable pack."
+                        groups={USE_CASE_MEGA_MENU_GROUPS}
+                        storyEyebrow="Owner fit"
+                        storyTitle="Pick the business type, then show the useful pack."
+                        storyDetail="Restaurants, salons, retail shops, services, agencies, and multi-location teams all start from facts instead of a blank prompt."
+                        storyStat="Manual handoff"
+                        storyNote="Copy, download, review, and post outside CampaignCue."
+                    />
                     {NAV_LINKS.map((link) => (
-                        <a href={link.href} key={link.label}>
+                        <a href={withBasePath(basePath, link.href)} key={link.label}>
                             {link.label}
                         </a>
                     ))}
@@ -1424,7 +1705,7 @@ export default function CampaignCueHomePage() {
 
             <OwnerDayPath />
 
-            <CampaignCueProofSystem />
+            <CampaignCueProofSystem basePath={basePath} />
 
             <section className="campaigncue-section" id="workflow">
                 <SectionIntro eyebrow="Workflow" title="A simple daily loop from business fact to usable campaign pack.">
@@ -1620,7 +1901,8 @@ export default function CampaignCueHomePage() {
                     The product is intentionally local-business first: campaigns need facts, timing, source proof,
                     approvals, and usable exports more than another content feed.
                 </SectionIntro>
-                <CapabilityLedger cards={PRODUCT_CAPABILITIES} />
+                <SmallBusinessUseCaseLink basePath={basePath} />
+                <CapabilityLedger cards={PRODUCT_CAPABILITIES} basePath={basePath} />
             </section>
 
             <section className="campaigncue-section campaigncue-faq" id="faq">

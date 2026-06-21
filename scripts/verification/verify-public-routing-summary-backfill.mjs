@@ -7,10 +7,10 @@
  *   safely. This script does not write to Firestore.
  *
  * Usage:
- *   FIREBASE_PROJECT_ID=ecomsai node scripts/verification/verify-public-routing-summary-backfill.mjs
- *   FIREBASE_PROJECT_ID=ecomsai node scripts/verification/verify-public-routing-summary-backfill.mjs --tenant-id 123
- *   FIREBASE_PROJECT_ID=ecomsai node scripts/verification/verify-public-routing-summary-backfill.mjs --store-id 456
- *   FIREBASE_PROJECT_ID=ecomsai node scripts/verification/verify-public-routing-summary-backfill.mjs --skip-projects
+ *   FIREBASE_PROJECT_ID=menulist-qa node scripts/verification/verify-public-routing-summary-backfill.mjs
+ *   FIREBASE_PROJECT_ID=menulist-qa node scripts/verification/verify-public-routing-summary-backfill.mjs --tenant-id 123
+ *   FIREBASE_PROJECT_ID=menulist-qa node scripts/verification/verify-public-routing-summary-backfill.mjs --store-id 456
+ *   FIREBASE_PROJECT_ID=menulist-qa node scripts/verification/verify-public-routing-summary-backfill.mjs --skip-projects
  *
  * Read cost:
  *   - 1 storesSummary doc read

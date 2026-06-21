@@ -6,6 +6,79 @@
 
 ---
 
+## June 21, 2026 - CampaignCue Product And Use-Case Menus
+
+### Added
+
+- **Product and use-case menus added** - CampaignCue public homepage navigation now has two wide owner-readable dropdowns: `Product` for CampaignCue surfaces and `Use cases` for business-type journeys, each with grouped links and a workflow preview card.
+
+### Boundaries
+
+- **No unsupported claim added** - The menus link only to existing feature pages, the small-business use-case page, active homepage anchors, or the workspace CTA. They do not add direct posting, account-connection, pricing, ROI, ROAS, or predictive scoring claims.
+- **No Firebase operation added** - This is static public-site navigation, CSS, docs, and verifier alignment only. It adds no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, rules, indexes, or deploys.
+
+### Verification
+
+- CampaignCue public-site navigation coverage is enforced by `npm run verify:campaigncue`.
+
+---
+
+## June 21, 2026 - CampaignCue Small Business Use-Case Page
+
+### Added
+
+- **Small-business use-case page added** - CampaignCue now has `/use-cases/small-business`, a public page that shows the SMB journey from business facts to a checked campaign pack with WhatsApp, Google, creative, print, video brief, review, and export-first handoff examples.
+- **Homepage path into the use case added** - The CampaignCue homepage nav, Use Cases section, footer workflows, sitemap registry, and product-scoped website constants now include the small-business page.
+
+### Boundaries
+
+- **No direct posting or performance promise added** - The page does not claim connected social accounts, WhatsApp send, Google publishing, ad spend mutation, pricing, ROI, ROAS, conversion lift, predictive scoring, or perfect image-source recovery.
+- **No Firebase operation added** - This is static public-site code, docs, and verifier alignment only. It adds no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, rules, indexes, or deploys.
+
+### Verification
+
+- CampaignCue public-site route and boundary coverage is enforced by `npm run verify:campaigncue`.
+
+---
+
+## June 21, 2026 - CampaignCue Public Website Visual Finish
+
+### Changed
+
+- **CampaignCue website polish tightened** - Homepage and public feature pages now use the finalized navy/rose visual system with a floating centered nav, white-on-rose primary CTAs, lighter borders, softer layered shadows, and more finished product-preview surfaces.
+
+### Boundaries
+
+- **No product scope added** - The site still presents source-backed campaign packs, manual export/download, visible review, and no direct posting, fake metrics, pricing claim, or unsupported performance promise.
+- **No Firebase operation added** - This is static public-site CSS, documentation, and verifier alignment only. It adds no Firestore reads/writes, Storage writes, Cloud Functions, provider calls, rules, indexes, or deploys.
+
+### Verification
+
+- CampaignCue visual contract is enforced by `npm run verify:campaigncue`; browser/mobile verification is recorded in the CampaignCue implementation audit.
+
+## June 21, 2026 - CampaignCue Public Feature Pages
+
+### Added
+
+- **CampaignCue feature pages added** - Daily Campaign Desk, Campaign Pack Studio, Creative Studio, CueLayers, Creative Trust Center, Brand Playbook and Proof Deck, and Reusable Pack Templates now have dedicated public pages with static dashboard/editor previews and owner-readable workflow explanations.
+- **CampaignCue website links now go deeper** - Homepage capability rows, footer links, metadata, and sitemap entries now point to the dedicated feature pages from product-scoped website feature data.
+
+### Boundaries
+
+- **Owner app route separation preserved** - Feature pages live under `src/app/sites/campaigncue/features/[featureSlug]`; owner screens remain under `src/app/(campaigncue)/campaigncue/app`.
+- **Feature route guard clarified** - Public feature pages stay request-rendered for product/local base-path links. Unknown feature slugs are blocked by middleware and page `notFound()` instead of static route params.
+- **No Firebase operation added** - Public feature pages contain static preview content and add no Firestore reads/writes/deletes, Storage writes, Cloud Functions, provider calls, rules, indexes, or deploys.
+
+### Fixed
+
+- **CampaignCue mobile-first public site polish** - Phone navigation now wraps instead of clipping, hero actions stack to full width, long badges wrap inside the viewport, and mobile public-site links use a safer 46px touch target floor.
+
+### Verification
+
+- Headless Chrome mobile crawl covered the CampaignCue homepage and all seven feature pages at 390px, 360px, and 320px. All 24 renders returned `200`, had no document-level horizontal overflow, no runtime errors, no clipped hero/action elements, and no sub-44px visible interactive targets.
+
+---
+
 ## June 21, 2026 - Assets Business Card Output
 
 ### Changed

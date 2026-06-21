@@ -59,7 +59,7 @@ const CONFIDENCE_SCORE_MAP: Record<string, number> = { high: 1, medium: 0.6, low
 const DEFAULT_OUTLET_EXTRACTION_POLICY = {
     canUseMenuExtraction: false,
 };
-const DEFAULT_STORAGE_BUCKET = "ecomsai.appspot.com";
+const DEFAULT_STORAGE_BUCKET = "menulist-qa.appspot.com";
 const OWNER_JOB_FILE_TYPES = new Set<string>(OWNER_MENU_UPLOAD_MIME_TYPES);
 const PUBLIC_CREATE_MENU_IMAGE_FILE_TYPES = new Set<string>(PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES);
 const LINK_IMPORT_JOB_FILE_TYPES = new Set<string>(MENU_LINK_IMPORT_MIME_TYPES);

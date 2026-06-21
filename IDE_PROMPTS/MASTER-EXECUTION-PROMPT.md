@@ -976,7 +976,7 @@ May NEVER open desktop dashboard. Zero jargon. Large touch targets. Instant feed
 
 ### Identity: `pId`/`tId`/`sId` on every document. No custom identity fields. Ever.
 
-### Firebase: ecomsai = MenuList ecosystem. answerlattice = Answerlattice standalone. No cross-project queries.
+### Firebase: menulist-qa = MenuList local/preview, menulist = MenuList production, answerlattice = Answerlattice production. No cross-project queries.
 
 ### CCT: Every product uses Answerlattice Client Token (signed JWT). Answerlattice never reads session directly.
 

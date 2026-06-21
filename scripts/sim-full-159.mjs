@@ -11,10 +11,10 @@ import crypto from "crypto";
 
 process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
 process.env.FIREBASE_STORAGE_EMULATOR_HOST = "127.0.0.1:9199";
-if (!getApps().length) initializeApp({ projectId: "ecomsai", storageBucket: "ecomsai.appspot.com" });
+if (!getApps().length) initializeApp({ projectId: "menulist-qa", storageBucket: "menulist-qa.appspot.com" });
 const db = getFirestore(); const bucket = getStorage().bucket();
 const COL = { sessions:"messagingOnboardingSessions", events:"messagingOnboardingEvents", rateLimits:"messagingOnboardingRateLimits", jobs:"menuImageProcessingJobs" };
-const WH = "http://127.0.0.1:5001/ecomsai/us-central1/messagingOnboarding";
+const WH = "http://127.0.0.1:5001/menulist-qa/us-central1/messagingOnboarding";
 const SECRET = "test-app-secret-for-simulation";
 const LIM = { SPD:2, SPW:5, MAX_INV:3, MAX_CORR:3, MAX_IMG:15, MAX_SIZE:10*1024*1024,
   MAX_PROC:2, RESEND:3, INTAKE:10*60*1000, FAST:90*1000, PDF_FAST:60*1000, FAST_MIN:4,
@@ -51,7 +51,7 @@ function mkUp(sid,mime="image/jpeg"){
   const buf=Buffer.from(`F_${mime}_${Date.now()}_${Math.random()}`);
   const path=`messagingOnboarding/${sid}/${uuid()}.${(mime.split("/")[1]||"bin")}`;
   return {u:{id:uuid(),providerMediaId:`m_${Date.now()}`,storagePath:path,
-    storageUrl:`gs://ecomsai.appspot.com/${path}`,mimeType:mime,fileSize:buf.length,
+    storageUrl:`gs://menulist-qa.appspot.com/${path}`,mimeType:mime,fileSize:buf.length,
     sha256:sha(buf),uploadedAt:ts()},buf,path};
 }
 

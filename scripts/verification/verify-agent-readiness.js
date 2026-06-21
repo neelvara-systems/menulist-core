@@ -79,7 +79,7 @@ function verifyEnvironmentTargets() {
   assert(getProductDeploymentTarget('answerlattice', 'local').devPathPrefix === '/__answerlattice', 'Local Answerlattice dev prefix must be /__answerlattice');
   assert(getProductDeploymentTarget('campaigncue', 'local').devPathPrefix === '/__campaigncue', 'Local CampaignCue dev prefix must be /__campaigncue');
   assert(getProductDeploymentTarget('mycodex', 'local').devPathPrefix === '/__mycodex', 'Local MyCodex dev prefix must be /__mycodex');
-  assert(getExpectedFirebaseProjectId('menulist', 'local') === 'ecomsai', 'Local MenuList Firebase project must be ecomsai');
+  assert(getExpectedFirebaseProjectId('menulist', 'local') === 'menulist-qa', 'Local MenuList Firebase project must be menulist-qa');
   assert(getExpectedFirebaseProjectId('constantlayer', 'local') === '', 'Local ConstantLayer must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'local') === 'answerlattice-qa', 'Local Answerlattice Firebase project must be answerlattice-qa');
   assert(getExpectedFirebaseProjectId('campaigncue', 'local') === 'campaigncue-qa', 'Local CampaignCue Firebase project must be campaigncue-qa');
@@ -87,10 +87,10 @@ function verifyEnvironmentTargets() {
 
   assert(DEPLOYMENT_TARGETS.preview.menulist.domains.includes('menulist.online'), 'Preview MenuList domain must include menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.constantlayer.domains.includes('constantlayer.menulist.online'), 'Preview ConstantLayer domain must include constantlayer.menulist.online');
-  assert(DEPLOYMENT_TARGETS.preview.answerlattice.domains.includes('ecomsai.com'), 'Preview Answerlattice domain must include ecomsai.com');
+  assert(DEPLOYMENT_TARGETS.preview.answerlattice.domains.includes('answerlattice.menulist.online'), 'Preview Answerlattice domain must include answerlattice.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.campaigncue.domains.includes('campaigncue.menulist.online'), 'Preview CampaignCue domain must include campaigncue.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.mycodex.domains.includes('menulist.digital'), 'Preview MyCodex domain must include menulist.digital');
-  assert(getExpectedFirebaseProjectId('menulist', 'preview') === 'ecomsai', 'Preview MenuList Firebase project must be ecomsai');
+  assert(getExpectedFirebaseProjectId('menulist', 'preview') === 'menulist-qa', 'Preview MenuList Firebase project must be menulist-qa');
   assert(getExpectedFirebaseProjectId('constantlayer', 'preview') === '', 'Preview ConstantLayer must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'preview') === 'answerlattice-qa', 'Preview Answerlattice Firebase project must be answerlattice-qa');
   assert(getExpectedFirebaseProjectId('campaigncue', 'preview') === 'campaigncue-qa', 'Preview CampaignCue Firebase project must be campaigncue-qa');
@@ -108,7 +108,7 @@ function verifyEnvironmentTargets() {
   assert(getExpectedFirebaseProjectId('mycodex', 'production') === '', 'Production MyCodex must not require a Firebase project');
 
   assert(ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX === '/__answerlattice', 'Answerlattice local dev prefix constant');
-  assert(ANSWERLATTICE_STAGING_DOMAINS.includes('ecomsai.com'), 'Answerlattice staging domain constant');
+  assert(ANSWERLATTICE_STAGING_DOMAINS.includes('answerlattice.menulist.online'), 'Answerlattice staging domain constant');
   assert(ANSWERLATTICE_PRODUCTION_DOMAINS.includes('answerlattice.com'), 'Answerlattice production domain constant');
   assertIncludes(productDomains, "getActiveProductDomains('answerlattice')", 'Product domain registry');
   assertIncludes(productDomains, "getActiveProductDomains('menulist')", 'Product domain registry');
@@ -122,7 +122,7 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(myCodexDocs, 'firebase', 'MyCodex docs loader must not import Firebase');
   assertNotIncludes(myCodexDocs, 'firestore', 'MyCodex docs loader must not import Firestore');
   assertIncludes(urls, 'QA: menulist.online', 'Platform URL domain contract');
-  assertIncludes(urls, 'QA: ecomsai.com', 'Platform URL domain contract');
+  assertIncludes(urls, 'QA: answerlattice.menulist.online', 'Platform URL domain contract');
   assertIncludes(envValidation, 'getExpectedFirebaseProjectId', 'Environment validation');
   assertIncludes(deploymentTargets, 'resolveKnownProductIdByHostname', 'Deployment target helper');
   assertIncludes(middleware, 'resolveKnownProductIdByHostname', 'Inactive product-domain redirect guard');
@@ -136,7 +136,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(predictiveHelpRoute, 'includePublicApi: false', 'Answerlattice predictive help auth boundary');
   assertIncludes(publicMenuRoute, "startsWith('ml_')", 'MenuList public menu auth boundary');
   assertIncludes(publicBusinessRoute, "startsWith('ml_')", 'MenuList public business auth boundary');
-  assertNotIncludes(searchCore, '/v0/b/ecomsai.appspot.com/o', 'Answerlattice search storage boundary');
+  assertNotIncludes(searchCore, '/v0/b/menulist-qa.appspot.com/o', 'Answerlattice search storage boundary');
   assertIncludes(searchCore, 'NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_STORAGE_BUCKET', 'Answerlattice search storage boundary');
   assertIncludes(sessionScope, 'isAnswerlatticeSupportClientRoute', 'MenuList Answerlattice client support route boundary');
   assertIncludes(activeSession, 'shouldUseAnswerlatticeClientScopeForRoute', 'MenuList Answerlattice client session boundary');
@@ -144,7 +144,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(documentComposer, 'sessionSourceContext?.tId', 'Answerlattice source context preservation boundary');
   assertIncludes(answerlatticeDashboardLayout, 'ensureFirebaseAuthForSession', 'Answerlattice dashboard Firebase Auth sync boundary');
   assertIncludes(setClaimsRoute, 'hasDefaultPlatformAccess', 'Answerlattice platform auth sync boundary');
-  assert(firebaserc.projects['menulist-qa'] === 'ecomsai', '.firebaserc MenuList QA alias');
+  assert(firebaserc.projects['menulist-qa'] === 'menulist-qa', '.firebaserc MenuList QA alias');
   assert(firebaserc.projects['menulist-prod'] === 'menulist', '.firebaserc MenuList production alias');
   assert(firebaserc.projects['answerlattice-qa'] === 'answerlattice-qa', '.firebaserc Answerlattice QA alias');
   assert(firebaserc.projects['answerlattice-prod'] === 'answerlattice', '.firebaserc Answerlattice production alias');
@@ -371,7 +371,7 @@ function verifyAnswerlatticeDiscovery() {
 
   assert(ANSWERLATTICE_PUBLIC_BRAND === 'AnswerLattice', 'AnswerLattice public brand casing must stay locked');
   assert(ANSWERLATTICE_PUBLIC_DOMAIN_DECISION.canonicalHost === 'answerlattice.com', 'AnswerLattice production canonical host must remain answerlattice.com');
-  assert(ANSWERLATTICE_PUBLIC_DOMAIN_DECISION.previewHost === 'ecomsai.com', 'AnswerLattice preview host must remain ecomsai.com');
+  assert(ANSWERLATTICE_PUBLIC_DOMAIN_DECISION.previewHost === 'answerlattice.menulist.online', 'AnswerLattice preview host must remain answerlattice.menulist.online');
   assertIncludes(siteConfig, 'ANSWERLATTICE_COMPARISONS', 'AnswerLattice site registry comparisons');
   assertIncludes(siteConfig, 'ANSWERLATTICE_DEVELOPER_DOCS', 'AnswerLattice site registry developer docs');
   assertIncludes(siteConfig, 'ANSWERLATTICE_RESOURCE_ARTICLES', 'AnswerLattice site registry resource articles');

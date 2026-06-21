@@ -24,8 +24,8 @@ const getPreviewUrl = (type, data: any) => {
     return new Promise(async (res, rej) => {
         if (data.newPreview) {
             const id = String(new Date().getTime())
-            if (data.preview && data.preview.includes("ecomsai.appspot.com")) await deleteFileByUrl(data.preview);
-            //deployed url : "https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/craftBuilder%2Fassets%2Fillustrations%2F1725798041128?alt=media&token=ce2b79a1-4c28-4a98-b4b8-22382a844723"
+            if (data.preview && data.preview.includes("menulist-qa.appspot.com")) await deleteFileByUrl(data.preview);
+            //deployed url : "https://firebasestorage.googleapis.com/v0/b/menulist-qa.appspot.com/o/craftBuilder%2Fassets%2Fillustrations%2F1725798041128?alt=media&token=..."
             //upload new preview image 
             let previewUrl = await uploadBase64ToStorage({
                 cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,

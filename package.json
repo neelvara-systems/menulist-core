@@ -1,5 +1,5 @@
 {
-  "name": "ecomsai-dashboard",
+  "name": "menulist-core",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -14,7 +14,7 @@
     "start": "next start",
     "lint": "next lint",
     "devstart": "npm run dev",
-    "firebase:emulators": "firebase emulators:start --project ecomsai",
+    "firebase:emulators": "firebase emulators:start --project menulist-qa",
     "docs:generate": "node scripts/generate-docs-index.js",
     "assets:audit": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' packages/asset-factory/scripts/audit-assets.ts",
     "assets:review": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' packages/asset-factory/scripts/review-assets.ts",

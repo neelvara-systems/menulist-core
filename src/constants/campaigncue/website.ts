@@ -1,5 +1,7 @@
 import { getProductDeploymentTarget } from "@constant/deploymentTargets";
 import { CAMPAIGNCUE_LOCAL_WORKSPACE_PATH, CAMPAIGNCUE_WORKSPACE_PATH } from "./domains";
+import { CAMPAIGNCUE_WEBSITE_FEATURES } from "./websiteFeatures";
+import { CAMPAIGNCUE_WEBSITE_USE_CASES } from "./websiteUseCases";
 
 export const CAMPAIGNCUE_SITE_URL = getProductDeploymentTarget("campaigncue", "production").url;
 export const CAMPAIGNCUE_SITE_TITLE = "CampaignCue - Daily Campaign Desk for Local Businesses";
@@ -25,6 +27,20 @@ export const CAMPAIGNCUE_PUBLIC_PAGES: Array<{
         priority: 1,
         changeFrequency: "weekly",
     },
+    ...CAMPAIGNCUE_WEBSITE_USE_CASES.map((useCase) => ({
+        path: useCase.path,
+        title: `${useCase.title} - CampaignCue`,
+        description: useCase.metaDescription,
+        priority: 0.9,
+        changeFrequency: "monthly" as const,
+    })),
+    ...CAMPAIGNCUE_WEBSITE_FEATURES.map((feature) => ({
+        path: feature.path,
+        title: `${feature.title} - CampaignCue`,
+        description: feature.metaDescription,
+        priority: 0.8,
+        changeFrequency: "monthly" as const,
+    })),
 ];
 
 export function buildCampaignCueUrl(path: string = "/"): string {

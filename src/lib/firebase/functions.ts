@@ -3,7 +3,7 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { firebaseApp } from './firebaseClient';
 
-// MenuList Cloud Functions (ecomsai locally/preview; menulist in production)
+// MenuList Cloud Functions (menulist-qa locally/preview; menulist in production)
 const functions = getFunctions(firebaseApp);
 
 // Answerlattice Cloud Functions — answerlattice-qa locally/preview; answerlattice in production

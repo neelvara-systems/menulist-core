@@ -118,8 +118,8 @@ The completed `nightlyState` doc includes a compact `analyticsIndex` with active
 
 Manual scheduler recovery should be tested locally before production when changing callable wiring, logging, or scheduler internals.
 
-- `firebase emulators:start --only functions --project ecomsai` runs local Functions against cloud Firebase services.
-- `firebase emulators:start --only functions,firestore --project ecomsai` runs local Functions against the local Firestore emulator.
+- `firebase emulators:start --only functions --project menulist-qa` runs local Functions against cloud Firebase services.
+- `firebase emulators:start --only functions,firestore --project menulist-qa` runs local Functions against the local Firestore emulator.
 - `functions/src/firebaseAdmin.ts` respects Firebase emulator host variables. If Firestore emulator is not running, Admin SDK uses cloud Firestore; if Firestore emulator is running, Admin SDK uses the local emulator.
 - The owner app connects to the local Functions emulator in `NODE_ENV=development`; it does not connect client Firestore to the emulator by default.
 

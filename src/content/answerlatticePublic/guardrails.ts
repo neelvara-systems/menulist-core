@@ -2,12 +2,12 @@ export const ANSWERLATTICE_PUBLIC_BRAND = 'AnswerLattice';
 
 export const ANSWERLATTICE_PUBLIC_DOMAIN_DECISION = {
     canonicalHost: 'answerlattice.com',
-    previewHost: 'ecomsai.com',
+    previewHost: 'answerlattice.menulist.online',
     localPath: '/__answerlattice',
     publicBrand: ANSWERLATTICE_PUBLIC_BRAND,
     internalRouteSlug: 'answerlattice',
     decision:
-        'AnswerLattice is the public brand for the existing runtime and public website. The production canonical host remains answerlattice.com; ecomsai.com stays preview/QA unless the deployment target matrix is intentionally changed.',
+        'AnswerLattice is the public brand for the existing runtime and public website. The production canonical host remains answerlattice.com; answerlattice.menulist.online stays preview/QA unless the deployment target matrix is intentionally changed.',
 } as const;
 
 export const ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS = {

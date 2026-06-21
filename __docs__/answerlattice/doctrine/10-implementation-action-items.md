@@ -78,7 +78,7 @@ Go to Vercel project settings → Environment Variables → add all `ANSWERLATTI
 
 ```bash
 # Deploy MenuList functions (local/preview target)
-firebase deploy --only functions --project ecomsai
+firebase deploy --only functions --project menulist-qa
 
 # Deploy MenuList functions (production target)
 firebase deploy --only functions --project menulist

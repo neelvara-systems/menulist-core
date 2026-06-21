@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   databaseURL: process.env.NEXT_PUBLIC_FB_DATABASE_URL,
-  projectId: 'ecomsai',
+  projectId: 'menulist-qa',
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
@@ -37,8 +37,8 @@ const triggerGeneration = async () => {
         fileName: 'test-file.txt',
         storagePath: 'test/path/test-file.txt',
         type: 'text/plain',
-        gsUri: 'gs://ecomsai.appspot.com/test/path/test-file.txt',
-        downloadURL: 'https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/test%2Fpath%2Ftest-file.txt?alt=media'
+        gsUri: 'gs://menulist-qa.appspot.com/test/path/test-file.txt',
+        downloadURL: 'https://firebasestorage.googleapis.com/v0/b/menulist-qa.appspot.com/o/test%2Fpath%2Ftest-file.txt?alt=media'
       }
     ],
     status: 'pending',

@@ -111,7 +111,7 @@ cd functions && npm run deploy
 | --- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------ | ------ |
 | 1   | Create `menulist-dev` Firebase project                           | Data isolation — dev data must never mix with customer data                                  | P0 (before launch) | ⬜     |
 | 2   | Configure `.env.local` with dev Firebase credentials             | Local dev points to dev project, Vercel prod points to prod project                          | P0 (before launch) | ⬜     |
-| 3   | Set all Vercel env vars (production scope) for `ecomsai` project | Ensures production deployment uses correct Firebase project                                  | P0 (before launch) | ⬜     |
+| 3   | Set all Vercel env vars (production scope) for `menulist-qa` project | Ensures production deployment uses correct Firebase project                                  | P0 (before launch) | ⬜     |
 | 4   | Get Razorpay test mode keys for development                      | Prevents real charges during development testing                                             | P0 (before launch) | ⬜     |
 | 5   | Deploy Firestore indexes to dev project                          | `firebase deploy --only firestore:indexes --project menulist-dev`                            | P0 (after step 1)  | ⬜     |
 | 6   | Copy Firestore security rules to dev project                     | `firebase deploy --only firestore:rules --project menulist-dev`                              | P0 (after step 1)  | ⬜     |

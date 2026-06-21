@@ -56,7 +56,7 @@ function resolveWidgetScriptSrc(): string {
         return `${origin}/widget/v1/answerlattice-widget.js`;
     }
     if (hostname === 'menulist.online' || hostname.endsWith('.vercel.app')) {
-        return 'https://ecomsai.com/widget/v1/answerlattice-widget.js';
+        return 'https://answerlattice.menulist.online/widget/v1/answerlattice-widget.js';
     }
     return 'https://answerlattice.com/widget/v1/answerlattice-widget.js';
 }

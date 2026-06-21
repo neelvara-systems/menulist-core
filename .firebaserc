@@ -1,7 +1,7 @@
 {
   "projects": {
-    "default": "ecomsai",
-    "menulist-qa": "ecomsai",
+    "default": "menulist-qa",
+    "menulist-qa": "menulist-qa",
     "menulist-prod": "menulist",
     "answerlattice-qa": "answerlattice-qa",
     "answerlattice-prod": "answerlattice",

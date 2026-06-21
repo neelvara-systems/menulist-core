@@ -9,8 +9,8 @@
  * - uses the canonical summary writer helper so the storage shape stays aligned
  *
  * Usage:
- *   FIREBASE_PROJECT_ID=ecomsai npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts
- *   FIREBASE_PROJECT_ID=ecomsai npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts --store-id 17 --write
+ *   FIREBASE_PROJECT_ID=menulist-qa npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts
+ *   FIREBASE_PROJECT_ID=menulist-qa npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts --store-id 17 --write
  */
 
 import * as admin from 'firebase-admin';

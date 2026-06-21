@@ -41,7 +41,7 @@ type DryRunJob = {
 };
 
 const root = process.cwd();
-const bucket = 'ecomsai.appspot.com';
+const bucket = 'menulist-qa.appspot.com';
 const checks: Array<{ detail?: string; name: string; passed: boolean }> = [];
 
 function storageUrl(storagePath: string): string {

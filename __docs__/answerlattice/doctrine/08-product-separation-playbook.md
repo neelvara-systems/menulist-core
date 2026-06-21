@@ -11,8 +11,8 @@ Answerlattice and MenuList share the same Vercel project, but product hostnames 
 
 | Environment | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- |
-| Local development | `http://localhost:3000/` | `ecomsai` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Vercel Preview / QA | `https://menulist.online` | `ecomsai` | `https://ecomsai.com` | `answerlattice-qa` |
+| Local development | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
+| Vercel Preview / QA | `https://menulist.online` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
 | Vercel Production | `https://menulist.ai` | `menulist` | `https://answerlattice.com` | `answerlattice` |
 
 The source-of-truth code for this matrix is `src/constants/deploymentTargets.ts`. Run `npm run verify:env-targets` after changing domain, Firebase, or deploy-script configuration.
@@ -218,7 +218,7 @@ Keep the legacy MenuList exports for now as explicit shared-mode/emulator recove
 
 ```bash
 # MenuList functions (local/preview target)
-firebase deploy --only functions --project ecomsai
+firebase deploy --only functions --project menulist-qa
 
 # MenuList production functions
 firebase deploy --only functions --project menulist
@@ -297,7 +297,7 @@ Answerlattice collection constants exist in MenuList's functions constants file.
 
 Both MenuList and Answerlattice collection names live in ONE file. Collection names are just strings — they work with any Firestore. No split needed. But add a comment noting which Firestore each targets:
 
-- MenuList collections → ecomsai Firestore
+- MenuList collections → menulist-qa Firestore
 - `ANSWERLATTICE_*` collections → answerlattice Firestore
 
 ### 7.5 `requestBodyComposer` Usage in Answerlattice DAL

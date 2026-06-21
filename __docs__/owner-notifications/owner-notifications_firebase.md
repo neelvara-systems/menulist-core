@@ -8,7 +8,7 @@
 
 | Product | Firebase target | Rule |
 | --- | --- | --- |
-| MenuList | `ecomsai` project | Owner notification events and deliveries live in MenuList Firestore. |
+| MenuList | `menulist-qa` project | Owner notification events and deliveries live in MenuList Firestore. |
 | Answerlattice | Answerlattice Firebase project | Owner notification events and deliveries live in Answerlattice Firestore. |
 
 Do not mix product data in one collection unless the runtime explicitly requires it and the `productId`/tenant guard is enforced.

@@ -3,7 +3,7 @@
 > **Version:** 1.1.1
 > **Last Updated:** 2026-05-24
 > **Audience:** Developers
-> **Firebase Project:** Answerlattice (separate from MenuList's ecomsai)
+> **Firebase Project:** Answerlattice (separate from MenuList's menulist-qa)
 
 ---
 

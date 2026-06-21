@@ -38,8 +38,8 @@ Docs under `__docs__/answerlattice/` were cross-checked after code discovery. Wh
 
 | Environment | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- |
-| Local development | `http://localhost:3000/` | `ecomsai` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Vercel Preview / QA | `https://menulist.online` | `ecomsai` | `https://ecomsai.com` | `answerlattice-qa` |
+| Local development | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
+| Vercel Preview / QA | `https://menulist.online` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
 | Vercel Production | `https://menulist.ai` | `menulist` | `https://answerlattice.com` | `answerlattice` |
 
 `src/constants/deploymentTargets.ts` is the code-level source of truth for this matrix. Domain routing, environment validation, Firebase aliases, and Answerlattice deploy scripts must stay in sync with it.

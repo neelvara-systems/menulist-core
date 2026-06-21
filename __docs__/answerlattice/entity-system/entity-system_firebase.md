@@ -27,7 +27,7 @@ All 9 Answerlattice collections remain unchanged. No new collections created.
 
 | Collection | DB Constant | Firebase Project | Change |
 |------------|-------------|-----------------|--------|
-| kb_articles | `KB_ARTICLES` | ecomsai | Add `entityIds` field (E2) |
+| kb_articles | `KB_ARTICLES` | menulist-qa | Add `entityIds` field (E2) |
 
 ---
 

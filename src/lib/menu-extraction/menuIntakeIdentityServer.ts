@@ -21,7 +21,7 @@ import { secureError, secureLog } from "@lib/security/secureLogger";
 
 export const MAX_MENU_INTAKE_PREFLIGHT_FILES = 8;
 export const MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE = MENU_EXTRACTION_JOB_LIMITS.MAX_FILE_SIZE_BYTES;
-export const DEFAULT_STORAGE_BUCKET = "ecomsai.appspot.com";
+export const DEFAULT_STORAGE_BUCKET = "menulist-qa.appspot.com";
 
 const SUPPORTED_MIME_TYPES = new Set<string>(OWNER_MENU_UPLOAD_MIME_TYPES);
 const SUPPORTED_TEXT_MIME_TYPES = new Set<string>(MENU_LINK_IMPORT_TEXT_MIME_TYPES);

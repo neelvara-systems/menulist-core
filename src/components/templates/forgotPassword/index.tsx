@@ -74,7 +74,7 @@ function ForgotPasswordPage() {
         }}>
         <Space className={styles.headerWrap} align="center">
             <div className={styles.itemWrap}>
-                <img src={'https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/ecomsAi%2Flogo%2Flogo.png?alt=media&token=af824138-7ebb-4a72-b873-57298fd0a430'} />
+                <img src={'/icons/icon-192x192.png'} />
             </div>
             <Button icon={<LuSun />} size="large" onClick={() => dispatch(toggleDarkMode(!isDarkMode))} />
         </Space>

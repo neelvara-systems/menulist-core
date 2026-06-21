@@ -20,7 +20,7 @@ Implemented on June 2, 2026:
 - Answerlattice `ANSWERLATTICE_NOTIFICATION_TEST` now routes through the owner notification core while ticket/customer emails remain on the existing generic notification service.
 - MenuList billing, credit, publish success/failure, suspension warning, renewal reminder, subscription cancellation/pause/resume/upgrade, credits exhausted, and menu stale owner triggers are wired.
 - Internal platform dashboard added at `/ops/owner-notifications` with bounded tracking, detail inspection, retry, prefilled Email/WhatsApp Web recovery, manual system send support, and manual handoff recording.
-- Firebase Functions deployed to `ecomsai`: `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, `triggerStoreNightlyScheduler`.
+- Firebase Functions deployed to `menulist-qa`: `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, `triggerStoreNightlyScheduler`.
 
 ## Scope
 

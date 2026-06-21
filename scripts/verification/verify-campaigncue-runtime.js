@@ -1125,6 +1125,8 @@ function verifyProductConstantSeparation() {
     "src/constants/campaigncue/product.ts",
     "src/constants/campaigncue/routes.ts",
     "src/constants/campaigncue/website.ts",
+    "src/constants/campaigncue/websiteFeatures.ts",
+    "src/constants/campaigncue/websiteUseCases.ts",
     "src/constants/campaigncue/workspace.ts",
   ];
   constantFiles.forEach((relPath) => assert(exists(relPath), `${relPath} exists`));
@@ -1141,6 +1143,9 @@ function verifyProductConstantSeparation() {
   const firebase = read("src/constants/campaigncue/firebase.ts");
   const navigations = read("src/constants/campaigncue/navigations.ts");
   const workspace = read("src/constants/campaigncue/workspace.ts");
+  const website = read("src/constants/campaigncue/website.ts");
+  const websiteFeatures = read("src/constants/campaigncue/websiteFeatures.ts");
+  const websiteUseCases = read("src/constants/campaigncue/websiteUseCases.ts");
   const loader = read("src/components/organisms/loader/index.tsx");
   const productDomains = read("src/constants/productDomains.ts");
   const domainResolver = read("src/lib/multiTenant/domainResolver.ts");
@@ -1197,6 +1202,27 @@ function verifyProductConstantSeparation() {
   assertIncludes(navigations, "Daily desk", "CampaignCue workspace navigation names the owner daily desk");
   assertIncludes(workspace, "CAMPAIGNCUE_CHANNEL_STUDIO_COPY", "CampaignCue workspace copy constants");
   assertIncludes(read("src/constants/campaigncue/index.ts"), "dailyDesk", "CampaignCue barrel exports product-scoped Daily Desk constants");
+  assertIncludes(read("src/constants/campaigncue/index.ts"), "websiteFeatures", "CampaignCue barrel exports product-scoped website feature constants");
+  assertIncludes(read("src/constants/campaigncue/index.ts"), "websiteUseCases", "CampaignCue barrel exports product-scoped website use-case constants");
+  assertIncludes(website, "CAMPAIGNCUE_WEBSITE_FEATURES.map", "CampaignCue public sitemap pages derive from product-scoped feature catalog");
+  assertIncludes(website, "CAMPAIGNCUE_WEBSITE_USE_CASES.map", "CampaignCue public sitemap pages derive from product-scoped use-case catalog");
+  assertIncludes(websiteFeatures, "CAMPAIGNCUE_WEBSITE_FEATURE_PATHS", "CampaignCue website feature path constants exist");
+  assertIncludes(websiteFeatures, "daily-campaign-desk", "CampaignCue website feature catalog includes Daily Campaign Desk page");
+  assertIncludes(websiteFeatures, "campaign-pack-studio", "CampaignCue website feature catalog includes Campaign Pack Studio page");
+  assertIncludes(websiteFeatures, "creative-studio", "CampaignCue website feature catalog includes Creative Studio page");
+  assertIncludes(websiteFeatures, "cuelayers", "CampaignCue website feature catalog includes CueLayers page");
+  assertIncludes(websiteFeatures, "creative-trust-center", "CampaignCue website feature catalog includes Creative Trust Center page");
+  assertIncludes(websiteFeatures, "brand-playbook-proof-deck", "CampaignCue website feature catalog includes Brand Playbook and Proof Deck page");
+  assertIncludes(websiteFeatures, "reusable-pack-templates", "CampaignCue website feature catalog includes Reusable Pack Templates page");
+  assertIncludes(websiteFeatures, "dashboardNote", "CampaignCue website feature pages document static dashboard preview boundary");
+  assertIncludes(websiteFeatures, "No direct Instagram, Facebook, Google, or WhatsApp posting.", "CampaignCue feature catalog preserves no-direct-posting boundary");
+  assertIncludes(websiteFeatures, "Not Canva, PSD, Figma, or SVG source recovery.", "CampaignCue feature catalog preserves CueLayers source-file boundary");
+  assertIncludes(websiteFeatures, "Not legal advice.", "CampaignCue feature catalog preserves Trust Center legal boundary");
+  assertIncludes(websiteFeatures, "Not a generic public template marketplace.", "CampaignCue feature catalog preserves template boundary");
+  assertIncludes(websiteUseCases, "CAMPAIGNCUE_WEBSITE_USE_CASE_PATHS", "CampaignCue website use-case path constants exist");
+  assertIncludes(websiteUseCases, "/use-cases/small-business", "CampaignCue website use-case catalog includes small-business page");
+  assertIncludes(websiteUseCases, "No automatic posting to Instagram, Facebook, Google, or WhatsApp in the active delivery mode.", "CampaignCue use-case catalog preserves no-direct-posting boundary");
+  assertIncludes(websiteUseCases, "No promise that one campaign will guarantee sales or search position.", "CampaignCue use-case catalog rejects unsupported performance claims");
   assertIncludes(loader, "isCampaignCueRuntimeRoute", "CampaignCue loader uses product route helper");
   assertIncludes(productDomains, "CAMPAIGNCUE_SITE_INTERNAL_BASE_PATH", "Product domains use CampaignCue path constants");
   assertIncludes(productDomains, "pathname === product.devPathPrefix || pathname.startsWith(`${product.devPathPrefix}/`)", "Product dev prefixes require exact or slash-boundary match");
@@ -1228,6 +1254,8 @@ function verifyRouteBoundary() {
 
   assert(exists("src/app/sites/campaigncue/page.tsx"), "CampaignCue public site page exists under sites");
   assert(exists("src/app/sites/campaigncue/layout.tsx"), "CampaignCue public site layout exists under sites");
+  assert(exists("src/app/sites/campaigncue/features/[featureSlug]/page.tsx"), "CampaignCue public feature page route exists under sites");
+  assert(exists("src/app/sites/campaigncue/use-cases/small-business/page.tsx"), "CampaignCue public small-business use-case route exists under sites");
   assert(exists("src/app/(campaigncue)/layout.tsx"), "CampaignCue owner route-group layout exists");
   assert(exists("src/app/(campaigncue)/campaigncue/page.tsx"), "CampaignCue owner route-group base page exists");
   assert(exists("src/app/(campaigncue)/campaigncue/app/page.tsx"), "CampaignCue owner workspace page exists outside sites");
@@ -1235,6 +1263,10 @@ function verifyRouteBoundary() {
   assert(!exists("src/app/sites/campaigncue/app/page.tsx"), "CampaignCue old sites app page removed");
 
   assertIncludes(middleware, "getCampaignCueWorkspaceRewritePath(pathname)", "CampaignCue product-domain /app rewrite");
+  assertIncludes(middleware, "CAMPAIGNCUE_WEBSITE_FEATURE_SLUGS", "CampaignCue middleware imports public feature slug allowlist");
+  assertIncludes(middleware, "isInvalidCampaignCuePublicFeaturePath", "CampaignCue middleware validates public feature paths before rewrite");
+  assertIncludes(middleware, "productNotFoundResponse(productConfig)", "CampaignCue product-domain unknown feature slug returns product 404");
+  assertIncludes(middleware, "productNotFoundResponse(product, product.devPathPrefix)", "CampaignCue local-dev unknown feature slug returns product 404");
   assertIncludes(middleware, "productConfig.id === 'campaigncue'", "CampaignCue product-domain route special case");
   assertIncludes(campaignCueRouteBlock, "shouldBypassDomainRouting(pathname)", "CampaignCue product domain preserves API/internal bypass routes");
   assertIncludes(campaignCueRouteBlock, "NextResponse.next()", "CampaignCue product domain bypass routes pass through without site rewrite");
@@ -1243,6 +1275,9 @@ function verifyRouteBoundary() {
   assertIncludes(routingDoc, "Product Site Vs Product App Routes", "Global routing doc product site/app boundary");
   assertIncludes(routingDoc, "`src/app/sites/[productId]` is public website only", "Global routing doc sites public-only rule");
   assertIncludes(boundaryDoc, "`src/app/sites/campaigncue` is public website only", "CampaignCue route-boundary public-only rule");
+  assertIncludes(boundaryDoc, "`src/app/sites/campaigncue/features/[featureSlug]/page.tsx`", "CampaignCue route-boundary documents public feature-page route");
+  assertIncludes(boundaryDoc, "`src/app/sites/campaigncue/use-cases/*`", "CampaignCue route-boundary documents public use-case route folder");
+  assertIncludes(boundaryDoc, "`campaigncue.ai/use-cases/small-business`", "CampaignCue route-boundary documents small-business use-case URL");
   assertIncludes(boundaryDoc, "`/api/*` and other internal bypass paths pass through before CampaignCue product-domain rewrites", "CampaignCue route-boundary API bypass rule");
   assertIncludes(boundaryDoc, "src/app/(campaigncue)/campaigncue/app/page.tsx", "CampaignCue route-boundary owner app path");
   assertIncludes(nextConfig, "routes-manifest.json", "Next start routes manifest repair");
@@ -1281,16 +1316,78 @@ function verifyDocsAlignment() {
   const designCueFirebase = read("__docs__/campaigncue/design-cue/design-cue_firebase.md");
   const designCueValidation = read("__docs__/campaigncue/design-cue/design-cue_validation.md");
   const publicSite = read("src/app/sites/campaigncue/page.tsx");
+  const publicFeatureRoute = read("src/app/sites/campaigncue/features/[featureSlug]/page.tsx");
+  const publicSmallBusinessUseCase = read("src/app/sites/campaigncue/use-cases/small-business/page.tsx");
   const rootLayout = read("src/app/layout.tsx");
   const publicLayout = read("src/app/sites/campaigncue/layout.tsx");
   const publicStyles = read("src/app/sites/campaigncue/styles.css");
   const publicScrollReveal = read("src/app/sites/campaigncue/scroll-reveal.css");
   const publicScrollRevealComponent = read("src/app/sites/campaigncue/components/CampaignCueScrollReveal.tsx");
+  const publicSitemap = read("src/app/sites/campaigncue/sitemap.xml/route.ts");
+  const website = read("src/constants/campaigncue/website.ts");
+  const websiteFeatures = read("src/constants/campaigncue/websiteFeatures.ts");
+  const websiteUseCases = read("src/constants/campaigncue/websiteUseCases.ts");
+  const productFirebaseDoc = read("__docs__/campaigncue/campaigncue-product/campaigncue-product_firebase.md");
   const websiteDoc = read("__docs__/campaigncue/campaigncue-product/campaigncue-product_website.md");
   const changelog = read("__docs__/CHANGELOG.md");
 
   assertIncludes(publicSite, "Print and staff pack", "CampaignCue public site exposes print and staff pack output");
+  assertIncludes(publicSite, "CAMPAIGNCUE_WEBSITE_FEATURE_PATHS", "CampaignCue public homepage links capabilities to dedicated feature pages");
+  assertIncludes(publicSite, "CAMPAIGNCUE_WEBSITE_USE_CASE_PATHS", "CampaignCue public homepage links to product-scoped use-case pages");
+  assertIncludes(publicSite, "CampaignCueMegaMenu", "CampaignCue public homepage exposes product/use-case mega menus");
+  assertIncludes(publicSite, "PRODUCT_MEGA_MENU_GROUPS", "CampaignCue public homepage keeps Product menu link groups in product page code");
+  assertIncludes(publicSite, "USE_CASE_MEGA_MENU_GROUPS", "CampaignCue public homepage keeps Use cases menu link groups in product page code");
+  assertIncludes(publicSite, "label=\"Product\"", "CampaignCue public homepage exposes Product mega menu label");
+  assertIncludes(publicSite, "label=\"Use cases\"", "CampaignCue public homepage exposes Use cases mega menu label");
+  assertIncludes(publicSite, "Product overview", "CampaignCue Product mega menu includes overview entry");
+  assertIncludes(publicSite, "Small-business journey", "CampaignCue Use cases mega menu includes owner journey entry");
+  assertIncludes(publicSite, "One cue becomes a checked campaign pack.", "CampaignCue Product mega menu includes workflow preview card");
+  assertIncludes(publicSite, "Pick the business type, then show the useful pack.", "CampaignCue Use cases mega menu includes workflow preview card");
+  assertIncludes(publicSite, "SmallBusinessUseCaseLink", "CampaignCue public homepage exposes small-business use-case callout");
+  assertIncludes(publicSite, "label: 'Small business'", "CampaignCue Use cases menu links the small-business use-case page");
+  assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.dailyCampaignDesk", "CampaignCue public homepage links Daily Campaign Desk capability page");
+  assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeStudio", "CampaignCue public homepage links Creative Studio capability page");
+  assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.cueLayers", "CampaignCue public homepage links CueLayers capability page");
+  assertIncludes(publicSite, "href: CAMPAIGNCUE_WEBSITE_FEATURE_PATHS.creativeTrustCenter", "CampaignCue public homepage links Creative Trust Center capability page");
   assertIncludes(publicSite, "Email, SMS, and QR brief", "CampaignCue public site exposes email/SMS/QR handoff output");
+  assertIncludes(publicFeatureRoute, "getCampaignCueWebsiteFeature(params.featureSlug)", "CampaignCue feature route resolves pages from product-scoped feature constants");
+  assertIncludes(read("src/middleware.ts"), "isInvalidCampaignCuePublicFeaturePath", "CampaignCue middleware rejects unknown public feature slugs before rewrite");
+  assertNotIncludes(publicFeatureRoute, "generateStaticParams", "CampaignCue feature route stays request-rendered for product base-path headers");
+  assertNotIncludes(publicFeatureRoute, "dynamicParams = false", "CampaignCue feature route avoids brittle static-param rendering with middleware rewrites");
+  assertIncludes(publicFeatureRoute, "generateMetadata", "CampaignCue feature route defines metadata from feature constants");
+  assertIncludes(publicFeatureRoute, "notFound()", "CampaignCue feature route rejects unknown slugs");
+  assertIncludes(publicFeatureRoute, "CampaignCueFeaturePreview", "CampaignCue feature route renders static dashboard/editor previews");
+  assertIncludes(publicFeatureRoute, "DailyDeskPreview", "CampaignCue feature route previews Daily Campaign Desk");
+  assertIncludes(publicFeatureRoute, "CreativeStudioPreview", "CampaignCue feature route previews Creative Studio");
+  assertIncludes(publicFeatureRoute, "CueLayersPreview", "CampaignCue feature route previews CueLayers");
+  assertIncludes(publicFeatureRoute, "TrustCenterPreview", "CampaignCue feature route previews Creative Trust Center");
+  assertIncludes(publicFeatureRoute, "ProofDeckPreview", "CampaignCue feature route previews Brand Playbook and Proof Deck");
+  assertIncludes(publicFeatureRoute, "TemplatePreview", "CampaignCue feature route previews reusable pack templates");
+  assertNotIncludes(publicFeatureRoute, "src/app/(campaigncue)", "CampaignCue feature route does not expose owner route-group source paths");
+  assertNotIncludes(publicFeatureRoute, "@template/campaigncue", "CampaignCue feature route does not import owner workspace template");
+  assertNotIncludes(publicFeatureRoute, "CampaignCueWorkspaceApp", "CampaignCue feature route does not import owner workspace app");
+  assertNotIncludes(publicFeatureRoute, "fetch(", "CampaignCue feature route does not fetch owner data");
+  assertIncludes(publicSmallBusinessUseCase, "CAMPAIGNCUE_SMALL_BUSINESS_USE_CASE", "CampaignCue small-business page uses product-scoped use-case data");
+  assertIncludes(publicSmallBusinessUseCase, "UseCaseHeroPreview", "CampaignCue small-business page renders static product preview");
+  assertIncludes(publicSmallBusinessUseCase, "SourceToPackVisual", "CampaignCue small-business page explains source-to-pack flow");
+  assertIncludes(publicSmallBusinessUseCase, "ReusePreview", "CampaignCue small-business page exposes Creative Studio and CueLayers reuse");
+  assertNotIncludes(publicSmallBusinessUseCase, "@template/campaigncue", "CampaignCue small-business page does not import owner workspace template");
+  assertNotIncludes(publicSmallBusinessUseCase, "CampaignCueWorkspaceApp", "CampaignCue small-business page does not import owner workspace app");
+  assertNotIncludes(publicSmallBusinessUseCase, "fetch(", "CampaignCue small-business page does not fetch owner data");
+  assertNotIncludes(publicSmallBusinessUseCase, "ROAS", "CampaignCue small-business page avoids jargon-heavy ROAS copy");
+  assertIncludes(publicSitemap, "CAMPAIGNCUE_PUBLIC_PAGES", "CampaignCue sitemap derives public pages from constants");
+  assertIncludes(website, "CAMPAIGNCUE_WEBSITE_FEATURES.map", "CampaignCue public page registry includes feature pages");
+  assertIncludes(website, "CAMPAIGNCUE_WEBSITE_USE_CASES.map", "CampaignCue public page registry includes use-case pages");
+  assertIncludes(websiteUseCases, "Small Business Campaign Packs", "CampaignCue website use-case constants include small-business page title");
+  assertIncludes(websiteUseCases, "restaurants, salons, retail shops, clinics, fitness studios, and local services", "CampaignCue website use-case constants cover SMB vertical examples");
+  assertIncludes(websiteUseCases, "No social account connection, ad spend change, or hidden provider requirement.", "CampaignCue website use-case constants preserve provider boundary");
+  assertIncludes(websiteFeatures, "Daily Campaign Desk", "CampaignCue website feature constants include Daily Campaign Desk");
+  assertIncludes(websiteFeatures, "Campaign Pack Studio", "CampaignCue website feature constants include Campaign Pack Studio");
+  assertIncludes(websiteFeatures, "Creative Studio", "CampaignCue website feature constants include Creative Studio");
+  assertIncludes(websiteFeatures, "CueLayers", "CampaignCue website feature constants include CueLayers");
+  assertIncludes(websiteFeatures, "Creative Trust Center", "CampaignCue website feature constants include Creative Trust Center");
+  assertIncludes(websiteFeatures, "Brand Playbook and Proof Deck", "CampaignCue website feature constants include Brand Playbook and Proof Deck");
+  assertIncludes(websiteFeatures, "Reusable Pack Templates", "CampaignCue website feature constants include Reusable Pack Templates");
   assertIncludes(publicSite, "CampaignCueCatalog", "CampaignCue public site exposes Seesaw-inspired pack index");
   assertIncludes(publicSite, "Pack index", "CampaignCue public site labels the pack index");
   assertIncludes(publicSite, "Reusable templates", "CampaignCue public pack index exposes reusable templates");
@@ -1352,12 +1449,38 @@ function verifyDocsAlignment() {
   assertIncludes(publicStyles, "--cc-pink: #d96f9f", "CampaignCue public site uses reference rose palette token");
   assertIncludes(publicStyles, "--cc-pink-soft: #f4d2e2", "CampaignCue public site uses reference soft pink palette token");
   assertIncludes(publicStyles, "--cc-bg: #fbf7fa", "CampaignCue public site uses reference pale background token");
+  assertIncludes(publicStyles, "--cc-button-shadow", "CampaignCue public CSS defines rose CTA shadow token");
+  assertIncludes(publicStyles, "top: 14px;", "CampaignCue public nav floats below the top edge");
+  assertIncludes(publicStyles, "width: var(--cc-section);", "CampaignCue public nav uses centered section width");
+  assertIncludes(publicStyles, "box-shadow: 0 18px 58px rgb(6 26 120 / 8%)", "CampaignCue public nav uses soft production shadow");
+  assertIncludes(publicStyles, "color: #ffffff;\n    background: var(--cc-pink);", "CampaignCue public primary CTA uses white text on rose");
+  assertIncludes(publicStyles, "background: linear-gradient(135deg, var(--cc-ink), var(--cc-deep-navy))", "CampaignCue public previews use polished navy gradients");
+  assertIncludes(publicStyles, "border: 1px solid rgb(6 26 120 / 8%)", "CampaignCue public surfaces use light navy borders");
   assertIncludes(publicStyles, ".campaigncue-floating-asset.is-rose", "CampaignCue hero artifact tone names match the reference palette");
   assertIncludes(publicStyles, ".campaigncue-asset-tile.is-blush", "CampaignCue asset wall uses palette-aligned blush tone");
   assertIncludes(publicStyles, ".campaigncue-proof-deck-preview", "CampaignCue public CSS styles proof deck preview");
   assertIncludes(publicStyles, ".campaigncue-template-flow", "CampaignCue public CSS styles reusable-template loop");
   assertIncludes(publicStyles, ".campaigncue-trust-table-heading", "CampaignCue public CSS styles concrete trust matrix heading");
-  assertIncludes(publicStyles, "font-size: 2.9rem", "CampaignCue mobile hero uses fixed readable title size");
+  assertIncludes(publicStyles, ".campaigncue-mega-menu-panel", "CampaignCue public CSS styles product/use-case mega menu panel");
+  assertIncludes(publicStyles, ".campaigncue-mega-menu-story", "CampaignCue public CSS styles mega menu preview card");
+  assertIncludes(publicStyles, ".campaigncue-mega-menu:focus-within", "CampaignCue public CSS keeps mega menus keyboard accessible");
+  assertIncludes(publicStyles, ".campaigncue-feature-hero", "CampaignCue public CSS styles dedicated feature-page hero");
+  assertIncludes(publicStyles, ".campaigncue-feature-preview-window", "CampaignCue public CSS styles feature-page previews");
+  assertIncludes(publicStyles, ".campaigncue-feature-proof-grid", "CampaignCue public CSS styles feature-page proof grid");
+  assertIncludes(publicStyles, ".campaigncue-feature-boundary", "CampaignCue public CSS styles feature-page boundaries");
+  assertIncludes(publicStyles, ".campaigncue-feature-related", "CampaignCue public CSS styles feature-page related links");
+  assertIncludes(publicStyles, ".campaigncue-small-business-link", "CampaignCue public CSS styles homepage small-business use-case link");
+  assertIncludes(publicStyles, ".campaigncue-use-case-hero", "CampaignCue public CSS styles small-business use-case hero");
+  assertIncludes(publicStyles, ".campaigncue-use-case-floating-card", "CampaignCue public CSS styles small-business floating output assets");
+  assertIncludes(publicStyles, ".campaigncue-use-case-source-pack", "CampaignCue public CSS styles small-business source-to-pack visual");
+  assertIncludes(publicStyles, ".campaigncue-use-case-reuse-preview", "CampaignCue public CSS styles small-business Creative Studio/CueLayers preview");
+  assertIncludes(publicStyles, "font-size: 2.72rem", "CampaignCue mobile homepage hero uses fixed readable title size");
+  assertIncludes(publicStyles, "font-size: 2rem", "CampaignCue mobile feature hero uses fixed readable title size");
+  assertIncludes(publicStyles, "min-height: 46px", "CampaignCue public mobile links use touch target margin");
+  assertIncludes(publicStyles, "flex-wrap: wrap", "CampaignCue public mobile nav wraps instead of clipping");
+  assertIncludes(publicStyles, "overflow-x: visible", "CampaignCue public mobile nav avoids horizontal clipping");
+  assertIncludes(publicStyles, "white-space: normal", "CampaignCue public mobile badges can wrap");
+  assertIncludes(publicStyles, "flex-direction: column", "CampaignCue public mobile hero actions stack");
   assertIncludes(publicStyles, "max-width: 100%", "CampaignCue mobile hero title is width-bounded");
   assertIncludes(publicStyles, "@media (max-width: 380px)", "CampaignCue mobile hero has narrow-screen fallback");
   assertNotIncludes(publicStyles, "--cc-lime", "CampaignCue public CSS avoids stale lime alias");
@@ -1376,6 +1499,10 @@ function verifyDocsAlignment() {
   assertIncludes(publicScrollRevealComponent, "prefersReducedMotion", "CampaignCue scroll reveal honors reduced-motion users");
   assertIncludes(publicScrollRevealComponent, ".campaigncue-powerhouse-card", "CampaignCue scroll reveal covers creative powerhouse cards");
   assertIncludes(publicScrollRevealComponent, ".campaigncue-asset-tile", "CampaignCue scroll reveal covers asset wall tiles");
+  assertIncludes(publicScrollRevealComponent, ".campaigncue-feature-preview", "CampaignCue scroll reveal covers feature-page previews");
+  assertIncludes(publicScrollRevealComponent, ".campaigncue-feature-related a", "CampaignCue scroll reveal covers feature-page related links");
+  assertIncludes(publicScrollRevealComponent, ".campaigncue-use-case-preview", "CampaignCue scroll reveal covers use-case page preview");
+  assertIncludes(publicScrollRevealComponent, ".campaigncue-use-case-scenarios article", "CampaignCue scroll reveal covers use-case scenario cards");
   assertNotIncludes(publicSite, "campaigncue-card-grid", "CampaignCue public site avoids generic card grid class");
   assertNotIncludes(publicSite, "campaigncue-output-grid", "CampaignCue public site avoids old output grid class");
   assertIncludes(websiteDoc, "print/staff", "CampaignCue website doc lists print/staff output ledger item");
@@ -1384,9 +1511,16 @@ function verifyDocsAlignment() {
   assertIncludes(websiteDoc, "deep navy", "CampaignCue website doc records navy palette direction");
   assertIncludes(websiteDoc, "rose pink", "CampaignCue website doc records rose palette direction");
   assertIncludes(websiteDoc, "--cc-pink: #d96f9f", "CampaignCue website doc records the active rose token");
+  assertIncludes(websiteDoc, "floating centered white navigation", "CampaignCue website doc records final AdCreative detail polish");
+  assertIncludes(websiteDoc, "rose primary CTAs with white text", "CampaignCue website doc records polished CTA contrast");
+  assertIncludes(websiteDoc, "very light navy/pink borders", "CampaignCue website doc records polished border treatment");
   assertIncludes(websiteDoc, "Scroll Motion", "CampaignCue website doc records scroll motion behavior");
   assertIncludes(websiteDoc, "content remains visible by default", "CampaignCue website doc records safe reveal fallback");
   assertIncludes(audit, "Current CampaignCue palette pass", "CampaignCue audit records the palette pass");
+  assertIncludes(audit, "Current CampaignCue AdCreative detail-polish pass", "CampaignCue audit records final AdCreative detail polish");
+  assertIncludes(changelog, "CampaignCue Public Website Visual Finish", "CampaignCue changelog records public website visual finish");
+  assertIncludes(changelog, "CampaignCue Product And Use-Case Menus", "CampaignCue changelog records product/use-case menus");
+  assertIncludes(changelog, "CampaignCue Small Business Use-Case Page", "CampaignCue changelog records small-business use-case page");
   assertIncludes(audit, "Current CampaignCue scroll motion pass", "CampaignCue audit records the scroll motion pass");
   assertIncludes(audit, "Current CampaignCue proof-layer website parity pass", "CampaignCue audit records the proof-layer website parity pass");
   assertIncludes(websiteDoc, "Pack index", "CampaignCue website doc lists pack index section");
@@ -1422,7 +1556,23 @@ function verifyDocsAlignment() {
   assertIncludes(websiteDoc, "ledgers instead of repeated card grids", "CampaignCue website doc preserves anti-card-grid layout rule");
   assertIncludes(websiteDoc, "collage", "CampaignCue website doc preserves anti-collage design guardrail");
   assertIncludes(websiteDoc, "Do owners only get social posts?", "CampaignCue website doc FAQ covers full output pack");
+  assertIncludes(websiteDoc, "Dedicated Feature Pages", "CampaignCue website doc documents dedicated feature pages");
+  assertIncludes(websiteDoc, "Product and use-case mega menus", "CampaignCue website doc documents product/use-case menus");
+  assertIncludes(websiteDoc, "Dedicated Use-Case Pages", "CampaignCue website doc documents dedicated use-case pages");
+  assertIncludes(websiteDoc, "/use-cases/small-business", "CampaignCue website doc documents small-business use-case route");
+  assertIncludes(websiteDoc, "facts -> cue -> pack outputs -> creative reuse -> review -> manual export", "CampaignCue website doc records small-business page journey");
+  assertIncludes(websiteDoc, "/features/daily-campaign-desk", "CampaignCue website doc documents Daily Campaign Desk page route");
+  assertIncludes(websiteDoc, "/features/campaign-pack-studio", "CampaignCue website doc documents Campaign Pack Studio page route");
+  assertIncludes(websiteDoc, "/features/creative-studio", "CampaignCue website doc documents Creative Studio page route");
+  assertIncludes(websiteDoc, "/features/cuelayers", "CampaignCue website doc documents CueLayers page route");
+  assertIncludes(websiteDoc, "/features/creative-trust-center", "CampaignCue website doc documents Creative Trust Center page route");
+  assertIncludes(websiteDoc, "/features/brand-playbook-proof-deck", "CampaignCue website doc documents Brand Playbook and Proof Deck page route");
+  assertIncludes(websiteDoc, "/features/reusable-pack-templates", "CampaignCue website doc documents Reusable Pack Templates page route");
+  assertIncludes(productFirebaseDoc, "dedicated public feature pages", "CampaignCue Firebase doc records zero-cost feature pages");
+  assertIncludes(productFirebaseDoc, "public use-case pages", "CampaignCue Firebase doc records zero-cost use-case pages");
+  assertIncludes(audit, "Current CampaignCue small-business use-case page pass", "CampaignCue audit records small-business use-case page pass");
   assertIncludes(audit, "competitor proof-surface follow-up", "CampaignCue audit records competitor proof-surface follow-up");
+  assertIncludes(audit, "Current CampaignCue feature-page website pass", "CampaignCue audit records feature-page website pass");
   assertIncludes(audit, "CAMPAIGNCUE_FIREBASE_UNAVAILABLE", "CampaignCue audit setup-blocked code");
   assertIncludes(audit, "src/app/(campaigncue)/campaigncue/app", "CampaignCue audit owner route-group path");
   assertIncludes(validation, "CAMPAIGNCUE_FIREBASE_UNAVAILABLE", "CampaignCue validation setup-blocked code");
@@ -1474,7 +1624,10 @@ function verifyDocsAlignment() {
   assertIncludes(changelog, "CampaignCue Main Gap Hardening", "CampaignCue changelog main gap entry");
   assertIncludes(changelog, "CampaignCue Export Delivery Boundary", "CampaignCue changelog delivery boundary entry");
   assertIncludes(boundaryDoc, "Do not add owner dashboard pages under `src/app/sites/campaigncue`", "CampaignCue route-boundary guardrail");
+  assertIncludes(boundaryDoc, "Public feature pages may show static dashboard/editor previews", "CampaignCue route-boundary permits static previews only");
+  assertIncludes(boundaryDoc, "Unknown CampaignCue paths under `/features/*` must return `404`", "CampaignCue route-boundary documents feature slug 404 guard");
   assertIncludes(changelog, "CampaignCue Route Boundary Alignment", "CampaignCue changelog route-boundary entry");
+  assertIncludes(changelog, "CampaignCue Public Feature Pages", "CampaignCue changelog feature-page entry");
   assertIncludes(changelog, "CampaignCue setup-blocked state added", "CampaignCue changelog setup-blocked entry");
   assertIncludes(cueLayersReadme, "Safe upload spine implemented", "CueLayers README implemented status");
   assertIncludes(cueLayersReadme, "Provider-driven decomposition remains gated", "CueLayers README provider gate");
@@ -1506,6 +1659,7 @@ function verifyRequiredFiles() {
     "src/types/campaigncueCueLayers.ts",
     "src/lib/validation/campaigncueCueLayersSchemas.ts",
     "src/app/sites/campaigncue/page.tsx",
+    "src/app/sites/campaigncue/features/[featureSlug]/page.tsx",
     "src/app/(campaigncue)/campaigncue/app/page.tsx",
     "src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx",
     "__docs__/campaigncue/campaigncue-delivery-boundary.md",

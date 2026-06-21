@@ -24,7 +24,7 @@ Structured pre-launch verification checklist. Run through each section before on
 | SSL auto-renewal | ✅ | Vercel managed |
 | Firebase project on Blaze plan | ☐ | Required for Cloud Functions |
 | GCP budget alerts configured | ☐ | Set at ₹500, ₹1000, ₹2000 thresholds |
-| Cloud Billing export to BigQuery configured | ☐ | Pre-production cost visibility. Enable Standard + Detailed usage export for billing account `Firebase Payment` into `ecomsai.cloud_billing_export` or a dedicated FinOps project. |
+| Cloud Billing export to BigQuery configured | ☐ | Pre-production cost visibility. Enable Standard + Detailed usage export for billing account `Firebase Payment` into `menulist.cloud_billing_export` or a dedicated FinOps project. |
 | SAFE_MODE circuit breaker verified | ☐ | Core code exists. Before launch, verify `/ops` toggle, AI route `503`, public menu/OBP unaffected, budget webhook activation, and direct Cloud Function coverage audit. |
 | Environment variables set in Vercel | ☐ | All secrets configured |
 | Firebase Functions deployed | ☐ | `firebase deploy --only functions` |

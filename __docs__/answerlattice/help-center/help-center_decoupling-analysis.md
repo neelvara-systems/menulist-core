@@ -124,7 +124,7 @@ As of 2026-05-25, MenuList `/help-center` behaves as an independent Answerlattic
 **Current MenuList references in Help Center code:**
 - `ContactUsView.tsx:11` — `partners@menulist.ai` email
 - `search-kb/route.ts:38` — Empty response mentions "Menu Management" in suggestions
-- Historical note: image validation previously trusted only the MenuList Storage bucket. It now derives trusted bucket paths from configured MenuList and Answerlattice Firebase Storage env values, so Answerlattice QA/production image questions do not depend on `ecomsai`.
+- Historical note: image validation previously trusted only the MenuList Storage bucket. It now derives trusted bucket paths from configured MenuList and Answerlattice Firebase Storage env values, so Answerlattice QA/production image questions do not depend on `menulist-qa`.
 
 **Everything else is brand-agnostic:**
 - UI components use Ant Design with no MenuList-specific styling

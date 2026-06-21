@@ -65,9 +65,9 @@ Current verified setup:
 
 | Item | Current value |
 | --- | --- |
-| Active GCP project | `ecomsai` |
+| Active GCP project | `menulist` |
 | Billing account | `011AD1-8DC063-7B9851` (`Firebase Payment`) |
-| Billing status | Enabled for `ecomsai` |
+| Billing status | Enabled for `menulist` |
 | BigQuery API | Enabled |
 | BigQuery dataset | Not created yet |
 
@@ -79,7 +79,7 @@ Before production, create the billing export dataset and enable export:
 
 | Option | Dataset | When to use |
 | --- | --- | --- |
-| Simple launch setup | `ecomsai.cloud_billing_export` | Recommended unless a separate FinOps project is created |
+| Simple launch setup | `menulist.cloud_billing_export` | Recommended unless a separate FinOps project is created |
 | Cleaner finance separation | `<finops-project>.cloud_billing_export` | Use only if a dedicated billing/admin project is created before launch |
 
 4. Dataset location: choose `US` multi-region unless a formal data-residency decision says otherwise. Dataset location cannot be changed later.
@@ -254,7 +254,7 @@ In Firestore Console, create/update document `ops_config/system`:
 Current deployment state as of June 2, 2026:
 
 - Production Functions have WhatsApp outbound secrets available.
-- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` are not yet present in Secret Manager for `ecomsai`.
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` are not yet present in Secret Manager for `menulist`.
 - SMTP and Telegram are intentionally deploy-optional until those secrets exist, so Firebase deploy validation does not fail.
 
 Before going live, complete this checklist:
@@ -262,12 +262,12 @@ Before going live, complete this checklist:
 1. Create the missing Secret Manager values:
 
 ```bash
-firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project ecomsai
-firebase functions:secrets:set TELEGRAM_CHAT_ID --project ecomsai
-firebase functions:secrets:set SMTP_HOST --project ecomsai
-firebase functions:secrets:set SMTP_PORT --project ecomsai
-firebase functions:secrets:set SMTP_USER --project ecomsai
-firebase functions:secrets:set SMTP_PASS --project ecomsai
+firebase functions:secrets:set TELEGRAM_BOT_TOKEN --project menulist
+firebase functions:secrets:set TELEGRAM_CHAT_ID --project menulist
+firebase functions:secrets:set SMTP_HOST --project menulist
+firebase functions:secrets:set SMTP_PORT --project menulist
+firebase functions:secrets:set SMTP_USER --project menulist
+firebase functions:secrets:set SMTP_PASS --project menulist
 ```
 
 2. Add platform alert recipients:
@@ -298,7 +298,7 @@ PLATFORM_ALERT_WHATSAPP_SESSION_ACTIVE=true
 5. Redeploy the affected Firebase Functions:
 
 ```bash
-firebase deploy --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --project ecomsai
+firebase deploy --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:verifyMenuPublish,functions:forceRepublish,functions:gcpBudgetAlertWebhook,functions:messagingOnboarding,functions:msgExtractionWatcher --project menulist
 ```
 
 6. Test one controlled platform alert:

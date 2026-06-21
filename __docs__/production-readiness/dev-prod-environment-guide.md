@@ -1,7 +1,7 @@
 # Dev vs Prod Environment Guide — MenuList Production Readiness
 
 **Created:** March 22, 2026  
-**Last Updated:** May 25, 2026
+**Last Updated:** June 21, 2026
 **Source:** ChatGPT strategic session → Cascade full codebase audit + validation  
 **Status:** ACTIONABLE — Implementation guide for environment separation  
 **ChatGPT Accuracy:** ~55% (strategic framing strong, ~45% already exists or wrong assumptions)
@@ -12,15 +12,15 @@ This is the current source-of-truth contract for the shared Vercel app. Code mir
 
 | Environment | Vercel env | MenuList URL | MenuList Firebase | Answerlattice URL | Answerlattice Firebase |
 | --- | --- | --- | --- | --- | --- |
-| Local development | local | `http://localhost:3000/` | `ecomsai` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
-| Staging / QA | Preview | `https://menulist.online` | `ecomsai` | `https://ecomsai.com` | `answerlattice-qa` |
+| Local development | local | `http://localhost:3000/` | `menulist-qa` | `http://localhost:3000/__answerlattice/` | `answerlattice-qa` |
+| Staging / QA | Preview | `https://menulist.online` | `menulist-qa` | `https://answerlattice.menulist.online` | `answerlattice-qa` |
 | Production | Production | `https://menulist.ai` | `menulist` | `https://answerlattice.com` | `answerlattice` |
 
-Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `ecomsai`; only Vercel production switches MenuList to the production Firebase project `menulist`. Answerlattice is separate in every active environment: `answerlattice-qa` for local/preview and `answerlattice` for production.
+Do not use `menulist-dev` for the current local/preview path. Local and preview MenuList intentionally use `menulist-qa`; only Vercel production switches MenuList to the production Firebase project `menulist`. Answerlattice is separate in every active environment: `answerlattice-qa` for local/preview and `answerlattice` for production.
 
 Known product hostnames are stage-scoped. Middleware redirects a known QA hostname that reaches Production, or a known production hostname that reaches Preview, to the active hostname for that product instead of treating it as a custom tenant domain.
 
-MenuList can embed Answerlattice as an external client on owner routes only when `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY` is configured with an Answerlattice-issued `al_` widget key. The default script host follows the matrix above: local uses the same localhost app, QA/Preview uses `https://ecomsai.com`, and Production uses `https://answerlattice.com`. Use `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC` only for temporary preview overrides.
+MenuList can embed Answerlattice as an external client on owner routes only when `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_KEY` is configured with an Answerlattice-issued `al_` widget key. The default script host follows the matrix above: local uses the same localhost app, QA/Preview uses `https://answerlattice.menulist.online`, and Production uses `https://answerlattice.com`. Use `NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC` only for temporary preview overrides.
 
 ---
 
@@ -30,8 +30,8 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 | #   | ChatGPT Claim                                    | Verdict            | Codebase Evidence                                                                                                              |
 | --- | ------------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Separate Firebase projects for dev/prod          | **UPDATED**        | Current contract: local/preview MenuList uses `ecomsai`, production MenuList uses `menulist`; local/preview Answerlattice uses `answerlattice-qa`, production Answerlattice uses `answerlattice`. |
-| 2   | Separate storage buckets                         | **AGREE**          | `firebaseStorageUrl` hardcoded to `ecomsai.appspot.com` — needs per-env config                                                 |
+| 1   | Separate Firebase projects for dev/prod          | **UPDATED**        | Current contract: local/preview MenuList uses `menulist-qa`, production MenuList uses `menulist`; local/preview Answerlattice uses `answerlattice-qa`, production Answerlattice uses `answerlattice`. |
+| 2   | Separate storage buckets                         | **AGREE**          | `firebaseStorageUrl` hardcoded to `menulist-qa.appspot.com` — needs per-env config                                                 |
 | 3   | Separate API keys (Gemini, etc.)                 | **AGREE**          | Single `GEMINI_AI_KEY` used everywhere. Multi-key rotation exists but all keys are for same project                            |
 | 4   | Separate domains                                 | **ALREADY EXISTS** | Vercel handles this: `main` → prod domain, `dev` → preview URLs                                                                |
 | 5   | No shared anything between dev/prod              | **PARTIAL**        | Feature flags are code-level (not env-level), so they're shared. Need env-aware flag overrides                                 |
@@ -49,7 +49,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | 17  | Sanitization layer                               | **ALREADY EXISTS** | `sanitizeForClient()` in `src/lib/mce/utils.ts` strips `_mce`. `sanitizeForFirestore()` prevents undefined writes              |
 | 18  | Deployment safety checks                         | **PARTIAL**        | `tsc --noEmit` enforced, Vercel build checks, but no pre-deploy invariant checker                                              |
 | 19  | Tenant isolation                                 | **ALREADY EXISTS** | `withAuth()` + `verifyTenantAccess()` on all protected routes. tId/sId on all queries                                          |
-| 20  | Over-engineering staging env                     | **UPDATED**        | Staging/QA exists as the Vercel Preview environment: `menulist.online` + `ecomsai.com`. It uses QA Firebase targets and must not be treated as production. |
+| 20  | Over-engineering staging env                     | **UPDATED**        | Staging/QA exists as the Vercel Preview environment: `menulist.online` + `answerlattice.menulist.online`. It uses QA Firebase targets and must not be treated as production. |
 | 21  | Cost visibility per store/feature                | **PARTIAL**        | Firebase cost docs per feature exist (`_firebase.md`), but no runtime cost tracking dashboard                                  |
 | 22  | Failure playbook                                 | **MISSING**        | No documented runbook for production incidents. Need to create                                                                 |
 | 23  | Trust verification loop                          | **PARTIAL**        | Nightly scheduler runs integrity checks, but no daily menu sampling system                                                     |
@@ -119,7 +119,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 | #   | Service                 | Package                                      | Purpose                                 | Env Vars (Next.js)                                                                                 | Env Vars (CF)                            | Dev Setup                      | Prod Setup                  |
 | --- | ----------------------- | -------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------ | --------------------------- |
-| 1   | **Firebase (MenuList)** | `firebase` v11.7.3, `firebase-admin` v12.2.0 | Core database, auth, storage            | `NEXT_PUBLIC_FIREBASE_*` (7 vars), `FIREBASE_*` (4 vars)                                           | Auto from project                        | Local/Preview: `ecomsai`       | Production: `menulist` |
+| 1   | **Firebase (MenuList)** | `firebase` v11.7.3, `firebase-admin` v12.2.0 | Core database, auth, storage            | `NEXT_PUBLIC_FIREBASE_*` (7 vars), `FIREBASE_*` (4 vars)                                           | Auto from project                        | Local/Preview: `menulist-qa`       | Production: `menulist` |
 | 2   | **Firebase (Answerlattice)** | Same packages                                | Answerlattice product database               | `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_*` (6 vars), `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE`, optional `NEXT_PUBLIC_ANSWERLATTICE_FIRESTORE_DATABASE_ID` | `ANSWERLATTICE_FIREBASE_*`, optional `ANSWERLATTICE_FIRESTORE_DATABASE_ID` | Local/Preview: `answerlattice-qa` | Production: `answerlattice` |
 | 3   | **Razorpay**            | `razorpay` v2.9.6                            | Payments & subscriptions                | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | **NEEDS: Test mode keys**      | Live mode keys              |
 | 4   | **Google Gemini AI**    | `@google/genai` v0.12.0                      | OCR, descriptions, translations, images | `GEMINI_AI_KEY`                                                                                    | `GEMINI_AI_KEY` + `_2`, `_3`, `_4`       | Same key (OK for dev)          | Same key + rotation keys    |
@@ -137,7 +137,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 | Service                 | Why Separate                                                       | How                                    |
 | ----------------------- | ------------------------------------------------------------------ | -------------------------------------- |
-| **Firebase (MenuList)** | Production data must not mix with local/preview data | Keep local/preview on `ecomsai`; set Vercel Production vars to `menulist` |
+| **Firebase (MenuList)** | Production data must not mix with local/preview data | Keep local/preview on `menulist-qa`; set Vercel Production vars to `menulist` |
 | **Firebase (Answerlattice)** | Answerlattice data must stay separate from MenuList and from production | Use `answerlattice-qa` locally/in Preview; use `answerlattice` in Production |
 | **Razorpay**            | Test mode vs live payments — using live keys in dev = real charges | Use Razorpay test mode keys in dev     |
 | **Sentry**              | Keep dev errors out of prod dashboard                              | Already configured: 2 DSNs in code     |
@@ -306,14 +306,14 @@ NEXT_PUBLIC_MENULIST_ANSWERLATTICE_WIDGET_SCRIPT_SRC=
 
 **Step 1: Keep Local/Preview Targets Stable**
 
-1. Local MenuList uses `http://localhost:3000/` and Firebase `ecomsai`.
+1. Local MenuList uses `http://localhost:3000/` and Firebase `menulist-qa`.
 2. Local Answerlattice uses `http://localhost:3000/__answerlattice/` and Firebase `answerlattice-qa`.
-3. Vercel Preview MenuList uses `https://menulist.online` and Firebase `ecomsai`.
-4. Vercel Preview Answerlattice uses `https://ecomsai.com` and Firebase `answerlattice-qa`.
+3. Vercel Preview MenuList uses `https://menulist.online` and Firebase `menulist-qa`.
+4. Vercel Preview Answerlattice uses `https://answerlattice.menulist.online` and Firebase `answerlattice-qa`.
 
 **Step 2: Configure Local Development**
 
-1. MenuList `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_ID` point to `ecomsai`.
+1. MenuList `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_ID` point to `menulist-qa`.
 2. Answerlattice `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID` and `ANSWERLATTICE_FIREBASE_PROJECT_ID` point to `answerlattice-qa`.
 3. Answerlattice local site access stays under `/__answerlattice`; do not add local host aliases for Answerlattice website work.
 
@@ -447,7 +447,7 @@ You go LIVE only when:
 
 | File                                    | Hardcoded Value                  | Issue                            | Fix                                                   |
 | --------------------------------------- | -------------------------------- | -------------------------------- | ----------------------------------------------------- |
-| `src/lib/firebase/firebaseClient.ts:18` | `ecomsai.appspot.com`            | Storage URL hardcoded to prod    | Use `process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` |
+| `src/lib/firebase/firebaseClient.ts:18` | `menulist-qa.appspot.com`            | Storage URL hardcoded to prod    | Use `process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` |
 | `next.config.js:59`                     | `firebasestorage.googleapis.com` | Image pattern — OK for both envs | No change needed                                      |
 | `functions/src/config/secrets.ts:132`   | `region: 'us-central1'`          | Same region for all envs         | OK — keep same region                                 |
 
@@ -463,11 +463,11 @@ These are mandatory before launch. Without them, core features break.
 
 #### 1. Firebase (MenuList) — Already Exists
 
-- **What you have:** `ecomsai` project for local/preview QA
+- **What you have:** `menulist-qa` project for local/preview QA
 - **What production needs:** `menulist` project credentials in Vercel Production
 - **Where:** Firebase Console → project settings → web app + service account for `menulist`
 - **Steps:**
-  1. Keep local/Preview env vars pointed at `ecomsai`.
+  1. Keep local/Preview env vars pointed at `menulist-qa`.
   2. Set Production `NEXT_PUBLIC_FIREBASE_PROJECT_ID` and `FIREBASE_PROJECT_ID` to `menulist`.
   3. Deploy MenuList production rules/indexes/functions explicitly with `--project menulist` when production infrastructure changes.
 - **Env vars provided:** `NEXT_PUBLIC_FIREBASE_*`, `FIREBASE_*` (14 vars)

@@ -11,7 +11,7 @@ import crypto from "crypto";
 process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:8080";
 process.env.FIREBASE_STORAGE_EMULATOR_HOST = "127.0.0.1:9199";
 
-if (!getApps().length) initializeApp({ projectId: "ecomsai", storageBucket: "ecomsai.appspot.com" });
+if (!getApps().length) initializeApp({ projectId: "menulist-qa", storageBucket: "menulist-qa.appspot.com" });
 const db = getFirestore();
 const bucket = getStorage().bucket();
 
@@ -19,7 +19,7 @@ const SESSIONS = "messagingOnboardingSessions";
 const EVENTS = "messagingOnboardingEvents";
 const RATE_LIMITS = "messagingOnboardingRateLimits";
 const JOBS = "menuImageProcessingJobs";
-const WEBHOOK = "http://127.0.0.1:5001/ecomsai/us-central1/messagingOnboarding";
+const WEBHOOK = "http://127.0.0.1:5001/menulist-qa/us-central1/messagingOnboarding";
 const SECRET = "test-app-secret-for-simulation";
 const PHONE = "919876543210";
 
@@ -104,7 +104,7 @@ async function stage1() {
 
   const upload1 = {
     id: crypto.randomUUID(), providerMediaId: "media_s1_1",
-    storagePath, storageUrl: `gs://ecomsai.appspot.com/${storagePath}`,
+    storagePath, storageUrl: `gs://menulist-qa.appspot.com/${storagePath}`,
     mimeType: "image/jpeg", fileSize: testBuffer.length,
     sha256: crypto.createHash("sha256").update(testBuffer).digest("hex"),
     uploadedAt: now,
@@ -161,7 +161,7 @@ async function stage2(sid) {
     await sessionRef.update({
       uploads: FieldValue.arrayUnion({
         id: crypto.randomUUID(), providerMediaId: `media_s2_${i}`,
-        storagePath: path, storageUrl: `gs://ecomsai.appspot.com/${path}`,
+        storagePath: path, storageUrl: `gs://menulist-qa.appspot.com/${path}`,
         mimeType: "image/jpeg", fileSize: buf.length,
         sha256: crypto.createHash("sha256").update(buf).digest("hex"),
         uploadedAt: Timestamp.now(),
@@ -690,7 +690,7 @@ async function stage9() {
     providerUserId: PHONE4, providerDisplayId: `+${PHONE4}`,
     state: "AWAITING_APPROVAL", providerMessageIds: [],
     uploads: [{ id:"exp_u1", providerMediaId:"m_exp",
-      storagePath, storageUrl:`gs://ecomsai.appspot.com/${storagePath}`,
+      storagePath, storageUrl:`gs://menulist-qa.appspot.com/${storagePath}`,
       mimeType:"image/jpeg", fileSize:buf.length, sha256:"exp_hash", uploadedAt:createdAt }],
     validMenuFiles: ["exp_u1"], invalidFiles: [],
     extractedBusinessInfo: null, detectedBusinessType: "Restaurant",

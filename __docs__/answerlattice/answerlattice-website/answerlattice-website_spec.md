@@ -30,7 +30,7 @@ Public fit and setup copy must not imply founders need existing support volume b
 - Public product name: `AnswerLattice`
 - Internal route/code slug: `answerlattice` unless a separate tested runtime migration changes it
 - Production canonical host: `answerlattice.com`
-- Preview / QA host: `ecomsai.com`
+- Preview / QA host: `answerlattice.menulist.online`
 - Local dev prefix: `/__answerlattice`
 - Legacy Canonica public hosts must redirect to the active AnswerLattice public host instead of serving duplicate public brand content.
 - Public copy, metadata, OpenGraph, Twitter cards, schema, header, footer, resources, comparison pages, developer docs, robots, sitemap, and LLM context must use `AnswerLattice` as the standalone brand.

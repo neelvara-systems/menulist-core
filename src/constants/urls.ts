@@ -12,7 +12,7 @@
  *   Local: /__campaigncue          — CampaignCue website
  *   QA: menulist.online       — MenuList preview/staging
  *   QA: constantlayer.menulist.online — ConstantLayer preview/staging
- *   QA: ecomsai.com           — Answerlattice preview/staging
+ *   QA: answerlattice.menulist.online — Answerlattice preview/staging
  *   QA: campaigncue.menulist.online — CampaignCue preview/staging
  *   Prod: menulist.ai         — MenuList production
  *   Prod: constantlayer.in    — ConstantLayer production

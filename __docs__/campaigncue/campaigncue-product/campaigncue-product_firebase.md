@@ -57,7 +57,7 @@ No CampaignCue Cloud Function is active in the current export/download-first run
 
 The current implementation adds an export/download-first CampaignCue runtime:
 
-- Public site: zero Firebase reads/writes.
+- Public site: zero Firebase reads/writes. This includes the homepage, dedicated public feature pages under `src/app/sites/campaigncue/features/[featureSlug]`, and public use-case pages such as `src/app/sites/campaigncue/use-cases/small-business/page.tsx`; previews are static website content and do not read owner workspace data.
 - Protected dashboard shell: uses the same NextAuth session guard, localization, Redux theme persistence, Ant Design theme, RTL direction state, translated CampaignCue dashboard chrome, profile/settings UI, session-expiry monitor, app-update prompt, shortcuts, and network status providers as MenuList. It intentionally does not mount the MenuList store/subscription bootstrap provider for CampaignCue chrome, so opening the CampaignCue dashboard does not add MenuList tenant/store/subscription reads before CampaignCue's own workspace API request.
 - Date/time handling: durable schedule/source/campaign timestamps remain Firestore `Timestamp` or UTC ISO values. Owner-facing formatting happens in the client through the shared app formatter and native datetime inputs convert through the workspace timezone before persistence. This adds no Firestore read/write, Storage object, Cloud Function, or provider cost.
 - Workspace load: one bounded server overview read for workspace, Business Brain, source inputs, campaigns, assets, schedules, locations, and one analytics summary; zero realtime listeners. Provider connection records are not read in the active runtime.

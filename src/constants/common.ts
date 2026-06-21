@@ -23,11 +23,11 @@ export const BGRCreditValueInPrice = 100;//1 credit = 100 paise(1rs) // used onl
 export const BGRCreditValueInTokens = 500;//1 credit = 500 token (ex. 1mb image = 1000kb cost 1000token/500 = 2credits = 2rs)
 // Platform URLs — import from @constant/urls for all domain references
 export { DASHBOARD_URL as APP_DASHBOARD_URL, DASHBOARD_URL, HELP_URL, PLATFORM_URL, SUPPORT_URL } from "@constant/urls";
-export const LOGO = 'https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/ecomsAi%2Flogo%2Flogo.png?alt=media&token=af824138-7ebb-4a72-b873-57298fd0a430'
+export const LOGO = '/icons/icon-192x192.png'
 export const LOGO_TEXT = 'MenulistAi'
-export const LOGO_LARGE = 'https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/ecomsAi%2Flogo%2Fhorizontal.svg?alt=media&token=aee07ecb-c9ce-4a65-b3e1-1bea2a3f12ef';
-export const LOGO_SMALL = 'https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/ecomsAi%2Flogo%2Fsquare_transperant.png?alt=media&token=8389d9c9-7b79-4c49-aa33-c2c24e15acd5';
-export const LOGO_ANIMATED = 'https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/ecomsAi%2Flogo%2FecomsAi.gif?alt=media&token=6ce6e52d-7ac5-4e46-b68f-fdd1e11cba07';
+export const LOGO_LARGE = '/icons/icon-512x512.png';
+export const LOGO_SMALL = '/icons/icon-192x192.png';
+export const LOGO_ANIMATED = '/icons/icon-512x512.png';
 export const BACKGROUND_IMAGES_ORIENTATIONS = {
     LANDSCAPE: 'landscape',
     PORTRAIT: 'portrait',

@@ -10,7 +10,7 @@ export const DB_COLLECTIONS = {
     ERROR_LOGS: "errorLogs",
     MENULIST_AI_OPERATIONS: "menulistAiOperations",
     MENULIST_AI_EXTRACTION_OPERATIONS: "MENULIST_AI_OPERATIONS", // Cloud Functions extraction audit collection
-    COMMON: "common", //contains both ecomsai and craftbuilder data
+    COMMON: "common", //contains shared MenuList and craftbuilder data
     BLOGS: "blogs",
     PRICING_PLANS: "pricingPlans",
     SUBSCRIPTIONS: "subscriptions",
@@ -183,7 +183,7 @@ export const DB_COLLECTIONS = {
 
     // ═══════════════════════════════════════════════════════════════
     // ANSWERLATTICE — Governed Answer Infrastructure
-    // ⚠️  These collections live in ANSWERLATTICE Firestore (separate project), NOT ecomsai.
+    // These collections live in ANSWERLATTICE Firestore (separate project), NOT MenuList.
     // DAL files use answerlatticeFirebaseClient, not firebaseClient.
     // @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md
     // ═══════════════════════════════════════════════════════════════

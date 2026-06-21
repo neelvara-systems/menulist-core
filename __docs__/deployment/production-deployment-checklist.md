@@ -13,12 +13,12 @@ GOOGLE_CLIENT_ID=<from-google-cloud-console>
 GOOGLE_CLIENT_SECRET=<from-google-cloud-console>
 
 # Firebase Admin (for API routes)
-FIREBASE_PROJECT_ID=ecomsai
+FIREBASE_PROJECT_ID=menulist
 FIREBASE_CLIENT_EMAIL=<service-account-email>
 FIREBASE_PRIVATE_KEY=<service-account-private-key>
 
 # Optional (if using custom Firebase)
-FB_DATABASE_URL=https://ecomsai.firebaseio.com
+FB_DATABASE_URL=<menulist-realtime-database-url>
 ```
 
 ---

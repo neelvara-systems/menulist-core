@@ -3,7 +3,7 @@
 > **Feature:** Public marketing website for AnswerLattice product
 > **Status:** ✅ IMPLEMENTED — refreshed for approved-answers-first homepage positioning, product-led support-suite conversion, self-service AnswerLattice, concept illustrations, and agent-readable public discovery
 > **Date:** 2026-06-18
-> **Domain:** answerlattice.com (production) | ecomsai.com (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
+> **Domain:** answerlattice.com (production) | answerlattice.menulist.online (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
 
@@ -251,7 +251,7 @@ Production:
   answerlattice.com/*  →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
 
 Vercel Preview / QA:
-  ecomsai.com/*   →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
+  answerlattice.menulist.online/*   →  middleware detects hostname  →  rewrites to /sites/answerlattice/*
 
 Local Dev:
   localhost:3000/__answerlattice/*  →  middleware detects dev prefix  →  rewrites to /sites/answerlattice/*

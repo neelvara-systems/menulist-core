@@ -27,8 +27,8 @@ import {
     getAnswerlatticeDashboardRewritePath,
 } from '@constant/answerlattice/domains';
 import { getCampaignCueWorkspaceRewritePath } from '@constant/campaigncue/domains';
+import { CAMPAIGNCUE_WEBSITE_FEATURE_SLUGS } from '@constant/campaigncue/websiteFeatures';
 import {
-    getDeploymentStage,
     getProductDeploymentTarget,
     isActiveProductDomain,
     resolveKnownProductIdByHostname,
@@ -226,6 +226,27 @@ function rewriteWithProductHeaders(
     return response;
 }
 
+function productNotFoundResponse(productConfig: ProductDomainConfig, basePath = ''): NextResponse {
+    const response = new NextResponse(null, { status: 404 });
+    response.headers.set('x-product-id', productConfig.id);
+    response.headers.set('x-product-name', productConfig.name);
+    if (basePath) {
+        response.headers.set('x-product-base-path', basePath);
+    }
+    return response;
+}
+
+const CAMPAIGNCUE_PUBLIC_FEATURE_SLUG_SET = new Set<string>(CAMPAIGNCUE_WEBSITE_FEATURE_SLUGS);
+
+function isInvalidCampaignCuePublicFeaturePath(pathname: string): boolean {
+    const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
+    if (normalizedPath === '/features') return true;
+    if (!normalizedPath.startsWith('/features/')) return false;
+
+    const featureSlug = normalizedPath.slice('/features/'.length);
+    return !CAMPAIGNCUE_PUBLIC_FEATURE_SLUG_SET.has(featureSlug);
+}
+
 const MYCODEX_PRODUCT_ALIAS_ROUTES: Array<{
     prefix: string;
     productId: Extract<ProductSiteId, 'menulist' | 'answerlattice' | 'campaigncue'>;
@@ -235,23 +256,14 @@ const MYCODEX_PRODUCT_ALIAS_ROUTES: Array<{
     { prefix: '/cc', productId: 'campaigncue' },
 ];
 
-const INTERNAL_PRODUCT_ALIAS_HOSTS = new Set([
-    'menulist.online',
-    'www.menulist.online',
+const MYCODEX_PRODUCT_ALIAS_HOSTS = new Set([
+    'menulist.digital',
+    'www.menulist.digital',
 ]);
 
 function canUseInternalProductAliases(hostname: string | null, knownProductId: string | null): boolean {
-    if (getDeploymentStage() === 'production') return false;
-    if (
-        process.env.NODE_ENV === 'production'
-        && process.env.VERCEL_ENV !== 'preview'
-        && process.env.NEXT_PUBLIC_ENV !== 'preview'
-    ) {
-        return false;
-    }
-
     const normalizedHost = normalizeHostname(hostname);
-    return knownProductId === MYCODEX_PRODUCT_SLUG || INTERNAL_PRODUCT_ALIAS_HOSTS.has(normalizedHost);
+    return knownProductId === MYCODEX_PRODUCT_SLUG || MYCODEX_PRODUCT_ALIAS_HOSTS.has(normalizedHost);
 }
 
 function resolveMyCodexProductAliasPath(pathname: string): {
@@ -439,7 +451,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // 1a. Vercel hostname-based product routing.
-    // QA: ecomsai.com → /sites/answerlattice
+    // QA: answerlattice.menulist.online → /sites/answerlattice
     // Production: answerlattice.com → /sites/answerlattice
     if (domainInfo.type === 'product' && domainInfo.productSite) {
         const productConfig = domainInfo.productSite;
@@ -476,6 +488,10 @@ export async function middleware(request: NextRequest) {
         if (productConfig.id === 'campaigncue') {
             if (shouldBypassDomainRouting(pathname)) {
                 return applySecurityHeaders(request, NextResponse.next());
+            }
+
+            if (isInvalidCampaignCuePublicFeaturePath(pathname)) {
+                return applySecurityHeaders(request, productNotFoundResponse(productConfig));
             }
 
             const campaignCueWorkspacePath = getCampaignCueWorkspaceRewritePath(pathname);
@@ -522,6 +538,9 @@ export async function middleware(request: NextRequest) {
             const campaignCueWorkspacePath = product.id === 'campaigncue'
                 ? getCampaignCueWorkspaceRewritePath(strippedPath)
                 : null;
+            if (product.id === 'campaigncue' && isInvalidCampaignCuePublicFeaturePath(strippedPath)) {
+                return applySecurityHeaders(request, productNotFoundResponse(product, product.devPathPrefix));
+            }
             const productWebsitePath = product.id === 'answerlattice'
                 ? buildAnswerlatticeWebsiteRewritePath(product.internalBasePath, strippedPath)
                 : product.id === 'constantlayer' && strippedPath === '/'

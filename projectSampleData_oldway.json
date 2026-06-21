@@ -10,7 +10,7 @@
     "files": [
         {
             "name": "3.jpeg",
-            "url": "https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/MenuListAi%2Fproject%2Ffiles%2F1763808755429-14VA215.jpeg?alt=media&token=b868d85a-519f-4235-9d42-afcd8e8bd6fe",
+            "url": "https://firebasestorage.googleapis.com/v0/b/menulist-qa.appspot.com/o/MenuListAi%2Fproject%2Ffiles%2F1763808755429-14VA215.jpeg?alt=media&token=b868d85a-519f-4235-9d42-afcd8e8bd6fe",
             "deleted": false,
             "size": 104301,
             "type": "image/jpeg",
@@ -45,7 +45,7 @@
                             },
                             "images": [
                                 {
-                                    "url": "https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/MenuListAi%2Fproject%2FitemImages%2F1763957173179-14VA215i1-rc-upload-1763956976717-5.png?alt=media&token=c37c2273-f1ca-424a-b9c5-1877ccc2b824",
+                                    "url": "https://firebasestorage.googleapis.com/v0/b/menulist-qa.appspot.com/o/MenuListAi%2Fproject%2FitemImages%2F1763957173179-14VA215i1-rc-upload-1763956976717-5.png?alt=media&token=c37c2273-f1ca-424a-b9c5-1877ccc2b824",
                                     "size": 870529,
                                     "name": "download (2).png",
                                     "uid": "rc-upload-1763956976717-5",
@@ -174,7 +174,7 @@
             },
             "deletedAt": {},
             "deleted": false,
-            "url": "https://firebasestorage.googleapis.com/v0/b/ecomsai.appspot.com/o/MenuListAi%2Fproject%2Ffiles%2F1763808794218-14K1715.jpeg?alt=media&token=154ab539-b9f8-4d1b-9131-870348801ecf"
+            "url": "https://firebasestorage.googleapis.com/v0/b/menulist-qa.appspot.com/o/MenuListAi%2Fproject%2Ffiles%2F1763808794218-14K1715.jpeg?alt=media&token=154ab539-b9f8-4d1b-9131-870348801ecf"
         }
     ],
     "role": "PLATFORM",

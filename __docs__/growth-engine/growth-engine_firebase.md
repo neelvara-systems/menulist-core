@@ -15,7 +15,7 @@ Use separate Firebase projects:
 | QA/local product data | `growth-engine-qa` |
 | Production | `growth-engine` |
 
-Do not store Growth Engine lead data inside MenuList's `menulist` or `ecomsai` Firestore projects except for the explicit tracked-route feedback bridge.
+Do not store Growth Engine lead data inside MenuList's `menulist` or `menulist-qa` Firestore projects except for the explicit tracked-route feedback bridge.
 
 ## 2. Why Separate Firebase
 

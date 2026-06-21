@@ -33,7 +33,7 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             url: 'http://localhost:3000/',
             domains: ['localhost', '127.0.0.1'],
             devPathPrefix: '',
-            firebaseProjectId: 'ecomsai',
+            firebaseProjectId: 'menulist-qa',
         },
         constantlayer: {
             productId: 'constantlayer',
@@ -70,7 +70,7 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             url: 'https://menulist.online',
             domains: ['menulist.online', 'www.menulist.online'],
             devPathPrefix: '',
-            firebaseProjectId: 'ecomsai',
+            firebaseProjectId: 'menulist-qa',
         },
         constantlayer: {
             productId: 'constantlayer',
@@ -81,8 +81,8 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
         },
         answerlattice: {
             productId: 'answerlattice',
-            url: 'https://ecomsai.com',
-            domains: ['ecomsai.com', 'www.ecomsai.com'],
+            url: 'https://answerlattice.menulist.online',
+            domains: ['answerlattice.menulist.online'],
             devPathPrefix: '',
             firebaseProjectId: 'answerlattice-qa',
         },

@@ -93,7 +93,7 @@ Feature flags:
 - App: `ENABLE_PLATFORM_ALERT_EMAIL`, `ENABLE_PLATFORM_ALERT_WHATSAPP`.
 - Functions: `ENABLE_PLATFORM_ALERT_EMAIL`, `ENABLE_PLATFORM_ALERT_WHATSAPP`.
 
-Deployment note: `functions/src/config/secrets.ts` keeps `SECRET_GROUPS.PLATFORM_ALERT_DELIVERY` limited to deploy-safe WhatsApp secrets until Telegram/SMTP Secret Manager values exist in `ecomsai`. Functions Email delivery is implemented and runtime-gated, but it requires the SMTP secrets to be created and added to the platform delivery secret group before production Functions can send email automatically.
+Deployment note: `functions/src/config/secrets.ts` keeps `SECRET_GROUPS.PLATFORM_ALERT_DELIVERY` limited to deploy-safe WhatsApp secrets until Telegram/SMTP Secret Manager values exist in `menulist-qa`. Functions Email delivery is implemented and runtime-gated, but it requires the SMTP secrets to be created and added to the platform delivery secret group before production Functions can send email automatically.
 
 Before production launch, complete [Step 7B in the Launch Prerequisites guide](../production-readiness/launch-prerequisites.md#step-7b-platform-alert-emailwhatsapp-go-live-checklist-10-minutes): set the missing Secret Manager values, platform recipient envs, WhatsApp template/session config, redeploy the affected Functions, and verify dashboard, Email, WhatsApp, and manual fallback delivery.
 

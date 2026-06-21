@@ -68,6 +68,7 @@ Each feature folder follows the repo doc-set pattern: `README.md`, `_spec.md`, `
 | KitStamp | No content-prep/canvas identity merge. CampaignCue may create campaign assets but remains campaign execution oriented. |
 | Firebase | Separate project ids selected in deployment matrix: `campaigncue-qa` and `campaigncue`; CampaignCue config/rules/storage/index files now exist. |
 | Website | Separate public site under `src/app/sites/campaigncue`, local `/__campaigncue`, preview `campaigncue.menulist.online`, production `campaigncue.ai`. |
+| Public feature pages | Dedicated pages live under `src/app/sites/campaigncue/features/[featureSlug]` and use `src/constants/campaigncue/websiteFeatures.ts`; they are static public education surfaces, not owner dashboard routes. |
 | Owner workspace route | Owner app files live under `src/app/(campaigncue)/campaigncue`; `/__campaigncue/app` locally and `/app` on the CampaignCue product domain rewrite to `/campaigncue/app`. Do not place owner routes under `src/app/sites/campaigncue`. |
 | Dashboard shell | CampaignCue uses the same MenuList authenticated app foundation, dark/light theme persistence, language/settings drawer, shared top header, shared sidebar shell, and profile menu. CampaignCue does not use MenuList store/subscription bootstrap just to render its chrome; CampaignCue APIs own workspace data access. |
 
@@ -81,6 +82,7 @@ Docs are written for a complete launch architecture, but the active day-one prod
 | --- | --- |
 | Product routing | Added to shared deployment and product-domain registries. |
 | Public shell | Added under `src/app/sites/campaigncue`. |
+| Public feature pages | Added for Daily Campaign Desk, Campaign Pack Studio, Creative Studio, CueLayers, Creative Trust Center, Brand Playbook and Proof Deck, and Reusable Pack Templates. Sitemap and homepage/footer links use product-scoped feature-page constants. |
 | Owner workspace route | Added under `src/app/(campaigncue)/campaigncue/app`; `src/app/sites/campaigncue` remains public website only. |
 | Owner dashboard shell | CampaignCue route group now mounts the same auth/localization/theme/settings foundation as MenuList and maps CampaignCue tabs into the shared dashboard sidebar/header components. |
 | Product constants | CampaignCue-specific identity, database, channels, domains, routes, Firebase env/app names, errors, website metadata, workspace defaults, and navigation live under `src/constants/campaigncue/`; do not recreate a flat `src/constants/campaigncue.ts`. CampaignCue uses product code `CC` for stored product identity and product slug `campaigncue` for routes/domains/env namespaces. |

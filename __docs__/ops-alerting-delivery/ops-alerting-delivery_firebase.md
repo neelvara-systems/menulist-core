@@ -19,7 +19,7 @@
 
 Note: The alert creation itself (writing to `systemAlerts` collection) is already accounted for in the existing alert framework. Email/WhatsApp delivery uses existing provider integrations and does not create an extra Firestore collection or retry queue.
 
-Deployment note: WhatsApp outbound secrets are currently included in `SECRET_GROUPS.PLATFORM_ALERT_DELIVERY`. SMTP and Telegram stay runtime-gated until their Secret Manager values are created in `ecomsai`; adding them to the function `secrets:` option before the values exist blocks Firebase deploy validation.
+Deployment note: WhatsApp outbound secrets are currently included in `SECRET_GROUPS.PLATFORM_ALERT_DELIVERY`. SMTP and Telegram stay runtime-gated until their Secret Manager values are created in `menulist-qa`; adding them to the function `secrets:` option before the values exist blocks Firebase deploy validation.
 
 ### Platform Notification Dashboard
 

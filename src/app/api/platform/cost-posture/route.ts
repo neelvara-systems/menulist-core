@@ -437,7 +437,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     ];
     const billingExport = {
       status: 'pending' as const,
-      dataset: 'ecomsai.cloud_billing_export',
+      dataset: 'menulist.cloud_billing_export',
       docHref: '/__docs__/production-readiness/launch-prerequisites.md#step-2b-enable-cloud-billing-export-to-bigquery',
       details: 'Required before bill-level Firebase forecasting can be treated as accurate.',
       blocksBillForecast: true,

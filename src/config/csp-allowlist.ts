@@ -84,7 +84,8 @@ export const CSP_ALLOWLIST = {
         'http://localhost:9199', // Firebase Storage Emulator (alternative)
         'https://*.clarity.ms', // Microsoft Clarity analytics reporting
         'https://*.razorpay.com', // Razorpay payment processing API calls
-        'https://us-central1-ecomsai.cloudfunctions.net', // MenuList callable Cloud Functions
+        'https://us-central1-menulist-qa.cloudfunctions.net', // MenuList QA callable Cloud Functions
+        'https://us-central1-menulist.cloudfunctions.net', // MenuList production callable Cloud Functions
         'https://*.sentry.io', // Sentry client event transport
         'https://*.ingest.sentry.io', // Sentry ingest endpoints
         'https://*.ingest.us.sentry.io', // Sentry US region ingest endpoints
@@ -102,7 +103,8 @@ export const CSP_ALLOWLIST = {
         "https://api.razorpay.com",
         "https://checkout.razorpay.com",
         'https://vercel.live',
-        'https://ecomsai.firebaseapp.com',
+        'https://menulist-qa.firebaseapp.com',
+        'https://menulist.firebaseapp.com',
         'https://www.youtube.com',
         'https://www.youtube-nocookie.com',
     ],

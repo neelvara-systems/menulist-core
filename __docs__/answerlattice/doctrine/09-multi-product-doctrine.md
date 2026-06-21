@@ -19,11 +19,11 @@ Every document in every product uses: `pId` / `tId` / `sId` / `docId`
 
 | Product    | pId | Firebase Project |
 | ---------- | --- | ---------------- |
-| MenuList   | ML  | ecomsai          |
+| MenuList   | ML  | menulist-qa          |
 | Answerlattice   | AL  | answerlattice         |
-| SurfaceOS  | SF  | ecomsai          |
-| GrowthOS   | GR  | ecomsai          |
-| KitStamp | KS  | ecomsai          |
+| SurfaceOS  | SF  | menulist-qa          |
+| GrowthOS   | GR  | menulist-qa          |
+| KitStamp | KS  | menulist-qa          |
 
 New product? Assign a 2-char code. Codes never change. Names may rebrand.
 
@@ -59,7 +59,7 @@ Product DAL files import from their own client, never from another product's cli
 Each separated product gets its own functions directory:
 
 ```
-functions/               → MenuList (local/preview ecomsai, production menulist)
+functions/               → MenuList (local/preview menulist-qa, production menulist)
 functions-answerlattice/      → Answerlattice (local/preview answerlattice-qa, production answerlattice)
 functions-{product}/     → Future product
 ```
@@ -72,8 +72,8 @@ Each separated product gets prefixed env vars:
 
 | Environment | MenuList `NEXT_PUBLIC_FIREBASE_PROJECT_ID` / `FIREBASE_PROJECT_ID` | Answerlattice `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_PROJECT_ID` / `ANSWERLATTICE_FIREBASE_PROJECT_ID` |
 | --- | --- | --- |
-| Local development | `ecomsai` | `answerlattice-qa` |
-| Vercel Preview / QA | `ecomsai` | `answerlattice-qa` |
+| Local development | `menulist-qa` | `answerlattice-qa` |
+| Vercel Preview / QA | `menulist-qa` | `answerlattice-qa` |
 | Vercel Production | `menulist` | `answerlattice` |
 
 Answerlattice env vars stay prefixed with `ANSWERLATTICE_` / `NEXT_PUBLIC_ANSWERLATTICE_`, and `ANSWERLATTICE_FIREBASE_MODE=separate` is the active local, preview, and production path. Prefer env-based Admin credentials over a local service-account JSON file.
@@ -87,12 +87,12 @@ Separate Firebase project when ANY of these are true:
 - Product needs independent Auth
 - Product needs independent scaling/quotas
 
-Otherwise keep in ecomsai with MenuList ecosystem.
+Otherwise keep in menulist-qa with MenuList ecosystem.
 
 ## 9. New Product Checklist
 
 1. Assign `pId` code in Product Registry
-2. Decide Firebase project (ecomsai or new)
+2. Decide Firebase project (menulist-qa or new)
 3. If new project: create Firebase files + env vars
 4. Create DAL directory: `src/database/{product}/`
 5. Create lib directory: `src/lib/{product}/`
