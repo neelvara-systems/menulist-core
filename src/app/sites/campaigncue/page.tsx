@@ -1561,7 +1561,9 @@ function CampaignCueMegaMenu({
                                                 key={item.label}
                                                 role="menuitem"
                                             >
-                                                <Icon aria-hidden="true" />
+                                                <span className="campaigncue-mega-menu-icon" aria-hidden="true">
+                                                    <Icon />
+                                                </span>
                                                 <span>
                                                     <strong>{item.label}</strong>
                                                     <small>{item.detail}</small>

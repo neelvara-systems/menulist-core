@@ -1339,6 +1339,8 @@ function verifyDocsAlignment() {
   assertIncludes(publicSite, "USE_CASE_MEGA_MENU_GROUPS", "CampaignCue public homepage keeps Use cases menu link groups in product page code");
   assertIncludes(publicSite, "label=\"Product\"", "CampaignCue public homepage exposes Product mega menu label");
   assertIncludes(publicSite, "label=\"Use cases\"", "CampaignCue public homepage exposes Use cases mega menu label");
+  assertIncludes(publicSite, "campaigncue-mega-menu-icon", "CampaignCue mega menu links wrap icons in polished icon tiles");
+  assertIncludes(publicStyles, ".campaigncue-mega-menu-icon svg", "CampaignCue mega menu icon tile keeps SVG glyphs visually controlled");
   assertIncludes(publicSite, "Product overview", "CampaignCue Product mega menu includes overview entry");
   assertIncludes(publicSite, "Small-business journey", "CampaignCue Use cases mega menu includes owner journey entry");
   assertIncludes(publicSite, "One cue becomes a checked campaign pack.", "CampaignCue Product mega menu includes workflow preview card");
