@@ -29,6 +29,8 @@ import {
     CAMPAIGNCUE_SITE_TITLE,
     buildCampaignCueUrl,
 } from "../../siteConfig";
+import CampaignCueAiSummary from "../../components/CampaignCueAiSummary";
+import CampaignCueMobileNavigation from "../../components/CampaignCueMobileNavigation";
 
 type PageProps = {
     params: {
@@ -352,6 +354,7 @@ export default function CampaignCueFeaturePage({ params }: PageProps) {
                     App
                     <LuArrowRight aria-hidden="true" />
                 </a>
+                <CampaignCueMobileNavigation basePath={basePath} />
             </header>
 
             <section className="campaigncue-feature-hero">
@@ -554,6 +557,7 @@ export default function CampaignCueFeaturePage({ params }: PageProps) {
                         <a href={withBasePath(basePath, "/#trust")}>Trust checks</a>
                     </nav>
                 </div>
+                <CampaignCueAiSummary />
                 <div className="campaigncue-footer-bottom">
                     <span>© 2026 CampaignCue</span>
                     <span>Public feature pages explain the workflow. Owner data stays inside the app.</span>

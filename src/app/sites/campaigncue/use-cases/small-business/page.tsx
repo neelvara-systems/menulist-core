@@ -30,6 +30,8 @@ import {
     CAMPAIGNCUE_SITE_DESCRIPTION,
     buildCampaignCueUrl,
 } from "../../siteConfig";
+import CampaignCueAiSummary from "../../components/CampaignCueAiSummary";
+import CampaignCueMobileNavigation from "../../components/CampaignCueMobileNavigation";
 
 export const metadata: Metadata = {
     title: `${CAMPAIGNCUE_SMALL_BUSINESS_USE_CASE.title} - CampaignCue`,
@@ -235,6 +237,7 @@ export default function CampaignCueSmallBusinessUseCasePage() {
                     App
                     <LuArrowRight aria-hidden="true" />
                 </a>
+                <CampaignCueMobileNavigation basePath={basePath} />
             </header>
 
             <section className="campaigncue-use-case-hero">
@@ -513,6 +516,7 @@ export default function CampaignCueSmallBusinessUseCasePage() {
                         <a href={withBasePath(basePath, "/#trust")}>Trust checks</a>
                     </nav>
                 </div>
+                <CampaignCueAiSummary />
                 <div className="campaigncue-footer-bottom">
                     <span>© 2026 CampaignCue</span>
                     <span>Public use-case pages explain the workflow. Owner data stays inside the app.</span>

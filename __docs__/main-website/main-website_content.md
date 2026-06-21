@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** June 17, 2026
+**Last Updated:** June 21, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -52,18 +52,19 @@ Supporting pages now share the same official-source discipline through shared he
 1. `HeroSection`
 2. `ProblemSection`
 3. `InteractiveWorkflowSection`
-4. `AiMenuManagerSection`
-5. `SetupReliefSection`
-6. `SurfacesSection`
-7. `CustomerBrowseSection`
-8. `PreparedForYouSection`
-9. `BusinessHealthSection`
-10. `ResourcesSection`
-11. `FaqSection`
-12. `FinalCtaSection`
-13. `StickyCta`
+4. `PublicTruthLoopSection`
+5. `AiMenuManagerSection`
+6. `SetupReliefSection`
+7. `SurfacesSection`
+8. `CustomerBrowseSection`
+9. `PreparedForYouSection`
+10. `BusinessHealthSection`
+11. `ResourcesSection`
+12. `FaqSection`
+13. `FinalCtaSection`
+14. `StickyCta`
 
-**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `BusinessHealthSection` is mounted as the single owner-dashboard USP proof after the prepared capability grid and before the education/discovery bridge. `ResourcesSection` remains a compact lower-page education/discovery bridge before FAQ; it must not turn the homepage into a blog index. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
+**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `PublicTruthLoopSection` is the single post-workflow bridge that explains how published surfaces, feedback, activity signals, and correction return to the same approved source. `BusinessHealthSection` is mounted as the single owner-dashboard USP proof after the prepared capability grid and before the education/discovery bridge. `ResourcesSection` remains a compact lower-page education/discovery bridge before FAQ; it must not turn the homepage into a blog index. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
 
 **Growth Kits placement policy (June 1, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: upload the current menu and publish one official customer-facing version. Growth Kits may be considered later as a small Pro/Premium pricing or Features-page proof point after owner usage validates demand.
 
@@ -311,7 +312,52 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 ---
 
-### Section 5 — Setup Effort Removed
+### Section 5 — Public Truth Loop
+
+**Section heading:**
+
+> The public version keeps returning to the same source.
+
+**Eyebrow:**
+
+> After publishing
+
+**Supporting text:**
+
+> MenuList is not just a QR menu. Customer menus, official pages, print files, activity signals, and issue reports keep pointing back to the owner-approved menu.
+
+**Core visual:**
+
+- Center card: official MenuList logo with `One approved source`.
+- Loop steps:
+  1. Current menu source.
+  2. Owner approval.
+  3. Customer surfaces.
+  4. Signals return.
+  5. Source stays current.
+- The loop is a proof bridge after the source-to-public workflow. It should explain how MenuList keeps the public version connected after publishing, not become another feature inventory.
+
+**Output proof cards (3):**
+
+| Output | Purpose |
+| --- | --- |
+| Customer menu | The current items, prices, language, and guided choices customers browse. |
+| Official business page | Hours, contact, photos, directions, actions, and clear public details. |
+| Print and QR kit | Table, counter, packaging, screen, PDF, and share files from the same source. |
+
+**Caption:**
+
+> The useful promise is simple: when something changes, the owner corrects one approved source instead of chasing every old PDF, screenshot, and link.
+
+**Notes:**
+
+- This section borrows the idea of a complete feedback/correction cycle from reference-site audits, but uses MenuList-native content and design tokens.
+- It must not claim direct Google/Instagram/WhatsApp updates, search ranking, AI citation, automatic POS sync, or fake customer metrics.
+- Keep it compact. If it starts repeating `SurfacesSection`, reduce copy rather than adding more cards.
+
+---
+
+### Section 6 — Setup Effort Removed
 
 **Section heading:**
 
@@ -334,7 +380,7 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 ---
 
-### Section 6 — Public Proof Surfaces
+### Section 7 — Public Proof Surfaces
 
 **Section heading:**
 
@@ -418,7 +464,7 @@ MenuList turns approved menu and business details into visible public pages, ser
 
 ---
 
-### Section 7 — Customer Browse Proof
+### Section 8 — Customer Browse Proof
 
 **Section heading:**
 
@@ -495,7 +541,7 @@ MenuList turns approved menu and business details into visible public pages, ser
 
 ---
 
-### Section 8 — Real-World Deployment
+### Section 9 — Real-World Deployment
 
 **Section heading:**
 
@@ -573,7 +619,7 @@ MenuList turns approved menu and business details into visible public pages, ser
 
 ---
 
-### Section 9 — FAQ
+### Section 10 — FAQ
 
 FAQ language should reinforce MenuList as the official customer-facing source. Avoid reducing the product to a "digital menu", "restaurant website", "AI tool", or "QR generator". Do not overclaim automatic external distribution; use owner-approved source and MenuList public-surface language.
 
@@ -594,7 +640,7 @@ Key FAQ topics:
 
 ---
 
-### Section 10 — Final CTA
+### Section 11 — Final CTA
 
 **Heading:**
 
@@ -1554,6 +1600,12 @@ Secondary CTA:
 **Source line:**
 
 > MenuList keeps the menu you approve behind the links and materials customers use.
+
+**AI summary shortcut:**
+
+> Get an AI summary of MenuList:
+
+This footer-level shortcut links to Claude, ChatGPT, and Gemini with a MenuList-specific prompt that points to `https://menulist.ai` and `https://menulist.ai/llms.txt`. The prompt must preserve MenuList's owner-approved public-source positioning and reject ranking promises, AI citation guarantees, automatic external-platform updates, or unsupported POS/account-posting claims.
 
 **Footer preferences:**
 

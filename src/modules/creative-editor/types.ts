@@ -48,6 +48,8 @@ export interface CreativeEditorCanvas {
 
 export interface CreativeEditorElementBase {
     blur?: number;
+    editorGuide?: boolean;
+    excludeFromExport?: boolean;
     flipX?: boolean;
     flipY?: boolean;
     height: number;
@@ -58,6 +60,8 @@ export interface CreativeEditorElementBase {
     rotation?: number;
     shadow?: CreativeEditorShadow;
     sourceRefs?: CreativeEditorSourceRef[];
+    printFrameId?: string;
+    printFrameLocked?: boolean;
     type: CreativeEditorElementType;
     visible?: boolean;
     width: number;
@@ -303,12 +307,23 @@ export interface CreativeEditorVisibleWatermark {
     text: string;
 }
 
+export interface CreativeEditorPrintFrame {
+    height: number;
+    id: string;
+    label: string;
+    locked?: boolean;
+    width: number;
+    x: number;
+    y: number;
+}
+
 export interface CreativeEditorMetadata {
     brand?: CreativeEditorBrand;
     campaignId?: string;
     channel?: string;
     createdAt?: string;
     outputId?: string;
+    printFrames?: CreativeEditorPrintFrame[];
     sourceRefs?: CreativeEditorSourceRef[];
     templateId?: string;
     textPlaceholders?: CreativeEditorTextPlaceholder[];

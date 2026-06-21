@@ -36,6 +36,7 @@ Middleware uses the existing generic product-site rewrite flow. No ConstantLayer
 | `src/constants/constantlayer/website.ts` | Canonical URL, public pages, contact emails, relationship line |
 | `src/constants/constantlayer/index.ts` | ConstantLayer constant exports |
 | `src/app/sites/constantlayer/layout.tsx` | Metadata, viewport, icon configuration |
+| `src/app/sites/constantlayer/ConstantLayerCookieConsentBanner.tsx` | Client-side essential-storage banner with local-prefix-aware privacy link |
 | `src/app/sites/constantlayer/content.tsx` | Shared content, shell, header/footer, cards, structured data |
 | `src/app/sites/constantlayer/ScrollRevealController.tsx` | Local viewport-entry reveal controller with reduced-motion fallback |
 | `src/app/sites/constantlayer/page.tsx` | Home page |
@@ -98,6 +99,8 @@ The visual implementation follows the main website design-system direction:
 - no viewport-width font scaling
 - local development links preserve the `/__constantlayer` prefix without using server header reads
 - scroll reveal is local to ConstantLayer sections, one-time on viewport entry, and disabled for reduced-motion users
+- hero scene uses meaningful parent-record, product-surface, and inquiry-routing labels instead of blank decorative cards
+- reference modules use compact bordered cards and row-level facts to add presentation depth without adding product-funnel behavior
 
 ---
 
@@ -125,6 +128,7 @@ The site has:
 - no Firebase imports
 - no client-side state requirement
 - no analytics script
+- shared public cookie acknowledgement only; no analytics, ads, personalization, account, form, or gated-download behavior is introduced
 - no product app route
 - no owner/mobile PWA surface
 

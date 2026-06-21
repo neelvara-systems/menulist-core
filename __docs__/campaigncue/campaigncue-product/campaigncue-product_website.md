@@ -1,7 +1,7 @@
 # CampaignCue Product - Website Content
 
 **Last production-site pass:** June 21, 2026
-**Source of truth:** `src/app/sites/campaigncue/page.tsx`, `src/app/sites/campaigncue/features/[featureSlug]/page.tsx`, `src/app/sites/campaigncue/styles.css`, `src/constants/campaigncue/website.ts`, and `src/constants/campaigncue/websiteFeatures.ts`
+**Source of truth:** `src/app/sites/campaigncue/page.tsx`, `src/app/sites/campaigncue/features/[featureSlug]/page.tsx`, `src/app/sites/campaigncue/use-cases/small-business/page.tsx`, `src/app/sites/campaigncue/components/CampaignCueMobileNavigation.tsx`, `src/app/sites/campaigncue/styles.css`, `src/constants/campaigncue/website.ts`, and `src/constants/campaigncue/websiteFeatures.ts`
 
 ## Current Verdict
 
@@ -14,7 +14,9 @@ The CampaignCue public website is now a focused product site, not a status shell
 - The day-one boundary: export/download/manual handoff only; no direct social posting, WhatsApp send, Google publish, account posting, or ad spend mutation.
 - The owner value: start without a blank prompt, keep source facts attached, move faster on mobile, and control risk/cost.
 - The output value: Campaign Packs include channel copy, creative files, print/in-store material, staff sharing text, email/SMS handoff, QR/offer-page notes, trust checks, and result prompts instead of only social posts.
+- The explanation value: the homepage now uses a flow-map and Campaign Pack Room so first-time SMB owners can understand the connected workflow before reading deeper feature sections.
 - The editor value: Creative Studio and CueLayers make assets reusable while preserving source checks.
+- The visual-output value: Creative Output System cards now show named artifacts inside the mini previews, such as WhatsApp, Google draft, poster, source photo, QR note, staff line, price check, and result-memory states, instead of generic placeholder blocks.
 - The proof value: Brand Playbook guidance, a proof deck preview, reusable-template loop, proof deck review briefs, UGC/reel disclosure notes, avoid-list checks, and a concrete claim/source/risk/action trust matrix stay visible with the pack without replacing source facts.
 - Dedicated public feature pages now explain the strongest CampaignCue workflows one-by-one: Daily Campaign Desk, Campaign Pack Studio, Creative Studio, CueLayers, Creative Trust Center, Brand Playbook and Proof Deck, and Reusable Pack Templates. These pages use static dashboard/editor previews only; owner data and owner routes stay inside the CampaignCue app.
 - A dedicated `/use-cases/small-business` page now explains the SMB owner journey with AdCreative-style visual output sequencing adapted to CampaignCue's source-backed, export-first boundary.
@@ -43,7 +45,7 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | Google helpful content guidance: https://developers.google.com/search/docs/fundamentals/creating-helpful-content | Helpful pages are people-first, original, specific, useful, trustworthy, and not made mainly to capture search traffic. | Public copy must show concrete CampaignCue workflows, proof notes, and product boundaries instead of generic AI/category claims. |
 | Nielsen Norman Group GenAI content design: https://www.nngroup.com/videos/genai-content-design/ | Product-specific generated content still needs concise, scannable web writing, inverted-pyramid structure, and plain language. | Keep CampaignCue sections short, owner-readable, and evidence-led; avoid diagnostic jargon and abstract automation copy. |
 | Seesaw design tools category: https://www.seesaw.website/category/design-tools | Search-first header, category rail, short product descriptions, and quick scanning make the page easy to browse. | Use that scan speed as a CampaignCue Pack index with owner-job categories and compact ledger rows, but do not turn the homepage into a third-party directory or a wall of cards. |
-| AdCreative home: https://www.adcreative.ai/ | Strong marketing-product taxonomy, quick business fit check, visible feature clusters, proof story, scan-website CTA, and repeated product preview surfaces. | Add a CampaignCue quick fit check that starts from owner bottlenecks, not generic ad-performance claims; keep proof/source checks instead of fake logos or unsupported conversion metrics. |
+| AdCreative home: https://www.adcreative.ai/ | Strong marketing-product taxonomy, owner-fit entry, visible feature clusters, proof story, scan-website CTA, and repeated product preview surfaces. | Adapt the owner-fit idea into a CampaignCue problem band and workflow explanation; keep proof/source checks instead of fake logos or unsupported conversion metrics. |
 | AdCreative feature pages: https://www.adcreative.ai/ad-creatives, https://www.adcreative.ai/instant-ads, https://www.adcreative.ai/generate-texts-headlines, https://www.adcreative.ai/ai-ugc-videos | Each nested page has one capability promise, an input/output demo, proof logos, and benefit sections for performance, multi-platform outputs, customization, and speed. | Keep CampaignCue's homepage preview and output ledgers concrete: source input -> checked pack -> export, while rejecting direct account push and guaranteed performance language. |
 | AdCreative analysis/trust pages: https://www.adcreative.ai/creative-insights, https://www.adcreative.ai/competitor-insights-ai, https://www.adcreative.ai/compliance-checker, https://www.adcreative.ai/creative-scoring | The analysis pages explain creative insights, competitor monitoring, compliance checks, and pre-launch scoring as separate proof surfaces. | CampaignCue should make Trust Center, result memory, source checks, and blocked claims obvious; do not claim predictive ad scoring until real model/evidence infrastructure exists. |
 | AdCreative asset/tool pages: https://www.adcreative.ai/generate-product-photoshoots, https://www.adcreative.ai/product-videoshoot-ai, https://www.adcreative.ai/creative-utility-suite, https://www.adcreative.ai/custom-templates | Upload-based product photos, product videos, utility tools, and templates are shown with before/after or layer-style demos. | Use this as support for Creative Studio and CueLayers messaging: reuse uploaded/generated assets and export safely, but do not imply rendered provider video/photo generation is active. |
@@ -54,6 +56,13 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | Canva Brand Kit: https://www.canva.com/pro/brand-kit/ | Brand assets, brand guidelines, and multi-brand management are presented directly inside the creative workflow. | Keep Brand Playbook visible beside the pack as guidance and provenance, but do not let brand guidance replace campaign source facts or approval. |
 | Planable home: https://planable.io/ | Create, discuss, approve, schedule, agency, multi-location, and multi-brand flows are visible as operational workflows. | Show review and handoff as part of the CampaignCue pack loop while preserving that direct publishing remains disabled on day one. |
 | Rocketium Creative Automation: https://rocketium.com/products/creative-automation.html | Creative automation pages emphasize on-brand templates, platform variants, and reuse of existing design assets. | Add a reusable-template loop and proof-deck preview for CampaignCue; reject Photoshop/source-file import claims and broad enterprise creative automation promises until those runtimes exist. |
+| Overflow: https://overflow.io/ | Visual workflow storytelling explains complex product value through connected flow maps instead of only feature lists. | Add a CampaignCue workflow map from business facts to cue, pack, review, manual export, and result memory. Do not imply CampaignCue is a diagramming/prototyping product. |
+| Proto.io: https://proto.io/ | Prototype/product-tool pages make the output tangible with clear screens and "do not start from scratch" reuse framing. | Use this for CueLayers/reusable-pack framing and compact product previews; do not claim interactive prototyping or a generic design-builder scope. |
+| Dock: https://www.dock.us/ | Portal-style product pages organize resources, content, action plans, and handoff materials in one clean customer workspace. | Add a Campaign Pack Room showing owner-ready pieces, proof beside the work, and manual delivery controls in one grouped surface. Do not position CampaignCue as a CRM, sales room, or customer-portal product. |
+| Outseta: https://www.outseta.com/ | All-in-one SaaS pages explain system value through clear product grouping, strong navigation, and boundary clarity. | Use "one source-backed campaign desk" and grouped navigation language, while avoiding billing/auth/CRM/member-management promises. |
+| Supahub: https://supahub.com/ | Restrained product-led SaaS page: centered hero, one visual surface, clear feature sections, and simple benefit blocks. | Use cleaner product-led pacing and fewer equal-weight cards; keep CampaignCue's source-backed/export-first boundary instead of feedback-roadmap claims. |
+| Peppermint: https://paywithpeppermint.com/ | Bold brand confidence, oversized type, strong color fields, and expressive illustration make the product feel memorable. | Borrow confidence and color discipline sparingly through navy/pink bands and large product moments; do not turn CampaignCue into an illustrative fintech-style page. |
+| Front: https://front.com/ | Mature SaaS framing: problem cards, dark hero/bands, proof rows, and alternating product examples explain operational complexity clearly. | Use a strong owner-problem band and clearer workflow contrast; reject support-platform, AI-agent, customer-service, and enterprise-logo claims. |
 
 ## Implemented Homepage Structure
 
@@ -64,8 +73,10 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | Product preview | A compact screenshot-like Daily Desk and Campaign Pack preview shows a lunch-combo campaign with price check, Google draft, WhatsApp copy, and poster download. |
 | Floating hero artifacts | CampaignCue-specific visual thumbnails around the hero show story, poster, Google update, reel script, and trust review outputs. They are illustrative UI artifacts, not proof logos or external results. |
 | Flow strip | Today cue, checked facts, WhatsApp + Google, creative + print, manual handoff, and result memory appear as a quiet proof row instead of boxed micro-cards. |
-| Quick fit check | AdCreative-inspired bottleneck chooser adapted for CampaignCue: owners pick the problem they recognize, then see the source-backed response and safe proof tag. |
-| Creative powerhouse | Colorful six-card product system section: campaign packs, existing image reuse, local/in-store outputs, video briefs, trust checks, and result memory. |
+| Workflow map | Supahub/Overflow-inspired loop diagram explains the simplest product story: business facts -> today cue -> campaign pack -> visible review -> manual handoff -> result memory. On desktop it is a diagram with a central pack preview; on mobile it collapses into readable rows. |
+| Owner problem band | Front-inspired dark problem section explains the three reasons CampaignCue exists: blank prompts waste time, creative files lose proof, and direct posting is risky before trust is clear. |
+| Campaign Pack Room | Dock-inspired grouped preview keeps owner-ready pieces, proof/context, and manual delivery controls in one surface. This is a website explanation pattern, not a CRM/customer-portal claim. |
+| Creative powerhouse | Colorful six-card product system section: campaign packs, existing image reuse, local/in-store outputs, video briefs, trust checks, and result memory. Each card includes named artifact mini-previews so the section feels like concrete campaign output, not generic design-tool decoration. |
 | Real work proof | Dark proof band with ledger rows: concrete local-business examples name the fact, output, and proof note behind each campaign pack without using separate example cards. |
 | Pack index | Seesaw-inspired compact catalog with Start, Pack, Review, and Handoff categories shown as grouped ledger rows so owners can scan what CampaignCue prepares. |
 | Owner path | Connected four-step sequence: open Today, confirm facts, download the pack, and mark what happened. |
@@ -80,7 +91,7 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | Trust and Safety | Source checks, unsafe claim warnings, spend gates, and a concrete claim/source/risk/action matrix. |
 | Delivery Boundary | Explicit no-direct-posting section aligned with day-one product rules. |
 | Use Cases | Product capability ledger for Daily Desk, Business Brain, Campaign Studio, Creative Studio, CueLayers, and Trust Center. |
-| Product and use-case mega menus | The homepage nav uses two owner-readable dropdowns: `Product` for CampaignCue surfaces and `Use cases` for business-type journeys. |
+| Product and use-case menus | Desktop uses two owner-readable dropdowns: `Product` for CampaignCue surfaces and `Use cases` for business-type journeys. Mobile uses a hamburger button that opens a right-to-left drawer with product links, review/reuse links, use-case links, quick anchors, and the workspace CTA. |
 | Small-business use-case link | A homepage callout links to `/use-cases/small-business` so SMB visitors can see the full audience journey without reading every feature page. |
 | FAQ | Answers direct publishing, MenuList relationship, generic design-tool difference, full pack scope, and image reuse. |
 | CTA | Owner-simple close: open workspace, pick cue, export pack. |
@@ -121,8 +132,9 @@ Use-case pages are not feature pages and are not owner dashboard pages. They may
 - **Secondary CTA:** `See pack examples` -> `#studio`
 - **Boundary pills:** Starts from real business facts, exports before it posts, risky claims stay visible.
 - **Hero preview rule:** One clean product-preview surface in the first viewport. Avoid stacked hero checkpoint boxes, oversized dashboard chrome, or multiple card bands before the product story starts.
+- **Subpage hero rule:** Feature and use-case pages use one-column, multi-row heroes: product copy first, preview second. Do not return to the two-column oversized-heading layout that forces long titles into single-word stacks.
 - **Fit-check rule:** If a page uses an interactive-style chooser, the options must map to real owner bottlenecks and active CampaignCue outputs. Do not add fake ROI, predictive conversion score, or direct-posting promises.
-- **Mobile-first rule:** Assume most public visitors are on phones. Mobile navigation must wrap or fit without clipped labels, primary/secondary hero actions should stack full width, long badges/headings must wrap at word boundaries, and visible links/buttons should keep at least a 44px touch target with implementation margin.
+- **Mobile-first rule:** Assume most public visitors are on phones. Mobile navigation uses the `CampaignCueMobileNavigation` hamburger drawer instead of wrapping desktop mega menus into the hero. The drawer opens from normal tap/click activation only, uses grouped link rows rather than repeated oversized cards, keeps the overview row aligned with explicit icon/text/arrow placement, hides the CampaignCue cookie panel while the drawer is open, and must not use `touchstart` activation that can immediately re-hit the close/scrim area. Primary/secondary hero actions should stack full width, long badges/headings must wrap at word boundaries, visible links/buttons should keep at least a 44px touch target with implementation margin, and subpage previews should drop cramped desktop-only chrome before text clips.
 
 ## SEO Meta
 
@@ -134,7 +146,7 @@ Use-case pages are not feature pages and are not owner dashboard pages. They may
 
 ## Visual Direction
 
-The site uses an operational SaaS layout with product and campaign artifacts as the primary visuals. The current production pass follows Blank for restraint, Ploy for proof/activity records, Linear for editorial product rhythm, Seesaw for fast scanning, AdCreative for creative artifact density and compliance-surface clarity, Canva for brand-guidance visibility, Planable for approval-loop clarity, and Rocketium for reusable-template framing. The homepage should feel like a creative operating desk: restrained first viewport, large brand-led typography, screenshot-like product surfaces, colorful campaign thumbnails, connected sequences, proof ledgers, proof deck preview, reusable-template loop, and a concrete trust matrix. Use ledgers instead of repeated card grids when listing source proof, owner steps, or output inventories, but use visual product tiles when showing CampaignCue's creative moat. It intentionally avoids:
+The site uses an operational SaaS layout with product and campaign artifacts as the primary visuals. The current production pass follows Blank for restraint, Supahub for product-led pacing, Front for mature problem framing, Peppermint for controlled brand confidence, Ploy for proof/activity records, Linear for editorial product rhythm, Seesaw for fast scanning, AdCreative for creative artifact density and compliance-surface clarity, Canva for brand-guidance visibility, Planable for approval-loop clarity, and Rocketium for reusable-template framing. The homepage should feel like a creative operating desk: restrained first viewport, large brand-led typography, screenshot-like product surfaces, colorful campaign thumbnails, connected sequences, proof ledgers, proof deck preview, reusable-template loop, and a concrete trust matrix. Use ledgers instead of repeated card grids when listing source proof, owner steps, or output inventories, but use visual product tiles when showing CampaignCue's creative moat. It intentionally avoids:
 
 - Generic abstract AI imagery.
 - Broad "make anything" claims.
@@ -151,7 +163,9 @@ The final visual polish should feel closer to a finished creative product than a
 
 The design should stay practical and owner-readable: concrete output examples, short headings, visible safety state, proof notes, and no broken footer links. Every major section should answer one SMB-owner question: what fact is used, what pack is prepared, what review is required, and what the owner can do next.
 
-Mobile is the primary public-site reading context. Any homepage or feature-page change should be checked at 390px, 360px, and 320px for document-level overflow, clipped hero copy/actions, readable preview text, and 44px-or-larger visible interactive targets.
+Homepage sections use a stacked section pattern: eyebrow first, heading on its own full-width row, supporting description beneath it, and the product surface, ledger, or visual content below. Do not trap long section headings in narrow left rails or two-column copy blocks. Split layouts are allowed only when the heading row remains full-width and the visual/content area starts after the intro.
+
+Mobile is the primary public-site reading context. Any homepage, feature-page, or use-case-page change should be checked at 390px, 360px, and 320px for document-level overflow, clipped hero copy/actions, readable preview text, and 44px-or-larger visible interactive targets. Phone previews are allowed to simplify desktop dashboard/editor chrome when keeping every desktop detail would create clipped labels, oversized first screens, or hidden action text.
 
 ### CampaignCue Palette
 
@@ -179,6 +193,16 @@ Implementation rules:
 - Reduced-motion users see static content with no blur, translate, or transition.
 - Visible elements must return to `transform: none` and `will-change: auto` so the page does not keep unnecessary compositor layers while scrolling.
 - Do not add global smooth scrolling, heavy animation libraries, or scroll-jacking.
+
+### Public Cookie Banner
+
+CampaignCue uses `src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx` in the public website layout for essential-storage acknowledgement only. The current CampaignCue public site does not load analytics, ad, personalization, or owner-workspace scripts from `src/app/sites/campaigncue`, so the banner copy must not claim those behaviors. Do not add the banner to the protected CampaignCue owner app without a separate privacy review.
+
+### Public AI Summary Links
+
+CampaignCue uses `src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` through `src/app/sites/campaigncue/components/CampaignCueAiSummary.tsx` in the public homepage, feature pages, and small-business use-case page footers. The strip links to Claude, ChatGPT, and Gemini with a CampaignCue-specific prompt that asks for a summary from `https://campaigncue.ai` while explicitly rejecting direct account posting, ad automation, auto-spend software, generic AI design-tool framing, and owner-review replacement claims.
+
+This is a footer-level visitor shortcut only. It does not change crawler policy, metadata, CampaignCue runtime behavior, owner workspace flows, analytics, Firebase rules, or Vercel deployment. Keep the copy low in the footer so the primary conversion path remains setup/app entry, not "AI summary" exploration.
 
 ## AdCreative Adoption Notes
 

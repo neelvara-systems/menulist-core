@@ -255,6 +255,23 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 - Footer controls must use footer-safe dark surfaces, visible borders, 40px-class tap targets where space allows, and localized labels.
 - Do not add another theme switcher in the hero, header, or sticky CTA unless the website strategy changes.
 
+### 4.3.2 Public Cookie Preference Banner
+
+- Use `src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx` for public marketing/brand website cookie banners.
+- The banner should remain a compact floating card with one clear `Okay` action and an optional decline/privacy link depending on the site's actual tracking behavior.
+- MenuList and AnswerLattice may gate optional analytics scripts behind the shared banner. CampaignCue and ConstantLayer currently use the banner only as essential-storage acknowledgement.
+- Do not copy generic consent wording about ads, personalization, or cross-site tracking unless that exact behavior exists in the implementation.
+- Do not mount the banner on owner dashboards, customer menus, Official Business Pages, widgets, or private reader surfaces unless those surfaces receive their own privacy review.
+- Mobile layout must stay compact enough that the first public CTA remains reachable after one short scroll.
+
+### 4.3.3 Public AI Summary Links
+
+- Use `src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` for low-page AI summary shortcuts on public marketing websites.
+- The strip belongs in the footer area, not the hero, header, sticky CTA, or customer/owner runtime.
+- Prompt text must name the real product URL and reject unsupported claims for that product.
+- Do not present these links as a ranking, crawl, citation, or AI-search guarantee. They are visitor shortcuts to Claude, ChatGPT, and Gemini.
+- Prefer product-specific prompts over generic "summarize this startup" wording.
+
 ### 4.5 Mobile Polish Rules
 
 - Mobile interactive controls should use a 44px-class minimum tap box. Primary CTAs use 48px height where possible.

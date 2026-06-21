@@ -24,6 +24,8 @@ export type CreativeFabricObject = fabric.Object & {
     arrowStyle?: CreativeEditorLineArrowStyle;
     creativeEditorType?: CreativeEditorElementType | "visibleWatermark" | "watermark" | "workspace";
     darkColor?: string;
+    editorGuide?: boolean;
+    excludeFromExport?: boolean;
     gradient?: CreativeEditorLinearGradient;
     imageFilterAdjustments?: CreativeEditorImageFilterAdjustments;
     imageFilter?: CreativeEditorImageFilter;
@@ -37,6 +39,8 @@ export type CreativeFabricObject = fabric.Object & {
     outlineWidth?: number;
     pathStroke?: string;
     pathVisible?: boolean;
+    printFrameId?: string;
+    printFrameLocked?: boolean;
     sourceRefs?: CreativeEditorSourceRef[];
     src?: string;
     strokeLineCap?: CreativeEditorStrokeLineCap;
@@ -49,6 +53,8 @@ export const CREATIVE_EDITOR_FABRIC_ATTRIBUTES = [
     "creativeEditorType",
     "arrowStyle",
     "darkColor",
+    "editorGuide",
+    "excludeFromExport",
     "gradient",
     "imageFilterAdjustments",
     "imageFilter",
@@ -62,6 +68,8 @@ export const CREATIVE_EDITOR_FABRIC_ATTRIBUTES = [
     "outlineWidth",
     "pathStroke",
     "pathVisible",
+    "printFrameId",
+    "printFrameLocked",
     "sourceRefs",
     "src",
     "strokeLineCap",
@@ -207,8 +215,13 @@ function applyBaseObjectData(fabricApi: FabricStatic, object: CreativeFabricObje
     object.outlineEnabled = "outlineEnabled" in element ? element.outlineEnabled : undefined;
     object.outlineOnly = "outlineOnly" in element ? element.outlineOnly : undefined;
     object.outlineWidth = "outlineWidth" in element ? element.outlineWidth : undefined;
+    object.editorGuide = element.editorGuide;
+    object.excludeFromExport = element.excludeFromExport;
+    object.printFrameId = element.printFrameId;
+    object.printFrameLocked = element.printFrameLocked;
     object.sourceRefs = element.sourceRefs;
-    object.locked = Boolean(element.locked);
+    const locked = Boolean(element.locked || element.printFrameLocked);
+    object.locked = locked;
     object.visible = element.visible !== false;
     object.opacity = element.opacity ?? 1;
     object.angle = element.rotation || 0;
@@ -216,12 +229,12 @@ function applyBaseObjectData(fabricApi: FabricStatic, object: CreativeFabricObje
     object.flipY = Boolean(element.flipY);
     object.selectable = true;
     object.evented = true;
-    object.hasControls = !element.locked;
-    object.lockMovementX = Boolean(element.locked);
-    object.lockMovementY = Boolean(element.locked);
-    object.lockScalingX = Boolean(element.locked);
-    object.lockScalingY = Boolean(element.locked);
-    object.lockRotation = Boolean(element.locked);
+    object.hasControls = !locked;
+    object.lockMovementX = locked;
+    object.lockMovementY = locked;
+    object.lockScalingX = locked;
+    object.lockScalingY = locked;
+    object.lockRotation = locked;
     if (element.shadow) {
         object.shadow = new fabricApi.Shadow({
             blur: element.shadow.blur,
@@ -876,9 +889,13 @@ const getCommonElementData = (object: CreativeFabricObject) => {
         flipY: Boolean(object.flipY),
         height: Math.max(1, Math.round(boundingRect.height)),
         id: object.id || `layer_${Date.now().toString(36)}`,
-        locked: Boolean(object.locked),
+        locked: Boolean(object.locked || object.printFrameLocked),
         name: object.name || "Layer",
         opacity: object.opacity ?? 1,
+        editorGuide: object.editorGuide,
+        excludeFromExport: object.excludeFromExport,
+        printFrameId: object.printFrameId,
+        printFrameLocked: object.printFrameLocked,
         rotation: object.angle || 0,
         shadow,
         sourceRefs: object.sourceRefs,
@@ -1112,15 +1129,16 @@ export function serializeFabricCanvasToDocument(
 }
 
 export function setObjectLocked(object: CreativeFabricObject, locked: boolean) {
-    object.locked = locked;
+    const nextLocked = Boolean(object.printFrameLocked || locked);
+    object.locked = nextLocked;
     object.set({
         evented: true,
-        hasControls: !locked,
-        lockMovementX: locked,
-        lockMovementY: locked,
-        lockRotation: locked,
-        lockScalingX: locked,
-        lockScalingY: locked,
+        hasControls: !nextLocked,
+        lockMovementX: nextLocked,
+        lockMovementY: nextLocked,
+        lockRotation: nextLocked,
+        lockScalingX: nextLocked,
+        lockScalingY: nextLocked,
         selectable: true,
     });
 }

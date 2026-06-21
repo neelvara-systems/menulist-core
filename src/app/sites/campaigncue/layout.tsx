@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import PublicCookieConsentBanner from '@/components/shared/publicCookieConsent/PublicCookieConsentBanner';
 import CampaignCueScrollReveal from './components/CampaignCueScrollReveal';
 import {
     CAMPAIGNCUE_SITE_DESCRIPTION,
@@ -84,6 +85,14 @@ export default function CampaignCueLayout({ children }: CampaignCueLayoutProps) 
         <>
             <CampaignCueScrollReveal />
             {children}
+            <PublicCookieConsentBanner
+                acceptLabel="Okay"
+                message="We use essential storage to keep this site working and remember basic preferences."
+                panelLabel="Cookie preference"
+                product="campaigncue"
+                showDecline={false}
+                storageKey="campaigncue_website_cookie_ack_v1"
+            />
         </>
     );
 }

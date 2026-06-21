@@ -248,6 +248,8 @@ Source of truth: `src/constants/deploymentTargets.ts`.
 
 ConstantLayer is deliberately a product-domain site route, not a MenuList tenant/custom domain and not a database-backed product. It rewrites to `/sites/constantlayer`, has no owner/product app route, and uses an empty Firebase project id in `src/constants/deploymentTargets.ts`.
 
+Internal portfolio aliases `/cl`, `/ml`, `/al`, and `/cc` are guarded by `src/middleware.ts` and only resolve on the MyCodex product host or already-resolved MyCodex requests. They do not change product slugs, env names, Firebase targets, or public canonical URLs. `/cl` is only a shortcut to the ConstantLayer public site route group.
+
 `menulist.digital` is deliberately a product domain, not a MenuList tenant/custom domain. Middleware must rewrite it to `/sites/mycodex` before the client-domain branch can treat unknown hosts as restaurant custom domains.
 
 MyCodex is an internal documentation reader. It reserves `MC` as its internal product code, but runtime routing and session checks use the `mycodex` slug. Outside localhost, `src/middleware.ts` requires a signed MyCodex session cookie before rewriting protected pages to `/sites/mycodex`. Unauthenticated MyCodex requests redirect to `/login`, where `src/app/sites/mycodex/api/session/route.ts` validates `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` server-side and sets an `HttpOnly` `mycodex_session` cookie. MyCodex responses also set no-index/no-follow robot headers and serve a product-scoped disallow-all `robots.txt`; these crawler restrictions are scoped to MyCodex and do not change MenuList tenant/menu SEO or Answerlattice public-site discovery.

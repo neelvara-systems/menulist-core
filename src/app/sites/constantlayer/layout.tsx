@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import ConstantLayerCookieConsentBanner from './ConstantLayerCookieConsentBanner';
 import './styles.css';
 import {
     CONSTANTLAYER_SITE_DESCRIPTION,
@@ -81,5 +82,10 @@ interface ConstantLayerLayoutProps {
 }
 
 export default function ConstantLayerLayout({ children }: ConstantLayerLayoutProps) {
-    return <>{children}</>;
+    return (
+        <>
+            {children}
+            <ConstantLayerCookieConsentBanner />
+        </>
+    );
 }

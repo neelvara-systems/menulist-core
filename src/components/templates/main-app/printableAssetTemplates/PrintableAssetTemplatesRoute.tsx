@@ -13,10 +13,10 @@ import {
     buildPrintableAssetEditorDocument,
     isPrintableAssetEditorRenderable,
     rehydratePrintableAssetEditorDocument,
-    renderPrintableAssetEditorDocument,
+    renderPrintableAssetEditorDocumentFiles,
     stripPrintableAssetEditorAttributionLayers,
 } from '@lib/printable-asset-templates/editorDocumentAdapter';
-import { renderPrintableAsset } from '@lib/printable-asset-templates/renderPrintableAsset';
+import { renderPrintableAsset, renderPrintableAssetDownloadFiles } from '@lib/printable-asset-templates/renderPrintableAsset';
 import { buildPrintableStoreContactFields } from '@lib/printable-asset-templates/storeContact';
 import { getPrintableTemplateFamiliesForAsset, getPrintableTemplateFamily, normalizePrintableTemplateFamilyId } from '@lib/printable-asset-templates/templateFamilies';
 import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetType, PrintableAssetTypeId, PrintableTemplateFamily, PrintableTemplateFamilyId } from '@lib/printable-asset-templates/types';
@@ -149,6 +149,7 @@ function getPrintableDownloadActionLabel(outputFormat: PrintableAssetOutputForma
     if (outputFormat === 'pdf') return 'Download PDF';
     if (outputFormat === 'zip') return 'Download ZIP';
     if (assetId === 'print_menu') return 'Download first page image';
+    if (assetId === 'business_card') return 'Download front + back images';
     return 'Download image';
 }
 
@@ -159,6 +160,10 @@ function getPrintableActionFormats(asset: PrintableAssetType): PrintableAssetOut
 function getPrintablePreviewFormat(asset: PrintableAssetType): PrintableAssetOutputFormat | null {
     if (asset.outputFormat === 'zip') return null;
     return 'png';
+}
+
+function downloadPrintableResults(files: Array<{ blob: Blob; filename: string }>) {
+    files.forEach((file) => downloadBlob(file.blob, file.filename));
 }
 
 function getPrintableActionModalWidth(assetId: PrintableAssetTypeId): number {
@@ -662,9 +667,9 @@ export default function PrintableAssetTemplatesRoute() {
         try {
             const input = await buildRenderInput(templateFamilyId);
             if (!input) return;
-            const result = await renderPrintableAsset({ ...input, outputFormat });
-            downloadBlob(result.blob, result.filename);
-            messageApi.success(`${selectedAsset.title} downloaded`);
+            const files = await renderPrintableAssetDownloadFiles({ ...input, outputFormat });
+            downloadPrintableResults(files);
+            messageApi.success(files.length > 1 ? `${selectedAsset.title} front and back images downloaded` : `${selectedAsset.title} downloaded`);
         } catch {
             messageApi.error(`Failed to generate ${selectedAsset.title}`);
         } finally {
@@ -690,15 +695,15 @@ export default function PrintableAssetTemplatesRoute() {
                 templateType: 'platform',
             });
             const documentValue = stripPrintableAssetEditorAttributionLayers(rehydratePrintableAssetEditorDocument(result.document, input));
-            const rendered = await renderPrintableAssetEditorDocument({
+            const renderedFiles = await renderPrintableAssetEditorDocumentFiles({
                 activePlanType: input.activePlanType,
                 assetTypeId: selectedAssetId,
                 document: documentValue,
                 outputFormat,
                 templateFamilyId,
             });
-            downloadBlob(rendered.blob, rendered.filename);
-            messageApi.success(`${selectedAsset.title} downloaded`);
+            downloadPrintableResults(renderedFiles);
+            messageApi.success(renderedFiles.length > 1 ? `${selectedAsset.title} front and back images downloaded` : `${selectedAsset.title} downloaded`);
         } catch {
             messageApi.error(`Failed to generate ${selectedAsset.title}`);
         } finally {
@@ -844,15 +849,15 @@ export default function PrintableAssetTemplatesRoute() {
         const busy = `editor-download:${outputFormat}`;
         setEditorBusyKey(busy);
         try {
-            const result = await renderPrintableAssetEditorDocument({
+            const files = await renderPrintableAssetEditorDocumentFiles({
                 activePlanType: editorState.activePlanType,
                 assetTypeId: editorState.assetTypeId,
                 document: latestDocument,
                 outputFormat,
                 templateFamilyId: editorState.templateFamilyId,
             });
-            downloadBlob(result.blob, result.filename);
-            messageApi.success(`${outputFormat.toUpperCase()} downloaded`);
+            downloadPrintableResults(files);
+            messageApi.success(files.length > 1 ? 'Front and back images downloaded' : `${outputFormat.toUpperCase()} downloaded`);
         } catch {
             messageApi.error('Failed to download edited asset');
         } finally {

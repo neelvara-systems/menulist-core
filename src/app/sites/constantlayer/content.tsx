@@ -266,6 +266,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 items: [
                     'There is no newsletter signup or embedded inquiry form in v1.',
                     'There is no website account, lead database, product onboarding flow, or Firebase write path in v1.',
+                    'The site may remember a basic cookie acknowledgement preference in the visitor browser.',
                     'Product-level privacy details belong on the relevant product surface.',
                 ],
             },
@@ -274,6 +275,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 body: 'The parent website may involve only limited technical request data and visitor-initiated email communication.',
                 items: [
                     'Hosting, CDN, and security layers may process page-request metadata and operational logs.',
+                    'A local acknowledgement preference may be stored in the visitor browser so the cookie notice does not repeat on every page.',
                     'If a visitor sends email, the email address, message content, and related mail metadata are handled by the mail provider and relevant inbox.',
                     'This parent notice does not cover product account, business, support, campaign, billing, or customer interaction data.',
                 ],
@@ -367,19 +369,26 @@ export function SystemScene() {
             <div className="cl-scene-grid" />
             <div className="cl-scene-rail cl-scene-rail-a" />
             <div className="cl-scene-rail cl-scene-rail-b" />
-            <div className="cl-scene-plane cl-scene-plane-a">
-                <span />
-                <span />
-                <span />
+            <div className="cl-scene-record cl-scene-record-a">
+                <span>Company record</span>
+                <strong>ConstantLayer Systems</strong>
+                <small>Parent reference</small>
             </div>
-            <div className="cl-scene-plane cl-scene-plane-b">
-                <span />
-                <span />
-                <span />
+            <div className="cl-scene-record cl-scene-record-b">
+                <span>Product surfaces</span>
+                <div className="cl-scene-chips">
+                    {CONSTANTLAYER_PRODUCT_LINEUP.map((product) => (
+                        <strong key={product.name}>{product.name}</strong>
+                    ))}
+                </div>
             </div>
-            <div className="cl-scene-plane cl-scene-plane-c">
-                <span />
-                <span />
+            <div className="cl-scene-record cl-scene-record-c">
+                <span>Inquiry routing</span>
+                <div className="cl-scene-routes">
+                    <strong>Business</strong>
+                    <strong>Legal</strong>
+                    <strong>Privacy</strong>
+                </div>
             </div>
             <div className="cl-scene-node cl-scene-node-a" />
             <div className="cl-scene-node cl-scene-node-b" />
@@ -446,12 +455,11 @@ export function PageShell({ children }: { children: React.ReactNode }) {
 export function OperatingRows({ rows }: { rows: InfoCard[] }) {
     return (
         <div className="cl-operating-rows">
-            {rows.map((row, index) => {
+            {rows.map((row) => {
                 const Icon = row.icon;
 
                 const rowContent = (
                     <>
-                        <span className="cl-row-index">{String(index + 1).padStart(2, '0')}</span>
                         <span className="cl-row-icon">
                             <Icon aria-hidden="true" />
                         </span>

@@ -47,6 +47,8 @@ import {
     CAMPAIGNCUE_SITE_TITLE,
     buildCampaignCueUrl,
 } from './siteConfig';
+import CampaignCueAiSummary from './components/CampaignCueAiSummary';
+import CampaignCueMobileNavigation from './components/CampaignCueMobileNavigation';
 
 export const metadata: Metadata = {
     title: CAMPAIGNCUE_SITE_TITLE,
@@ -75,10 +77,20 @@ type OutputFormat = {
     status: string;
 };
 
-type FitCheckItem = {
-    challenge: string;
-    response: string;
-    proof: string;
+type PackRoomColumn = {
+    title: string;
+    description: string;
+    icon: IconType;
+    items: Array<{
+        label: string;
+        status: string;
+    }>;
+};
+
+type OwnerProblem = {
+    title: string;
+    description: string;
+    action: string;
     icon: IconType;
 };
 
@@ -95,6 +107,7 @@ type PowerhouseFeature = {
     description: string;
     icon: IconType;
     tone: string;
+    artifacts: [string, string, string];
 };
 
 type CampaignWallAsset = {
@@ -146,6 +159,7 @@ type FooterGroup = {
 };
 
 const NAV_LINKS = [
+    { label: 'Pack room', href: '#pack-room' },
     { label: 'Trust', href: '#trust' },
     { label: 'FAQ', href: '#faq' },
 ];
@@ -287,29 +301,98 @@ const FIT_ITEMS = [
     'Result memory',
 ];
 
-const FIT_CHECK_ITEMS: FitCheckItem[] = [
+const FLOW_MAP_STEPS: WorkflowStep[] = [
     {
-        challenge: 'I need something useful to promote today.',
-        response: 'CampaignCue starts with one current cue from offers, services, photos, hours, and owner notes.',
-        proof: 'Today cue',
+        label: 'Facts',
+        title: 'Business facts',
+        detail: 'Offer, photo, price, link, slot, event, service area, or owner note enters the workspace.',
+        icon: LuStore,
+    },
+    {
+        label: 'Cue',
+        title: 'Today cue',
+        detail: 'CampaignCue picks one useful promotion job instead of asking the owner to start from a blank prompt.',
         icon: LuRadar,
     },
     {
-        challenge: 'I have the facts, but no ready channel pack.',
-        response: 'One source-backed pack covers WhatsApp, Google, social creative, print, video brief, and staff handoff.',
-        proof: 'Pack ready',
-        icon: LuWorkflow,
+        label: 'Pack',
+        title: 'Campaign pack',
+        detail: 'Copy, creative, print, video brief, staff note, and local update drafts stay together.',
+        icon: LuWalletCards,
     },
     {
-        challenge: 'I worry the copy may say the wrong thing.',
-        response: 'Prices, links, photo rights, consent, sensitive claims, ranking claims, and spend are checked before use.',
-        proof: 'Review visible',
+        label: 'Check',
+        title: 'Visible review',
+        detail: 'Source facts, claims, rights, consent, spend gates, and avoid-list wording stay visible.',
         icon: LuShieldCheck,
     },
     {
-        challenge: 'I want files and text, not connected posting.',
-        response: 'Day one stays export-first: download assets, copy text, schedule manual work, and mark what happened.',
-        proof: 'No direct post',
+        label: 'Export',
+        title: 'Manual handoff',
+        detail: 'The owner downloads, copies, assigns, posts outside CampaignCue, and records what happened.',
+        icon: LuDownload,
+    },
+    {
+        label: 'Memory',
+        title: 'Result memory',
+        detail: 'Used, skipped, booked, sold, and follow-up notes shape the next useful cue.',
+        icon: LuBarChart3,
+    },
+];
+
+const PACK_ROOM_COLUMNS: PackRoomColumn[] = [
+    {
+        title: 'Owner-ready pieces',
+        description: 'The usable outputs sit together instead of becoming scattered files.',
+        icon: LuFileDown,
+        items: [
+            { label: 'WhatsApp status', status: 'Copy ready' },
+            { label: 'Google local draft', status: 'Manual publish' },
+            { label: 'Square + story creative', status: 'Download PNG' },
+            { label: 'Print and staff note', status: 'Use in store' },
+        ],
+    },
+    {
+        title: 'Proof beside the work',
+        description: 'Every pack carries the reason it is safe enough to use.',
+        icon: LuClipboardCheck,
+        items: [
+            { label: 'Source trace', status: 'Price + link' },
+            { label: 'Brand note', status: 'Playbook guided' },
+            { label: 'Claim review', status: 'No ranking claim' },
+            { label: 'Rights note', status: 'Owner review' },
+        ],
+    },
+    {
+        title: 'Manual delivery controls',
+        description: 'Nothing silently posts, sends, publishes, or spends from the public promise.',
+        icon: LuDownload,
+        items: [
+            { label: 'Download pack', status: 'Export first' },
+            { label: 'Copy channel text', status: 'Owner action' },
+            { label: 'Assign follow-up', status: 'Manual task' },
+            { label: 'Mark result', status: 'Memory saved' },
+        ],
+    },
+];
+
+const OWNER_PROBLEM_CARDS: OwnerProblem[] = [
+    {
+        title: "Blank prompts waste the owner's time.",
+        description: "CampaignCue starts from today's actual facts: offer, item, service, photo, slot, event, link, or local note.",
+        action: 'One cue first',
+        icon: LuMousePointerClick,
+    },
+    {
+        title: 'Creative files lose the proof behind them.',
+        description: 'Every pack keeps source trace, brand guidance, claim review, rights notes, and delivery boundaries beside the work.',
+        action: 'Proof stays attached',
+        icon: LuShieldCheck,
+    },
+    {
+        title: 'Direct posting is risky before trust is clear.',
+        description: 'The active workflow exports files and copy for manual use, so owners stay in control of posting, sending, and spend.',
+        action: 'Export first',
         icon: LuDownload,
     },
 ];
@@ -664,6 +747,7 @@ const POWERHOUSE_FEATURES: PowerhouseFeature[] = [
         description: 'Turn one local cue into WhatsApp, Google, social, print, reel, and staff handoff outputs.',
         icon: LuSparkles,
         tone: 'rose',
+        artifacts: ['WhatsApp', 'Google draft', 'Poster'],
     },
     {
         label: 'Reuse',
@@ -671,6 +755,7 @@ const POWERHOUSE_FEATURES: PowerhouseFeature[] = [
         description: 'Use generated assets or uploaded images as editable candidates through Creative Studio and CueLayers.',
         icon: LuLayers,
         tone: 'blue',
+        artifacts: ['Source photo', 'Story crop', 'Counter card'],
     },
     {
         label: 'Local',
@@ -678,6 +763,7 @@ const POWERHOUSE_FEATURES: PowerhouseFeature[] = [
         description: 'Prepare local update copy, counter cards, QR notes, and staff scripts from the same source.',
         icon: LuSearchCheck,
         tone: 'cream',
+        artifacts: ['Local post', 'QR note', 'Staff line'],
     },
     {
         label: 'Video',
@@ -685,6 +771,7 @@ const POWERHOUSE_FEATURES: PowerhouseFeature[] = [
         description: 'Create hooks, shot lists, creator instructions, and safe caption notes without rendering spend.',
         icon: LuVideo,
         tone: 'pink',
+        artifacts: ['Hook', 'Shot list', 'Caption'],
     },
     {
         label: 'Check',
@@ -692,6 +779,7 @@ const POWERHOUSE_FEATURES: PowerhouseFeature[] = [
         description: 'Keep price, proof, rights, consent, sensitive wording, and spend decisions visible before export.',
         icon: LuShieldCheck,
         tone: 'ink',
+        artifacts: ['Price check', 'Rights note', 'No auto-post'],
     },
     {
         label: 'Learn',
@@ -699,6 +787,7 @@ const POWERHOUSE_FEATURES: PowerhouseFeature[] = [
         description: 'Mark used, skipped, booked, sold, or follow-up so the next campaign starts with better context.',
         icon: LuBarChart3,
         tone: 'purple',
+        artifacts: ['Used', 'Skipped', 'Follow-up'],
     },
 ];
 
@@ -1072,6 +1161,94 @@ function HeroProductPreview() {
     );
 }
 
+function CampaignCueFlowMap() {
+    return (
+        <section className="campaigncue-flow-map" aria-label="CampaignCue workflow map">
+            <div className="campaigncue-flow-map-heading">
+                <span>Workflow map</span>
+                <h2>One daily loop from fact to checked pack.</h2>
+                <p>
+                    CampaignCue is easiest to understand as a loop: source facts come in, one cue is chosen,
+                    the pack is prepared, the risky parts stay visible, and the result is remembered.
+                </p>
+            </div>
+            <div className="campaigncue-flow-map-diagram">
+                <div className="campaigncue-flow-map-center" aria-hidden="true">
+                    <span>Today&apos;s cue</span>
+                    <strong>Lunch combo before 2 PM</strong>
+                    <p>WhatsApp, Google, story, poster, staff note, and proof are in one pack.</p>
+                    <em>Source checked</em>
+                </div>
+                <ol className="campaigncue-flow-map-steps">
+                    {FLOW_MAP_STEPS.map((step) => {
+                        const Icon = step.icon;
+                        return (
+                            <li className="campaigncue-flow-map-node" key={step.title}>
+                                <span>{step.label}</span>
+                                <div aria-hidden="true">
+                                    <Icon />
+                                </div>
+                                <strong>{step.title}</strong>
+                                <p>{step.detail}</p>
+                            </li>
+                        );
+                    })}
+                </ol>
+            </div>
+        </section>
+    );
+}
+
+function CampaignPackRoom() {
+    return (
+        <section className="campaigncue-pack-room" id="pack-room" aria-label="Campaign Pack Room preview">
+            <div className="campaigncue-pack-room-copy">
+                <span>Campaign Pack Room</span>
+                <h2>One place for the pack, proof, and manual handoff.</h2>
+                <p>
+                    The owner should not hunt across files, prompts, chats, and dashboards. One pack room
+                    shows the work, the source checks, and the next manual action before anything leaves CampaignCue.
+                </p>
+            </div>
+            <div className="campaigncue-pack-room-surface">
+                <div className="campaigncue-pack-room-header">
+                    <div>
+                        <span>Lunch combo pack</span>
+                        <strong>Ready after fact check</strong>
+                    </div>
+                    <em>Export first</em>
+                </div>
+                <div className="campaigncue-pack-room-columns">
+                    {PACK_ROOM_COLUMNS.map((column) => {
+                        const Icon = column.icon;
+                        return (
+                            <article key={column.title}>
+                                <div className="campaigncue-pack-room-column-head">
+                                    <span aria-hidden="true">
+                                        <Icon />
+                                    </span>
+                                    <div>
+                                        <strong>{column.title}</strong>
+                                        <p>{column.description}</p>
+                                    </div>
+                                </div>
+                                <div className="campaigncue-pack-room-list">
+                                    {column.items.map((item) => (
+                                        <div key={`${column.title}-${item.label}`}>
+                                            <span>{item.label}</span>
+                                            <em>{item.status}</em>
+                                        </div>
+                                    ))}
+                                </div>
+                            </article>
+                        );
+                    })}
+                </div>
+            </div>
+        </section>
+    );
+}
+
 function WorkflowRail() {
     return (
         <div className="campaigncue-workflow-rail">
@@ -1094,29 +1271,31 @@ function WorkflowRail() {
     );
 }
 
-function CampaignCueFitCheck() {
+function CampaignCueProblemBand() {
     return (
-        <section className="campaigncue-fit-check" id="fit-check" aria-label="CampaignCue quick fit check">
-            <div className="campaigncue-fit-check-copy">
-                <span>Quick fit check</span>
-                <h2>Pick the problem you recognize.</h2>
+        <section className="campaigncue-problem-band" id="fit-check" aria-label="CampaignCue owner problems">
+            <div className="campaigncue-problem-band-copy">
+                <span>The owner problem</span>
+                <h2>Local marketing breaks before the post is written.</h2>
                 <p>
-                    Campaign tools usually start with a blank generator. CampaignCue starts with the owner&apos;s
-                    daily bottleneck and turns it into a checked campaign pack.
+                    Small businesses do not need another empty editor. They need a calm way to decide what matters
+                    today, keep proof with the work, and hand off the pack without connecting accounts too early.
                 </p>
             </div>
-            <div className="campaigncue-fit-check-list">
-                {FIT_CHECK_ITEMS.map((item) => {
+            <div className="campaigncue-problem-band-grid">
+                {OWNER_PROBLEM_CARDS.map((item) => {
                     const Icon = item.icon;
                     return (
-                        <div className="campaigncue-fit-check-row" key={item.challenge}>
-                            <Icon aria-hidden="true" />
+                        <article key={item.title}>
+                            <span aria-hidden="true">
+                                <Icon />
+                            </span>
                             <div>
-                                <strong>{item.challenge}</strong>
-                                <p>{item.response}</p>
+                                <strong>{item.title}</strong>
+                                <p>{item.description}</p>
                             </div>
-                            <span>{item.proof}</span>
-                        </div>
+                            <em>{item.action}</em>
+                        </article>
                     );
                 })}
             </div>
@@ -1145,9 +1324,11 @@ function CreativePowerhouse() {
                                 <Icon aria-hidden="true" />
                             </div>
                             <div className="campaigncue-powerhouse-visual" aria-hidden="true">
-                                <span />
-                                <span />
-                                <span />
+                                {feature.artifacts.map((artifact) => (
+                                    <span key={artifact}>
+                                        <small>{artifact}</small>
+                                    </span>
+                                ))}
                             </div>
                             <strong>{feature.title}</strong>
                             <p>{feature.description}</p>
@@ -1660,6 +1841,7 @@ export default function CampaignCueHomePage() {
                     App
                     <LuArrowRight aria-hidden="true" />
                 </a>
+                <CampaignCueMobileNavigation basePath={basePath} />
             </header>
 
             <section className="campaigncue-hero">
@@ -1697,7 +1879,11 @@ export default function CampaignCueHomePage() {
                 ))}
             </section>
 
-            <CampaignCueFitCheck />
+            <CampaignCueFlowMap />
+
+            <CampaignCueProblemBand />
+
+            <CampaignPackRoom />
 
             <CreativePowerhouse />
 
@@ -1956,6 +2142,7 @@ export default function CampaignCueHomePage() {
                     </div>
                 </div>
                 <FooterLinks basePath={basePath} />
+                <CampaignCueAiSummary />
                 <div className="campaigncue-footer-bottom">
                     <span>© 2026 CampaignCue</span>
                     <span>Export-first delivery. Direct account posting is outside the active delivery mode.</span>

@@ -169,7 +169,28 @@ Do not make the H1 a slogan. The brand/entity name should be the first signal.
 
 ---
 
-## 9. Product Copy Direction
+## 9. Presentation Direction From Reference Review
+
+The parent site can borrow presentation mechanics from strong SaaS/product sites without borrowing their funnel posture.
+
+Use:
+
+- meaningful hero artifact instead of blank decoration
+- compact module cards with row-level facts
+- clear first-viewport hierarchy
+- restrained proof-style details such as entity, product surface, and contact routing
+
+Reject:
+
+- loud purple/pink gradients
+- playful illustration-heavy payment styling
+- customer logos or testimonials
+- product-conversion claims
+- broad SaaS feature grids that make the parent site feel like another product
+
+---
+
+## 10. Product Copy Direction
 
 Products section:
 
@@ -187,7 +208,7 @@ Do not describe inactive, private, or unapproved products.
 
 ---
 
-## 10. Legal Copy Direction
+## 11. Legal Copy Direction
 
 Legal page first paragraph:
 

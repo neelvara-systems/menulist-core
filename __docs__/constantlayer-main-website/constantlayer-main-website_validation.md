@@ -53,7 +53,9 @@
 | Product links | Pass | Home and Products page link to `https://menulist.ai`, `https://answerlattice.com`, and `https://campaigncue.ai` |
 | Product link affordance | Pass | Linked product rows show an external-link icon on desktop and mobile |
 | Product section visual strength | Pass | Home product section uses a dark portfolio band with a compact summary panel instead of the oversized `Portfolio` wordmark |
+| Reference presentation depth | Pass | Hero scene uses labeled parent-record/product-surface/routing artifacts, and the home page includes reference modules for entity, product, and contact verification |
 | Viewport reveal motion | Pass | Section-level `cl-reveal` blocks appear once through a local IntersectionObserver, with reduced-motion fallback and no global smooth-scroll layer |
+| Internal alias scope | Pass | `/cl` is documented as a MyCodex/private portfolio alias only, not a canonical ConstantLayer URL or product-code alias |
 | Legal copy scope | Pass | Home and Products copy now uses entity/reference wording instead of ownership phrasing |
 | Structured data scope | Pass | Organization JSON-LD uses `knowsAbout` for the lineup and no longer uses `owns` |
 
@@ -70,8 +72,18 @@ The premium redesign was checked against current public examples before the fina
 | 37signals (`https://37signals.com/`) | Editorial restraint and clear convictions can carry a company site without decorative clutter. |
 | One Page Love parent-company examples (`https://onepagelove.com/tag/parent-company`) | Parent-company sites often work best with limited information and direct orientation. |
 | HTMLBurger holding-company examples (`https://htmlburger.com/blog/holding-company-website-examples/`) | Clean layout, whitespace, navigation clarity, typography, and straightforward information matter more than decoration. |
+| Supahub (`https://supahub.com/`) | Hero proof details and below-fold product-surface signals can add depth, but the purple glow/testimonial-heavy approach is not appropriate for ConstantLayer. |
+| Gamma (`https://gamma.app/`) | Product-mode grids and generated-output previews are useful pacing references; rendered browser review was blocked, so only public HTML structure was used. |
+| Overflow (`https://overflow.io/`) | Large cropped interface artifacts and a three-mode story pattern informed the reference artifact direction. |
+| Protoio Inc. (`https://protoioinc.com/`) | Parent-company restraint, editorial spacing, and product-lineup framing are the closest external fit. |
+| Dock (`https://www.dock.us/`) | Horizontal product selectors and cropped interface staging informed the product-surface/reference-module presentation. |
+| Outseta (`https://www.outseta.com/`) | Bordered modules with compact labels, icon squares, and row-level details informed the reference modules. |
+| Peppermint (`https://paywithpeppermint.com/`) | Single-offer hierarchy is useful; loud illustration, playful copy, and saturated palette were rejected for this parent site. |
+| Front (`https://front.com/`) | Centered statement, three proof tracks, and large cropped product image informed the section pacing, not the saturated purple theme or product claims. |
 
 Applied outcome: the home page now uses an editorial hero, entity ledger, dark portfolio relationship band, row-based operating principles, and a direct contact directory instead of a card-heavy SaaS template.
+
+Additional applied outcome: the reference-site review added a meaningful hero artifact and a restrained reference-modules section while preserving the no-form, no-database, parent-site boundary.
 
 ---
 

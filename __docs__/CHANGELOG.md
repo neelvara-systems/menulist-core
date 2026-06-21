@@ -6,6 +6,79 @@
 
 ---
 
+## June 21, 2026 - MenuList Public Truth Loop Homepage Bridge
+
+### Added
+
+- **Homepage public-truth loop added** - MenuList now has a compact homepage proof section after the source-to-public workflow showing how the current menu source, owner approval, customer surfaces, returned feedback/activity signals, and source correction stay connected.
+- **Output proof row added** - The same section summarizes the three practical output families owners understand fastest: customer menu, Official Business Page, and print/QR kit.
+
+### Changed
+
+- **Homepage story tightened around post-publish trust** - The new block explains why MenuList is not just a QR menu without reintroducing a full analytics, SEO, stats, or industry section.
+- **Locale coverage hardened** - `PublicTruthLoop` copy was added to all active MenuList website locale packs, and missing workflow labels used by the current source map were filled in the non-primary locale packs.
+
+### Boundaries
+
+- **No runtime scope added** - This is public marketing website component, CSS, locale, and docs work only. It does not change owner dashboards, customer menus, pricing/payment, upload/extraction, Firebase rules, Cloud Functions, crawler policy, external-platform sync, POS sync, search ranking/citation claims, fake metrics, or deployment.
+
+### Verification
+
+- Passed `git diff --check`, locale JSON/key coverage checks, and `npx tsc --noEmit --incremental false --pretty false`.
+- Local smoke returned `200` for `/` and `/?locale=hi-IN`, with the new public-truth loop rendered and no missing-message markers.
+
+---
+
+## June 21, 2026 - Public Website Visual Proof Polish
+
+### Changed
+
+- **MenuList workflow map labels added** - The homepage source-to-public workflow now labels the input side and published-output side so first-time owners can understand the source map faster without adding another section.
+- **CampaignCue output cards clarified** - Creative Output System preview tiles now show named campaign artifacts such as WhatsApp, Google draft, poster, QR note, staff line, price check, and result-memory states instead of anonymous placeholder blocks.
+- **AnswerLattice support map hub clarified** - The support knowledge map center now states the reviewed support-layer contract with approved-first, fallback-tracked, and review-loop chips.
+
+### Boundaries
+
+- **No runtime scope added** - This is public marketing website component, CSS, locale, and docs polish only. It does not change owner dashboards, customer menus, widgets, pricing/payment, upload/extraction, Firebase rules, Cloud Functions, crawler policy, or deployment.
+
+### Verification
+
+- Passed `git diff --check`, `npx tsc --noEmit --incremental false --pretty false`, and `npm run verify:campaigncue`.
+- Local smoke returned `200` for `/`, `/sites/campaigncue`, and `/sites/answerlattice`.
+
+---
+
+## June 21, 2026 - CampaignCue Mobile Website Fit
+
+### Fixed
+
+- **CampaignCue public mobile layout tightened** - Homepage, feature pages, use-case pages, and the mobile drawer now use compact phone typography, bounded hero previews, hidden desktop-only subpage metadata, simplified Creative Studio phone previews, and unclipped use-case preview content.
+- **CampaignCue mobile drawer tap bug fixed** - The hamburger now opens the drawer from normal tap/click activation only, preventing touchstart/click double activation from opening and immediately closing the drawer. The drawer also uses a slimmer grouped-list layout with aligned overview content instead of oversized repeated cards.
+
+### Boundaries
+
+- **No product scope added** - This is static public-site CSS, docs, and verifier alignment only. It does not add direct posting, account connection, pricing, ROI, ROAS, predictive scoring, Firebase reads/writes, Storage writes, Cloud Functions, provider calls, rules, indexes, or deploys.
+
+### Verification
+
+- CampaignCue mobile layout coverage is enforced by `npm run verify:campaigncue` and was browser-smoked at 390px and 320px phone widths.
+
+## June 21, 2026 - CampaignCue Mobile Website Drawer
+
+### Fixed
+
+- **CampaignCue mobile navigation now uses a drawer** - Public CampaignCue homepage, feature pages, and use-case pages now hide desktop mega menus on mobile and show a hamburger button that opens a right-to-left drawer with product links, review/reuse links, use-case links, quick anchors, and the workspace CTA.
+
+### Boundaries
+
+- **No product scope added** - This is static public-site navigation and CSS only. It does not add direct posting, account connection, pricing, ROI, ROAS, predictive scoring, Firebase reads/writes, Storage writes, Cloud Functions, provider calls, rules, indexes, or deploys.
+
+### Verification
+
+- CampaignCue mobile drawer coverage is enforced by `npm run verify:campaigncue`.
+
+---
+
 ## June 21, 2026 - CampaignCue Product And Use-Case Menus
 
 ### Added
@@ -71,7 +144,7 @@
 
 ### Fixed
 
-- **CampaignCue mobile-first public site polish** - Phone navigation now wraps instead of clipping, hero actions stack to full width, long badges wrap inside the viewport, and mobile public-site links use a safer 46px touch target floor.
+- **CampaignCue mobile-first public site polish** - Phone navigation uses a dedicated drawer instead of wrapping desktop menus into the hero, hero actions stack to full width, long badges wrap inside the viewport, and mobile public-site controls use a safer touch target floor.
 
 ### Verification
 
@@ -103,6 +176,7 @@
 ### Added
 
 - **ConstantLayer viewport-entry reveal added** - Homepage and secondary-page sections now appear with a restrained one-time reveal as they enter the viewport, using a local IntersectionObserver controller instead of a global scroll behavior or animation dependency.
+- **ConstantLayer reference presentation pass added** - The homepage hero now uses a meaningful company-record artifact, and a new reference-modules section gives entity, product-surface, and contact-routing details without turning the parent site into a product funnel.
 
 ### Boundaries
 

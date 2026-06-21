@@ -1,6 +1,6 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.2.86
+> **Version:** 1.2.89
 > **Last Updated:** 2026-06-18
 > **Audience:** Developers
 
@@ -44,6 +44,8 @@ The root app layout defines default startup images in `metadata.appleWebApp.star
 `src/app/loading.tsx` exposes `brand="answerlattice"` for explicit AnswerLattice fallback loaders and auto-detects `x-product-id: answerlattice` for root streamed loading payloads. The Redux overlay loader in `src/components/organisms/loader/index.tsx` detects AnswerLattice runtime routes and swaps to the shared `AnswerlatticeLoaderLogo` atom. Static logo UI and loaders now share `src/components/atoms/answerlatticeLogoMark/index.tsx`, which follows the MenuList inline SVG-path pattern and carries the final logo paths, gradients, filters, stroke widths, and transparent background directly. `AnswerlatticeLoaderLogo` only adds path classes for the same 3-second stroke-draw cycle as the MenuList global loader without changing final color or shape output. Loader surfaces must not add CSS blur or drop-shadow to the AnswerLattice logo; any path shadow/effect must come only from the SVG-native design filters.
 
 Visible AnswerLattice website diagrams stay vector-based. `AnswerlatticeFlowDiagram`, `SupportKnowledgeMapSection`, and routed product/SEO diagram surfaces use inline SVG paths plus the shared `AnswerlatticeLogoMark` atom; they should not use PNGs, raster screenshots, or image-wrapped logo assets for diagram marks. `scripts/verification/verify-answerlattice-pwa-assets.js` enforces this by scanning the public website component directory, with the metadata-only `StructuredData.tsx` logo reference excluded because it is not a visible diagram.
+
+`SupportKnowledgeMapSection` keeps the source-map diagram but now labels the center hub as a reviewed support layer with three proof chips: approved first, fallback tracked, and review loop. This makes the "one governed support layer" contract visible inside the map without adding another product section or implying autopilot support.
 
 Diagram centers use a single soft outer ripple around the logo mark and do not render a second static inner strip. Shared pulse keyframes travel to the visible route endpoint and fade there; cross diagrams launch all logo-origin pulses together so the center reads as one listening source.
 
@@ -145,7 +147,7 @@ src/app/sites/answerlattice/
 ├── systemCoverage.ts              # Code-backed system coverage groups for homepage
 └── components/
     ├── Header.tsx                 # Shared header with Product/Demo/Install/Use Cases/Resources/Pricing nav and right-side mobile drawer
-    ├── Footer.tsx                 # Shared footer with public-route link columns and bottom theme switcher
+    ├── Footer.tsx                 # Shared footer with public-route link columns, AI summary shortcut, and bottom theme switcher
     ├── AnswerlatticeThemeProvider.tsx # Light/System/Dark provider with AnswerLattice-scoped persistence and browser theme-color updates
     ├── AnswerlatticeThemeSwitcher.tsx # Shared icon segmented control for Light/System/Dark
     ├── AnswerlatticeAssetImage.tsx    # Shared raster screen-asset renderer that preserves intrinsic dimensions and exposes asset-slot metadata
@@ -403,6 +405,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 - `privacy-policy/page.tsx` — Privacy policy page
 - `terms-of-service/page.tsx` — Terms of service page
 - `Footer.tsx` — Footer (no state needed)
+- `src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` — shared footer-level AI summary strip; AnswerLattice passes a prompt that points to `answerlattice.com` and `/llms.txt` while rejecting generic chatbot, helpdesk-replacement, CMS, autonomous support, and analytics-platform framing
 - `HeroSection.tsx`, `ProductPreviewSection.tsx`, `WidgetSection.tsx`, `PillarsSection.tsx`, `SystemCoverageSection.tsx`, `HowItWorksSection.tsx`, `ComparisonSection.tsx`, `CTASection.tsx`
 - `page.tsx` also owns the homepage-only support-suite, support-surface story, install-surface, AI-built SaaS fit, and positioning-boundary sections as server-rendered static content. Founder-pressure, product-overview, trust/fallback, founder-review, setup-path, and category-comparison detail remains available through Product, feature, resource, security, and comparison routes instead of rendering as separate homepage sections.
 
@@ -410,7 +413,7 @@ export default function AnswerlatticeLink({ href, basePath = '', children, ...pr
 - `demo/AnswerlatticePublicDemo.tsx` — No sign-in required demo state
 - `contact/ContactForm.tsx` — Contact form state, submission handling, success/error states, and privacy/terms links
 - `get-started/OnboardingForm.tsx` — Self-service onboarding form state, signed-in account switching, and existing-workspace dashboard handoff
-- `components/AnswerlatticeAnalytics.tsx` — Optional GA script plus delegated click tracking for `data-answerlattice-event` elements
+- `components/AnswerlatticeAnalytics.tsx` — Shared public cookie banner plus optional GA script and delegated click tracking for `data-answerlattice-event` elements after accepted analytics consent
 - `components/AnswerlatticeScrollReveal.tsx` — Lightweight IntersectionObserver client island for viewport reveal motion across public website pages
 
 ### Native Interaction
@@ -450,7 +453,7 @@ Use-cases, install, resources, updates, and the homepage product/widget preview 
 
 Conversion analytics is client-side only:
 
-- `AnswerlatticeAnalytics.tsx` loads Google Analytics only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` exists.
+- `AnswerlatticeAnalytics.tsx` shows the shared public cookie banner first. It loads Google Analytics only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` exists.
 - CTA/demo/pricing/onboarding events are emitted through `window.gtag`.
 - No event is written to Firestore, no API route is called, and no AnswerLattice Firebase cost is introduced by normal tracking.
 - `src/config/csp-allowlist.ts` allows Google Analytics connect destinations so the optional script can report when enabled.
@@ -476,6 +479,9 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-21 | 1.2.89 | Refined the homepage support-suite presentation after reviewing Supahub, Peppermint, Front, and the supplied Grabee reference, then simplified it after visual QA: the section now uses a lighter `Collect → Shape → Serve` flow rail, keeps the four suite cards, and renders the build path as a stable non-sticky panel without adding runtime behavior or unsupported product claims |
+| 2026-06-21 | 1.2.88 | Added reviewed-support-layer center copy to `SupportKnowledgeMapSection` so the support knowledge map makes approved-first, fallback-tracked, and review-loop behavior visible without changing runtime surfaces |
+| 2026-06-21 | 1.2.87 | Added the shared public AI summary footer strip with AnswerLattice-specific Claude, ChatGPT, and Gemini prompt links, preserving governed-answer positioning and non-goal boundaries |
 | 2026-06-18 | 1.2.86 | Sharpened homepage first-fold copy, site metadata, reusable hero copy, and final CTA around approved answers before fallback and reviewable support gaps without changing routes, domains, runtime data calls, or dependencies |
 | 2026-06-10 | 1.2.85 | Added reusable AnswerLattice concept illustrations for source-to-answer, governance loop, install verification, safe-context boundary, and category positioning across Product, Install, Security, and Comparisons |
 | 2026-06-10 | 1.2.84 | Generated 25 production-ready AnswerLattice product-scene PNGs and internal source SVGs for the maintained website visual slots while preserving stable asset paths |

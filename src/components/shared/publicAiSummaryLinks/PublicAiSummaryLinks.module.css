@@ -1,0 +1,133 @@
+.summary {
+    --ai-summary-bg: rgba(255, 255, 255, 0.08);
+    --ai-summary-border: rgba(148, 163, 184, 0.24);
+    --ai-summary-text: #e5edf7;
+    --ai-summary-muted: #b7c5d8;
+    --ai-summary-link-bg: rgba(255, 255, 255, 0.08);
+    --ai-summary-link-hover: rgba(255, 255, 255, 0.14);
+    --ai-summary-link-border: rgba(148, 163, 184, 0.24);
+    --ai-summary-mark-bg: rgba(96, 165, 250, 0.18);
+    --ai-summary-mark-text: #93c5fd;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    border: 1px solid var(--ai-summary-border);
+    border-radius: 1rem;
+    background: var(--ai-summary-bg);
+    padding: 0.85rem 1rem;
+}
+
+.label {
+    margin: 0;
+    color: var(--ai-summary-text);
+    font-size: 0.93rem;
+    font-weight: 760;
+    line-height: 1.35;
+}
+
+.links {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}
+
+.link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.35rem;
+    border: 1px solid var(--ai-summary-link-border);
+    border-radius: 999px;
+    background: var(--ai-summary-link-bg);
+    color: var(--ai-summary-muted);
+    padding: 0.35rem 0.72rem 0.35rem 0.38rem;
+    font-size: 0.82rem;
+    font-weight: 780;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+        background 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+.link:hover,
+.link:focus-visible {
+    border-color: var(--ai-summary-mark-text);
+    background: var(--ai-summary-link-hover);
+    color: var(--ai-summary-text);
+    transform: translateY(-1px);
+}
+
+.link:focus-visible {
+    outline: 2px solid var(--ai-summary-mark-text);
+    outline-offset: 3px;
+}
+
+.mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 999px;
+    background: var(--ai-summary-mark-bg);
+    color: var(--ai-summary-mark-text);
+    font-size: 0.72rem;
+    font-weight: 850;
+}
+
+.menulist {
+    --ai-summary-bg: var(--ws-panel-contrast-soft, rgba(255, 255, 255, 0.07));
+    --ai-summary-border: var(--ws-panel-contrast-border, rgba(148, 163, 184, 0.24));
+    --ai-summary-text: var(--ws-panel-contrast-text, #f8fafc);
+    --ai-summary-muted: var(--ws-panel-contrast-secondary, #cbd5e1);
+    --ai-summary-link-bg: var(--ws-panel-contrast-raised, rgba(255, 255, 255, 0.08));
+    --ai-summary-link-hover: var(--ws-panel-contrast-soft, rgba(255, 255, 255, 0.13));
+    --ai-summary-link-border: var(--ws-panel-contrast-border, rgba(148, 163, 184, 0.24));
+    --ai-summary-mark-bg: rgba(96, 165, 250, 0.18);
+    --ai-summary-mark-text: var(--ws-panel-contrast-icon, #60a5fa);
+}
+
+.answerlattice {
+    --ai-summary-bg: rgba(255, 255, 255, 0.04);
+    --ai-summary-border: var(--al-border, rgba(148, 163, 184, 0.18));
+    --ai-summary-text: var(--al-text, #f8fafc);
+    --ai-summary-muted: var(--al-text-secondary, #cbd5e1);
+    --ai-summary-link-bg: rgba(255, 255, 255, 0.04);
+    --ai-summary-link-hover: rgba(255, 255, 255, 0.08);
+    --ai-summary-link-border: var(--al-border, rgba(148, 163, 184, 0.18));
+    --ai-summary-mark-bg: rgb(var(--al-primary-light-rgb, 124 184 255) / 0.16);
+    --ai-summary-mark-text: var(--al-primary-light, #7cb8ff);
+}
+
+.campaigncue {
+    --ai-summary-bg: rgba(255, 255, 255, 0.78);
+    --ai-summary-border: var(--cc-border, rgba(6, 26, 120, 0.1));
+    --ai-summary-text: var(--cc-ink, #07133f);
+    --ai-summary-muted: var(--cc-muted, #58657c);
+    --ai-summary-link-bg: #ffffff;
+    --ai-summary-link-hover: rgba(6, 26, 120, 0.06);
+    --ai-summary-link-border: var(--cc-border, rgba(6, 26, 120, 0.1));
+    --ai-summary-mark-bg: rgba(6, 26, 120, 0.08);
+    --ai-summary-mark-text: var(--cc-primary, #061a78);
+}
+
+@media (max-width: 720px) {
+    .summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .links {
+        justify-content: flex-start;
+        width: 100%;
+    }
+}

@@ -4,7 +4,7 @@
 
 Printable Asset Templates turns MenuList print/download files into a dedicated owner workspace called **Assets**. The owner chooses what they need - table tent, single table card, counter sticker, entrance poster, feedback QR, flyer, gift certificate, front/back business card, ID card, invitation, postcard, product tag, campaign poster, full print menu, or complete Menu Kit - then chooses a finished template family and downloads the result. Editor-backed assets expose the 9-family catalog; full Print Menu exposes only its real unique PDF layouts until the full-menu PDF renderer owns all 9 families.
 
-The default path is still not a blank design tool. Owners choose a finished template and download it. For non-menu printable assets, desktop also offers a governed **Customize in editor** path backed by the shared Creative Editor document model. Owners can adjust copy and layout when needed, while QR destination, scan-safe QR rendering, and MenuList attribution policy stay protected. QR/link source layers remain locked in the editor document. MenuList attribution is not stored as an editable canvas layer; it is applied at export time when the existing plan policy requires it.
+The default path is still not a blank design tool. Owners choose a finished template and download it. For non-menu printable assets, desktop also offers a governed **Customize in editor** path backed by the shared Creative Editor document model. Owners can adjust copy and layout when needed, while QR destination, scan-safe QR rendering, front/back business-card frames, and MenuList attribution policy stay protected. QR/link source layers remain locked in the editor document. MenuList attribution is not stored as an editable canvas layer; it is applied at export time when the existing plan policy requires it.
 
 ## Why This Matters
 
@@ -20,6 +20,7 @@ The current Print Assets screen proves the workflow. The next system must make t
 | Keep owner effort low | One asset type, one template, one download, with optional desktop customization only when the owner asks for it. |
 | Keep outputs consistent | The selected style family can apply across all asset types. |
 | Keep QR reliable | QR modules stay dark on white with required safe area. |
+| Keep paired print assets aligned | Business Card front/back faces stay tied to protected print frames even after customization. |
 | Keep Firebase cost low | Generation stays client-side using already-loaded data. |
 | Keep template additions easy | Add a template by registering a family and editor-document renderer support, not by adding one-off UI. |
 
@@ -42,8 +43,8 @@ The current Print Assets screen proves the workflow. The next system must make t
 4. Owner sees the supported template families on the right. Editor-backed QR/display/campaign assets show 9 families; full Print Menu shows the real unique PDF layouts.
 5. Owner clicks one template family.
 6. Desktop opens a modal and mobile opens a bottom sheet with the generated output preview already visible. Non-menu printable assets preview from the Creative Editor document renderer; Print Menu uses the generated menu PDF first-page image preview.
-7. Owner downloads the selected template as PDF or image. Complete Menu Kit remains a ZIP bundle.
-8. On desktop, owner can click **Customize in editor** for Table Tent, Single Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, or Campaign Poster. The template opens fullscreen with editable copy/layout and locked QR/link source layers. Business Card opens with front and back faces in one canvas. MenuList attribution is added only to the downloaded output when the existing plan policy requires it.
+7. Owner downloads the selected template as PDF or image. Business Card image download creates separate front and back PNG files; its PDF stays paired for print handoff. Complete Menu Kit remains a ZIP bundle.
+8. On desktop, owner can click **Customize in editor** for Table Tent, Single Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, or Campaign Poster. The template opens fullscreen with editable copy/layout and locked QR/link source layers. Business Card opens with front and back faces in one canvas, and edited image export downloads both side images. MenuList attribution is added only to the downloaded output when the existing plan policy requires it.
 9. MenuList creates the file locally and downloads it.
 
 ## Route and Navigation
@@ -68,7 +69,7 @@ The current Print Assets screen proves the workflow. The next system must make t
 | Feedback QR | PDF + image | Exit, counter, receipt stand, customer feedback prompt. |
 | Flyer | PDF + image | A5 handout, delivery insert, campaign card, or local offer. |
 | Gift Certificate | PDF + image | Voucher for gifts, credits, or prepaid offers. |
-| Business Card | PDF + image | Front and back 90 x 55 mm business card faces in one output file. |
+| Business Card | PDF + image | PDF keeps both 90 x 55 mm faces paired; image download creates separate front and back PNG files. |
 | ID Card | PDF + image | 54 x 85 mm portrait owner, staff, or service-team card. |
 | Invitation | PDF + image | A6 event, opening, workshop, or special invite. |
 | Postcard | PDF + image | A6 landscape mailer for thanks, reminders, offers, or local drops. |

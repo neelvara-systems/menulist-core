@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
-import { LuArrowRight, LuExternalLink, LuMail } from 'react-icons/lu';
+import type { IconType } from 'react-icons';
+import { LuArrowRight, LuBuilding2, LuExternalLink, LuLayers, LuMail, LuScale } from 'react-icons/lu';
 import {
     CONSTANTLAYER_CONTACT_EMAIL,
+    CONSTANTLAYER_LEGAL_EMAIL,
     CONSTANTLAYER_PRODUCT_LINEUP,
+    CONSTANTLAYER_PRIVACY_EMAIL,
     CONSTANTLAYER_RELATIONSHIP_LINE,
     CONSTANTLAYER_SITE_DESCRIPTION,
     CONSTANTLAYER_SITE_TITLE,
@@ -22,6 +25,45 @@ export const metadata: Metadata = {
     description: CONSTANTLAYER_SITE_DESCRIPTION,
     alternates: { canonical: buildConstantLayerUrl('/') },
 };
+
+type ReferenceModule = {
+    eyebrow: string;
+    title: string;
+    description: string;
+    icon: IconType;
+    rows: Array<[string, string]>;
+};
+
+const REFERENCE_MODULES: ReferenceModule[] = [
+    {
+        eyebrow: 'Entity layer',
+        title: 'Company record',
+        description: 'The parent site keeps the operating name, relationship line, and public company reference in one place.',
+        icon: LuBuilding2,
+        rows: [
+            ['Name', 'ConstantLayer Systems'],
+            ['Scope', 'Parent reference'],
+        ],
+    },
+    {
+        eyebrow: 'Product boundary',
+        title: 'Product surfaces',
+        description: 'MenuList, Answerlattice, and CampaignCue stay separated by product site while sharing one company reference.',
+        icon: LuLayers,
+        rows: CONSTANTLAYER_PRODUCT_LINEUP.map((product): [string, string] => [product.status, product.name]),
+    },
+    {
+        eyebrow: 'Routing',
+        title: 'Company contacts',
+        description: 'Business, legal, and privacy inquiries route directly to email, with no parent-site form or lead database.',
+        icon: LuScale,
+        rows: [
+            ['Business', CONSTANTLAYER_CONTACT_EMAIL],
+            ['Legal', CONSTANTLAYER_LEGAL_EMAIL],
+            ['Privacy', CONSTANTLAYER_PRIVACY_EMAIL],
+        ],
+    },
+];
 
 export default function ConstantLayerHomePage() {
     return (
@@ -73,7 +115,6 @@ export default function ConstantLayerHomePage() {
 
             <section className="cl-section cl-section-subtle cl-reveal">
                 <div className="cl-container cl-editorial-intro">
-                    <span className="cl-section-number">01</span>
                     <div>
                         <span className="cl-eyebrow">Purpose</span>
                         <h2>A public reference for the company layer behind the product portfolio.</h2>
@@ -83,6 +124,50 @@ export default function ConstantLayerHomePage() {
                         which products sit in the lineup, where inquiries go, and which
                         product relationships are true today.
                     </p>
+                </div>
+            </section>
+
+            <section className="cl-section cl-reference-section cl-reveal">
+                <div className="cl-container">
+                    <div className="cl-section-heading cl-section-heading-split">
+                        <div>
+                            <span className="cl-eyebrow">Reference modules</span>
+                            <h2>Visitors can verify the company layer before moving to a product site.</h2>
+                        </div>
+                        <p>
+                            The parent website answers narrow company questions first:
+                            who operates the surfaces, which products are in the lineup,
+                            and where official inquiries should go.
+                        </p>
+                    </div>
+                    <div className="cl-reference-modules">
+                        {REFERENCE_MODULES.map((module) => {
+                            const Icon = module.icon;
+
+                            return (
+                                <article className="cl-reference-card" key={module.title}>
+                                    <header>
+                                        <span className="cl-reference-icon">
+                                            <Icon aria-hidden="true" />
+                                        </span>
+                                        <span className="cl-reference-kicker">{module.eyebrow}</span>
+                                    </header>
+                                    <div>
+                                        <h3>{module.title}</h3>
+                                        <p>{module.description}</p>
+                                    </div>
+                                    <div className="cl-reference-details">
+                                        {module.rows.map(([label, value]) => (
+                                            <div className="cl-reference-detail" key={`${module.title}-${label}`}>
+                                                <span>{label}</span>
+                                                <strong>{value}</strong>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
                 </div>
             </section>
 

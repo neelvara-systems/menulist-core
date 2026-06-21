@@ -1,7 +1,7 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.2.86
-> **Last Updated:** 2026-06-18
+> **Version:** 1.2.89
+> **Last Updated:** 2026-06-21
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -45,7 +45,7 @@ Public fit and setup copy must not imply founders need existing support volume b
 
 **Sections:**
 1. **Hero** — Centered founder-readable promise: "Support your product users without hiring a support team." The eyebrow should make the answer-order contract immediate: approved answers before fallback. The supporting copy must explain that scattered product knowledge becomes reviewed support knowledge, approved answers are served first, fallback opens only when coverage is missing, and each miss becomes review work. Keep in-product help, hosted help, FAQs, changelog, ticket fallback, feedback, approved answers, and reviewable gaps visible without claiming outsourced support, full helpdesk replacement, or autonomous support.
-2. **Support Suite** — Four compact suite cards for in-app support, hosted help, ticket fallback, and owner-approved answers. This is the homepage's clearest product-suite framing and must not turn into a helpdesk or chatbot replacement claim.
+2. **Support Suite** — A compact transformation flow plus four concrete support-surface cards. The section must show `Collect → Shape → Serve`: scattered docs/tickets/releases/screenshots/recordings/notes become reviewed support structure, then appear as widget help, hosted help, FAQ answers, documentation, ticket gaps, feedback review, changelog review, and future AI-agent context. Keep this section intentionally light: one shared flow rail, four suite cards for in-app support, hosted help, ticket fallback, and owner-approved answers, and a non-sticky build-path panel. Do not add another large transformation-card grid or proof-card row here because Product, feature, and Support Surfaces sections carry the detailed route-level proof.
 3. **Support Surfaces in Motion** — Scroll-led product surface story showing the complete support layer: owner inputs, in-app help, hosted help, gaps/fallback, and the review loop. This section exists to make the product feel broader than Q&A or a chatbot while keeping the copy founder-readable.
 4. **Product Overview** — Feature-wise product cards for in-app widget, hosted help, tickets, FAQ, changelog, feedback, Support Board, knowledge intake, and workflow notifications.
 5. **Support Improvement Loop** — Large loop diagram: user asks, approved answers checked, trusted help served, fallback ticket if missing, repeated gaps become review work, owner approves improvement.
@@ -56,7 +56,7 @@ Public fit and setup copy must not imply founders need existing support volume b
 10. **Objections / FAQ Preview** — Top setup, safety, pricing, and fit objections.
 11. **CTA** — Final conversion panel with `Create workspace` as primary and demo as secondary.
 
-The homepage must stay compressed, diagram-controlled, and product-led: one hero product scene with capability proof, one support-suite section, the sticky support-surface story, one feature-wise product overview card section, one large support-improvement loop diagram, one install-confidence section, concise fit/positioning/pricing/FAQ sections, and final CTA. Detailed setup path, trust cards, founder review proof, and category comparison belong on Product, feature, resource, security, and comparison pages instead of returning as separate homepage sections. Pre-Onboarding/source-preparation content stays available through Resources, Get Started, footer, and its dedicated route, but should not add another homepage section unless the primary funnel becomes too thin.
+The homepage must stay compressed, diagram-controlled, and product-led: one hero product scene with capability proof, one support-suite/transformation section, the sticky support-surface story, one feature-wise product overview card section, one large support-improvement loop diagram, one install-confidence section, concise fit/positioning/pricing/FAQ sections, and final CTA. Detailed setup path, trust cards, founder review proof, and category comparison belong on Product, feature, resource, security, and comparison pages instead of returning as separate homepage sections. Pre-Onboarding/source-preparation content stays available through Resources, Get Started, footer, and its dedicated route, but should not add another homepage section unless the primary funnel becomes too thin.
 
 Visual assets for the homepage and feature pages must be planned through `src/content/answerlatticePublic/visualAssets.ts` before generation or capture. Current stable PNG slots are generated product-scene assets at `1440 x 1200`; final screenshots or GIFs may replace them only when they preserve the same product-truth, safe-context, fallback, and owner-review meaning. Concept illustrations may use inline SVG when the subject is abstract, such as safe context, install verification, source-to-answer flow, governance loop, or category positioning. Decorative mascot/cartoon assets, fake customers, fake metrics, and unsupported helpdesk/chatbot claims are not part of the AnswerLattice public-site style.
 
@@ -599,6 +599,7 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-21 | 1.2.89 | Required the homepage Support Suite to present scattered founder materials as a lighter `Collect → Shape → Serve` flow rail with four suite cards and a non-sticky build-path panel, avoiding another dense transformation-card grid on the homepage |
 | 2026-06-18 | 1.2.86 | Sharpened the homepage first-fold contract around approved answers before fallback, missing coverage becoming support gaps, and founder review without changing the domain/deployment setup |
 | 2026-06-10 | 1.2.85 | Added the concept-illustration requirement for abstract AnswerLattice boundaries such as safe context, install verification, source-to-answer, governance loop, and category positioning |
 | 2026-06-10 | 1.2.84 | Required stable website visual slots to use concrete product-scene assets or approved final captures rather than generic placeholders or decorative illustrations |

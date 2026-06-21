@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.65 (External Accent Governance)
+**Version:** 3.6.69 (Public Truth Loop Homepage Bridge)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** June 21, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,7 +13,15 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.65** | **External Accent Governance** | **Current blue trust system remains canonical; warm pink accent is decorative-only.** | **ACTIVE** |
+| **3.6.69** | **Public Truth Loop Homepage Bridge** | **Homepage proof now shows how customer surfaces, feedback, activity, and correction keep returning to one approved source.** | **ACTIVE** |
+
+Version 3.6.69 adds a compact `PublicTruthLoopSection` after the homepage source-to-public workflow. The section shows MenuList as a post-publish public-truth loop: current menu source, owner approval, customer surfaces, returned feedback/activity signals, and source correction. It also gives owners one practical output proof row for customer menu, Official Business Page, and print/QR kit. This is MenuList-native storytelling inspired by reference-site cycle patterns, not a redesign or feature expansion. It does not add external-platform syncing, ranking/citation claims, POS sync, fake metrics, owner dashboard runtime, customer menu runtime, pricing/payment changes, Firebase rules, Cloud Functions, crawler policy, or Vercel deployment.
+
+Version 3.6.68 applies a scoped reference-site polish pass without redesigning the canonical MenuList website. `InteractiveWorkflowSection` now labels the two sides of the homepage source map as the starting inputs and published outputs so the existing visual reads faster for first-time SMB owners. CampaignCue keeps its existing flow map and Campaign Pack Room, but its Creative Output System mini visuals now name concrete pack artifacts instead of anonymous placeholder blocks. AnswerLattice keeps the support knowledge map, but its center hub now states the support-layer contract: approved first, fallback tracked, and review loop. This is public marketing website component/CSS/locale/docs polish only; owner dashboards, customer menus, OBP, widgets, pricing/payment, upload/extraction, Firebase rules, Cloud Functions, crawler policy, and Vercel deployment were not changed.
+
+Version 3.6.67 adds a shared public AI summary link strip after validating Duna's footer pattern against MenuList's existing AI/search discovery posture. `PublicAiSummaryLinks` renders low-page links to Claude, ChatGPT, and Gemini with product-specific prompt text. MenuList uses a localized footer label and a prompt that points to `https://menulist.ai` plus `https://menulist.ai/llms.txt` while explicitly rejecting ranking, AI-citation, automatic external-platform, and unsupported POS/account-posting claims. AnswerLattice and CampaignCue use the same shared strip with their own product-boundary prompts. This is public marketing website UI/docs work only; it does not change crawler policy, metadata, `llms.txt`, owner dashboards, customer menus, OBP, widgets, pricing/payment, upload/extraction, Firebase rules, Cloud Functions, or Vercel deployment.
+
+Version 3.6.66 adds a shared compact public cookie preference banner after validating the Duna-style reference against the actual MenuList/AnswerLattice/CampaignCue/ConstantLayer tracking posture. `PublicCookieConsentBanner` now owns the floating card UI. MenuList continues to gate Google Analytics and Microsoft Clarity until the visitor accepts analytics, AnswerLattice gates its optional Google Analytics script, and CampaignCue/ConstantLayer show essential-storage acknowledgement only because no analytics script is active there. The copy deliberately does not mention ads, personalization, or ranking/tracking behavior that is not implemented. This is public marketing/brand website UI/docs work only; owner dashboards, customer menus, OBP, widgets, pricing/payment, upload/extraction, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
 Version 3.6.65 records the external local-service palette review after comparing the proposed deep navy/pink reference against MenuList's current trust/infrastructure website identity. The site does not adopt the reference palette as a rebrand. The existing blue MenuList system remains canonical, while `src/styles/website.css` now exposes restrained warm-accent tokens for minor illustration details, soft badges, dividers, or hover accents only. The design-system rules explicitly prohibit pink body text, pink headline/CTA treatment, large poster-style diagonal blocks, QR-poster layouts, and replacing MenuList's calm public-business truth positioning with a decorative local-service identity. This is website token/docs governance only; visible website layout, copy, pricing/payment, upload/extraction, owner dashboard runtime, customer menu runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
@@ -193,6 +201,8 @@ These archived documents are not source-code backups and are not restoration tar
 | `src/app/(website)/page.tsx`                                | Homepage route                                 |
 | `src/app/(website)/WebsiteAuthProvider.tsx`                 | Auth context for pricing/onboarding flows      |
 | `src/components/website/WebsiteAnalyticsConsent.tsx`        | Main website analytics consent gate, banner, and vendor script control |
+| `src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx` | Shared compact public cookie preference banner used by MenuList and sibling public websites |
+| `src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` | Shared footer-level AI summary link strip for public websites |
 | `src/components/website/home/HomePage.tsx`                  | Current compressed homepage composition plus sticky CTA |
 | `src/components/website/Header.tsx`                         | Shared header (all pages)                      |
 | `src/components/website/Footer.tsx`                         | Shared footer (all pages)                      |
@@ -601,6 +611,28 @@ Stage 7.15 aligns the main marketing website with the Privacy Policy's consent-g
 - Privacy and Trust/Security copy now distinguishes the main marketing website analytics gate from customer menu analytics and removes unsupported hard claims such as fixed backup windows, exact encryption algorithms, broad model-training promises, and universal export/delete controls.
 - This is scoped to the main MenuList website. It does not add banners to owner custom-domain compliance pages, OBP/customer menu pages, or the owner dashboard.
 
+## Stage 7.17 Shared Public Cookie Banner
+
+Stage 7.17 moves the public consent UI to a shared compact floating banner pattern:
+
+- `src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx` is the shared banner/card used by public marketing and brand sites.
+- MenuList still gates Google Analytics and Microsoft Clarity through `WebsiteAnalyticsConsent`; the banner only changed the visible UI and the accept label.
+- AnswerLattice now gates optional Google Analytics behind the same banner instead of loading the analytics script immediately when a measurement id exists.
+- CampaignCue and ConstantLayer show essential-storage acknowledgement only, because their current public layouts do not load analytics scripts.
+- Copy must stay implementation-truthful: do not mention ads, personalization, or tracking categories unless that website actually uses them.
+- This does not apply to owner dashboards, customer menus, Official Business Pages, widgets, private MyCodex surfaces, or product-runtime analytics.
+
+## Stage 7.18 Public AI Summary Links
+
+Stage 7.18 adds a Duna-style footer prompt for visitors who want an AI tool to summarize the public website:
+
+- `src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` owns the shared link strip.
+- MenuList renders it in `Footer.tsx` above the copyright/preferences row.
+- The links open Claude, ChatGPT, and Gemini with a product-specific summary prompt.
+- The MenuList prompt points to `https://menulist.ai` and `https://menulist.ai/llms.txt`.
+- The prompt explicitly rejects unsupported claims such as ranking promises, AI citation guarantees, automatic external-platform updates, and unsupported POS/account posting.
+- This does not replace `llms.txt`, metadata, structured data, sitemap, or resource pages. It is only a visitor shortcut.
+
 ## Stage 7.14 Whole Website Polish
 
 Stage 7.14 aligns the website's shared visual system after the mobile hero and brand pass:
@@ -731,6 +763,8 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.67 | June 21, 2026 | Added shared public AI summary footer links for MenuList, AnswerLattice, and CampaignCue, with product-specific prompts and claim boundaries. |
+| 3.6.66 | June 21, 2026 | Added a shared compact public cookie preference banner across MenuList, AnswerLattice, CampaignCue, and ConstantLayer public websites, with analytics gating only where analytics scripts exist and essential-storage acknowledgement elsewhere. |
 | 3.6.65 | June 21, 2026 | Kept the current blue trust/infrastructure palette canonical after external local-service palette review, added decorative-only warm accent tokens, and documented that pink is not approved for body text, CTA text, large headings, or QR-poster-style rebrand treatments. |
 | 3.6.64 | June 18, 2026 | Aligned shared SEO/AEO metadata to production canonical constants, added explicit homepage canonical metadata, moved `/create-menu/success` behind a noindex server metadata wrapper, and hardened `verify:agent-readiness`. |
 | 3.6.63 | June 18, 2026 | Updated the AI Menu Manager public page copy to mention guided item/category/menu-area context selection while preserving natural-language commands, selected project scope, and approval-safe cards. |

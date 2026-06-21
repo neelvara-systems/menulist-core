@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { getStaticAnswerlatticeAppleStartupImages } from '@lib/answerlattice/pwaAssets';
 import AnswerlatticeAnalytics from './components/AnswerlatticeAnalytics';
 import AnswerlatticeScrollReveal from './components/AnswerlatticeScrollReveal';
@@ -117,6 +118,27 @@ interface AnswerlatticeLayoutProps {
     children: React.ReactNode;
 }
 
+function getAnswerlatticeBasePath(): string {
+    try {
+        const h = headers();
+        const aliasBasePath = h.get('x-product-base-path') || '';
+        if (aliasBasePath) return aliasBasePath;
+
+        const host = h.get('host') || '';
+        const productId = h.get('x-product-id');
+        const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1');
+        return productId && isLocalhost ? '/__answerlattice' : '';
+    } catch {
+        return '';
+    }
+}
+
+function withBasePath(basePath: string, href: string): string {
+    if (!basePath) return href;
+    if (href === '/') return basePath;
+    return `${basePath}${href}`;
+}
+
 function AnswerlatticeThemeBootstrapScript() {
     const script = `
         (() => {
@@ -144,11 +166,13 @@ function AnswerlatticeThemeBootstrapScript() {
 }
 
 export default function AnswerlatticeWebsiteLayout({ children }: AnswerlatticeLayoutProps) {
+    const basePath = getAnswerlatticeBasePath();
+
     return (
         <>
             <AnswerlatticeThemeBootstrapScript />
             <AnswerlatticeThemeProvider>
-                <AnswerlatticeAnalytics />
+                <AnswerlatticeAnalytics privacyHref={withBasePath(basePath, '/privacy-policy')} />
                 <AnswerlatticeSmoothScroll />
                 <AnswerlatticeScrollReveal />
                 {/* AnswerlatticeClientLayout is imported dynamically to avoid making the entire layout a client component */}

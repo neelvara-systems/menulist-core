@@ -30,7 +30,7 @@
 | Feedback QR | Shows only when feedback is enabled. |
 | Flyer | Downloads the A5 campaign file. |
 | Gift Certificate | Downloads the landscape voucher file. |
-| Business Card | Downloads one file containing front and back 90 x 55 mm business card faces. |
+| Business Card | PDF downloads one paired print handoff file; image download downloads separate front and back PNG files. |
 | ID Card | Downloads the 54 x 85 mm portrait identity card. |
 | Invitation | Downloads the A6 invitation file. |
 | Postcard | Downloads the A6 landscape postcard file. |

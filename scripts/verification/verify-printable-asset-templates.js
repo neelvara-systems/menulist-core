@@ -146,6 +146,8 @@ const renderer = read('src/lib/printable-asset-templates/renderPrintableAsset.ts
   'FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER',
   'isPrintableAssetEditorRenderable',
   'renderPrintableAssetEditorTemplate',
+  'renderPrintableAssetDownloadFiles',
+  'renderPrintableAssetEditorTemplateFiles',
   "input.assetTypeId === 'print_menu'",
   "input.assetTypeId === 'feedback_qr'",
   "input.assetTypeId === 'complete_menu_kit'",
@@ -177,8 +179,20 @@ const editorAdapter = read('src/lib/printable-asset-templates/editorDocumentAdap
   'campaign_poster',
   'buildPrintableAssetEditorDocument',
   'renderPrintableAssetEditorDocument',
+  'renderPrintableAssetEditorDocumentFiles',
+  'renderPrintableAssetEditorDocumentFile',
+  'getBusinessCardFaceDocument',
+  'getBusinessCardPrintFrames',
+  'BUSINESS_CARD_BACK_FACE_OFFSET',
+  'BusinessCardFace',
+  'normalizeBusinessCardEditorDocument',
+  'preparePrintableAssetDocumentForExport',
+  'clampElementToFrame',
+  'inferBusinessCardPrintFrame',
+  'isNonExportEditorGuide',
   'rehydratePrintableAssetEditorDocument',
   'renderPrintableAssetEditorTemplate',
+  'renderPrintableAssetEditorTemplateFiles',
   'stripPrintableAssetEditorAttributionLayers',
   'applyRuntimeMenuListAttribution',
   'drawMenuListAttribution',
@@ -186,10 +200,32 @@ const editorAdapter = read('src/lib/printable-asset-templates/editorDocumentAdap
   'resolveMenuListAttributionPolicy({ activePlanType: params.activePlanType }).showAttribution',
   'CreativeEditorDocument',
   'locked: true',
+  'printFrameId',
+  'printFrameLocked',
+  'editorGuide: true',
+  'excludeFromExport: true',
+  'printFrames: input.assetTypeId === "business_card"',
   'resolveMenuListAttributionPolicy',
   'errorCorrectionLevel: "H"',
   'jsPDF',
 ].forEach((token) => requireToken(editorAdapter, token, 'editor-backed printable asset adapter'));
+
+const creativeEditorTypes = read('src/modules/creative-editor/types.ts');
+[
+  'CreativeEditorPrintFrame',
+  'printFrameId?: string',
+  'printFrameLocked?: boolean',
+  'printFrames?: CreativeEditorPrintFrame[]',
+].forEach((token) => requireToken(creativeEditorTypes, token, 'shared creative editor print-frame types'));
+
+const creativeEditorFabricAdapter = read('src/modules/creative-editor/fabricAdapter.ts');
+[
+  '"printFrameId"',
+  '"printFrameLocked"',
+  '"editorGuide"',
+  '"excludeFromExport"',
+  'object.printFrameLocked',
+].forEach((token) => requireToken(creativeEditorFabricAdapter, token, 'shared creative editor fabric print-frame persistence'));
 
 const creativeExport = read('src/modules/creative-editor/export.ts');
 [
@@ -215,6 +251,7 @@ const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
   'PRINTABLE_ASSET_TYPES',
   'getPrintableTemplateFamiliesForAsset',
   'renderPrintableAsset',
+  'renderPrintableAssetDownloadFiles',
   'selectedPrintableAssetId',
   'availablePrintableTemplateFamilies',
   'printableActionTemplateId',
@@ -248,6 +285,7 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'getPrintableTemplateFamiliesForAsset',
   'getPrintableDownloadActionLabel',
   'getPrintableActionFormats',
+  'renderPrintableAssetDownloadFiles',
   'renderTemplatePreview',
   'getExistingProjectsListWithoutLoader',
   'getProjectDataWithoutLoader',
@@ -264,6 +302,8 @@ const desktopAssetsRoute = read('src/components/templates/main-app/printableAsse
   'editorDocumentRef',
   'buildPrintableAssetEditorDocument',
   'renderPrintableAssetEditorDocument',
+  'renderPrintableAssetEditorDocumentFiles',
+  'downloadPrintableResults',
   'PrintableTemplatePreview',
   'setPreviewAsset',
   'Saved designs',

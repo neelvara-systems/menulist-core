@@ -29,6 +29,7 @@ Build ConstantLayer inside the existing Next.js/Vercel product-site architecture
 - no `PRODUCT_IDS` entry
 - no Firebase project
 - no API routes, auth, CMS, contact form, or analytics in v1
+- public cookie banner is essential-storage acknowledgement only; there is no analytics or ads consent claim in v1
 
 Reason: the repo already uses a shared Vercel app with hostname/path-prefix routing for public product sites. ConstantLayer should follow that routing architecture while staying outside database-backed product identity.
 
@@ -77,6 +78,7 @@ Validation completed:
 - no `PRODUCT_IDS` entry or Firebase requirement added
 - no API routes, forms, auth, Firestore, Storage, Cloud Functions, or schedulers added
 - legal/privacy/terms/contact content audit completed against current official DPDP and e-commerce references
+- shared public cookie acknowledgement mounted in the website layout without adding analytics, forms, auth, Firebase, or API routes
 
 ---
 

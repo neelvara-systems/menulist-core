@@ -131,6 +131,36 @@ Body:
 ConstantLayer Systems gives company-level references one stable source: which products sit in the lineup, where inquiries go, and which product relationships are true today.
 ```
 
+### Reference Modules Section
+
+Purpose:
+
+Show the parent site as a compact verification surface, not a broad product funnel.
+
+Heading:
+
+```text
+Visitors can verify the company layer before moving to a product site.
+```
+
+Body:
+
+```text
+The parent website answers narrow company questions first: who operates the surfaces, which products are in the lineup, and where official inquiries should go.
+```
+
+Required modules:
+
+- Company record: entity name and parent-reference scope.
+- Product surfaces: MenuList, Answerlattice, and CampaignCue as separate product surfaces.
+- Company contacts: business, legal, and privacy routing.
+
+Visual treatment:
+
+- Use bordered reference modules with compact labels, icon squares, and row-level details.
+- Keep the section calm and factual; do not introduce customer logos, testimonials, pricing, or product-conversion claims.
+- Do not use loud gradients, illustration-heavy art, or playful payment/product-marketing styling from external references.
+
 ### Product Lineup Section
 
 Visual treatment:
@@ -374,6 +404,7 @@ Required notes:
 
 - There is no newsletter signup or embedded inquiry form in v1.
 - There is no website account, lead database, product onboarding flow, or Firebase write path in v1.
+- The site may remember a local cookie acknowledgement preference in the visitor browser.
 - Hosting, CDN, and security layers may process page-request metadata and operational logs.
 - If a visitor sends email, the email address, message content, and related mail metadata are handled by the mail provider and relevant inbox.
 - Privacy questions should use the dedicated privacy email.

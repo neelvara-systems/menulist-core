@@ -102,6 +102,24 @@ const SUITE_BUILD_STEPS = [
     },
 ];
 
+const SUPPORT_LAYER_PHASES = [
+    {
+        label: 'Collect',
+        title: 'Bring the scattered product knowledge',
+        detail: 'Docs, tickets, releases, screenshots, recordings, notes, support replies, and founder memory.',
+    },
+    {
+        label: 'Shape',
+        title: 'Turn it into reviewed support structure',
+        detail: 'Articles, FAQs, approved answers, page context, changelog updates, and support gaps.',
+    },
+    {
+        label: 'Serve',
+        title: 'Use it across every support surface',
+        detail: 'In-app widget, hosted help center, fallback tickets, feedback review, and future AI-agent context.',
+    },
+];
+
 const SUITE_CAPABILITIES = [
     {
         title: 'Answer inside the product',
@@ -561,12 +579,28 @@ function SupportSuiteSection({ basePath }: { basePath: string }) {
         <section className="border-y border-white/[0.06] bg-white/[0.012] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="One support suite"
-                    title="Widget, help center, tickets, and approved answers in one layer."
-                    description="The familiar support surfaces share one reviewed support layer: approved answers first, fallback only when coverage is missing, and visible gaps for founder review."
+                    eyebrow="One support layer"
+                    title="Turn scattered product knowledge into every support surface users expect."
+                    description="AnswerLattice starts from the material founders already have, shapes it into reviewed support knowledge, then serves it through the widget, help center, FAQs, tickets, changelog, feedback, and future AI-agent context."
                 />
 
-                <div className="mt-10 grid gap-4 lg:grid-cols-4">
+                <div className="al-support-layer-flow" data-answerlattice-reveal>
+                    {SUPPORT_LAYER_PHASES.map((phase, index) => (
+                        <article
+                            key={phase.label}
+                            className="al-support-layer-flow__step"
+                            data-answerlattice-reveal-item
+                            style={{ '--al-support-layer-index': index } as CSSProperties}
+                        >
+                            <span>{String(index + 1).padStart(2, '0')}</span>
+                            <p>{phase.label}</p>
+                            <h3>{phase.title}</h3>
+                            <em>{phase.detail}</em>
+                        </article>
+                    ))}
+                </div>
+
+                <div className="mt-8 grid gap-4 lg:grid-cols-4">
                     {SUITE_CAPABILITIES.map((capability) => {
                         const Icon = capability.icon;
                         return (
@@ -610,12 +644,6 @@ function SupportSuiteSection({ basePath }: { basePath: string }) {
                                 key={step.title}
                                 className="al-suite-stack__card"
                                 data-answerlattice-reveal-item
-                                style={
-                                    {
-                                        '--al-suite-stack-index': index,
-                                        '--al-suite-stack-top': `${6.75 + index * 0.68}rem`,
-                                    } as CSSProperties
-                                }
                             >
                                 <div className="al-suite-stack__card-head">
                                     <span>{String(index + 1).padStart(2, '0')}</span>

@@ -249,8 +249,9 @@ function isInvalidCampaignCuePublicFeaturePath(pathname: string): boolean {
 
 const MYCODEX_PRODUCT_ALIAS_ROUTES: Array<{
     prefix: string;
-    productId: Extract<ProductSiteId, 'menulist' | 'answerlattice' | 'campaigncue'>;
+    productId: Extract<ProductSiteId, 'menulist' | 'constantlayer' | 'answerlattice' | 'campaigncue'>;
 }> = [
+    { prefix: '/cl', productId: 'constantlayer' },
     { prefix: '/ml', productId: 'menulist' },
     { prefix: '/al', productId: 'answerlattice' },
     { prefix: '/cc', productId: 'campaigncue' },
@@ -423,7 +424,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Internal/test-only aliases for portfolio/product landing pages:
-    // /ml -> MenuList, /al -> Answerlattice, /cc -> CampaignCue.
+    // /cl -> ConstantLayer, /ml -> MenuList, /al -> Answerlattice, /cc -> CampaignCue.
     // Production canonical domains continue through the normal product routing.
     // These are path aliases only; product slugs, env names, and Firebase
     // targets remain the canonical per-product values.
@@ -441,6 +442,8 @@ export async function middleware(request: NextRequest) {
                 const campaignCueWorkspacePath = getCampaignCueWorkspaceRewritePath(strippedPath);
                 url.pathname = campaignCueWorkspacePath ||
                     `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
+            } else if (product.id === 'constantlayer') {
+                url.pathname = `${product.internalBasePath}${strippedPath === '/' ? '' : strippedPath}`;
             } else {
                 url.pathname = strippedPath === '/product' ? '/how-it-works' : strippedPath;
             }

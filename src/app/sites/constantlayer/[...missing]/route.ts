@@ -106,7 +106,12 @@ const notFoundHtml = `<!doctype html>
   </main>
   <script>
     (function () {
-      var prefix = window.location.pathname.indexOf('/__constantlayer') === 0 ? '/__constantlayer' : '';
+      var pathname = window.location.pathname;
+      var prefix = (pathname === '/cl' || pathname.indexOf('/cl/') === 0)
+        ? '/cl'
+        : pathname.indexOf('/__constantlayer') === 0
+          ? '/__constantlayer'
+          : '';
       document.getElementById('cl-home-link').setAttribute('href', prefix || '/');
       document.getElementById('cl-products-link').setAttribute('href', (prefix || '') + '/products');
     })();

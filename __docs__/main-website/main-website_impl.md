@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.64 SEO/AEO Metadata Parity
-**Last Updated:** June 18, 2026
+**Status:** IMPLEMENTED — v3.6.69 Public Truth Loop Homepage Bridge
+**Last Updated:** June 21, 2026
 **Audience:** Developers
 
 ---
@@ -88,9 +88,13 @@ LocalisationProvider (locale from next-intl/server)
     → ThemeProvider
       → WebsiteDocumentTheme
       → WebsiteThemeShortcut
-      → WebsiteAnalyticsConsent (gates GoogleAnalytics and ClarityAnalytics after accepted consent)
+      → WebsiteAnalyticsConsent (wraps shared PublicCookieConsentBanner and gates GoogleAnalytics/ClarityAnalytics after accepted consent)
       → {children}
 ```
+
+`src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx` is the shared compact public-site cookie banner used by MenuList and sibling public product/brand websites. MenuList uses it for optional analytics consent; it must not be mounted on owner dashboards, customer menu/OBP output, or widget surfaces without a separate privacy review.
+
+`src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` is the shared footer-level AI summary shortcut used by MenuList, AnswerLattice, and CampaignCue public marketing websites. MenuList mounts it in `Footer.tsx` with a localized label and a product-boundary prompt that points to the canonical website and `llms.txt`.
 
 **Default metadata (from layout):**
 - Title: `MenuList - One Official Menu Source for Customers`
@@ -104,7 +108,7 @@ LocalisationProvider (locale from next-intl/server)
 
 ---
 
-## 4. Homepage Sections (11 sections plus sticky CTA, in order)
+## 4. Homepage Sections (12 sections plus sticky CTA, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
@@ -113,20 +117,24 @@ LocalisationProvider (locale from next-intl/server)
 | 1 | Hero | `HeroSection.tsx` |
 | 2 | Problem | `ProblemSection.tsx` |
 | 3 | Interactive Workflow | `InteractiveWorkflowSection.tsx` |
-| 4 | Setup Relief | `SetupReliefSection.tsx` |
-| 5 | Surfaces | `SurfacesSection.tsx` |
-| 6 | Customer Browse | `CustomerBrowseSection.tsx` |
-| 7 | Prepared For You | `PreparedForYouSection.tsx` |
-| 8 | Business Health | `BusinessHealthSection.tsx` |
-| 9 | Resources | `ResourcesSection.tsx` |
-| 10 | FAQ | `FaqSection.tsx` |
-| 11 | Final CTA | `FinalCtaSection.tsx` |
+| 4 | Public Truth Loop | `PublicTruthLoopSection.tsx` |
+| 5 | AI Menu Manager | `AiMenuManagerSection.tsx` |
+| 6 | Setup Relief | `SetupReliefSection.tsx` |
+| 7 | Surfaces | `SurfacesSection.tsx` |
+| 8 | Customer Browse | `CustomerBrowseSection.tsx` |
+| 9 | Prepared For You | `PreparedForYouSection.tsx` |
+| 10 | Business Health | `BusinessHealthSection.tsx` |
+| 11 | Resources | `ResourcesSection.tsx` |
+| 12 | FAQ | `FaqSection.tsx` |
+| 13 | Final CTA | `FinalCtaSection.tsx` |
 
 `RevenuePathSection.tsx`, `StatsSection.tsx`, `SearchDiscoverySection.tsx`, `AnalyticsInsightsSection.tsx`, `SmartFeaturesSection.tsx`, `BusinessSection.tsx`, and `IndustrySection.tsx` remain in the codebase as supporting components/future page material, but they are not mounted in the current compressed homepage. The old `SolutionSection.tsx` was removed in v3.5.8 because its one-source SVG and bullet grid duplicated the hero, problem, workflow source map, setup proof, and public-surface proof.
 
+**Public truth loop homepage bridge:** v3.6.69 adds `PublicTruthLoopSection.tsx` immediately after `InteractiveWorkflowSection`. The section makes the post-publish loop visible: current menu source -> owner approval -> customer surfaces -> feedback/activity signals -> source stays current. It also shows the three practical output families owners understand fastest: customer menu, Official Business Page, and print/QR kit. This is a compact proof bridge, not a new dashboard/analytics/SEO section, and it does not claim automatic external-platform updates, ranking, citation, POS sync, or fake customer metrics.
+
 **Business Health homepage proof:** v3.6.31 adds `BusinessHealthSection.tsx` after `PreparedForYouSection` and before `ResourcesSection`. The section uses a localized product-style owner dashboard preview plus four compact proof cards to show Business Health as an AI health check for latest menu/public-presence state, No action needed state, freshness, cached analytics periods, safe handoff to AI Menu Manager or existing owner screens, multi-location/customer-attention awareness, and mobile support. It intentionally avoids chatbot, realtime sales, revenue optimization, prediction, competitor tracking, automatic external updates, and Business Health-owned public-truth mutation claims. This is public website component/CSS/locale/docs only; owner dashboard runtime, Business Health APIs, scheduler read models, Firebase rules, Cloud Functions, pricing, payment, auth, extraction, customer menu runtime, and Vercel deployment were not changed.
 
-**AI Menu Manager launch hook:** v3.6.59 adds `/ai-menu-manager`, `AiMenuManagerSection`, and a first-level header/footer navigation link for the public AI Menu Manager launch. The homepage now introduces AI Menu Manager directly after `InteractiveWorkflowSection`, so the story remains: one approved MenuList source first, then message-based approved updates. The page and homepage section use localized copy, card-native visuals, and approval-safe language: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. This is public website component/CSS/locale/docs only; owner dashboard runtime, AMM API behavior, Firebase rules, Cloud Functions, pricing/payment runtime, auth, extraction, and customer menu runtime were not changed.
+**AI Menu Manager launch hook:** v3.6.59 adds `/ai-menu-manager`, `AiMenuManagerSection`, and a first-level header/footer navigation link for the public AI Menu Manager launch. The homepage introduces AI Menu Manager after the source-to-public workflow and public-truth loop, so the story remains: one approved MenuList source first, then message-based approved updates. The page and homepage section use localized copy, card-native visuals, and approval-safe language: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. This is public website component/CSS/locale/docs only; owner dashboard runtime, AMM API behavior, Firebase rules, Cloud Functions, pricing/payment runtime, auth, extraction, and customer menu runtime were not changed.
 
 **AI Menu Manager guided context copy:** v3.6.63 updates only the dedicated `/ai-menu-manager` locale copy to reflect the product's guided context workflow. The page now says owners can ask naturally, or choose an item, category, or menu area first for tighter control. The copy still keeps selected store/project scope, broad-work approval, registered MenuList actions, and manual external handoff boundaries visible. This is static website locale/docs work only; the owner AMM UI, AMM DAL/API behavior, Firebase rules, Cloud Functions, pricing/payment runtime, auth, extraction, and customer menu runtime were not changed.
 
@@ -157,6 +165,8 @@ LocalisationProvider (locale from next-intl/server)
 **Feature screenshot proof galleries:** v3.6.57 adds `src/components/website/features/FeatureScreenshotProofGallery.tsx`, rendered from `FeatureDetailPage` after the sticky feature journey. The shared gallery maps approved screenshots by `FeatureDetailSlug` and currently mounts launch-clean captures for Menu Import, QR Menu and Links, Customer Feedback Loop, and Public Discovery. The public assets live under `public/images/website/features/{feature-slug}/`; raw captures and rejected/held-back source material stay under `__docs__/main-website/asset-production/feature-screenshots/raw/`. Official Business Page, Featured Choices, Owner PWA Dashboard, Business Health, Menu Content Prep, and Menu Quality Validation intentionally remain on code-native or existing polished visuals until a cleaner demo tenant/state is available. `website.css` owns the theme-aware gallery cards, portrait/wide screenshot handling, and responsive one/two-column layouts. This is public website component/CSS/locale/docs/image-asset work only; authenticated owner runtime, customer menu runtime, guest feedback runtime, Business Health runtime, Firebase, Cloud Functions, pricing, payment, auth, and Vercel deployment were not changed.
 
 **Native homepage motion polish:** v3.6.58 adds `WorkflowGuidedFrame.tsx` around the homepage workflow source map. The frame provides a sticky desktop story rail, scroll-aware progress bar, active-step emphasis, and a compact active-proof chip while keeping all content readable without animation. Mobile keeps the rail in normal document flow so phone scrolling stays native and stable. The old four-step card grid below the source map was removed because the guided rail now carries the same source/review/publish/share story. This deliberately does not mount Lenis or any global smooth-scroll behavior.
+
+**Reference-site proof polish:** v3.6.68 keeps the existing MenuList source-to-public workflow section but adds localized side labels in `InteractiveWorkflowSection.tsx` so the map reads as `Start with` inputs flowing through owner review and `Publishes as` customer outputs. The same pass updates sibling public sites without changing MenuList runtime behavior: CampaignCue's Creative Output System mini visuals now render named artifacts from `POWERHOUSE_FEATURES`, and AnswerLattice's `SupportKnowledgeMapSection` center hub now names the reviewed-support-layer contract. This is public marketing component/CSS/locale/docs polish only.
 
 **Feature journey panel polish:** v3.6.45 changes the shared `FeatureDetailJourney` desktop story panel from a nested two-column layout into a single parent story card with a top narrative row and full-width proof-card row. The parent panel owns the gradient/background, with no internal copy-vs-proof divider, so pages such as `/features/customer-feedback-loop` read as one cohesive story instead of two compartments. v3.6.46 tightens the desktop height clamp to `32rem -> 72vh -> 39rem`, reduces the largest internal gap/padding, and gives proof cards a controlled responsive minimum height. This keeps the left tab rail and sticky stacked-card behavior intact, gives the three supporting proof cards enough horizontal space, reduces empty vertical space on tall displays, and keeps mobile one-column. This is static website CSS/docs only; feature routes, owner dashboard runtime, customer menu runtime, Firebase, Cloud Functions, pricing, payment, auth, and Vercel deployment were not changed.
 

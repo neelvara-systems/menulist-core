@@ -115,6 +115,8 @@ Because MyCodex reads markdown from `__docs__` at runtime, `next.config.js` must
 
 Localhost `/__mycodex` remains open for development.
 
+Internal portfolio aliases `/cl`, `/ml`, `/al`, and `/cc` are only enabled on the MyCodex product host or an already-resolved MyCodex request. They are convenience path aliases for private portfolio navigation, not public canonical product URLs, tenant paths, Firebase targets, or product-code aliases. `/cl` maps to the ConstantLayer public site route group.
+
 #### Product Site Vs Product App Routes
 
 `src/app/sites/[productId]` is public website only. It is the place for unauthenticated product marketing pages, public resources, robots output, sitemap output, legal pages, and other discovery surfaces.
@@ -123,7 +125,7 @@ Authenticated owner dashboards, product workspaces, admin tools, and paid/runtim
 
 | Product | Public site folder | Owner/product app folder | Product-domain mapping |
 | --- | --- | --- | --- |
-| ConstantLayer | `src/app/sites/constantlayer` | None | Static entity/trust site only; no product app route. |
+| ConstantLayer | `src/app/sites/constantlayer` | None | Static entity/trust site only; no product app route. MyCodex-only alias: `/cl`. |
 | Answerlattice | `src/app/sites/answerlattice` | `src/app/(answerlattice)/answerlattice` | Dashboard roots rewrite to `/answerlattice/*`. |
 | CampaignCue | `src/app/sites/campaigncue` | `src/app/(campaigncue)/campaigncue` | `/app` rewrites to `/campaigncue/app`; local `/__campaigncue/app` also rewrites to `/campaigncue/app`. |
 

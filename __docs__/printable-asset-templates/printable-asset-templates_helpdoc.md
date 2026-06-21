@@ -32,13 +32,13 @@ Assets gives you downloadable files for tables, counters, entrances, feedback, c
 1. Select the file type, such as **Table Tent**, **Flyer**, or **Gift Certificate**.
 2. Choose a style.
 3. Review the image preview shown in the modal or sheet.
-4. Tap **Download PDF** or **Download image**.
+4. Tap **Download PDF** or **Download image**. For **Business Card**, image download saves separate front and back PNG files.
 
 ## Adjust a File on Desktop
 
 For Table Tent, Single Table / Counter Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, and Campaign Poster, click **Customize in editor** after opening a style.
 
-Use this when you need to move text slightly, shorten a phrase, or adjust the layout. The QR link stays protected so the printed file still opens the right page.
+Use this when you need to move text slightly, shorten a phrase, or adjust the layout. The QR link stays protected so the printed file still opens the right page. For Business Card, the front and back print sides stay protected while you adjust editable text.
 
 ## Use One Style Across Files
 

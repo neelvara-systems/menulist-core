@@ -166,7 +166,7 @@ This extends the current `src/lib/print-assets/printAssetCatalog.ts:26` model wi
 | `print_menu` | Menu Card Export preset/style mapping, using existing `renderPdf`. |
 | `complete_menu_kit` | `generateMenuKit(menuKitInput)` with `templateFamilyId` in `MenuKitInput`. |
 
-Single printable assets support PDF and image downloads from the same selected template. The owner-facing preview is image-first and uses real generated output: table tent, single table card, entrance poster, counter sticker, feedback QR, campaign flyer, gift certificate, front/back business card, ID card, invitation, postcard, product tag, and campaign poster use generated Creative Editor PNG previews; Print Menu renders the generated menu PDF first page as PNG. Desktop Print Menu must read the full selected project only when needed, use the no-loader DAL helper, and cache that project data for repeated template preview/download actions. Editor-backed PNG export is wrapped into print-size PDF with `jsPDF` for PDF output. Complete Menu Kit remains ZIP-only.
+Single printable assets support PDF and image downloads from the same selected template. The owner-facing preview is image-first and uses real generated output: table tent, single table card, entrance poster, counter sticker, feedback QR, campaign flyer, gift certificate, front/back business card, ID card, invitation, postcard, product tag, and campaign poster use generated Creative Editor PNG previews; Print Menu renders the generated menu PDF first page as PNG. Desktop Print Menu must read the full selected project only when needed, use the no-loader DAL helper, and cache that project data for repeated template preview/download actions. Editor-backed PNG export is wrapped into print-size PDF with `jsPDF` for PDF output. Business Card image export uses `renderPrintableAssetEditorDocumentFiles()` to render separate front and back PNG files from the same side-by-side editor document, while PDF remains one paired print handoff file. Complete Menu Kit remains ZIP-only.
 
 ### Editor Document Contract
 
@@ -176,11 +176,14 @@ Single printable assets support PDF and image downloads from the same selected t
 - `buildPrintableAssetEditorDocument(input)` creates the neutral `CreativeEditorDocument`.
 - `renderPrintableAssetEditorTemplate(input)` renders default preview/download output without mounting the editor UI.
 - `renderPrintableAssetEditorDocument({ document, assetTypeId, outputFormat })` renders an edited document to PNG/PDF.
+- `renderPrintableAssetEditorDocumentFiles({ document, assetTypeId, outputFormat })` returns one file for normal assets and separate front/back PNG files for Business Card image download.
 
 Document rules:
 
 - QR layers are locked and carry source refs for menu/feedback URL.
 - Short-link layers are locked and carry source refs for the current project URL.
+- Business Card uses one side-by-side editor document with `metadata.printFrames` for front and back. Layers carry `printFrameId`; generated structure layers carry `printFrameLocked`, cannot be unlocked/deleted/reordered, and stay bound to their face.
+- Business Card export normalizes frame-assigned layers back into their front/back bounds before PDF or split PNG rendering. Newly added layers without a `printFrameId` are assigned to the nearest front/back frame during normalization. The side divider is an `editorGuide`/`excludeFromExport` layer, so it helps editing but never appears in downloaded files.
 - Any legacy MenuList attribution elements are stripped from editor documents and saved templates.
 - Business name, headline, instruction, and CTA copy remain editable.
 - PNG/PDF export applies MenuList attribution at runtime through `resolveMenuListAttributionPolicy()`, so non-premium output is branded and eligible higher plans can remove it without placing branding inside the editor canvas.
@@ -211,7 +214,7 @@ Assets
   optional desktop action: Customize in editor
 ```
 
-Template cards do not persist a separate selected state. Clicking a template opens a modal, immediately shows a preview, and shows **Download PDF** plus **Download image** for single assets. Complete Menu Kit shows **Download ZIP** only. For editor-renderable assets, desktop also shows **Customize in editor**, which opens the generated `CreativeEditorDocument` in a fullscreen overlay. The overlay keeps the editor mounted independently of the Assets page so the page does not resize or flicker. This route mounts the shared editor in embedded mode only; the asset route owns Image, Print PDF, close, and optional Save as template actions, while CampaignCue-only AI Tools, Design Cue handlers, and asset registration stay out of this flow.
+Template cards do not persist a separate selected state. Clicking a template opens a modal, immediately shows a preview, and shows **Download PDF** plus **Download image** for single assets. Business Card image action downloads front and back PNG files. Complete Menu Kit shows **Download ZIP** only. For editor-renderable assets, desktop also shows **Customize in editor**, which opens the generated `CreativeEditorDocument` in a fullscreen overlay. The overlay keeps the editor mounted independently of the Assets page so the page does not resize or flicker. This route mounts the shared editor in embedded mode only; the asset route owns Image, Print PDF, close, and optional Save as template actions, while CampaignCue-only AI Tools, Design Cue handlers, and asset registration stay out of this flow.
 
 ## Mobile Route
 

@@ -96,7 +96,8 @@ The existing `ENABLE_PRINT_ASSETS_ROUTE`, `ENABLE_PRINT_MENU_SURFACES`, `ENABLE_
 
 | Version | Date | Changes |
 | --- | --- | --- |
-| 1.4 | June 21, 2026 | Added front/back business card output as one file, portrait ID card assets, and upgraded business-card styling to match the richer card references. |
+| 1.5 | June 21, 2026 | Added Business Card print-frame guardrails so protected generated layers cannot be edited and front/back PNG export stays aligned after customization. |
+| 1.4 | June 21, 2026 | Added front/back business card output, with paired PDF handoff and separate front/back image downloads, portrait ID card assets, and upgraded business-card styling to match the richer card references. |
 | 1.3 | June 17, 2026 | Added first extended Assets catalog: flyer, gift certificate, business card front, invitation, postcard, product tag, and campaign poster through the same editor-backed renderer. |
 | 1.2 | June 15, 2026 | Added Saved designs for explicitly saved Creative Editor documents, backed by the Creative Editor Template Registry. |
 | 1.1 | June 15, 2026 | Added Creative Editor document renderer for non-menu printable assets and desktop governed customization. |

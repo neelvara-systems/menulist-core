@@ -20,9 +20,11 @@
 | Asset rail | Print Menu, Table Tent, Single Table Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, Campaign Poster, and Complete Menu Kit appear. |
 | Template count | Editor-backed QR/display/campaign assets show 9 template families; full Print Menu shows only the unique supported PDF layouts. |
 | Preview | Template modal/sheet automatically shows a generated output preview using real store/logo/color/URL and no embedded PDF viewer. |
-| Format actions | Single printable assets offer separate PDF and image downloads. Complete Menu Kit stays ZIP-only. |
-| Customize action | Table Tent, Single Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, and Campaign Poster show **Customize in editor** on desktop. Business Card opens front and back faces in one canvas. Print Menu and Complete Menu Kit do not. |
+| Format actions | Single printable assets offer separate PDF and image downloads. Business Card image action downloads separate front and back PNG files. Complete Menu Kit stays ZIP-only. |
+| Customize action | Table Tent, Single Card, Counter Sticker, Entrance Poster, Feedback QR, Flyer, Gift Certificate, Business Card, ID Card, Invitation, Postcard, Product Tag, and Campaign Poster show **Customize in editor** on desktop. Business Card opens front and back faces in one canvas and image export downloads both side images. Print Menu and Complete Menu Kit do not. |
 | Customize editor | The fullscreen editor opens from the selected template, QR/link source layers are locked, editable copy can change, no MenuList attribution layer appears in the editor canvas, and Image/Print PDF download uses the latest edited document. |
+| Business Card frame protection | Business Card generated structure layers show as protected/locked, cannot be unlocked, deleted, duplicated, copied, grouped, or dragged in Layers, and canvas size presets are disabled. |
+| Business Card split safety | Moving editable front/back copy near or beyond the face boundary still exports front and back PNG files with each layer clamped into its assigned face. Newly added layers are assigned to the nearest face at export time; the side divider never appears in downloads. |
 | Runtime attribution | Non-premium Image/Print PDF output includes MenuList attribution added during render, while the saved editor document remains free of MenuList branding layers. |
 | Save as template | The fullscreen editor exposes **Save as template** for supported non-menu assets and saves the current neutral document to Saved designs. |
 | Saved designs | Saved templates appear above Ready templates for the same asset type and can reopen in the editor. |
@@ -72,6 +74,7 @@ Every template family must be checked for:
 - Long name fitting.
 - Short link fitting.
 - Print-safe margin.
+- Business Card front/back frame assignment and split PNG output.
 - Non-banner templates do not place a colored header rectangle behind the logo badge.
 - Full Print Menu does not show duplicate family choices that render to the same PDF style.
 - Low-ink readability for `clean-utility`.

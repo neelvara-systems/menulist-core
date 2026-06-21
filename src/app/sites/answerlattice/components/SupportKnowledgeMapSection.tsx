@@ -35,6 +35,8 @@ const OUTPUT_SURFACES = [
     },
 ];
 
+const CORE_SIGNALS = ['Approved first', 'Fallback tracked', 'Review loop'];
+
 const MOBILE_INPUT_PATH = 'M180 305 C180 332 180 354 180 382';
 const MOBILE_OUTPUT_PATH = 'M180 432 C180 468 180 528 180 573';
 
@@ -95,6 +97,14 @@ export default function SupportKnowledgeMapSection({
                             <span className="al-support-map__ring al-support-map__ring--outer" />
                             <div className="al-support-map__mark">
                                 <AnswerlatticeLogoMark height={42} idPrefix={`al-support-map-${context}`} />
+                            </div>
+                        </div>
+                        <div className="al-support-map__core-copy">
+                            <strong>Reviewed support layer</strong>
+                            <div>
+                                {CORE_SIGNALS.map((signal) => (
+                                    <span key={signal}>{signal}</span>
+                                ))}
                             </div>
                         </div>
                     </div>

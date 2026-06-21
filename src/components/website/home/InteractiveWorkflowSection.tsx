@@ -97,6 +97,9 @@ export default function InteractiveWorkflowSection() {
             </svg>
 
             <div className="ws-workflow-map__stack ws-workflow-map__stack--input">
+              <span className="ws-workflow-map__column-label">
+                {t('Workflow.pipelineInputLabel')}
+              </span>
               {inputItems.map(({ key, Icon }) => (
                 <div className="ws-workflow-map__item" key={key}>
                   <span className="ws-workflow-map__item-icon">
@@ -119,6 +122,9 @@ export default function InteractiveWorkflowSection() {
             </div>
 
             <div className="ws-workflow-map__stack ws-workflow-map__stack--output">
+              <span className="ws-workflow-map__column-label">
+                {t('Workflow.pipelineOutputLabel')}
+              </span>
               {outputItems.map(({ key, Icon, pulseClass }) => (
                 <div className={`ws-workflow-map__item ws-map-destination-pulse ${pulseClass}`} key={key}>
                   <span className="ws-workflow-map__item-icon">

@@ -1,4 +1,5 @@
 import { LuArrowRight } from 'react-icons/lu';
+import PublicAiSummaryLinks from '@/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks';
 import AnswerlatticeLink from './AnswerlatticeLink';
 import AnswerlatticeLogoMark from './AnswerlatticeLogoMark';
 import AnswerlatticeThemeSwitcher from './AnswerlatticeThemeSwitcher';
@@ -62,6 +63,12 @@ const FOOTER_LINKS = {
     ],
 };
 
+const ANSWERLATTICE_AI_SUMMARY_PROMPT = [
+    'Please summarize what AnswerLattice does, who it is for, and how it turns scattered product/support context into governed answers, hosted help, widget support, feedback review, and knowledge governance.',
+    'Use https://answerlattice.com and https://answerlattice.com/llms.txt as context.',
+    'Do not describe AnswerLattice as a generic chatbot, helpdesk replacement, documentation CMS, autonomous AI support system, or business analytics platform.',
+].join(' ');
+
 export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: string }) {
     return (
         <footer className="al-site-footer">
@@ -118,6 +125,13 @@ export default function AnswerlatticeFooter({ basePath = '' }: { basePath?: stri
                         <span className="al-site-footer__wordmark-word al-site-footer__wordmark-word--second">Lattice</span>
                     </span>
                 </div>
+
+                <PublicAiSummaryLinks
+                    className="al-site-footer__ai-summary"
+                    label="Get an AI summary of AnswerLattice:"
+                    product="answerlattice"
+                    prompt={ANSWERLATTICE_AI_SUMMARY_PROMPT}
+                />
 
                 <div className="al-site-footer__bottom">
                     <p>&copy; {new Date().getFullYear()} AnswerLattice. All rights reserved.</p>

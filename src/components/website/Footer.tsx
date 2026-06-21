@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { LuArrowRight, LuBadgeCheck, LuBookOpen, LuBuilding2, LuFileText, LuGlobe2, LuLayoutGrid, LuLink, LuMapPin } from 'react-icons/lu';
 import { FEATURE_FLAGS } from '@config/features';
+import PublicAiSummaryLinks from '@/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks';
 import BrandWordmark from './shared/BrandWordmark';
 import Link from './shared/WebsiteLink';
 import AnimateOnScroll, { AnimateStaggerChild } from './shared/AnimateOnScroll';
@@ -55,6 +56,12 @@ const socialLinks = [
   { href: 'https://instagram.com/menulistai', label: 'Instagram' },
   { href: 'https://linkedin.com/company/menulistai', label: 'LinkedIn' },
 ];
+
+const MENU_LIST_AI_SUMMARY_PROMPT = [
+  'Please summarize what MenuList does, who it is for, and how it turns one owner-approved menu source into a public menu, Official Business Page, QR links, print files, customer actions, and owner workflows.',
+  'Use https://menulist.ai and https://menulist.ai/llms.txt as context.',
+  'Do not invent ranking promises, AI citation guarantees, automatic external-platform updates, or unsupported POS/account posting claims.',
+].join(' ');
 
 export default function Footer() {
   const t = useTranslations('Website');
@@ -169,6 +176,15 @@ export default function Footer() {
               </ul>
             </div>
           </nav>
+        </AnimateOnScroll>
+
+        <AnimateOnScroll preset="footer" delay={0.1}>
+          <PublicAiSummaryLinks
+            className="ws-footer-ai-summary"
+            label={t('Footer.aiSummaryLabel')}
+            product="menulist"
+            prompt={MENU_LIST_AI_SUMMARY_PROMPT}
+          />
         </AnimateOnScroll>
 
         <AnimateOnScroll preset="fade" delay={0.12} className="ws-footer-bottom">

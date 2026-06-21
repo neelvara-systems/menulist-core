@@ -11,6 +11,10 @@ type ConstantLayerNavItem = {
 };
 
 function getConstantLayerBasePath(pathname: string): string {
+    if (pathname === '/cl' || pathname.startsWith('/cl/')) {
+        return '/cl';
+    }
+
     if (pathname === '/__constantlayer' || pathname.startsWith('/__constantlayer/')) {
         return '/__constantlayer';
     }
@@ -24,6 +28,7 @@ function getConstantLayerBasePath(pathname: string): string {
 
 function normalizeConstantLayerPath(pathname: string): string {
     const stripped = pathname
+        .replace(/^\/cl(?=\/|$)/, '')
         .replace(/^\/__constantlayer/, '')
         .replace(/^\/sites\/constantlayer/, '')
         .replace(/\/$/, '');

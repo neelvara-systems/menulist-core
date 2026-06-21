@@ -8,6 +8,7 @@ import HeroSection from './HeroSection';
 import InteractiveWorkflowSection from './InteractiveWorkflowSection';
 import PreparedForYouSection from './PreparedForYouSection';
 import ProblemSection from './ProblemSection';
+import PublicTruthLoopSection from './PublicTruthLoopSection';
 import ResourcesSection from './ResourcesSection';
 import SetupReliefSection from './SetupReliefSection';
 import SurfacesSection from './SurfacesSection';
@@ -19,6 +20,7 @@ export default function HomePage() {
       <HeroSection />
       <ProblemSection />
       <InteractiveWorkflowSection />
+      <PublicTruthLoopSection />
       <AiMenuManagerSection />
       <SetupReliefSection />
       <SurfacesSection />

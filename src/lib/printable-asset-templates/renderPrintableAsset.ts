@@ -1,6 +1,6 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { buildQrCodeFilename, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
-import { isPrintableAssetEditorRenderable, renderPrintableAssetEditorTemplate } from './editorDocumentAdapter';
+import { isPrintableAssetEditorRenderable, renderPrintableAssetEditorTemplate, renderPrintableAssetEditorTemplateFiles } from './editorDocumentAdapter';
 import { getPrintableAssetType } from './assetTypes';
 import { mapPrintableTemplateToMenuCardStyle } from './templateFamilies';
 import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetRenderResult, PrintableAssetTypeId } from './types';
@@ -309,4 +309,22 @@ export async function renderPrintableAsset(input: PrintableAssetRenderInput): Pr
         ...result,
         outputFormat: nativeFormat,
     }, input, requestedFormat);
+}
+
+export async function renderPrintableAssetDownloadFiles(input: PrintableAssetRenderInput): Promise<PrintableAssetRenderResult[]> {
+    const assetType = getPrintableAssetType(input.assetTypeId);
+    const requestedFormat = input.outputFormat || assetType.outputFormat;
+
+    if (
+        FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER
+        && requestedFormat !== 'zip'
+        && isPrintableAssetEditorRenderable(input.assetTypeId)
+    ) {
+        return renderPrintableAssetEditorTemplateFiles({
+            ...input,
+            outputFormat: requestedFormat,
+        });
+    }
+
+    return [await renderPrintableAsset(input)];
 }

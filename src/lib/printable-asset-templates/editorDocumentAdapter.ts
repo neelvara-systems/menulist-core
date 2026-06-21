@@ -3,6 +3,7 @@ import {
     CREATIVE_EDITOR_SCHEMA_VERSION,
     CreativeEditorDocument,
     CreativeEditorElement,
+    CreativeEditorPrintFrame,
 } from "@/modules/creative-editor/types";
 import { getOfferingLabels } from "@lib/menu-kit/businessTypeLabels";
 import { drawMenuListAttribution, MENU_LIST_DOMAIN } from "@lib/menu-kit/platformAttribution";
@@ -20,6 +21,11 @@ const BUSINESS_CARD_FACE_WIDTH = 1063;
 const BUSINESS_CARD_FACE_HEIGHT = 650;
 const BUSINESS_CARD_FACE_GAP = 40;
 const BUSINESS_CARD_COMBINED_WIDTH = BUSINESS_CARD_FACE_WIDTH * 2 + BUSINESS_CARD_FACE_GAP;
+const BUSINESS_CARD_BACK_FACE_OFFSET = BUSINESS_CARD_FACE_WIDTH + BUSINESS_CARD_FACE_GAP;
+type BusinessCardFace = "front" | "back";
+
+const BUSINESS_CARD_FRONT_FACE_ID: BusinessCardFace = "front";
+const BUSINESS_CARD_BACK_FACE_ID: BusinessCardFace = "back";
 
 const EDITOR_RENDERABLE_ASSETS = new Set<PrintableAssetTypeId>([
     "table_tent",
@@ -119,6 +125,106 @@ function initials(value: string) {
 
 function clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
+}
+
+function getBusinessCardPrintFrames(): CreativeEditorPrintFrame[] {
+    return [
+        {
+            height: BUSINESS_CARD_FACE_HEIGHT,
+            id: BUSINESS_CARD_FRONT_FACE_ID,
+            label: "Front",
+            locked: true,
+            width: BUSINESS_CARD_FACE_WIDTH,
+            x: 0,
+            y: 0,
+        },
+        {
+            height: BUSINESS_CARD_FACE_HEIGHT,
+            id: BUSINESS_CARD_BACK_FACE_ID,
+            label: "Back",
+            locked: true,
+            width: BUSINESS_CARD_FACE_WIDTH,
+            x: BUSINESS_CARD_BACK_FACE_OFFSET,
+            y: 0,
+        },
+    ];
+}
+
+function getBusinessCardPrintFrame(face: BusinessCardFace): CreativeEditorPrintFrame {
+    return getBusinessCardPrintFrames().find((frame) => frame.id === face) || getBusinessCardPrintFrames()[0];
+}
+
+function isNonExportEditorGuide(element: CreativeEditorElement): boolean {
+    return Boolean(element.editorGuide || element.excludeFromExport || element.name === "Side divider");
+}
+
+function clampElementToFrame(element: CreativeEditorElement, frame: CreativeEditorPrintFrame): CreativeEditorElement {
+    const maxX = Math.max(frame.x, frame.x + frame.width - element.width);
+    const maxY = Math.max(frame.y, frame.y + frame.height - element.height);
+    return {
+        ...element,
+        x: clamp(element.x, frame.x, maxX),
+        y: clamp(element.y, frame.y, maxY),
+    };
+}
+
+function inferBusinessCardPrintFrame(element: CreativeEditorElement): CreativeEditorPrintFrame {
+    const frames = getBusinessCardPrintFrames();
+    const centerX = element.x + element.width / 2;
+    return frames.find((frame) => centerX >= frame.x && centerX <= frame.x + frame.width)
+        || frames.reduce((closestFrame, frame) => {
+            const frameCenterX = frame.x + frame.width / 2;
+            const closestDistance = Math.abs(centerX - (closestFrame.x + closestFrame.width / 2));
+            const frameDistance = Math.abs(centerX - frameCenterX);
+            return frameDistance < closestDistance ? frame : closestFrame;
+        }, frames[0]);
+}
+
+function normalizeBusinessCardEditorDocument(documentValue: CreativeEditorDocument): CreativeEditorDocument {
+    const frameById = new Map(getBusinessCardPrintFrames().map((frame) => [frame.id, frame]));
+    return {
+        ...documentValue,
+        canvas: {
+            ...documentValue.canvas,
+            height: BUSINESS_CARD_FACE_HEIGHT,
+            width: BUSINESS_CARD_COMBINED_WIDTH,
+        },
+        elements: documentValue.elements.map((element) => {
+            const frame = element.printFrameId
+                ? frameById.get(element.printFrameId)
+                : isNonExportEditorGuide(element)
+                    ? undefined
+                    : inferBusinessCardPrintFrame(element);
+            const frameElement = frame && !element.printFrameId
+                ? ({ ...element, printFrameId: frame.id } as CreativeEditorElement)
+                : element;
+            const nextElement = frame ? clampElementToFrame(frameElement, frame) : frameElement;
+            if (nextElement.printFrameLocked) {
+                return {
+                    ...nextElement,
+                    locked: true,
+                } as CreativeEditorElement;
+            }
+            return nextElement;
+        }),
+        metadata: {
+            ...documentValue.metadata,
+            printFrames: getBusinessCardPrintFrames(),
+        },
+    };
+}
+
+function preparePrintableAssetDocumentForExport(
+    documentValue: CreativeEditorDocument,
+    assetTypeId: PrintableAssetTypeId,
+): CreativeEditorDocument {
+    const normalizedDocument = assetTypeId === "business_card"
+        ? normalizeBusinessCardEditorDocument(documentValue)
+        : documentValue;
+    return {
+        ...normalizedDocument,
+        elements: normalizedDocument.elements.filter((element) => !isNonExportEditorGuide(element)),
+    };
 }
 
 function textElement(ctx: BuildContext, params: Partial<Extract<CreativeEditorElement, { type: "text" }>> & {
@@ -979,9 +1085,17 @@ function buildGiftCertificate(ctx: BuildContext) {
     });
 }
 
-function offsetFaceElements(elements: CreativeEditorElement[], offsetX: number, offsetY: number): CreativeEditorElement[] {
+function offsetFaceElements(
+    elements: CreativeEditorElement[],
+    offsetX: number,
+    offsetY: number,
+    printFrameId: BusinessCardFace,
+): CreativeEditorElement[] {
     return elements.map((element) => ({
         ...element,
+        locked: Boolean(element.locked || element.printFrameLocked),
+        printFrameId,
+        printFrameLocked: Boolean(element.locked || element.printFrameLocked),
         x: element.x + offsetX,
         y: element.y + offsetY,
     }));
@@ -990,6 +1104,7 @@ function offsetFaceElements(elements: CreativeEditorElement[], offsetX: number, 
 function addBusinessCardFace(
     ctx: BuildContext,
     offsetX: number,
+    printFrameId: BusinessCardFace,
     builder: (faceCtx: BuildContext) => void,
 ) {
     const faceElements: CreativeEditorElement[] = [];
@@ -1000,7 +1115,7 @@ function addBusinessCardFace(
         elements: faceElements,
     };
     builder(faceCtx);
-    ctx.elements.push(...offsetFaceElements(faceElements, offsetX, 0));
+    ctx.elements.push(...offsetFaceElements(faceElements, offsetX, 0, printFrameId));
 }
 
 function buildBusinessCardFrontFace(ctx: BuildContext) {
@@ -1140,12 +1255,15 @@ function buildBusinessCardBackFace(ctx: BuildContext) {
 }
 
 function buildBusinessCard(ctx: BuildContext) {
-    addBusinessCardFace(ctx, 0, buildBusinessCardFrontFace);
+    addBusinessCardFace(ctx, 0, BUSINESS_CARD_FRONT_FACE_ID, buildBusinessCardFrontFace);
     ctx.elements.push(lineElement(ctx, {
+        editorGuide: true,
+        excludeFromExport: true,
         height: Math.round(ctx.canvasHeight * 0.86),
         locked: true,
         name: "Side divider",
         opacity: 0.45,
+        printFrameLocked: true,
         stroke: ctx.borderColor,
         strokeStyle: "dashed",
         strokeWidth: 3,
@@ -1153,7 +1271,7 @@ function buildBusinessCard(ctx: BuildContext) {
         x: BUSINESS_CARD_FACE_WIDTH + Math.round(BUSINESS_CARD_FACE_GAP / 2),
         y: Math.round(ctx.canvasHeight * 0.07),
     }));
-    addBusinessCardFace(ctx, BUSINESS_CARD_FACE_WIDTH + BUSINESS_CARD_FACE_GAP, buildBusinessCardBackFace);
+    addBusinessCardFace(ctx, BUSINESS_CARD_BACK_FACE_OFFSET, BUSINESS_CARD_BACK_FACE_ID, buildBusinessCardBackFace);
 }
 
 function buildStaffIdCard(ctx: BuildContext) {
@@ -1568,7 +1686,7 @@ export function buildPrintableAssetEditorDocument(input: PrintableAssetRenderInp
     else buildSingleCard(ctx);
 
     const now = new Date().toISOString();
-    return {
+    const documentValue: CreativeEditorDocument = {
         canvas: {
             backgroundColor: ctx.backgroundColor,
             height: ctx.canvasHeight,
@@ -1586,6 +1704,7 @@ export function buildPrintableAssetEditorDocument(input: PrintableAssetRenderInp
                 secondaryColor: ctx.text,
             },
             createdAt: now,
+            printFrames: input.assetTypeId === "business_card" ? getBusinessCardPrintFrames() : undefined,
             templateId: `${input.assetTypeId}:${input.templateFamilyId}`,
             textPlaceholders: [
                 { id: "business-name", label: "Business name", value: input.storeName },
@@ -1602,6 +1721,10 @@ export function buildPrintableAssetEditorDocument(input: PrintableAssetRenderInp
         schemaVersion: CREATIVE_EDITOR_SCHEMA_VERSION,
         title: `${safeName(input.storeName)} ${ctx.assetTitle} ${input.templateFamilyId}`,
     };
+
+    return input.assetTypeId === "business_card"
+        ? normalizeBusinessCardEditorDocument(documentValue)
+        : documentValue;
 }
 
 export function rehydratePrintableAssetEditorDocument(
@@ -1653,7 +1776,7 @@ export function rehydratePrintableAssetEditorDocument(
         return element;
     });
 
-    return {
+    const nextDocument: CreativeEditorDocument = {
         ...documentValue,
         elements: updatedElements,
         id: `print_asset_saved_${input.assetTypeId}_${Date.now().toString(36)}`,
@@ -1681,6 +1804,10 @@ export function rehydratePrintableAssetEditorDocument(
         },
         title: documentValue.title || `${safeName(input.storeName)} ${ctx.assetTitle}`,
     };
+
+    return input.assetTypeId === "business_card"
+        ? normalizeBusinessCardEditorDocument(nextDocument)
+        : nextDocument;
 }
 
 function readBlobAsDataUrl(blob: Blob): Promise<string> {
@@ -1756,8 +1883,65 @@ export async function renderPrintableAssetEditorDocument(params: {
     outputFormat: Exclude<PrintableAssetOutputFormat, "zip">;
     templateFamilyId?: string;
 }): Promise<PrintableAssetRenderResult> {
+    const documentValue = preparePrintableAssetDocumentForExport(
+        stripPrintableAssetEditorAttributionLayers(params.document),
+        params.assetTypeId,
+    );
+    return renderPrintableAssetEditorDocumentFile(params, documentValue);
+}
+
+function getBusinessCardFaceDocument(documentValue: CreativeEditorDocument, face: BusinessCardFace): CreativeEditorDocument {
+    const normalizedDocument = normalizeBusinessCardEditorDocument(documentValue);
+    const frame = normalizedDocument.metadata?.printFrames?.find((item) => item.id === face) || getBusinessCardPrintFrame(face);
+    const minX = frame.x;
+    const maxX = frame.x + frame.width;
+    const elements = normalizedDocument.elements
+        .filter((element) => {
+            if (isNonExportEditorGuide(element)) return false;
+            if (element.printFrameId) return element.printFrameId === face;
+            const left = element.x;
+            const right = element.x + element.width;
+            return right > minX && left < maxX;
+        })
+        .map((element) => {
+            const maxLocalX = Math.max(0, BUSINESS_CARD_FACE_WIDTH - element.width);
+            const maxLocalY = Math.max(0, BUSINESS_CARD_FACE_HEIGHT - element.height);
+            return {
+                ...element,
+                id: `${element.id}-${face}`,
+                printFrameId: face,
+                x: clamp(element.x - frame.x, 0, maxLocalX),
+                y: clamp(element.y - frame.y, 0, maxLocalY),
+            } as CreativeEditorElement;
+        });
+
+    return {
+        ...normalizedDocument,
+        canvas: {
+            ...normalizedDocument.canvas,
+            height: BUSINESS_CARD_FACE_HEIGHT,
+            width: BUSINESS_CARD_FACE_WIDTH,
+        },
+        elements,
+        id: `${normalizedDocument.id}-${face}`,
+        pages: undefined,
+    };
+}
+
+async function renderPrintableAssetEditorDocumentFile(
+    params: {
+        activePlanType?: string | null;
+        assetTypeId: PrintableAssetTypeId;
+        document: CreativeEditorDocument;
+        outputFormat: Exclude<PrintableAssetOutputFormat, "zip">;
+        templateFamilyId?: string;
+    },
+    documentValue: CreativeEditorDocument,
+    filenamePart?: string,
+): Promise<PrintableAssetRenderResult> {
     const assetType = getPrintableAssetType(params.assetTypeId);
-    const documentValue = stripPrintableAssetEditorAttributionLayers(params.document);
+    const pngSuffix = filenamePart ? `_${params.assetTypeId}_${filenamePart}.png` : `_${params.assetTypeId}.png`;
+    const pdfSuffix = filenamePart ? `_${params.assetTypeId}_${filenamePart}.pdf` : `_${params.assetTypeId}.pdf`;
     if (params.outputFormat === "png") {
         const result = await renderCreativeEditorPngBlob(documentValue);
         if (!result.blob) throw new Error("PNG export failed");
@@ -1768,7 +1952,7 @@ export async function renderPrintableAssetEditorDocument(params: {
         });
         return {
             blob,
-            filename: result.filename.replace(/\.png$/i, `_${params.assetTypeId}.png`),
+            filename: result.filename.replace(/\.png$/i, pngSuffix),
             label: assetType.title,
             mimeType: "image/png",
             outputFormat: "png",
@@ -1793,11 +1977,40 @@ export async function renderPrintableAssetEditorDocument(params: {
     pdf.addImage(dataUrl, "PNG", 0, 0, dims.widthMm, dims.heightMm);
     return {
         blob: pdf.output("blob"),
-        filename: result.filename.replace(/\.png$/i, `_${params.assetTypeId}.pdf`),
+        filename: result.filename.replace(/\.png$/i, pdfSuffix),
         label: assetType.title,
         mimeType: "application/pdf",
         outputFormat: "pdf",
     };
+}
+
+export async function renderPrintableAssetEditorDocumentFiles(params: {
+    activePlanType?: string | null;
+    assetTypeId: PrintableAssetTypeId;
+    document: CreativeEditorDocument;
+    outputFormat: Exclude<PrintableAssetOutputFormat, "zip">;
+    templateFamilyId?: string;
+}): Promise<PrintableAssetRenderResult[]> {
+    const documentValue = preparePrintableAssetDocumentForExport(
+        stripPrintableAssetEditorAttributionLayers(params.document),
+        params.assetTypeId,
+    );
+    if (params.assetTypeId === "business_card" && params.outputFormat === "png") {
+        return Promise.all([
+            renderPrintableAssetEditorDocumentFile(
+                params,
+                getBusinessCardFaceDocument(documentValue, "front"),
+                "front",
+            ),
+            renderPrintableAssetEditorDocumentFile(
+                params,
+                getBusinessCardFaceDocument(documentValue, "back"),
+                "back",
+            ),
+        ]);
+    }
+
+    return [await renderPrintableAssetEditorDocumentFile(params, documentValue)];
 }
 
 export async function renderPrintableAssetEditorTemplate(input: PrintableAssetRenderInput): Promise<PrintableAssetRenderResult> {
@@ -1806,6 +2019,20 @@ export async function renderPrintableAssetEditorTemplate(input: PrintableAssetRe
     }
     const documentValue = buildPrintableAssetEditorDocument(input);
     return renderPrintableAssetEditorDocument({
+        activePlanType: input.activePlanType,
+        assetTypeId: input.assetTypeId,
+        document: documentValue,
+        outputFormat: input.outputFormat === "pdf" ? "pdf" : "png",
+        templateFamilyId: input.templateFamilyId,
+    });
+}
+
+export async function renderPrintableAssetEditorTemplateFiles(input: PrintableAssetRenderInput): Promise<PrintableAssetRenderResult[]> {
+    if (input.outputFormat === "zip") {
+        throw new Error("Editor templates cannot render ZIP bundles");
+    }
+    const documentValue = buildPrintableAssetEditorDocument(input);
+    return renderPrintableAssetEditorDocumentFiles({
         activePlanType: input.activePlanType,
         assetTypeId: input.assetTypeId,
         document: documentValue,

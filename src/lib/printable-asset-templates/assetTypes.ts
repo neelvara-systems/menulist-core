@@ -96,7 +96,7 @@ export const PRINTABLE_ASSET_TYPES: PrintableAssetType[] = [
     },
     {
         defaultTemplateId: 'soft-curve',
-        description: 'Front and back card in one print-ready file.',
+        description: 'Front and back card; PDF stays paired, image download gives both sides.',
         id: 'business_card',
         outputFormat: 'pdf',
         placement: 'identity',
@@ -188,7 +188,7 @@ export function getPrintableAssetPreviewCopy(
         case 'gift_certificate':
             return { actionLabel: 'GIFT CERTIFICATE', instructionLabel: 'Scan to redeem' };
         case 'business_card':
-            return { actionLabel: 'CONTACT CARD', instructionLabel: 'Front and back in one file' };
+            return { actionLabel: 'CONTACT CARD', instructionLabel: 'PDF paired, image split' };
         case 'staff_id_card':
             return { actionLabel: 'STAFF ID', instructionLabel: 'Owner or staff identity card' };
         case 'event_invitation':

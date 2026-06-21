@@ -13,7 +13,7 @@ import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PRINTABLE_ASSET_TYPES, getPrintableAssetPreviewCopy, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
-import { renderPrintableAsset } from '@lib/printable-asset-templates/renderPrintableAsset';
+import { renderPrintableAsset, renderPrintableAssetDownloadFiles } from '@lib/printable-asset-templates/renderPrintableAsset';
 import { buildPrintableStoreContactFields } from '@lib/printable-asset-templates/storeContact';
 import {
     DEFAULT_PRINTABLE_TEMPLATE_FAMILY_ID,
@@ -680,14 +680,18 @@ export default function MobileShareScreen({
         try {
             const input = await buildPrintableRenderInput(selectedPrintableAssetId, templateFamilyId);
             if (!input) return;
-            const result = await renderPrintableAsset({ ...input, outputFormat });
+            const files = await renderPrintableAssetDownloadFiles({ ...input, outputFormat });
 
-            downloadBlob(result.blob, result.filename);
+            files.forEach((file) => downloadBlob(file.blob, file.filename));
             if (selectedPrintableAssetId === 'complete_menu_kit') {
                 void trackMenuKitDownload('zip_download');
                 recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED);
             }
-            Toast.show({ content: `${assetType.title} downloaded`, duration: 1400, icon: 'success' });
+            Toast.show({
+                content: files.length > 1 ? `${assetType.title} front and back images downloaded` : `${assetType.title} downloaded`,
+                duration: 1400,
+                icon: 'success',
+            });
         } catch {
             Toast.show({ content: `Could not create ${assetType.title}`, duration: 1600 });
         } finally {
@@ -1764,6 +1768,7 @@ function getMobilePrintableDownloadActionLabel(outputFormat: PrintableAssetOutpu
     if (outputFormat === 'pdf') return 'Download PDF';
     if (outputFormat === 'zip') return 'Download ZIP';
     if (assetId === 'print_menu') return 'Download first page image';
+    if (assetId === 'business_card') return 'Front + back images';
     return 'Download image';
 }
 

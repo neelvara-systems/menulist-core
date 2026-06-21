@@ -212,7 +212,9 @@
 | `src/app/sites/answerlattice/components/Header.tsx` | Shared header with Product, Demo, Install, Use Cases, Resources, Pricing, compact Product/Resources dropdowns, and right-side mobile drawer |
 | `src/app/sites/answerlattice/components/Footer.tsx` | Shared footer with broad public-route link columns and bottom theme control |
 | `src/app/sites/answerlattice/components/AnswerlatticeLink.tsx` | Dev/production-aware Link component |
-| `src/app/sites/answerlattice/components/AnswerlatticeAnalytics.tsx` | Optional GA/measurement-id conversion event tracker with no Firestore writes |
+| `src/app/sites/answerlattice/components/AnswerlatticeAnalytics.tsx` | Optional GA/measurement-id conversion event tracker, gated by shared public cookie consent, with no Firestore writes |
+| `src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx` | Shared compact public-site cookie banner used for AnswerLattice optional analytics consent |
+| `src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` | Shared footer-level AI summary shortcut used with an AnswerLattice-specific prompt and product-boundary guardrails |
 | `src/app/sites/answerlattice/components/AnswerlatticeScrollReveal.tsx` | Layout-level client island that applies restrained viewport reveal effects across AnswerLattice public pages |
 | `src/constants/answerlattice/routes.ts` | Lightweight AnswerLattice dashboard route constants used by public client islands without importing sidebar icon metadata |
 | `src/app/sites/answerlattice/components/HeroSection.tsx` | Page-aware support-answer hero with inline sample workspace preview and setup/demo/source-prep CTAs |
@@ -281,6 +283,10 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-06-21 | Refined and simplified the homepage support-suite presentation with a lighter `Collect → Shape → Serve` flow rail, four suite cards, and a stable non-sticky build-path panel so the section stays readable without adding unsupported claims |
+| 2026-06-21 | Added reviewed-support-layer proof copy inside the support knowledge map center so approved-first, fallback-tracked, and review-loop behavior are visible in the diagram |
+| 2026-06-21 | Added footer-level AI summary links to Claude, ChatGPT, and Gemini with a governed-answer prompt that rejects generic chatbot, helpdesk-replacement, CMS, autopilot, and analytics-platform framing |
+| 2026-06-21 | Gated optional AnswerLattice Google Analytics behind the shared compact public cookie banner, with essential-storage wording when no measurement id is configured |
 | 2026-06-10 | Added reusable inline SVG concept illustrations across Product, Install, Security, and Comparisons for source-to-answer, governance loop, install verification, safe-context boundary, and category positioning |
 | 2026-06-06 | Synced public launch-setup and product-proof copy with Activation `summary.launchProof`, keeping proposal-quality confirmation in Signal Queue instead of claiming connector readiness |
 | 2026-06-07 | Updated the homepage around product-user support, the owner-input-to-support-output diagram, modern vertical frame rails, and a scroll-led support-surface story covering in-app help, hosted help, fallback gaps, and review loops |

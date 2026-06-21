@@ -1448,10 +1448,12 @@ export default function CreativeEditor({
     const canGroupActiveSelection = isActiveMultiSelection && selectionCount > 1 && !floatingSelectionToolbar?.locked && !activePageLocked;
     const canUngroupActiveSelection = isGroupedSelection && !floatingSelectionToolbar?.locked && !activePageLocked;
     const canDistributeActiveSelection = canGroupActiveSelection && selectionCount > 2;
-    const selectedLayerLocked = Boolean(selectedElement?.locked);
+    const selectedLayerFrameLocked = Boolean(selectedElement?.printFrameLocked);
+    const selectedLayerLocked = Boolean(selectedElement?.locked || selectedLayerFrameLocked);
     const selectedLayerReadOnly = Boolean(selectedLayerLocked || activePageLocked);
+    const printFramesLocked = Boolean(documentValue.metadata?.printFrames?.some((frame) => frame.locked));
     const visibleLayerCount = documentValue.elements.filter((element) => element.visible !== false).length;
-    const lockedLayerCount = documentValue.elements.filter((element) => element.locked).length;
+    const lockedLayerCount = documentValue.elements.filter((element) => element.locked || element.printFrameLocked).length;
     const currentHistoryLabel = historyLabelsRef.current[historyIndexRef.current] || historyLabelState.current;
     const autosaveKey = useMemo(() => (
         `creative-editor-draft:${documentValue.productContext.productId}:${documentValue.productContext.workspaceId || "workspace"}:${sourceLabel}:${initialEditorDocument.id}`
@@ -2170,6 +2172,10 @@ export default function CreativeEditor({
         object.id = element.id;
         object.name = element.name;
         object.creativeEditorType = element.type;
+        object.editorGuide = element.editorGuide;
+        object.excludeFromExport = element.excludeFromExport;
+        object.printFrameId = element.printFrameId;
+        object.printFrameLocked = element.printFrameLocked;
         object.sourceRefs = element.sourceRefs;
         object.gradient = "gradient" in element ? element.gradient : undefined;
         object.set({
@@ -2181,7 +2187,7 @@ export default function CreativeEditor({
             top: element.y,
             visible: element.visible !== false,
         });
-        setObjectLocked(object, Boolean(element.locked));
+        setObjectLocked(object, Boolean(element.locked || element.printFrameLocked));
         if (element.shadow) {
             object.set("shadow", new fabricApi.Shadow({
                 blur: element.shadow.blur,
@@ -2579,7 +2585,9 @@ export default function CreativeEditor({
                 : activeObject && isEditableFabricObject(activeObject)
                     ? [activeObject as CreativeFabricObject]
                     : [];
-            const selectedSelectionLocked = activeObjects.some((object) => Boolean((object as CreativeFabricObject).locked));
+            const selectedSelectionLocked = activeObjects.some((object) => (
+                Boolean((object as CreativeFabricObject).locked || (object as CreativeFabricObject).printFrameLocked)
+            ));
             const isArrowKey = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key);
             const isMutationShortcut = event.key === "Backspace"
                 || event.key === "Delete"
@@ -2690,7 +2698,17 @@ export default function CreativeEditor({
             }
             if ((event.key === "Backspace" || event.key === "Delete") && activeObject) {
                 event.preventDefault();
-                canvas.getActiveObjects().filter(isEditableFabricObject).forEach((object) => canvas.remove(object));
+                const removableObjects = canvas.getActiveObjects()
+                    .filter(isEditableFabricObject)
+                    .filter((object) => {
+                        const creativeObject = object as CreativeFabricObject;
+                        return !creativeObject.locked && !creativeObject.printFrameLocked;
+                });
+                if (!removableObjects.length) {
+                    setNotice("Locked or protected layers cannot be deleted.");
+                    return;
+                }
+                removableObjects.forEach((object) => canvas.remove(object));
                 canvas.discardActiveObject();
                 canvas.requestRenderAll();
                 clearFloatingSelectionToolbar();
@@ -2715,6 +2733,10 @@ export default function CreativeEditor({
             }
             if (isMod && event.key.toLowerCase() === "c" && activeObject) {
                 event.preventDefault();
+                if (selectedSelectionLocked) {
+                    setNotice("Locked or protected layers cannot be copied.");
+                    return;
+                }
                 activeObject.clone((cloned: fabric.Object | fabric.ActiveSelection) => {
                     clipboardRef.current = cloned;
                 }, CREATIVE_EDITOR_FABRIC_ATTRIBUTES);
@@ -2723,6 +2745,13 @@ export default function CreativeEditor({
             if (isMod && event.key.toLowerCase() === "v" && clipboardRef.current) {
                 event.preventDefault();
                 clipboardRef.current.clone((cloned: fabric.Object | fabric.ActiveSelection) => {
+                    const clonedObjects = "getObjects" in cloned
+                        ? (cloned as fabric.ActiveSelection).getObjects()
+                        : [cloned as fabric.Object];
+                    if (clonedObjects.some((object) => Boolean((object as CreativeFabricObject).printFrameLocked))) {
+                        setNotice("Protected print-frame layers cannot be pasted.");
+                        return;
+                    }
                     const cloneAsObject = cloned as CreativeFabricObject;
                     cloneAsObject.left = (cloneAsObject.left || 0) + 24;
                     cloneAsObject.top = (cloneAsObject.top || 0) + 24;
@@ -2748,6 +2777,10 @@ export default function CreativeEditor({
             }
             if (isMod && key === "g" && activeObject) {
                 event.preventDefault();
+                if (selectedSelectionLocked) {
+                    setNotice("Locked or protected layers cannot be grouped.");
+                    return;
+                }
                 if (event.shiftKey && activeObject.type === "group") {
                     (activeObject as fabric.Group).toActiveSelection();
                     canvas.requestRenderAll();
@@ -3263,7 +3296,7 @@ export default function CreativeEditor({
         if (blockIfActivePageLocked()) return;
         const current = documentRef.current;
         const element = current.elements.find((item) => item.id === selectedIdRef.current);
-        if (!element || element.locked) return;
+        if (!element || element.locked || element.printFrameLocked) return;
         if (!selectedElementPatchHasChanges(element, patch)) return;
         const nextElement = { ...element, ...patch } as CreativeEditorElement;
         const reloadCanvas = shouldReloadCanvasForSelectedPatch(element, patch);
@@ -3284,6 +3317,10 @@ export default function CreativeEditor({
         const scaleX = nextWidth / current.canvas.width;
         const scaleY = nextHeight / current.canvas.height;
         const resized = patch.width || patch.height;
+        if (resized && current.metadata?.printFrames?.some((frame) => frame.locked)) {
+            setNotice("This print template has protected front/back frames.");
+            return;
+        }
         const nextElements = resized
             ? current.elements.map((element) => ({
                 ...element,
@@ -3347,7 +3384,7 @@ export default function CreativeEditor({
         const current = documentRef.current;
         const palette = [preset.accentColor, preset.secondaryColor, preset.mutedColor];
         const nextElements = current.elements.map((element, index) => {
-            if (element.locked) return element;
+            if (element.locked || element.printFrameLocked) return element;
             const accent = palette[index % palette.length];
             if (canEditTextElement(element)) {
                 return {
@@ -3486,7 +3523,8 @@ export default function CreativeEditor({
         const activeObject = canvas?.getActiveObject();
         if (canvas && activeObject) {
             canvas.getActiveObjects().filter(isEditableFabricObject).forEach((object) => {
-                if (!(object as CreativeFabricObject).locked) canvas.remove(object);
+                const creativeObject = object as CreativeFabricObject;
+                if (!creativeObject.locked && !creativeObject.printFrameLocked) canvas.remove(object);
             });
             canvas.discardActiveObject();
             canvas.requestRenderAll();
@@ -3495,7 +3533,7 @@ export default function CreativeEditor({
             return;
         }
         const element = selectedElement;
-        if (!element || element.locked) return;
+        if (!element || element.locked || element.printFrameLocked) return;
         const nextElements = documentRef.current.elements.filter((item) => item.id !== element.id);
         clearFloatingSelectionToolbar();
         commitDocument({ ...documentRef.current, elements: nextElements }, true, nextElements[nextElements.length - 1]?.id || "", true, "Deleted layer");
@@ -3506,6 +3544,13 @@ export default function CreativeEditor({
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject();
         if (!canvas || !activeObject || !isEditableFabricObject(activeObject)) return;
+        const activeObjects = "getObjects" in activeObject
+            ? (activeObject as fabric.ActiveSelection).getObjects()
+            : [activeObject];
+        if (activeObjects.some((object) => Boolean((object as CreativeFabricObject).locked || (object as CreativeFabricObject).printFrameLocked))) {
+            setNotice("Locked or protected layers cannot be duplicated.");
+            return;
+        }
         activeObject.clone((cloned: fabric.Object | fabric.ActiveSelection) => {
             const cloneAsObject = cloned as CreativeFabricObject;
             cloneAsObject.id = buildCreativeEditorId("layer");
@@ -3525,6 +3570,10 @@ export default function CreativeEditor({
         const canvas = fabricCanvasRef.current;
         const activeObject = canvas?.getActiveObject() as CreativeFabricObject | undefined;
         if (!canvas || !activeObject || !isEditableFabricObject(activeObject)) return;
+        if (activeObject.printFrameLocked) {
+            setNotice("This print-frame layer is protected.");
+            return;
+        }
         const nextLocked = !activeObject.locked;
         setObjectLocked(activeObject, nextLocked);
         canvas.discardActiveObject();
@@ -3540,6 +3589,11 @@ export default function CreativeEditor({
         if (!canvas) return;
         const object = canvas.getObjects().find((item) => (item as CreativeFabricObject).id === id);
         if (!object || !isEditableFabricObject(object)) return;
+        const creativeObject = object as CreativeFabricObject;
+        if (creativeObject.locked || creativeObject.printFrameLocked) {
+            setNotice("Unlock this layer before moving it.");
+            return;
+        }
         if (action === "front") object.bringToFront();
         if (action === "forward") object.bringForward();
         if (action === "backward") object.sendBackwards();
@@ -3565,7 +3619,7 @@ export default function CreativeEditor({
             return;
         }
         const draggedElement = currentDocument.elements[fromIndex];
-        if (draggedElement.locked) {
+        if (draggedElement.locked || draggedElement.printFrameLocked) {
             setNotice("Unlock this layer before reordering it.");
             setDraggedLayerId("");
             return;
@@ -3590,6 +3644,10 @@ export default function CreativeEditor({
         const object = canvas.getObjects().find((item) => (item as CreativeFabricObject).id === id) as CreativeFabricObject | undefined;
         if (!object || !isEditableFabricObject(object)) return;
         if (key === "locked") {
+            if (object.printFrameLocked) {
+                setNotice("This print-frame layer is protected.");
+                return;
+            }
             setObjectLocked(object, !object.locked);
         } else {
             object.visible = object.visible === false;
@@ -4843,6 +4901,7 @@ export default function CreativeEditor({
                                 return (
                                     <button
                                         data-active={active ? "true" : "false"}
+                                        disabled={printFramesLocked}
                                         key={preset.id}
                                         onClick={() => updateCanvas({ height: preset.height, width: preset.width })}
                                         type="button"
@@ -6489,7 +6548,7 @@ export default function CreativeEditor({
                                 value={selectedElement.name}
                             />
                         </label>
-                        <span>{selectedElement.visible === false ? "Hidden layer" : selectedElement.locked ? "Locked layer" : "Selected layer"}</span>
+                        <span>{selectedElement.visible === false ? "Hidden layer" : selectedElement.printFrameLocked ? "Protected layer" : selectedElement.locked ? "Locked layer" : "Selected layer"}</span>
                     </div>
                     <button data-creative-editor-action="edit-selected-layer" onClick={openSelectionInspector} type="button">
                         <LuPencil size={16} />
@@ -6501,8 +6560,8 @@ export default function CreativeEditor({
             )}
 
             <div className={styles.quickActions}>
-                <button disabled={!selectedElement || activePageLocked} onClick={toggleSelectedLock} type="button">
-                    {selectedLayerLocked ? <LuUnlock size={20} /> : <LuLock size={20} />}
+                <button disabled={!selectedElement || activePageLocked || selectedLayerFrameLocked} onClick={toggleSelectedLock} type="button">
+                    {selectedLayerFrameLocked ? <LuLock size={20} /> : selectedLayerLocked ? <LuUnlock size={20} /> : <LuLock size={20} />}
                 </button>
                 <button disabled={!selectedElement || selectedLayerReadOnly || selectedElement.visible === false} onClick={duplicateSelected} type="button">
                     <LuCopy size={20} />
@@ -6524,7 +6583,7 @@ export default function CreativeEditor({
                             data-creative-layer-name={element.name}
                             data-creative-layer-type={element.type}
                             data-dragging={draggedLayerId === element.id ? "true" : "false"}
-                            draggable={!activePageLocked && !element.locked}
+                            draggable={!activePageLocked && !element.locked && !element.printFrameLocked}
                             key={element.id}
                             onDragEnd={() => setDraggedLayerId("")}
                             onDragOver={(event) => {
@@ -6535,7 +6594,7 @@ export default function CreativeEditor({
                                 event.dataTransfer.dropEffect = "move";
                             }}
                             onDragStart={(event) => {
-                                if (activePageLocked || element.locked) {
+                                if (activePageLocked || element.locked || element.printFrameLocked) {
                                     event.preventDefault();
                                     return;
                                 }
@@ -6550,9 +6609,9 @@ export default function CreativeEditor({
                             }}
                         >
                             <span
-                                aria-label={element.locked ? "Locked layer cannot be dragged" : "Drag to reorder layer"}
+                                aria-label={element.locked || element.printFrameLocked ? "Locked layer cannot be dragged" : "Drag to reorder layer"}
                                 className={styles.layerDragHandle}
-                                title={element.locked ? "Unlock to reorder" : "Drag to reorder"}
+                                title={element.printFrameLocked ? "Protected print-frame layer" : element.locked ? "Unlock to reorder" : "Drag to reorder"}
                             >
                                 <LuGripVertical size={16} />
                             </span>
@@ -6565,14 +6624,14 @@ export default function CreativeEditor({
                                 <span className={styles.layerThumb}>{renderLayerThumb(element)}</span>
                                 <span className={styles.layerTitle}>
                                     <span>{element.name}</span>
-                                    <small>{element.visible === false ? "hidden" : element.locked ? "locked" : element.type}</small>
+                                    <small>{element.visible === false ? "hidden" : element.printFrameLocked ? "protected" : element.locked ? "locked" : element.type}</small>
                                 </span>
                             </button>
                             <button aria-label="Toggle visible" disabled={activePageLocked} onClick={() => toggleLayer(element.id, "visible")} type="button">
                                 {element.visible === false ? <LuEyeOff size={14} /> : <LuEye size={14} />}
                             </button>
-                            <button aria-label="Toggle lock" disabled={activePageLocked} onClick={() => toggleLayer(element.id, "locked")} type="button">
-                                {element.locked ? <LuLock size={14} /> : <LuUnlock size={14} />}
+                            <button aria-label="Toggle lock" disabled={activePageLocked || element.printFrameLocked} onClick={() => toggleLayer(element.id, "locked")} type="button">
+                                {element.locked || element.printFrameLocked ? <LuLock size={14} /> : <LuUnlock size={14} />}
                             </button>
                         </div>
                     ))}
@@ -6745,8 +6804,13 @@ export default function CreativeEditor({
                         <button onClick={openSelectionInspector} title="Position and layers" type="button">
                             <LuLayers size={17} />
                         </button>
-                        <button disabled={!selectedElement || activePageLocked} onClick={toggleSelectedLock} title={selectedLayerLocked ? "Unlock layer" : "Lock layer"} type="button">
-                            {selectedLayerLocked ? <LuUnlock size={17} /> : <LuLock size={17} />}
+                        <button
+                            disabled={!selectedElement || activePageLocked || selectedLayerFrameLocked}
+                            onClick={toggleSelectedLock}
+                            title={selectedLayerFrameLocked ? "Protected print-frame layer" : selectedLayerLocked ? "Unlock layer" : "Lock layer"}
+                            type="button"
+                        >
+                            {selectedLayerFrameLocked ? <LuLock size={17} /> : selectedLayerLocked ? <LuUnlock size={17} /> : <LuLock size={17} />}
                         </button>
                         <button disabled={!selectedElement || selectedIsLocked} onClick={duplicateSelected} title="Duplicate selected layer" type="button">
                             <LuCopy size={17} />
@@ -7267,8 +7331,8 @@ export default function CreativeEditor({
                     </div>
 
                     <div className={styles.quickActions}>
-                        <button disabled={!selectedElement || activePageLocked} onClick={toggleSelectedLock} type="button">
-                            {selectedLayerLocked ? <LuUnlock size={20} /> : <LuLock size={20} />}
+                        <button disabled={!selectedElement || activePageLocked || selectedLayerFrameLocked} onClick={toggleSelectedLock} type="button">
+                            {selectedLayerFrameLocked ? <LuLock size={20} /> : selectedLayerLocked ? <LuUnlock size={20} /> : <LuLock size={20} />}
                         </button>
                         <button disabled={!selectedElement || selectedLayerReadOnly} onClick={duplicateSelected} type="button">
                             <LuCopy size={20} />
