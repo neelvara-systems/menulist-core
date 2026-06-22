@@ -54,6 +54,7 @@ Do not describe MenuList as a generic QR menu maker, AI-powered restaurant softw
 - [QR Menu and Links](https://menulist.ai/features/qr-menu-links): QR menus, stable share links, saveable customer shortcuts, and optional print files from the same approved menu source
 - [Print-ready Kit](https://menulist.ai/features/print-ready-kit): Finished templates, supported editor customization, QR cards, menu PDFs, images, and printer handoff files from the approved menu source
 - [Owner PWA Dashboard](https://menulist.ai/features/owner-phone-dashboard): Owner PWA dashboard for menu edits, publishing, QR links, feedback review, Business Health, screens, status, hours, and key settings from phone or PWA
+- [Analytics](https://menulist.ai/features/analytics): Today, daily, weekly, monthly, and overall customer activity from the public menu, Official Business Page, and customer app in the owner dashboard
 - [Menu Quality Validation](https://menulist.ai/features/menu-quality-validation): Menu quality, pricing, detail, and public-readiness checks before publishing the approved source
 - [Business Health](https://menulist.ai/features/business-health): AI health check for menu and public presence, with read-only diagnostics and safe handoff to AI Menu Manager or existing owner flows
 - [Customer Feedback Loop](https://menulist.ai/features/customer-feedback-loop): Private customer feedback from public menu, Official Business Page, QR, or direct links so owners can review issues and keep the approved source correct

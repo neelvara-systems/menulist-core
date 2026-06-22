@@ -6,6 +6,80 @@
 
 ---
 
+## June 22, 2026 - MenuList SEO Research Brief
+
+### Added
+
+- **SEO research brief added** - `__docs__/menulist-seo-launch/menulist-seo-launch_research-brief-2026-06-22.md` now captures current primary-source SEO guidance and MenuList-specific consultant recommendations.
+- **Launch SEO action register expanded** - Search Console cadence, AEO/GEO wording, LLM-file claim boundaries, and IndexNow/Bing evaluation were added to the active SEO launch register.
+
+### Boundaries
+
+- **No runtime scope added** - This is research and documentation work only. It does not change website routes, copy, sitemap, robots, metadata, structured data, customer menu runtime, Firebase rules, Cloud Functions, billing, or deployment.
+
+---
+
+## June 22, 2026 - MenuList Marketing Distribution Operating Docs
+
+### Added
+
+- **MenuList marketing distribution folder added** - `__docs__/menulist-marketing-distribution/` now holds the active source review, research base, consultant strategy, execution plan, action register, and consultant log for MenuList marketing/distribution work.
+- **ChatGPT launch conversation converted into operating docs** - The captured 15-point marketing conversation is now reviewed against MenuList positioning, funnel rules, language governance, current market research, outreach constraints, and launch execution needs.
+
+### Boundaries
+
+- **No runtime scope added** - This is documentation and operating-process work only. It does not change website routes, public copy, owner dashboard runtime, customer menu runtime, Firebase rules, Cloud Functions, billing, tracking code, paid ads, or deployment.
+
+---
+
+## June 22, 2026 - MenuList SEO Launch Operating Docs
+
+### Added
+
+- **SEO launch operating folder added** - `__docs__/menulist-seo-launch/` now holds the MenuList launch SEO index, consultant ledger, and action register.
+- **Consultant operating model recorded** - MenuList launch SEO will stay mostly in-house, with Codex acting as the internal technical/product SEO consultant and outside help limited to fixed-scope audit work if needed.
+
+### Boundaries
+
+- **No runtime scope added** - This is documentation and operating-process work only. It does not change website routes, copy, sitemap, robots, metadata, structured data, customer menu runtime, Firebase rules, Cloud Functions, billing, or deployment.
+
+### Verification
+
+- Existing SEO launch verifiers were already checked in this session: `npm run verify:agent-readiness` and `npm run verify:website-resource-locales`.
+
+---
+
+## June 22, 2026 - MenuList Website Dark Mode Readability
+
+### Changed
+
+- **Dark website surfaces softened** - MenuList website dark-mode tokens now use quieter gray surfaces, brighter secondary text, lower-opacity borders, and softer shadows.
+- **Shared cards and cookie banner tuned** - Shared website cards, feature cards, lifecycle tiles, proof surfaces, website-replacement panels, and the MenuList public cookie banner now avoid heavy stacked outlines in dark mode.
+
+### Boundaries
+
+- **No runtime scope added** - This is public website CSS/docs work only. It does not change copy, routes, owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, or deployment.
+
+---
+
+## June 22, 2026 - Analytics Website Feature Page
+
+### Added
+
+- **Analytics feature page added** - The MenuList website now has `/features/analytics` for the shipped owner analytics dashboard.
+- **Feature card linked** - The `/features` Menu analytics card now opens the dedicated Analytics page.
+
+### Changed
+
+- **Discovery coverage updated** - Analytics is registered in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`.
+- **Website docs updated** - Main website route, SEO, content, and strategy docs now describe the Analytics page and claim boundaries.
+
+### Boundaries
+
+- **No runtime scope added** - This is public website route, locale, discovery, and docs work only. It does not change owner dashboard runtime, mobile runtime, analytics aggregation, Firebase rules, Cloud Functions, pricing/payment, auth, customer menu runtime, or deployment.
+
+---
+
 ## June 21, 2026 - MenuList Public Truth Loop Homepage Bridge
 
 ### Added

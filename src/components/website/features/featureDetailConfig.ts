@@ -3,7 +3,9 @@ import {
   LuActivity,
   LuAlertTriangle,
   LuBadgeCheck,
+  LuBarChart3,
   LuBuilding2,
+  LuCalendar,
   LuCamera,
   LuCheckCircle2,
   LuClipboardCheck,
@@ -15,7 +17,9 @@ import {
   LuImage,
   LuInbox,
   LuLanguages,
+  LuLayoutDashboard,
   LuLink,
+  LuLineChart,
   LuMapPin,
   LuMessageSquare,
   LuMonitor,
@@ -43,6 +47,7 @@ export type FeatureDetailSlug =
   | 'qr-menu-links'
   | 'print-ready-kit'
   | 'owner-phone-dashboard'
+  | 'analytics'
   | 'menu-quality-validation'
   | 'customer-feedback-loop'
   | 'public-discovery';
@@ -168,6 +173,21 @@ export const featureDetailConfigs: Record<FeatureDetailSlug, FeatureDetailConfig
     ],
     supportIcons: [[LuSmartphone, LuActivity, LuRefreshCw], [LuClock3, LuBadgeCheck, LuShieldCheck]],
     proofIcons: [LuCheckCircle2, LuEye, LuShieldCheck, LuBadgeCheck],
+  },
+  analytics: {
+    slug: 'analytics',
+    key: 'analytics',
+    heroIcon: LuBarChart3,
+    stripIcons: [LuClock3, LuCalendar, LuBarChart3, LuLineChart, LuBadgeCheck],
+    journeyIcons: [LuLayoutDashboard, LuClock3, LuLineChart, LuBadgeCheck],
+    journeyCardIcons: [
+      [LuClock3, LuEye, LuActivity],
+      [LuCalendar, LuBarChart3, LuLineChart],
+      [LuSmartphone, LuMonitor, LuShieldCheck],
+      [LuBadgeCheck, LuCheckCircle2, LuShieldCheck],
+    ],
+    supportIcons: [[LuClock3, LuBarChart3, LuLineChart], [LuSmartphone, LuMonitor, LuShieldCheck]],
+    proofIcons: [LuBadgeCheck, LuEye, LuSmartphone, LuShieldCheck],
   },
   'menu-quality-validation': {
     slug: 'menu-quality-validation',

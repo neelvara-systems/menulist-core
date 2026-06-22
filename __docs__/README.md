@@ -1,6 +1,6 @@
 # MenuListAI Platform Documentation
 
-**Last Updated**: June 20, 2026
+**Last Updated**: June 22, 2026
 **Status**: Production Ready  
 **Naming Convention**: `__docs__/[feature-name]/` (kebab-case) → `[feature-name]_spec.md`, `[feature-name]_impl.md`
 
@@ -54,6 +54,7 @@
 | ---------------------------------------------- | ----------------------------------------------------------------------------- |
 | **[strategy/](./strategy/)**                   | 5-year vision, founder manifesto, pricing, market research, feature spec      |
 | **[constitution/](./constitution/)**           | Core doctrine, language governance, enforcement rules, feature rejection gate |
+| **[menulist-seo-launch/](./menulist-seo-launch/)** | MenuList launch SEO operating index, consultant ledger, and action register |
 | **[internal-tracking/](./internal-tracking/)** | MOL (Menu Observation Layer), internal metrics                                |
 | **[internal-platform/](./internal-platform/)** | Internal platform tools                                                       |
 
@@ -129,5 +130,5 @@
 
 ---
 
-**Last Updated**: June 20, 2026
+**Last Updated**: June 22, 2026
 **Documentation Version**: 4.0

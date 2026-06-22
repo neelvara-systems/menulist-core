@@ -32,6 +32,7 @@ const featurePageHrefByCard = new Map<string, string>([
   ['1-5', '/features/public-discovery'],
   ['2-2', '/features/print-ready-kit'],
   ['3-0', '/features/featured-choices'],
+  ['3-2', '/features/analytics'],
   ['3-3', '/features/menu-quality-validation'],
   ['4-0', '/ai-menu-manager'],
   ['4-1', '/features/business-health'],

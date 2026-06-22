@@ -1,7 +1,7 @@
 # MenuList Marketing
 
 **Status:** Strategy docs
-**Last Updated:** May 20, 2026
+**Last Updated:** June 22, 2026
 
 This folder holds project-level marketing and distribution strategy that is broader than one feature doc. Feature-specific marketing docs still live beside their feature docs.
 
@@ -9,6 +9,7 @@ This folder holds project-level marketing and distribution strategy that is broa
 
 | Document | Purpose |
 | --- | --- |
+| [../menulist-marketing-distribution/README.md](../menulist-marketing-distribution/README.md) | Active MenuList marketing/distribution operating folder, consultant log, source review, research, strategy, execution plan, and action register |
 | [menulist-growth-and-funnel-strategy.md](./menulist-growth-and-funnel-strategy.md) | Controlled hype strategy, free-preview funnel, distribution activation, and first 90-day market plan |
 
 ## Rules

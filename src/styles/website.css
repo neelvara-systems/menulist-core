@@ -112,12 +112,12 @@
     color-scheme: dark;
 
     /* Backgrounds — dark gray, not pure black */
-    --ws-bg-primary: #121417;
-    --ws-bg-subtle: #171a1f;
-    --ws-bg-accent: #18212b;
-    --ws-bg-surface: #15181d;
-    --ws-bg-elevated: #1b2027;
-    --ws-bg-input: #171b21;
+    --ws-bg-primary: #111418;
+    --ws-bg-subtle: #171b21;
+    --ws-bg-accent: #1b2633;
+    --ws-bg-surface: #181d24;
+    --ws-bg-elevated: #202731;
+    --ws-bg-input: #1b2129;
     --ws-bg-danger-soft: rgba(248, 113, 113, 0.09);
     --ws-bg-warning-soft: rgba(251, 191, 36, 0.13);
     --ws-bg-success-soft: rgba(52, 211, 153, 0.12);
@@ -126,27 +126,27 @@
 
     /* Text */
     --ws-text-primary: #f8fafc;
-    --ws-text-secondary: #d5dde7;
-    --ws-text-muted: #9aa7b8;
+    --ws-text-secondary: #dce3ec;
+    --ws-text-muted: #a9b5c6;
     --ws-text-on-accent: #ffffff;
 
     /* Brand */
     --ws-brand-primary: #8bc8ff;
     --ws-brand-secondary: #6daefa;
-    --ws-brand-light: rgba(109, 174, 250, 0.18);
+    --ws-brand-light: rgba(109, 174, 250, 0.13);
     --ws-brand-gradient: linear-gradient(90deg, #7aa7ff 0%, #38bdf8 48%, #5eead4 100%);
     --ws-accent-warm: #ee9abc;
     --ws-accent-warm-soft: rgba(222, 119, 161, 0.14);
     --ws-accent-warm-border: rgba(238, 154, 188, 0.34);
 
     /* Contrast panels */
-    --ws-panel-contrast: #15181d;
-    --ws-panel-contrast-raised: #1a1f27;
-    --ws-panel-contrast-soft: rgba(148, 163, 184, 0.08);
-    --ws-panel-contrast-border: rgba(148, 163, 184, 0.22);
+    --ws-panel-contrast: #171b21;
+    --ws-panel-contrast-raised: #1d242d;
+    --ws-panel-contrast-soft: rgba(148, 163, 184, 0.06);
+    --ws-panel-contrast-border: rgba(148, 163, 184, 0.14);
     --ws-panel-contrast-text: #f8fafc;
-    --ws-panel-contrast-secondary: #d5dde7;
-    --ws-panel-contrast-muted: #9aa7b8;
+    --ws-panel-contrast-secondary: #dce3ec;
+    --ws-panel-contrast-muted: #a9b5c6;
     --ws-panel-contrast-accent: #a9cdfc;
     --ws-panel-contrast-icon: #6daefa;
 
@@ -157,8 +157,8 @@
     --ws-cta-disabled: #1e3a8a;
 
     /* Borders */
-    --ws-border-default: rgba(148, 163, 184, 0.24);
-    --ws-border-subtle: rgba(148, 163, 184, 0.14);
+    --ws-border-default: rgba(148, 163, 184, 0.14);
+    --ws-border-subtle: rgba(148, 163, 184, 0.08);
     --ws-border-focus: #60a5fa;
 
     /* Semantic */
@@ -170,9 +170,9 @@
     --ws-error-text: #fecaca;
 
     /* Shadows */
-    --ws-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.24);
-    --ws-shadow-md: 0 8px 20px -12px rgb(0 0 0 / 0.72);
-    --ws-shadow-lg: 0 18px 40px -20px rgb(0 0 0 / 0.78);
+    --ws-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.18);
+    --ws-shadow-md: 0 8px 20px -14px rgb(0 0 0 / 0.62);
+    --ws-shadow-lg: 0 18px 40px -24px rgb(0 0 0 / 0.68);
     --ws-shadow-drawer: -4px 0 32px rgba(0, 0, 0, 0.42);
   }
 }
@@ -181,12 +181,12 @@
   color-scheme: dark;
 
   /* Backgrounds — dark gray, not pure black */
-  --ws-bg-primary: #121417;
-  --ws-bg-subtle: #171a1f;
-  --ws-bg-accent: #18212b;
-  --ws-bg-surface: #15181d;
-  --ws-bg-elevated: #1b2027;
-  --ws-bg-input: #171b21;
+  --ws-bg-primary: #111418;
+  --ws-bg-subtle: #171b21;
+  --ws-bg-accent: #1b2633;
+  --ws-bg-surface: #181d24;
+  --ws-bg-elevated: #202731;
+  --ws-bg-input: #1b2129;
   --ws-bg-danger-soft: rgba(248, 113, 113, 0.09);
   --ws-bg-warning-soft: rgba(251, 191, 36, 0.13);
   --ws-bg-success-soft: rgba(52, 211, 153, 0.12);
@@ -195,27 +195,27 @@
 
   /* Text */
   --ws-text-primary: #f8fafc;
-  --ws-text-secondary: #d5dde7;
-  --ws-text-muted: #9aa7b8;
+  --ws-text-secondary: #dce3ec;
+  --ws-text-muted: #a9b5c6;
   --ws-text-on-accent: #ffffff;
 
   /* Brand */
   --ws-brand-primary: #8bc8ff;
   --ws-brand-secondary: #6daefa;
-  --ws-brand-light: rgba(109, 174, 250, 0.18);
+  --ws-brand-light: rgba(109, 174, 250, 0.13);
   --ws-brand-gradient: linear-gradient(90deg, #7aa7ff 0%, #38bdf8 48%, #5eead4 100%);
   --ws-accent-warm: #ee9abc;
   --ws-accent-warm-soft: rgba(222, 119, 161, 0.14);
   --ws-accent-warm-border: rgba(238, 154, 188, 0.34);
 
   /* Contrast panels */
-  --ws-panel-contrast: #15181d;
-  --ws-panel-contrast-raised: #1a1f27;
-  --ws-panel-contrast-soft: rgba(148, 163, 184, 0.08);
-  --ws-panel-contrast-border: rgba(148, 163, 184, 0.22);
+  --ws-panel-contrast: #171b21;
+  --ws-panel-contrast-raised: #1d242d;
+  --ws-panel-contrast-soft: rgba(148, 163, 184, 0.06);
+  --ws-panel-contrast-border: rgba(148, 163, 184, 0.14);
   --ws-panel-contrast-text: #f8fafc;
-  --ws-panel-contrast-secondary: #d5dde7;
-  --ws-panel-contrast-muted: #9aa7b8;
+  --ws-panel-contrast-secondary: #dce3ec;
+  --ws-panel-contrast-muted: #a9b5c6;
   --ws-panel-contrast-accent: #a9cdfc;
   --ws-panel-contrast-icon: #6daefa;
 
@@ -226,8 +226,8 @@
   --ws-cta-disabled: #1e3a8a;
 
   /* Borders */
-  --ws-border-default: rgba(148, 163, 184, 0.24);
-  --ws-border-subtle: rgba(148, 163, 184, 0.14);
+  --ws-border-default: rgba(148, 163, 184, 0.14);
+  --ws-border-subtle: rgba(148, 163, 184, 0.08);
   --ws-border-focus: #60a5fa;
 
   /* Semantic */
@@ -239,9 +239,9 @@
   --ws-error-text: #fecaca;
 
   /* Shadows */
-  --ws-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.24);
-  --ws-shadow-md: 0 8px 20px -12px rgb(0 0 0 / 0.72);
-  --ws-shadow-lg: 0 18px 40px -20px rgb(0 0 0 / 0.78);
+  --ws-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.18);
+  --ws-shadow-md: 0 8px 20px -14px rgb(0 0 0 / 0.62);
+  --ws-shadow-lg: 0 18px 40px -24px rgb(0 0 0 / 0.68);
   --ws-shadow-drawer: -4px 0 32px rgba(0, 0, 0, 0.42);
 }
 
@@ -1740,6 +1740,117 @@ body[data-menulist-website="true"] {
   background: var(--ws-brand-light);
   color: var(--ws-brand-primary);
   transform: translateY(-1px);
+}
+
+/* Dark mode should read as quiet surfaces, not stacks of outlined cards. */
+:root.dark .ws-card,
+:root.dark .ws-feature-card,
+:root.dark .ws-features-lifecycle__step,
+:root.dark .ws-problem-drift-card,
+:root.dark .ws-revenue-path-step,
+:root.dark .ws-revenue-link-row a,
+:root.dark .ws-website-replacement__layout,
+:root.dark .ws-website-replacement__proof span,
+:root.dark .ws-hero-surface-pill,
+:root.dark .ws-source-card {
+  border-color: rgba(148, 163, 184, 0.10);
+  background-color: color-mix(in srgb, var(--ws-bg-surface) 86%, var(--ws-bg-primary));
+  box-shadow: none;
+}
+
+:root.dark .ws-feature-card-link .ws-feature-card,
+:root.dark .ws-features-lifecycle__step {
+  border-color: rgba(148, 163, 184, 0.09);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ws-bg-accent) 18%, transparent), transparent 62%),
+    color-mix(in srgb, var(--ws-bg-surface) 88%, var(--ws-bg-primary));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+:root.dark .ws-feature-card-link:hover .ws-feature-card,
+:root.dark .ws-feature-card-link:focus-visible .ws-feature-card {
+  border-color: color-mix(in srgb, var(--ws-brand-secondary) 28%, rgba(148, 163, 184, 0.10));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--ws-bg-accent) 26%, transparent), transparent 64%),
+    color-mix(in srgb, var(--ws-bg-surface) 92%, var(--ws-bg-primary));
+  box-shadow: 0 12px 30px -24px rgb(0 0 0 / 0.7);
+}
+
+:root.dark .ws-feature-card__icon,
+:root.dark .ws-website-replacement__boundary-icon,
+:root.dark .ws-feature-card__action {
+  border-color: rgba(148, 163, 184, 0.10);
+  background: color-mix(in srgb, var(--ws-bg-accent) 58%, transparent);
+}
+
+:root.dark .ws-feature-card__footer {
+  border-top-color: rgba(148, 163, 184, 0.08);
+}
+
+:root.dark .ws-website-replacement__layout {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ws-bg-surface) 88%, var(--ws-brand-light)), var(--ws-bg-primary));
+}
+
+:root.dark .ws-website-replacement__boundary {
+  border-left-color: color-mix(in srgb, var(--ws-brand-secondary) 42%, transparent);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .ws-card,
+  :root:not(.light) .ws-feature-card,
+  :root:not(.light) .ws-features-lifecycle__step,
+  :root:not(.light) .ws-problem-drift-card,
+  :root:not(.light) .ws-revenue-path-step,
+  :root:not(.light) .ws-revenue-link-row a,
+  :root:not(.light) .ws-website-replacement__layout,
+  :root:not(.light) .ws-website-replacement__proof span,
+  :root:not(.light) .ws-hero-surface-pill,
+  :root:not(.light) .ws-source-card {
+    border-color: rgba(148, 163, 184, 0.10);
+    background-color: color-mix(in srgb, var(--ws-bg-surface) 86%, var(--ws-bg-primary));
+    box-shadow: none;
+  }
+
+  :root:not(.light) .ws-feature-card-link .ws-feature-card,
+  :root:not(.light) .ws-features-lifecycle__step {
+    border-color: rgba(148, 163, 184, 0.09);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--ws-bg-accent) 18%, transparent), transparent 62%),
+      color-mix(in srgb, var(--ws-bg-surface) 88%, var(--ws-bg-primary));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  }
+
+  :root:not(.light) .ws-feature-card-link:hover .ws-feature-card,
+  :root:not(.light) .ws-feature-card-link:focus-visible .ws-feature-card {
+    border-color: color-mix(in srgb, var(--ws-brand-secondary) 28%, rgba(148, 163, 184, 0.10));
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--ws-bg-accent) 26%, transparent), transparent 64%),
+      color-mix(in srgb, var(--ws-bg-surface) 92%, var(--ws-bg-primary));
+    box-shadow: 0 12px 30px -24px rgb(0 0 0 / 0.7);
+  }
+
+  :root:not(.light) .ws-feature-card__icon,
+  :root:not(.light) .ws-website-replacement__boundary-icon,
+  :root:not(.light) .ws-feature-card__action {
+    border-color: rgba(148, 163, 184, 0.10);
+    background: color-mix(in srgb, var(--ws-bg-accent) 58%, transparent);
+  }
+
+  :root:not(.light) .ws-feature-card__footer {
+    border-top-color: rgba(148, 163, 184, 0.08);
+  }
+
+  :root:not(.light) .ws-website-replacement__layout {
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--ws-bg-surface) 88%, var(--ws-brand-light)), var(--ws-bg-primary));
+  }
+
+  :root:not(.light) .ws-website-replacement__boundary {
+    border-left-color: color-mix(in srgb, var(--ws-brand-secondary) 42%, transparent);
+    background: rgba(255, 255, 255, 0.025);
+  }
 }
 
 .ws-analytics-cross-map {

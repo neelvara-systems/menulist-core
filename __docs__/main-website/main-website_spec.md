@@ -1,6 +1,6 @@
 # Main Website Strategy Spec
 
-**Version:** 3.6.37 — Featured Choices Feature Page
+**Version:** 3.6.71 — Analytics Feature Page
 **Status:** CURRENT CONTEXT
 **Source:** ChatGPT conversation + Cascade validation + web research
 
@@ -21,6 +21,8 @@
 > June 17, 2026 Business Health Features update: the `/features` Operations group now also carries one compact Business Health card so the feature inventory matches the homepage USP. It must stay a calm diagnostic claim: AI health checks, latest MenuList check, last checked date, customer attention, whether anything needs action, No action needed when stable, and safe handoff to AI Menu Manager or existing owner screens.
 
 > June 17, 2026 Business Health campaign update: `/features/business-health` is now the public marketing page for Business Health campaigns. `/business-health` remains the protected owner app route. The campaign page can explain the feature in more depth, but the claim boundary is unchanged: Business Health is an AI diagnostic health check, not an AI assistant, chatbot, realtime sales monitor, revenue optimizer, prediction engine, competitor tracker, or autonomous public-truth editor.
+
+> June 22, 2026 Analytics feature page update: `/features/analytics` is now the public page for the shipped owner analytics dashboard. The page can explain today, overview, daily, weekly, monthly, and overall dashboard views across desktop and mobile, but must keep the claim boundary to aggregate owner summaries, not customer profiling, heatmaps, revenue attribution, BI, or guaranteed sales improvement.
 
 ---
 
@@ -91,7 +93,8 @@ ChatGPT had zero awareness of these built features:
 17. **Menu Presence Monitor** — Checklist showing where menu is visible across surfaces
 18. **Customer Communication Kit** — Pre-written messages with menu link, address, hours
 19. **Business Health** — AI health check that combines latest menu/public-surface state, cached customer attention, freshness, multi-location status, safe handoff to AI Menu Manager or existing owner screens, and No action needed state. It appears on the homepage, as a `/features` Operations card, and as the dedicated public campaign page at `/features/business-health`.
-20. **Header-level feature campaigns** — Menu Import, Official Business Page, QR Menu and Links, Owner PWA Dashboard, Business Health, and Public Discovery are the current header dropdown feature set because they map directly to SMB owner purchase confidence: start from the current menu, publish one public source, share it, manage core owner workflows from phone or PWA, know what needs attention, and provide a clearer public source.
+20. **Analytics dashboard** — Today, overview, daily, weekly, monthly, and overall owner dashboard views exist across desktop and mobile. Public copy can explain aggregate menu, Official Business Page, action, search, and customer app activity without turning MenuList into a BI product.
+21. **Header-level feature campaigns** — Menu Import, Official Business Page, QR Menu and Links, Owner PWA Dashboard, Business Health, and Public Discovery are the current header dropdown feature set because they map directly to SMB owner purchase confidence: start from the current menu, publish one public source, share it, manage core owner workflows from phone or PWA, know what needs attention, and provide a clearer public source.
 
 **Rule:** Do not forget these capabilities in the website ecosystem. They are competitive advantages, but they do not all need to sit on the homepage at once.
 

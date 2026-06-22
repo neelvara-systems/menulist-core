@@ -2,7 +2,7 @@
 
 > Like a book index: find any doc across any feature instantly.
 >
-> **Last Updated:** June 20, 2026 | **Total Features:** 32+ | **Doc Types:** 7 per feature
+> **Last Updated:** June 22, 2026 | **Total Features:** 32+ | **Doc Types:** 7 per feature
 
 ---
 
@@ -80,7 +80,7 @@
 | 33a | **URL Routing Architecture** | `url-routing-architecture/` |  ✅  |  ✅  |    ➖     |   ➖    |   ➖    |    ✅    |   ✅   |
 | 33b | **Website Asset Operating System** | `website-asset-operating-system/` |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 
-## Strategy & Governance (No new docs needed)
+## Strategy & Governance
 
 | #   | Feature           | Folder               | Purpose                                 |
 | --- | ----------------- | -------------------- | --------------------------------------- |
@@ -89,6 +89,7 @@
 | 35  | Internal Tracking | `internal-tracking/` | MOL (Menu Observation Layer)            |
 | 36  | Internal Platform | `internal-platform/` | Internal tools                          |
 | 37  | Workflows Guide   | `workflows-guide/`   | Cascade workflow documentation          |
+| 37a | MenuList SEO Launch | `menulist-seo-launch/` | Launch SEO consultant ledger, decision log, and action register |
 
 ## Other (Reference only)
 

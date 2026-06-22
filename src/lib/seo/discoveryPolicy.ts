@@ -111,6 +111,13 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 0.84,
     },
     {
+        label: 'Analytics',
+        path: '/features/analytics',
+        description: 'Today, daily, weekly, monthly, and overall customer activity from the public menu, Official Business Page, and customer app in the owner dashboard',
+        changeFrequency: 'monthly',
+        priority: 0.84,
+    },
+    {
         label: 'Menu Quality Validation',
         path: '/features/menu-quality-validation',
         description: 'Menu quality, pricing, detail, and public-readiness checks before publishing the approved source',

@@ -166,10 +166,16 @@
 
 @media (prefers-color-scheme: dark) {
   .banner {
-    border-color: rgb(148 163 184 / 22%);
-    background: rgb(18 20 23 / 96%);
+    border-color: rgb(148 163 184 / 14%);
+    background: rgb(24 29 36 / 94%);
     color: #f8fafc;
-    box-shadow: 0 24px 70px rgb(0 0 0 / 42%), 0 4px 16px rgb(0 0 0 / 30%);
+    box-shadow: 0 20px 54px rgb(0 0 0 / 34%), 0 1px 0 rgb(255 255 255 / 4%) inset;
+  }
+
+  .banner[data-product="menulist"] {
+    border-color: rgb(148 163 184 / 12%);
+    background: color-mix(in srgb, var(--ws-bg-elevated, #202731) 92%, transparent);
+    box-shadow: 0 20px 54px rgb(0 0 0 / 34%), 0 1px 0 rgb(255 255 255 / 4%) inset;
   }
 
   .status,

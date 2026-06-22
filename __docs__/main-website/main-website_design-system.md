@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** June 17, 2026
+**Last Updated:** June 22, 2026
 
 ---
 
@@ -78,16 +78,16 @@ The public website supports system dark mode through the same website tokens. Th
 
 ```css
 :root.dark {
-  --bg-primary: #121417;
-  --bg-subtle: #171a1f;
-  --bg-accent: #18212b;
-  --bg-surface: #15181d;
-  --bg-elevated: #1b2027;
-  --bg-input: #171b21;
+  --bg-primary: #111418;
+  --bg-subtle: #171b21;
+  --bg-accent: #1b2633;
+  --bg-surface: #181d24;
+  --bg-elevated: #202731;
+  --bg-input: #1b2129;
   --bg-sticky: rgba(18, 20, 23, 0.94);
   --text-primary: #f8fafc;
-  --text-secondary: #d5dde7;
-  --text-muted: #9aa7b8;
+  --text-secondary: #dce3ec;
+  --text-muted: #a9b5c6;
   --brand-primary: #8bc8ff;
   --brand-secondary: #6daefa;
   --brand-gradient: linear-gradient(
@@ -101,13 +101,13 @@ The public website supports system dark mode through the same website tokens. Th
   --accent-warm-border: rgba(238, 154, 188, 0.34);
 
   /* Shared contrast panels for footer/proof/editorial dark surfaces */
-  --panel-contrast: #15181d;
-  --panel-contrast-raised: #1a1f27;
-  --panel-contrast-soft: rgba(148, 163, 184, 0.08);
-  --panel-contrast-border: rgba(148, 163, 184, 0.22);
+  --panel-contrast: #171b21;
+  --panel-contrast-raised: #1d242d;
+  --panel-contrast-soft: rgba(148, 163, 184, 0.06);
+  --panel-contrast-border: rgba(148, 163, 184, 0.14);
   --panel-contrast-text: #f8fafc;
-  --panel-contrast-secondary: #d5dde7;
-  --panel-contrast-muted: #9aa7b8;
+  --panel-contrast-secondary: #dce3ec;
+  --panel-contrast-muted: #a9b5c6;
   --panel-contrast-accent: #a9cdfc;
   --panel-contrast-icon: #6daefa;
 }
@@ -137,6 +137,7 @@ Brand gradient rule:
 - The deeper blue-to-teal gradient is the approved light-mode accent because it starts with stronger authority on white and resolves into the lighter MenuList accent.
 - Use the brighter blue-to-teal gradient only in dark mode where it has enough contrast and does not make the page feel like a flashy tech dashboard.
 - Dark surfaces must use dark gray (`#121212` family), not pure black, so cards, headers, pricing, forms, and generated assets keep readable depth.
+- Dark-mode card stacks must use quieter borders than light mode. Prefer subtle surface shifts, spacing, and small internal dividers over heavy `1px` outlines on every card, pill, and proof tile.
 - Fixed utility overlays, sticky CTAs, footer preference controls, footer legal text, and dark product-flow panels must use theme tokens or verified high-contrast dark-panel colors, not hardcoded light surfaces.
 - Footer, proof bands, discovery panels, phone frames, and other dark editorial panels must use the shared contrast-panel variables instead of one-off navy, cyan, white, or green treatments.
 - Pricing controls that render before hydration, especially currency and billing controls, should use website CSS variables directly, not only Tailwind `dark:` variants.

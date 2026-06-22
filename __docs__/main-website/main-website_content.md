@@ -79,6 +79,8 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Business Health campaign page policy (June 17, 2026):** `/features/business-health` is the public campaign URL for Business Health. Do not use `/business-health` for public marketing because that route belongs to the logged-in owner app. The campaign page may go deeper than the homepage section and may describe Business Health as an AI health check, but must stay inside the shipped contract: latest MenuList check, public surface status, customer attention, standard cached periods, location state, last checked date, No action needed when stable, and safe handoff to AI Menu Manager or existing owner-screen routing. It must not imply generic chatbot, ask-anything behavior, realtime sales, POS revenue, competitor tracking, predictions, automatic external-platform updates, or direct Business Health-owned public-truth mutation.
 
+**Analytics feature page policy (June 22, 2026):** `/features/analytics` is the dedicated public page for the shipped owner analytics dashboard. It may describe today, overview, daily, weekly, monthly, and overall dashboard views; menu sessions; engaged sessions; item taps; searches; action rate; Official Business Page actions; customer app activity; desktop/mobile owner dashboard availability; and privacy-conscious aggregate reporting. It must not imply customer profiling, heatmaps, exact GPS tracking, revenue attribution, POS revenue, guaranteed sales lift, or a generic BI product. Analytics is linked from the `/features` Menu analytics card and discovery files, not added to the desktop header dropdown in this pass.
+
 **AI Menu Manager placement policy (June 17, 2026):** AI Menu Manager is now the website growth hook after the source-to-public workflow. The homepage should first establish one approved MenuList source, then show how AI Menu Manager keeps that source current by message. The dedicated public route is `/ai-menu-manager`. Copy must keep the loop explicit: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Unsupported external posting must be described as a manual task/export/handoff, not direct completion. As of v3.6.63, the dedicated page may mention guided item/category/menu-area selection as owner control, but it should not read like UI instructions or weaken the natural-language promise.
 
 **CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination explains the flow publicly, then requires sign-in before accepting a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
@@ -924,12 +926,14 @@ On mobile, the hamburger keeps `Features` open by default because feature discov
 
 **Additional dedicated feature pages reachable from `/features` and discovery:**
 
+- Analytics — `/features/analytics`
 - Menu Quality Validation — `/features/menu-quality-validation`
 
 **Selection rationale:**
 
 - These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, prepare descriptions/images/languages, guide customers toward useful choices, create one public customer source, share it through QR/links, deploy print-ready files, manage the core owner workflow from phone or PWA, know what needs attention, and provide a clearer public source for search/answer systems.
 - POS sync, staff roles, analytics depth, and advanced multi-location governance remain on `/features`, `/multi-location`, or supporting resources. They should not crowd the primary header dropdown unless the buyer strategy changes.
+- v3.6.71 adds `/features/analytics` as a dedicated page because the owner dashboard now has clear desktop/mobile period views worth explaining publicly. It remains outside the desktop header dropdown in this pass so analytics depth does not crowd the primary Start/Publish/Operate navigation.
 - v3.6.39 adds `/features/menu-quality-validation` as a dedicated page but keeps it out of the desktop dropdown to preserve the restrained top-nav shape. The route is reached from `/features` quality, pricing integrity, and customer-trust cards because validation is high-value proof but not the first nine-link evaluation path.
 - v3.6.43 adds `/features/customer-feedback-loop` as a dedicated page and navigation link in the desktop Features dropdown and mobile hamburger feature list. Public customer feedback is valuable proof when framed as a correction loop from customer issue to owner source.
 - v3.6.44 groups the desktop dropdown by the same Start, Publish, and Operate categories used by mobile. Keep this grouping source shared through `websiteFeatureNavGroups`; do not return to a flat desktop list.
@@ -1004,7 +1008,27 @@ Expose Featured Choices as a dedicated feature page at `/features/featured-choic
 **Feature-card wiring:**
 
 - `/features` card `Featured section` links to `/features/featured-choices`.
-- Keep `Menu analytics` as a supporting Features page card. Menu Quality now has a dedicated page because it directly supports the public-truth promise, but it should not be added to the desktop dropdown until the top-nav strategy changes.
+- Menu Quality now has a dedicated page because it directly supports the public-truth promise, but it should not be added to the desktop dropdown until the top-nav strategy changes.
+
+### Analytics Page
+
+**Placement decision:**
+
+Expose Analytics as a dedicated feature page at `/features/analytics`, linked from the `/features` `Menu analytics` card. Keep it out of the desktop header dropdown for now because the dropdown should stay focused on first-pass buyer navigation.
+
+**Owner-readable copy contract:**
+
+- Public label is `Analytics`.
+- The page may describe today, overview, daily, weekly, monthly, and overall dashboard views.
+- The page may mention menu sessions, engaged sessions, item taps, searches, no-result searches, action rate, Official Business Page actions, and customer app activity.
+- The page may mention desktop and mobile owner dashboard availability.
+- The page must frame analytics as aggregate owner summaries, not customer profiling or BI.
+- Do not promise revenue lift, exact attribution, POS revenue, heatmaps, hover tracking, exact GPS tracking, or private customer identity collection.
+
+**Feature-card wiring:**
+
+- `/features` card `Menu analytics` links to `/features/analytics`.
+- Business Health remains the diagnostic page; Analytics remains the owner dashboard period-summary page.
 
 ### Menu Quality Validation Page
 

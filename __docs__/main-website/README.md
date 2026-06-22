@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.70 (Official Customer Link Framing Pass)
+**Version:** 3.6.72 (Dark Mode Readability and Border Reduction)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** June 22, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,7 +13,13 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.70** | **Official Customer Link Framing Pass** | **Homepage, Features, Pricing, OBP, metadata, and LLM context now lead with one approved source becoming the business's official customer link and operating loop.** | **ACTIVE** |
+| **3.6.72** | **Dark Mode Readability and Border Reduction** | **Dark website surfaces now use softer contrast, quieter card borders, and reduced shadow/border stacking so homepage, Features, and cookie consent read more clearly.** | **ACTIVE** |
+
+Version 3.6.72 reduces dark-mode visual noise after the official-customer-link framing pass added more proof panels. Dark theme tokens now use slightly clearer gray surfaces, brighter secondary text, lower-opacity borders, softer shadows, and targeted dark overrides for shared cards, feature cards, lifecycle tiles, drift cards, proof pills, website-replacement panels, and MenuList's public cookie banner. This is public website CSS/docs work only; copy, routes, owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.71 remains the Analytics Feature Page Pass and is preserved below as the previous website version note.
+
+Version 3.6.71 adds `/features/analytics` as a generic dedicated feature page for the shipped owner analytics dashboard. The existing `/features` Menu analytics card now links to it, `FeatureDetailPage` renders the localized hero, signal strip, sticky journey, support, proof, and final CTA copy, and discovery coverage is registered in `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The copy is anchored to the implemented Owner Dashboard and mobile dashboard: today, overview, daily, weekly, monthly, and overall views; menu activity; Official Business Page actions; customer app activity; Business Health handoff; and privacy-conscious aggregate signals. Analytics is intentionally not added to the desktop header dropdown in this pass, preserving the restrained primary feature-navigation policy. This is public website route/locale/discovery/docs work only; owner dashboard runtime, mobile runtime, analytics aggregation, Firebase rules, Cloud Functions, pricing/payment, auth, customer menu runtime, and Vercel deployment were not changed.
 
 Version 3.6.70 reframes the main website around `one approved menu or service-list source -> one official customer link -> QR, print, actions, owner updates, feedback, and health checks stay connected`. The homepage hero now leads with the customer-link outcome instead of only upload, `InteractiveWorkflowSection` uses the six-stage lifecycle `Start -> Prepare -> Publish -> Place -> Operate -> Improve`, and the shared `WebsiteReplacementBlock` answers whether MenuList can act as a lightweight business website/main customer link for customer-facing SMBs on homepage, pricing, and `/features/official-business-page`. Pricing now describes the customer-facing system around the approved menu, service list, or public offer list; the Features page opens with a lifecycle strip; public feature copy removes internal planning-language leaks; External Menu Sync website copy is bounded as supported connected-system snapshot export only; and `public/llms.txt` / `public/llms-full.txt` now use the same official-customer-link framing. This is public website component/CSS/locale/metadata/discovery/docs work only; owner dashboard runtime, customer menu/OBP runtime, payment/Razorpay/subscription logic, Firebase rules, Cloud Functions, and Vercel deployment were not changed. Owner-runtime labels that still use the historical POS Sync naming were not renamed in this website pass.
 
@@ -765,6 +771,8 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.72 | June 22, 2026 | Reduced dark-mode website visual noise with softer gray tokens, quieter borders, lighter shadows, and targeted shared-card/cookie-banner dark overrides. |
+| 3.6.71 | June 22, 2026 | Added `/features/analytics` as a dedicated generic feature page, linked the `/features` Menu analytics card to it, and registered the route in sitemap/LLM discovery while keeping owner analytics runtime unchanged. |
 | 3.6.67 | June 21, 2026 | Added shared public AI summary footer links for MenuList, AnswerLattice, and CampaignCue, with product-specific prompts and claim boundaries. |
 | 3.6.66 | June 21, 2026 | Added a shared compact public cookie preference banner across MenuList, AnswerLattice, CampaignCue, and ConstantLayer public websites, with analytics gating only where analytics scripts exist and essential-storage acknowledgement elsewhere. |
 | 3.6.65 | June 21, 2026 | Kept the current blue trust/infrastructure palette canonical after external local-service palette review, added decorative-only warm accent tokens, and documented that pink is not approved for body text, CTA text, large headings, or QR-poster-style rebrand treatments. |

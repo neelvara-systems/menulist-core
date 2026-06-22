@@ -33,6 +33,8 @@
 
 > June 22, 2026 official customer link framing note: shared metadata, Features metadata, Pricing metadata, Official Business Page metadata, `llms.txt`, and `llms-full.txt` now lead with one approved source becoming one official customer link. The website still avoids ranking/citation promises and automatic unsupported external-platform update claims. Live production still requires the canonical domain and deployed LLM files to resolve from the chosen public domain.
 
+> June 22, 2026 analytics feature page note: `/features/analytics` is now part of the canonical feature discovery set. Public SEO copy must frame Analytics as owner-dashboard period summaries for public menu, Official Business Page, and customer app activity across today, daily, weekly, monthly, and overall views. Do not frame it as customer profiling, revenue attribution, heatmaps, GPS tracking, BI, or guaranteed sales improvement.
+
 ---
 
 ## 1. SEO Foundation
@@ -51,6 +53,7 @@
 | QR Menu and Share Links | QR Menu and Share Links - MenuList \| One Current Menu Everywhere | `(website)/features/qr-menu-links/page.tsx` |
 | Print-ready Kit  | Print-ready Kit - MenuList \| Templates, Editor, and Print Files | `(website)/features/print-ready-kit/page.tsx` |
 | Owner PWA Dashboard | Owner PWA Dashboard - MenuList \| Manage MenuList From Your Phone | `(website)/features/owner-phone-dashboard/page.tsx` |
+| Analytics        | Analytics - MenuList \| Customer Signals in the Owner Dashboard | `(website)/features/analytics/page.tsx` |
 | Menu Quality Validation | Menu Quality Validation - MenuList \| Catch Menu Issues Before Customers See Them | `(website)/features/menu-quality-validation/page.tsx` |
 | Business Health  | Business Health - MenuList \| AI Health Check for Your Menu            | `(website)/features/business-health/page.tsx` |
 | Customer Feedback Loop | Customer Feedback Loop - MenuList \| Private Guest Feedback        | `(website)/features/customer-feedback-loop/page.tsx` |
@@ -78,6 +81,7 @@
 | Homepage       | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
 | Global fallback | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
 | Features       | See how MenuList moves from current menu or service list to prepared review, official customer link, QR, print, owner updates, feedback, and Business Health. |
+| Analytics      | MenuList shows today, daily, weekly, monthly, and overall customer activity from the public menu, Official Business Page, and customer app in the owner dashboard. |
 | Business Health | Business Health is an AI health check for your menu and public presence. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows. |
 | Customer Feedback Loop | Let customers send private feedback from the menu, Official Business Page, QR, or direct link so owners can review issues and keep the public source correct. |
 | How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source behind the customer-facing menu and related public links.   |
