@@ -7,7 +7,7 @@ import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 import WorkflowGuidedFrame from './WorkflowGuidedFrame';
 
-const stepNumbers = ['01', '02', '03', '04'];
+const stepNumbers = ['01', '02', '03', '04', '05', '06'];
 const inputItems = [
   { key: 'pipelinePhoto', Icon: LuCamera },
   { key: 'pipelinePdf', Icon: LuFileText },

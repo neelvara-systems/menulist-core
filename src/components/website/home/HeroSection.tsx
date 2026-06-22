@@ -54,7 +54,7 @@ export default function HeroSection() {
               <WebsiteButton href="/create-menu" ariaLabel={t('Hero.ctaAria')}>
                 {t('Hero.cta')}
               </WebsiteButton>
-              <WebsiteButton href="/ai-menu-manager" variant="ghost" ariaLabel={t('Hero.secondaryCtaAria')}>
+              <WebsiteButton href="/features/official-business-page" variant="ghost" ariaLabel={t('Hero.secondaryCtaAria')}>
                 {t('Hero.secondaryCta')}
               </WebsiteButton>
             </div>

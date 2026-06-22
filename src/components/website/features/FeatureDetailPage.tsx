@@ -6,6 +6,7 @@ import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll'
 import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import Link from '../shared/WebsiteLink';
+import WebsiteReplacementBlock from '../shared/WebsiteReplacementBlock';
 import FeatureDetailJourney from './FeatureDetailJourney';
 import FeatureDetailVisual from './FeatureDetailVisual';
 import FeatureScreenshotProofGallery from './FeatureScreenshotProofGallery';
@@ -58,6 +59,8 @@ export default function FeatureDetailPage({ slug }: FeatureDetailPageProps) {
       </section>
 
       <FeatureDetailJourney config={config} />
+
+      {slug === 'official-business-page' ? <WebsiteReplacementBlock variant="subtle" /> : null}
 
       <FeatureScreenshotProofGallery slug={slug} />
 

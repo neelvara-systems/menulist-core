@@ -41,6 +41,7 @@ const featurePageHrefByCard = new Map<string, string>([
   ['5-1', '/features/menu-quality-validation'],
   ['5-2', '/features/menu-quality-validation'],
 ]);
+const lifecycleIcons = [LuCamera, LuFileText, LuBadgeCheck, LuQrCode, LuBot, LuActivity];
 
 export default function FeaturesPage() {
   const t = useTranslations('Website');
@@ -61,6 +62,12 @@ export default function FeaturesPage() {
     icon,
     title: t(`Features.analytics${i}Title`),
     desc: t(`Features.analytics${i}Desc`),
+  }));
+  const lifecycleSteps = lifecycleIcons.map((icon, i) => ({
+    icon,
+    label: t(`Features.lifecycle${i}Label`),
+    title: t(`Features.lifecycle${i}Title`),
+    desc: t(`Features.lifecycle${i}Desc`),
   }));
 
   return (
@@ -84,6 +91,23 @@ export default function FeaturesPage() {
             </div>
           </AnimateOnScroll>
         </div>
+
+        <AnimateOnScroll delay={0.08}>
+          <div className="ws-container ws-features-lifecycle" aria-label={t('Features.lifecycleAria')}>
+            {lifecycleSteps.map((step) => {
+              const Icon = step.icon;
+
+              return (
+                <article key={step.label} className="ws-features-lifecycle__step">
+                  <span className="ws-features-lifecycle__label">{step.label}</span>
+                  <Icon size={18} aria-hidden="true" />
+                  <h2>{step.title}</h2>
+                  <p>{step.desc}</p>
+                </article>
+              );
+            })}
+          </div>
+        </AnimateOnScroll>
 
         {/* Feature group nav pills */}
         <AnimateOnScroll delay={0.1}>

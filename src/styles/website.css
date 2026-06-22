@@ -322,6 +322,158 @@ body[data-menulist-website="true"] {
 }
 
 /* ============================================
+   Shared Website Replacement / Main Link Block
+   ============================================ */
+
+.ws-website-replacement__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
+  gap: clamp(var(--ws-space-6), 5vw, var(--ws-space-12));
+  align-items: start;
+  border: 1px solid var(--ws-border-default);
+  border-radius: var(--ws-radius-xl);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--ws-bg-primary) 92%, var(--ws-brand-light)), var(--ws-bg-primary));
+  padding: clamp(var(--ws-space-6), 4vw, var(--ws-space-10));
+  box-shadow: var(--ws-shadow-sm);
+}
+
+.ws-website-replacement__copy {
+  display: grid;
+  gap: var(--ws-space-4);
+}
+
+.ws-website-replacement__copy .ws-headline {
+  max-width: 48rem;
+}
+
+.ws-website-replacement__copy > p:last-of-type {
+  max-width: 54rem;
+  margin: 0;
+  color: var(--ws-text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.ws-website-replacement__proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-3);
+  margin-top: var(--ws-space-2);
+}
+
+.ws-website-replacement__proof span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ws-space-2);
+  border: 1px solid var(--ws-border-default);
+  border-radius: 999px;
+  background: var(--ws-bg-surface);
+  padding: var(--ws-space-2) var(--ws-space-3);
+  color: var(--ws-text-primary);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.ws-website-replacement__proof svg {
+  flex: 0 0 auto;
+  color: var(--ws-brand-secondary);
+}
+
+.ws-website-replacement__boundary {
+  display: grid;
+  gap: var(--ws-space-3);
+  border-left: 3px solid color-mix(in srgb, var(--ws-brand-secondary) 58%, var(--ws-border-default));
+  background: color-mix(in srgb, var(--ws-bg-subtle) 72%, transparent);
+  padding: var(--ws-space-5);
+}
+
+.ws-website-replacement__boundary-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid color-mix(in srgb, var(--ws-brand-secondary) 35%, var(--ws-border-default));
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-bg-accent);
+  color: var(--ws-brand-primary);
+}
+
+.ws-website-replacement__boundary h3 {
+  margin: 0;
+  color: var(--ws-text-primary);
+  font-size: 1.125rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.ws-website-replacement__boundary p {
+  margin: 0;
+  color: var(--ws-text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+/* ============================================
+   Features Lifecycle Strip
+   ============================================ */
+
+.ws-features-lifecycle {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--ws-space-3);
+  margin-top: var(--ws-space-12);
+  text-align: left;
+}
+
+.ws-features-lifecycle__step {
+  display: grid;
+  gap: var(--ws-space-2);
+  min-width: 0;
+  border: 1px solid var(--ws-border-default);
+  border-radius: var(--ws-radius-lg);
+  background: var(--ws-bg-surface);
+  padding: var(--ws-space-4);
+  box-shadow: var(--ws-shadow-xs);
+}
+
+.ws-features-lifecycle__step svg {
+  color: var(--ws-brand-secondary);
+}
+
+.ws-features-lifecycle__label {
+  color: var(--ws-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.ws-features-lifecycle__step h2 {
+  margin: 0;
+  color: var(--ws-text-primary);
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.ws-features-lifecycle__step p {
+  margin: 0;
+  color: var(--ws-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+  .ws-features-lifecycle {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ============================================
    Shared Page Hero / Proof Strip
    ============================================ */
 
@@ -3688,6 +3840,46 @@ body[data-menulist-website="true"] {
    ============================================ */
 
 @media (max-width: 768px) {
+  .ws-features-lifecycle {
+    grid-template-columns: 1fr;
+    margin-top: var(--ws-space-8);
+  }
+
+  .ws-features-lifecycle__step {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+  }
+
+  .ws-features-lifecycle__label {
+    grid-column: 1 / -1;
+  }
+
+  .ws-features-lifecycle__step h2,
+  .ws-features-lifecycle__step p {
+    grid-column: 2;
+  }
+
+  .ws-website-replacement__layout {
+    grid-template-columns: 1fr;
+    gap: var(--ws-space-6);
+    padding: var(--ws-space-5);
+  }
+
+  .ws-website-replacement__proof {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .ws-website-replacement__proof span {
+    width: 100%;
+  }
+
+  .ws-website-replacement__boundary {
+    border-left: 0;
+    border-top: 3px solid color-mix(in srgb, var(--ws-brand-secondary) 58%, var(--ws-border-default));
+    padding: var(--ws-space-4);
+  }
+
   .ws-step-connector {
     display: none !important;
   }

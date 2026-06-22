@@ -30,7 +30,7 @@
 | ------------------ | ---------------------------------------- | --------------------------------------------- |
 | **Goal**           | Build trust + authority                  | Acquire customers + create buzz               |
 | **Tone**           | Premium calm, professional               | Direct, transformation-focused, energetic     |
-| **Hero message**   | "Your official menu. From one place."    | "Upload your current menu. Publish one official version customers can trust." |
+| **Hero message**   | "Your official menu. From one place."    | "Turn your current menu into your official customer link." |
 | **Core narrative** | Source of truth, stays aligned           | Menu → Internet Presence (transformation)     |
 | **Emotion**        | Relief, trust                            | Surprise, curiosity, "why didn't this exist?" |
 | **Language**       | Operational words only                   | Transformation statements, direct outcomes    |
@@ -46,7 +46,7 @@
 | --- | ----------------------------------------- | ------------------- | ----------------------------------------------- |
 | 1   | "Menu → Internet Presence" narrative      | ✅ ADOPT            | Stronger than "source of truth" for acquisition |
 | 2   | Show transformation, not features         | ✅ ADOPT            | "Upload menu → business online" is compelling   |
-| 3   | Hero = transformation statement           | ✅ ADOPT            | Current version: "Upload your current menu. Publish one official version customers can trust." |
+| 3   | Hero = transformation statement           | ✅ ADOPT            | Current version: "Turn your current menu into your official customer link." |
 | 4   | Before/After framing for problem section  | ✅ ADOPT            | Makes broken internet obvious                   |
 | 5   | Don't call it "QR menu tool" or "AI tool" | ✅ ADOPT            | Already follows language governance             |
 | 6   | Interactive demo in hero (future)         | ✅ DEFER            | Good idea but requires significant engineering  |
@@ -138,10 +138,10 @@ Current PAL contract:
 ### Hero (CHANGED)
 
 **Old:** "Your official menu. From one place."
-**New:** "Upload your current menu. Publish one official version customers can trust."
+**New:** "Turn your current menu into your official customer link."
 
-- titlePart1: "Upload your current menu."
-- titleHighlight: "Publish one official version customers can trust."
+- titlePart1: "Turn your current menu into"
+- titleHighlight: "your official customer link."
 - titlePart2: ""
 - subtitle: Transformation-focused, grounded in owner approval, but no longer re-lists every public output
 - CTA: "Upload your menu →" (action-oriented)
@@ -238,7 +238,7 @@ Current PAL contract:
 
 | Page     | Title                                                 | Description                                                                                                      |
 | -------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Homepage | MenuList - One Official Menu Source for Customers | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
+| Homepage | MenuList - One Official Menu Source for Customers | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
 
 ---
 

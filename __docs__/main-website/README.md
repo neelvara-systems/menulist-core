@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.69 (Public Truth Loop Homepage Bridge)
+**Version:** 3.6.70 (Official Customer Link Framing Pass)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 21, 2026
+**Last Updated:** June 22, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,9 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.69** | **Public Truth Loop Homepage Bridge** | **Homepage proof now shows how customer surfaces, feedback, activity, and correction keep returning to one approved source.** | **ACTIVE** |
+| **3.6.70** | **Official Customer Link Framing Pass** | **Homepage, Features, Pricing, OBP, metadata, and LLM context now lead with one approved source becoming the business's official customer link and operating loop.** | **ACTIVE** |
+
+Version 3.6.70 reframes the main website around `one approved menu or service-list source -> one official customer link -> QR, print, actions, owner updates, feedback, and health checks stay connected`. The homepage hero now leads with the customer-link outcome instead of only upload, `InteractiveWorkflowSection` uses the six-stage lifecycle `Start -> Prepare -> Publish -> Place -> Operate -> Improve`, and the shared `WebsiteReplacementBlock` answers whether MenuList can act as a lightweight business website/main customer link for customer-facing SMBs on homepage, pricing, and `/features/official-business-page`. Pricing now describes the customer-facing system around the approved menu, service list, or public offer list; the Features page opens with a lifecycle strip; public feature copy removes internal planning-language leaks; External Menu Sync website copy is bounded as supported connected-system snapshot export only; and `public/llms.txt` / `public/llms-full.txt` now use the same official-customer-link framing. This is public website component/CSS/locale/metadata/discovery/docs work only; owner dashboard runtime, customer menu/OBP runtime, payment/Razorpay/subscription logic, Firebase rules, Cloud Functions, and Vercel deployment were not changed. Owner-runtime labels that still use the historical POS Sync naming were not renamed in this website pass.
 
 Version 3.6.69 adds a compact `PublicTruthLoopSection` after the homepage source-to-public workflow. The section shows MenuList as a post-publish public-truth loop: current menu source, owner approval, customer surfaces, returned feedback/activity signals, and source correction. It also gives owners one practical output proof row for customer menu, Official Business Page, and print/QR kit. This is MenuList-native storytelling inspired by reference-site cycle patterns, not a redesign or feature expansion. It does not add external-platform syncing, ranking/citation claims, POS sync, fake metrics, owner dashboard runtime, customer menu runtime, pricing/payment changes, Firebase rules, Cloud Functions, crawler policy, or Vercel deployment.
 
@@ -470,7 +472,7 @@ Protected scope:
 | Visual direction | Direction A — Official Source Authority                       | Calm, credible, product-led                           |
 | Tone             | Premium calm, operationally clear, low hype                   | Supports trust and owner comprehension                |
 | CTA              | "Upload your menu →"                                          | Matches the non-technical owner action and routes to `/create-menu` |
-| Hero message     | "Upload your current menu. Publish one official version customers can trust." | Explains the owner-controlled transformation before infrastructure depth |
+| Hero message     | "Turn your current menu into your official customer link." | Explains the buyer outcome before the upload step |
 | Homepage shape   | 16 focused sections plus sticky CTA                           | Adds a whole-page revenue path while preserving official-source discipline |
 | Proof strategy   | Public output, customer browse proof, deployment surfaces      | Shows value through believable product evidence       |
 | Protected scope  | Pricing/payment/auth/onboarding logic untouched               | Avoids breaking production billing and subscription flows |

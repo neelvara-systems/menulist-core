@@ -11,7 +11,7 @@ const B2CplansList = [
     // Starter Monthly
     {
         "planId": "starter", "type": "B2C", "name": "Starter Plan", "isRecommended": false,
-        "description": "For getting your menu online quickly.",
+        "description": "For one business that needs an official menu, customer page, QR, and share link.",
         "priceINR": { "price": 49900, "monthlyCredits": 75 },
         "priceUSD": { "price": 2900, "monthlyCredits": 100 },
         "billingInterval": "MONTH"
@@ -19,7 +19,7 @@ const B2CplansList = [
     // Starter Yearly
     {
         "planId": "starter", "type": "B2C", "name": "Starter Plan (Yearly)", "isRecommended": false,
-        "description": "For getting your menu online quickly.",
+        "description": "For one business that needs an official menu, customer page, QR, and share link.",
         "priceINR": { "price": 499000, "monthlyCredits": 75 },
         "priceUSD": { "price": 29000, "monthlyCredits": 100 },
         "billingInterval": "YEAR"
@@ -27,7 +27,7 @@ const B2CplansList = [
     // Pro Monthly
     {
         "planId": "pro", "type": "B2C", "name": "Pro Plan", "isRecommended": true,
-        "description": "For restaurants that care how they look.",
+        "description": "For businesses that want stronger presentation, AI-assisted updates, languages, images, and action insights.",
         "priceINR": { "price": 149900, "monthlyCredits": 200 },
         "priceUSD": { "price": 7900, "monthlyCredits": 400 },
         "billingInterval": "MONTH"
@@ -35,7 +35,7 @@ const B2CplansList = [
     // Pro Yearly
     {
         "planId": "pro", "type": "B2C", "name": "Pro Plan (Yearly)", "isRecommended": true,
-        "description": "For restaurants that care how they look.",
+        "description": "For businesses that want stronger presentation, AI-assisted updates, languages, images, and action insights.",
         "priceINR": { "price": 1499000, "monthlyCredits": 200 },
         "priceUSD": { "price": 79000, "monthlyCredits": 400 },
         "billingInterval": "YEAR"
@@ -43,7 +43,7 @@ const B2CplansList = [
     // Premium Monthly
     {
         "planId": "premium", "type": "B2C", "name": "Premium Plan", "isRecommended": false,
-        "description": "For brands managing multiple locations.",
+        "description": "For brands that need multi-location menu governance and outlet-level control.",
         "priceINR": { "price": 399900, "monthlyCredits": 600 },
         "priceUSD": { "price": 14900, "monthlyCredits": 1000 },
         "billingInterval": "MONTH"
@@ -51,7 +51,7 @@ const B2CplansList = [
     // Premium Yearly
     {
         "planId": "premium", "type": "B2C", "name": "Premium Plan (Yearly)", "isRecommended": false,
-        "description": "For brands managing multiple locations.",
+        "description": "For brands that need multi-location menu governance and outlet-level control.",
         "priceINR": { "price": 3999000, "monthlyCredits": 600 },
         "priceUSD": { "price": 149000, "monthlyCredits": 1000 },
         "billingInterval": "YEAR"

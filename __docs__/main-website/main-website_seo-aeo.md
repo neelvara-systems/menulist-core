@@ -1,7 +1,7 @@
 # SEO & AEO Strategy — MenuList Main Website
 
 **Status:** ✅ IMPLEMENTED  
-**Last Updated:** June 18, 2026
+**Last Updated:** June 22, 2026
 
 > May 18, 2026 update: the homepage now includes a search/AI discovery proof section. It is grounded in existing owner SEO/AEO settings, Business Copy Setup, schema.org output, sitemap/robots policy, and LLM discovery files. The public wording must stay conservative: MenuList prepares a clearer official source for search engines and AI systems to read; it does not promise rankings, AI citations, Google Maps updates, or external-platform placement.
 
@@ -31,6 +31,8 @@
 
 > June 18, 2026 metadata parity note: shared MenuList website metadata now reads from `src/constants/menulist/website.ts`, which uses the production `https://menulist.ai` deployment target for canonical metadata and schema URLs. Root fallback metadata no longer uses the old "Upload Your Menu Online" title. `/create-menu/success` is intentionally `noindex, nofollow, nocache` with a self canonical to the non-query success path because it is a post-setup state page that can include query-string menu URLs. `npm run verify:agent-readiness` now checks the canonical constants, schema URL source, stale fallback removal, and success-page noindex wrapper.
 
+> June 22, 2026 official customer link framing note: shared metadata, Features metadata, Pricing metadata, Official Business Page metadata, `llms.txt`, and `llms-full.txt` now lead with one approved source becoming one official customer link. The website still avoids ranking/citation promises and automatic unsupported external-platform update claims. Live production still requires the canonical domain and deployed LLM files to resolve from the chosen public domain.
+
 ---
 
 ## 1. SEO Foundation
@@ -41,7 +43,7 @@
 | ---------------- | --------------------------------------------------------------------- | ------------------------------------- |
 | Global Fallback  | MenuList - One Official Menu Source for Customers                     | `src/app/layout.tsx` via `src/constants/menulist/website.ts` |
 | Homepage         | MenuList - One Official Menu Source for Customers                     | `(website)/layout.tsx`                |
-| Features         | Features — MenuList \| No Extra Work for Your Menu                    | `(website)/features/page.tsx`         |
+| Features         | Features — MenuList \| One Source, Every Customer Touchpoint          | `(website)/features/page.tsx`         |
 | Menu Import      | Menu Import - MenuList \| Upload the Menu You Already Have            | `(website)/features/menu-import/page.tsx` |
 | Menu Content Prep | Menu Content Prep - MenuList \| Descriptions, Images, and Languages | `(website)/features/menu-content-prep/page.tsx` |
 | Featured Choices | Featured Choices - MenuList \| Help Customers Choose More Easily     | `(website)/features/featured-choices/page.tsx` |
@@ -73,13 +75,13 @@
 
 | Page           | Description                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Homepage       | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
-| Global fallback | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
-| Features       | Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place. |
+| Homepage       | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
+| Global fallback | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
+| Features       | See how MenuList moves from current menu or service list to prepared review, official customer link, QR, print, owner updates, feedback, and Business Health. |
 | Business Health | Business Health is an AI health check for your menu and public presence. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows. |
 | Customer Feedback Loop | Let customers send private feedback from the menu, Official Business Page, QR, or direct link so owners can review issues and keep the public source correct. |
 | How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source behind the customer-facing menu and related public links.   |
-| Pricing        | Start with a 7-day MenuList setup, then choose the plan that keeps your official menu link live, updated, and ready for customers.                  |
+| Pricing        | Start with a 7-day MenuList setup, then choose the plan that keeps your official customer link live, current, and owner-approved.                  |
 | Multi-Location | Manage menu source changes across locations from one place. Keep outlet menus consistent while preserving location-level control.       |
 | About          | MenuList turns your menu into your entire online presence. Built for businesses that care about how they present themselves to customers.                           |
 | Contact        | Have questions about MenuList? Reach out to our team. We are here to help you get your menu online.                                                                 |
@@ -346,7 +348,7 @@ Agent boundaries:
 />
 <meta
   property="og:description"
-  content="Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source."
+  content="Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks."
 />
 <meta property="og:image" content="https://menulist.ai/images/website/menulist-og-official-source.png" />
 <meta property="og:url" content="https://menulist.ai" />
@@ -361,7 +363,7 @@ Agent boundaries:
 />
 <meta
   name="twitter:description"
-  content="Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source."
+  content="Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks."
 />
 <meta name="twitter:image" content="https://menulist.ai/images/website/menulist-og-official-source.png" />
 ```

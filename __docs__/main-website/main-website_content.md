@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** June 21, 2026
+**Last Updated:** June 22, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -37,6 +37,8 @@
 
 > Visual Profile Completion website note (June 17, 2026): Visual Profile Completion is mentioned only as a supporting Official Business Page proof point. Public copy may say MenuList shows when key profile photos are missing. Do not create a standalone page, nav item, homepage section, AI photo-placement claim, gallery-manager claim, social-posting claim, or ranking promise.
 
+> Official customer link framing note (June 22, 2026): the website spine is now `one approved menu source -> one official customer link -> QR, print, actions, owner updates, feedback, and health checks stay connected`. The first-fold copy should make owners understand they are creating the official link customers use everywhere, not only uploading a menu. The lifecycle vocabulary is `Start -> Prepare -> Publish -> Place -> Operate -> Improve`. Do not add a `/restaurant-website` page until the canonical domain, LLM context, homepage, pricing, OBP, and claim boundaries are stable.
+
 ---
 
 ## Page 1: Homepage
@@ -53,18 +55,19 @@ Supporting pages now share the same official-source discipline through shared he
 2. `ProblemSection`
 3. `InteractiveWorkflowSection`
 4. `PublicTruthLoopSection`
-5. `AiMenuManagerSection`
-6. `SetupReliefSection`
-7. `SurfacesSection`
-8. `CustomerBrowseSection`
-9. `PreparedForYouSection`
-10. `BusinessHealthSection`
-11. `ResourcesSection`
-12. `FaqSection`
-13. `FinalCtaSection`
-14. `StickyCta`
+5. `WebsiteReplacementBlock`
+6. `AiMenuManagerSection`
+7. `SetupReliefSection`
+8. `SurfacesSection`
+9. `CustomerBrowseSection`
+10. `PreparedForYouSection`
+11. `BusinessHealthSection`
+12. `ResourcesSection`
+13. `FaqSection`
+14. `FinalCtaSection`
+15. `StickyCta`
 
-**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `PublicTruthLoopSection` is the single post-workflow bridge that explains how published surfaces, feedback, activity signals, and correction return to the same approved source. `BusinessHealthSection` is mounted as the single owner-dashboard USP proof after the prepared capability grid and before the education/discovery bridge. `ResourcesSection` remains a compact lower-page education/discovery bridge before FAQ; it must not turn the homepage into a blog index. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
+**Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `InteractiveWorkflowSection` is the six-stage lifecycle spine, `PublicTruthLoopSection` proves that published surfaces return to the same approved source, and `WebsiteReplacementBlock` answers the lightweight website/customer-link doubt before AI Menu Manager appears. `BusinessHealthSection` is mounted as the single owner-dashboard USP proof after the prepared capability grid and before the education/discovery bridge. `ResourcesSection` remains a compact lower-page education/discovery bridge before FAQ; it must not turn the homepage into a blog index. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
 
 **Growth Kits placement policy (June 1, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: upload the current menu and publish one official customer-facing version. Growth Kits may be considered later as a small Pro/Premium pricing or Features-page proof point after owner usage validates demand.
 
@@ -140,25 +143,25 @@ Industry pages explain how the same official-source layer applies to common food
 
 **Headline:**
 
-> Upload your current menu. Publish one official version customers can trust.
+> Turn your current menu into your official customer link.
 
 **Subline:**
 
-> Start with a photo, PDF, existing menu link, or typed menu. MenuList prepares the official customer-facing version from one owner-approved source.
+> Start with a photo, PDF, existing menu link, or typed menu. MenuList prepares it for review, then keeps your public menu, business page, QR, print files, customer actions, owner updates, feedback, and health checks connected to the version you approve.
 
 **Primary CTA:** Upload your menu →
-**Secondary CTA:** See AI Menu Manager (`/ai-menu-manager`)
+**Secondary CTA:** See customer link (`/features/official-business-page`)
 **Micro-trust line:** Start with a 7-day setup. Review the public menu before choosing a paid plan.
 
-**Proof strip:** Review before publishing · Current menu accepted · No desktop required
+**Proof strip:** Owner-approved · Use as website link · QR and print ready
 
 **Visual:** Official-source composite showing owner source, Official Business Page, customer menu phone preview, and surface pills for QR menu, official page, digital screen, web/link, print/PDF, and saved menu shortcut.
 
 **Notes:**
 
-- Direction A: Current-menu owner action first, official-source proof second.
-- Hero must communicate upload → review → publish one trusted customer version in under 5 seconds.
-- The visual line break in the hero headline must preserve readable whitespace in DOM/accessibility text. The rendered H1 should read `Upload your current menu. Publish one official version customers can trust.`
+- Direction A: official customer-link outcome first, current-menu owner action second.
+- Hero must communicate current menu -> official customer link -> connected QR/print/actions/updates loop in under 5 seconds.
+- The visual line break in the hero headline must preserve readable whitespace in DOM/accessibility text. The rendered H1 should read `Turn your current menu into your official customer link.`
 - Avoid "digital menu maker", "AI menu generator", and generic dashboard visuals.
 - Existing menu link copy is allowed as a source-intake proof only. Do not call it scraping, marketplace import, automatic cloning, or automatic publishing.
 - Avoid using "no account needed" as a hero or upload-page proof point. Keep the funnel promise aligned to the current setup model: "Start with a 7-day setup. Review before choosing a paid plan."
@@ -296,19 +299,21 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 | Step | Title | Description |
 | --- | --- | --- |
-| 1 | Start with the menu you already use | Photo, PDF, existing menu link, or typed menu. The setup starts from the current source your business already trusts. |
-| 2 | Review the prepared source | Items, categories, prices, language, images, and business details become structured before they go public. |
-| 3 | Publish the official version | The official page and live menu become the customer-facing source for your menu and business information. |
-| 4 | Deploy it where customers look | QR, links, screens, and print send customers to the same current menu. |
+| 1 | Start with the menu you already use | Photo, PDF, existing menu link, or typed menu. Start with what your business already uses. |
+| 2 | Prepare the customer-ready version | Items, sections, prices, descriptions, images, languages, and business details are prepared for review. |
+| 3 | Publish the approved menu and page | The customer-facing menu and Official Business Page go live only from the version the owner approves. |
+| 4 | Place it where customers look | QR, WhatsApp, Instagram, Google profile, packaging, print files, table cards, counters, and screens point to the same link. |
+| 5 | Operate daily changes from phone or AI Menu Manager | Owners update prices, sold-out items, specials, hours, QR links, screens, and customer-facing details without rebuilding every surface. |
+| 6 | Improve with feedback and Business Health | Feedback, activity signals, quality checks, and Business Health show what needs correction. |
 
 **Step presentation:**
 
-- The four steps are presented in the guided rail beside the source map, not as a second card grid below it.
+- The six steps are presented in the guided rail beside the source map, not as a second card grid below it.
 - The active rail state may change with scroll progress, but the full step text remains readable without animation or JavaScript-driven visibility gates.
 
 **Micro-copy below steps:**
 
-> No technical setup. You approve before publishing.
+> One source. Owner approval before publishing. Clear fixes after customers use it.
 
 ---
 
@@ -316,15 +321,15 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 **Section heading:**
 
-> The public version keeps returning to the same source.
+> Every output returns to the approved source.
 
 **Eyebrow:**
 
-> After publishing
+> Operating loop
 
 **Supporting text:**
 
-> MenuList is not just a QR menu. Customer menus, official pages, print files, activity signals, and issue reports keep pointing back to the owner-approved menu.
+> MenuList is not just a QR menu. Customer menus, official pages, QR, print files, activity signals, issue reports, owner updates, and health checks keep pointing back to the source the owner approves.
 
 **Core visual:**
 
@@ -357,7 +362,23 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 ---
 
-### Section 6 — Setup Effort Removed
+### Section 6 — Website Replacement Doubt Block
+
+**Component:** `WebsiteReplacementBlock`
+
+**Mounted on:** homepage after `PublicTruthLoopSection`, `/pricing` after pricing setup controls, and `/features/official-business-page` after the page journey.
+
+**Title:**
+
+> Can MenuList be my business website?
+
+**Purpose:** Answer the buyer doubt directly: for many customer-facing SMBs, including restaurants, cafes, cloud kitchens, bakeries, salons, spas, clinics, studios, repair shops, retail counters, and service-list businesses, MenuList can act as the main customer link for menu, service list, hours, photos, directions, call/WhatsApp, QR, packaging, table cards, posters, bills, and print materials.
+
+**Boundary:** MenuList is not a generic website builder, POS, delivery platform, accounting system, payroll tool, CRM, or ranking/citation guarantee. Deep custom sites with many pages, campaigns, blogs, careers, or advanced brand storytelling can stay separate.
+
+---
+
+### Section 7 — Setup Effort Removed
 
 **Section heading:**
 
@@ -591,11 +612,11 @@ MenuList turns approved menu and business details into visible public pages, ser
 
 **Section heading:**
 
-> Not only restaurants.
+> Built for customer-facing SMBs.
 
 **Supporting text:**
 
-> Built first for restaurants, cafes, cloud kitchens, bakeries, salons, spas, and other businesses with customer-facing menus, service lists, or price lists.
+> MenuList fits businesses where customers need one current public menu, catalogue, service list, or price list they can trust.
 
 **Industry chips:**
 
@@ -937,7 +958,7 @@ On mobile, the hamburger keeps `Features` open by default because feature discov
 - Business discovery attributes remain inside `/features/official-business-page` and `/features/public-discovery` because payment methods, amenities, services, and structured public details support the official-page/discovery story.
 - Web and sharing links remain inside `/features/qr-menu-links`.
 - Customer feedback gets a dedicated page because the shipped flow is end to end: public menu/OBP/QR/direct-link entry points, private owner inbox, status handling, mobile access, and Business Health attention signals. It must be framed as customer-reported issue correction, not reviews, testimonials, sentiment analysis, or reputation automation.
-- External Menu Sync/POS remains an advanced Features-page/operations proof only until buyer demand and integration proof justify a dedicated public campaign page.
+- Connected-system snapshot export remains an advanced Features-page/operations proof only until buyer demand and integration proof justify a dedicated public campaign page. Public website copy must say supported connected systems only and must not imply automatic Google, Instagram, Zomato, Swiggy, delivery-app, POS, or unsupported-platform updates.
 
 **Clickable card rule:**
 
@@ -1312,11 +1333,11 @@ Right-side sticky cards:
 
 **Headline:**
 
-> Everything your customers see. One system.
+> Keep your official customer link live, current, and owner-approved.
 
 **Subline:**
 
-> Menu, pricing, availability, and presentation stay connected to one owner-approved source. No design or technical setup required.
+> Menu, prices, business page, QR, print files, customer actions, owner updates, feedback, and health checks stay connected to one approved source.
 
 **Proof row:**
 
@@ -1683,7 +1704,7 @@ The removed global helper components were useful during early conversion hardeni
 
 | Page           | Title Tag                                              | Meta Description                                                                                                                           |
 | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Homepage       | MenuList - One Official Menu Source for Customers | Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source. |
+| Homepage       | MenuList - One Official Menu Source for Customers | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
 | Product        | How MenuList Works — One Menu, Everywhere              | See how MenuList keeps your menu correct across QR, official pages, screens, web links, and print outputs from one approved source.         |
 | Multi-Location | MenuList for Chains & Multi-Location Businesses        | Manage menus across all your locations from one place. Master menu, per-location control, instant sync.                                    |
 | Pricing        | MenuList Pricing — Simple, Transparent Plans           | Start managing your official menu. Simple plans with transparent pricing in INR. No hidden fees.                                           |

@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.69 Public Truth Loop Homepage Bridge
-**Last Updated:** June 21, 2026
+**Status:** IMPLEMENTED — v3.6.70 Official Customer Link Framing Pass
+**Last Updated:** June 22, 2026
 **Audience:** Developers
 
 ---
@@ -98,7 +98,7 @@ LocalisationProvider (locale from next-intl/server)
 
 **Default metadata (from layout):**
 - Title: `MenuList - One Official Menu Source for Customers`
-- Description: `Upload your current menu. Review the prepared version. Publish one official menu, page, QR link, screen, PDF, and customer view from the same owner-approved source.`
+- Description: `Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks.`
 - Metadata base: production `https://menulist.ai` from `src/constants/menulist/website.ts`
 - Canonical: `https://menulist.ai`
 - OG image: `/images/website/menulist-og-official-source.png`
@@ -108,7 +108,7 @@ LocalisationProvider (locale from next-intl/server)
 
 ---
 
-## 4. Homepage Sections (12 sections plus sticky CTA, in order)
+## 4. Homepage Sections (13 sections plus sticky CTA, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
@@ -118,17 +118,20 @@ LocalisationProvider (locale from next-intl/server)
 | 2 | Problem | `ProblemSection.tsx` |
 | 3 | Interactive Workflow | `InteractiveWorkflowSection.tsx` |
 | 4 | Public Truth Loop | `PublicTruthLoopSection.tsx` |
-| 5 | AI Menu Manager | `AiMenuManagerSection.tsx` |
-| 6 | Setup Relief | `SetupReliefSection.tsx` |
-| 7 | Surfaces | `SurfacesSection.tsx` |
-| 8 | Customer Browse | `CustomerBrowseSection.tsx` |
-| 9 | Prepared For You | `PreparedForYouSection.tsx` |
-| 10 | Business Health | `BusinessHealthSection.tsx` |
-| 11 | Resources | `ResourcesSection.tsx` |
-| 12 | FAQ | `FaqSection.tsx` |
-| 13 | Final CTA | `FinalCtaSection.tsx` |
+| 5 | Website Replacement Doubt Block | `WebsiteReplacementBlock.tsx` |
+| 6 | AI Menu Manager | `AiMenuManagerSection.tsx` |
+| 7 | Setup Relief | `SetupReliefSection.tsx` |
+| 8 | Surfaces | `SurfacesSection.tsx` |
+| 9 | Customer Browse | `CustomerBrowseSection.tsx` |
+| 10 | Prepared For You | `PreparedForYouSection.tsx` |
+| 11 | Business Health | `BusinessHealthSection.tsx` |
+| 12 | Resources | `ResourcesSection.tsx` |
+| 13 | FAQ | `FaqSection.tsx` |
+| 14 | Final CTA | `FinalCtaSection.tsx` |
 
 `RevenuePathSection.tsx`, `StatsSection.tsx`, `SearchDiscoverySection.tsx`, `AnalyticsInsightsSection.tsx`, `SmartFeaturesSection.tsx`, `BusinessSection.tsx`, and `IndustrySection.tsx` remain in the codebase as supporting components/future page material, but they are not mounted in the current compressed homepage. The old `SolutionSection.tsx` was removed in v3.5.8 because its one-source SVG and bullet grid duplicated the hero, problem, workflow source map, setup proof, and public-surface proof.
+
+**Official customer link framing pass:** v3.6.70 makes the current website story explicit: one approved menu source becomes one official customer link, then QR, print, actions, owner updates, feedback, and health checks stay connected. `InteractiveWorkflowSection.tsx` now uses six guided lifecycle steps, `WebsiteReplacementBlock.tsx` is mounted on the homepage, pricing, and Official Business Page feature page, Pricing/Features/OBP metadata and locale copy are updated, and `public/llms.txt` / `public/llms-full.txt` use the same customer-link framing. The public Features page adds a lifecycle strip before the feature catalog. External-sync website copy is bounded as supported connected-system snapshot export only. This is public website component/CSS/locale/metadata/discovery/docs work only; owner dashboard runtime labels, customer menu/OBP runtime, pricing/payment/Razorpay/subscription logic, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
 **Public truth loop homepage bridge:** v3.6.69 adds `PublicTruthLoopSection.tsx` immediately after `InteractiveWorkflowSection`. The section makes the post-publish loop visible: current menu source -> owner approval -> customer surfaces -> feedback/activity signals -> source stays current. It also shows the three practical output families owners understand fastest: customer menu, Official Business Page, and print/QR kit. This is a compact proof bridge, not a new dashboard/analytics/SEO section, and it does not claim automatic external-platform updates, ranking, citation, POS sync, or fake customer metrics.
 

@@ -7,14 +7,14 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Features — MenuList | No Extra Work for Your Menu',
-  description: 'Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place.',
+  title: 'Features — MenuList | One Source, Every Customer Touchpoint',
+  description: 'See how MenuList moves from current menu or service list to prepared review, official customer link, QR, print, owner updates, feedback, and Business Health.',
   alternates: {
     canonical: '/features',
   },
   openGraph: {
-    title: 'Features — MenuList | No Extra Work for Your Menu',
-    description: 'Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management — all from one place.',
+    title: 'Features — MenuList | One Source, Every Customer Touchpoint',
+    description: 'See how MenuList moves from current menu or service list to prepared review, official customer link, QR, print, owner updates, feedback, and Business Health.',
     url: '/features',
   },
 };
@@ -24,8 +24,8 @@ export default function Page() {
     <div className="ws-page">
       <WebsitePageStructuredData
         path="/features"
-        title="Features - MenuList | No Extra Work for Your Menu"
-        description="Upload your menu and get images, descriptions, translations, QR menus, digital screens, official business page, and multi-location management - all from one place."
+        title="Features - MenuList | One Source, Every Customer Touchpoint"
+        description="See how MenuList moves from current menu or service list to prepared review, official customer link, QR, print, owner updates, feedback, and Business Health."
       />
       <Header />
       <FeaturesPage />

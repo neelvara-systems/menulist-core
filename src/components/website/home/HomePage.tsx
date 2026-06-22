@@ -12,6 +12,7 @@ import PublicTruthLoopSection from './PublicTruthLoopSection';
 import ResourcesSection from './ResourcesSection';
 import SetupReliefSection from './SetupReliefSection';
 import SurfacesSection from './SurfacesSection';
+import WebsiteReplacementBlock from '../shared/WebsiteReplacementBlock';
 import { FEATURE_FLAGS } from '@config/features';
 
 export default function HomePage() {
@@ -21,6 +22,7 @@ export default function HomePage() {
       <ProblemSection />
       <InteractiveWorkflowSection />
       <PublicTruthLoopSection />
+      <WebsiteReplacementBlock variant="default" />
       <AiMenuManagerSection />
       <SetupReliefSection />
       <SurfacesSection />

@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
+import WebsiteReplacementBlock from '../shared/WebsiteReplacementBlock';
 import WebsiteFeatureCard from '../shared/WebsiteFeatureCard';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
@@ -297,6 +298,8 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                     </div>
                 </AnimateOnScroll>
             </section>
+
+            <WebsiteReplacementBlock variant="subtle" />
 
             <section style={{ padding: '0 var(--ws-space-6) var(--ws-space-16)' }}>
                 <div className="ws-container">
