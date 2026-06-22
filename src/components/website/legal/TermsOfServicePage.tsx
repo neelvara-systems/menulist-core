@@ -346,7 +346,7 @@ export default function TermsOfServicePage() {
                             These Terms shall be governed by and construed in accordance with the laws of India. Any disputes will be subject to the exclusive jurisdiction of courts in India. We reserve the right to modify these Terms at any time.
                         </p>
                         <div style={{ marginTop: 'var(--ws-space-8)' }}>
-                            <WebsiteButton href="/create-menu">Upload your menu →</WebsiteButton>
+                            <WebsiteButton href="/create-menu">Create customer link →</WebsiteButton>
                         </div>
                     </div>
                 </AnimateOnScroll>

@@ -6,6 +6,264 @@
 
 ---
 
+## June 22, 2026 - WhatsApp Test CTA Wired
+
+### Changed
+
+- **`/whatsapp` CTA opens WhatsApp** - The campaign page primary and final CTAs now open the supplied test onboarding number `+1 555 657 1424` through `https://wa.me/15556571424` with a prefilled current-list onboarding message.
+- **CTA copy aligned** - English/Hindi page copy now uses `Send list on WhatsApp` as the primary action while keeping the import-flow secondary path.
+- **Marketing docs updated** - Main website, messaging-onboarding, and marketing-distribution docs now record test-number activation and keep production launch gated on the final public account, response owner, operating hours, consent copy, tracking, and permissioned proof assets.
+
+### Boundaries
+
+- **No provider runtime changed** - This is public website component/locale/docs work only. It does not add WhatsApp provider secrets, webhook registration, Cloud Functions, Firestore rules, Firebase deploys, Vercel deploys, tracking setup, paid ads, or outbound outreach.
+
+---
+
+## June 22, 2026 - Messaging Onboarding Runtime Flags Enabled
+
+### Changed
+
+- **Functions runtime env enabled** - MenuList Functions env files/templates now set `ENABLE_MESSAGING_ONBOARDING=true`, `MESSAGING_ONBOARDING_PROVIDERS=whatsapp`, and `ENABLE_MESSAGING_ONBOARDING_TRACKING=true` for staging and production targets.
+- **Production Functions env added** - Added `functions/.env.menulist` with non-secret production runtime values for messaging onboarding.
+- **Preview base URL corrected** - Functions messaging-onboarding templates now use the site host as `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` because the code appends `/msg-preview/{sessionId}`.
+- **Docs aligned** - Messaging-onboarding, deployment, and owner-action docs now treat the feature gate as enabled while keeping real WhatsApp secrets and Meta webhook registration as required operational setup.
+
+### Boundaries
+
+- **No secrets added** - WhatsApp provider secrets still must be set in Firebase Secret Manager. No token, phone number id, app secret, or verify token was added to the repo.
+- **No deploy run in this entry** - This enables repo-side env files/templates only. Firebase Functions still need deployment with real secrets/webhook setup for the live provider path.
+
+### Verification
+
+- Passed `npm run verify:env-targets`, focused env-file assertions, `npm run build` inside `functions/`, and `git diff --check`.
+
+---
+
+## June 22, 2026 - MenuList WhatsApp Onboarding Campaign Page
+
+### Added
+
+- **`/whatsapp` campaign page added** - Added a public WhatsApp-first campaign route for the implemented messaging-onboarding flow, with localized English/Hindi copy, page metadata, chat-style proof visual, broad-SMB category coverage, and trust-boundary copy.
+- **Discovery coverage added** - Registered `/whatsapp` in platform discovery, static sitemap, `llms.txt`, and `llms-full.txt`.
+- **WhatsApp intake playbook added** - Added `menulist-marketing-distribution_whatsapp-intake-playbook.md` for owner-facing message states, consent guardrails, and two-surface activation handoff.
+- **Marketing docs corrected** - Updated messaging-onboarding, main website, and marketing-distribution docs so they treat WhatsApp file intake as implemented through messaging onboarding while keeping `/create-menu` as the website fallback CTA.
+
+### Boundaries
+
+- **No backend or deploy changed** - This is public website route/locale/CSS/discovery/docs work only. It does not change WhatsApp provider secrets, webhooks, Cloud Functions, Firestore rules, Firebase deploys, Vercel deploys, pricing, billing, owner dashboard runtime, customer menu/OBP runtime, or real outreach.
+- **No unsupported WhatsApp claims added** - The page does not claim official WhatsApp/Meta partnership, automatic WhatsApp catalog sync, scraped-number outreach, publish-without-approval behavior, or reply-command approval.
+
+### Verification
+
+- Passed locale JSON parse, English/Hindi WhatsApp page key parity, `npm run verify:agent-readiness`, `npm run verify:website-resource-locales`, `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, `git diff --check`, HTTP 200/text smoke on `/whatsapp`, and Playwright desktop/mobile screenshots.
+
+---
+
+## June 22, 2026 - MenuList Website Readiness Cross-Check Polish
+
+### Changed
+
+- **`en-GB` acquisition copy aligned** - Browser-negotiated `en-GB` homepage and `/create-menu` copy now matches the broad customer-link/list framing instead of stale menu-only funnel language.
+- **Mobile first fold tightened** - Homepage mobile hero spacing/actions and the shared public consent banner now keep `Create customer link` visible at a 390px CSS viewport.
+- **Pricing proof broadened** - `/pricing` now says `No scattered list files` instead of menu-only file wording.
+
+### Boundaries
+
+- **No runtime workflow changed** - This is public website locale/CSS/docs polish only. It does not change upload/extraction, preview, claim/publish, auth, owner dashboard runtime, customer menu/OBP runtime, pricing, Firebase rules, Cloud Functions, billing, production build, or deployment.
+
+### Verification
+
+- Passed all-locale JSON parse, English/Hindi Website key parity, `npm run verify:website-resource-locales`, `npm run verify:agent-readiness`, `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, `git diff --check`, route HTTP/text smoke, and Chrome DevTools mobile screenshots at 390px.
+
+---
+
+## June 22, 2026 - MenuList Metadata Cross-Check Polish
+
+### Changed
+
+- **Get Started metadata broadened** - `/get-started` now uses `Get Started - Create Your Customer Link` and describes menu, catalogue, price-list, and service-list sources.
+- **AI Menu Manager metadata broadened** - `/ai-menu-manager` now uses `AI Menu Manager for Owner-Approved Updates | MenuList` instead of restaurant-only title copy.
+- **Broad-funnel route metadata aligned** - `/how-it-works`, `/multi-location`, and `/resources` now use current-list, approved-source, and public-list wording instead of narrow menu-only titles.
+- **Footer mobile heading shortened** - The shared footer CTA now says `Put one trusted customer link online.` so repeated footer headings stay readable on 320px and 360px mobile screens.
+
+### Boundaries
+
+- **No runtime changed** - This is public website metadata/docs polish only. It does not change AI Menu Manager execution, upload/extraction, owner dashboard runtime, customer menu runtime, pricing, Firebase rules, Cloud Functions, billing, or deployment.
+
+---
+
+## June 22, 2026 - MenuList Pricing Mobile Heading Cross-Check
+
+### Changed
+
+- **Pricing heading shortened for narrow phones** - `/pricing` now leads with `Keep one official customer link live.` so the official-customer-link promise stays readable at 320px without a six-line H1.
+- **Pricing support headings tightened** - The setup and decision headings now keep the same system framing with shorter mobile-friendly copy.
+- **Website docs aligned** - Main website docs now record the current pricing H1, services-inclusive subline, proof row, and pricing decision headings.
+
+### Boundaries
+
+- **No pricing runtime changed** - This is public website locale/docs polish only. It does not change plan data, subscription behavior, checkout, payment, auth, owner dashboard runtime, customer menu runtime, Firebase rules, Cloud Functions, billing, or deployment.
+
+---
+
+## June 22, 2026 - MenuList Multi-Category Demo Universe
+
+### Added
+
+- **Demo universe brief created** - Added `menulist-marketing-distribution_demo-universe.md` with six core fictional demo businesses, four expanded demos, required proof surfaces, screenshot requirements, asset matrix, SEO page gate, and founder approval checklist.
+- **Demo source lists added** - Added safe fictional source-list material for the six core demos so assets do not depend on chat memory or real customer data.
+- **Screenshot capture plan added** - Added a route, viewport, redaction, naming, and approval plan for future broad-SMB screenshots.
+- **Product Hunt copy drafted** - Added Product Hunt thumbnail direction, gallery frame copy, tagline options, maker-comment draft, and first reply bank.
+- **Launch video scripts drafted** - Added three 10-15 second vertical scripts and one 60-90 second broad-SMB walkthrough script.
+- **Activation and follow-up plan added** - Added the two-surface activation definition, funnel states, tracking columns, Product Hunt routing, and owner follow-up templates.
+- **Market clutter scan added** - Added category guardrails and comparison notes for QR menu tools, restaurant website builders, menu design tools, generic QR generators, salon booking/POS tools, link-in-bio behavior, and local setup partners.
+- **Launch support drafts added** - Added founder post drafts, setup-partner brief, manual outreach scripts, launch-day response plan, launch-week content calendar, and post-launch follow-up board.
+- **Marketing action register updated** - MLD-A001 and MLD-R006 now point to the demo universe as the canonical proof matrix before service-list SEO page expansion.
+- **SEO launch gate aligned** - SEO docs now require concrete demo proof before adding salon/spa, service-list cleanup, service price-list, or broad local-service pages.
+
+### Boundaries
+
+- **No runtime changed** - This is documentation and launch-prep work only. It does not change public website routes, customer menu runtime, owner dashboard runtime, upload/extraction, pricing, Firebase rules, Cloud Functions, billing, production build, deployment, or external Search Console setup.
+
+### Verification
+
+- Passed `git diff --check`.
+- Passed create-menu pipeline code-contract verification: `npm run verify:menu-extraction-pipeline` and `npm run verify:menu-extraction-pipeline:dry-run`.
+
+---
+
+## June 22, 2026 - MenuList Broad SMB Conversion Copy
+
+### Changed
+
+- **Homepage and metadata broadened** - Shared website metadata, footer AI-summary prompt, and English/Hindi homepage copy now use official customer-link, current-list, public-list, menu/service-list, price-list, and catalogue framing where the copy represents the core MenuList promise.
+- **First-viewport proof diversified** - The homepage hero demo now uses a salon/spa-style service-list example so MenuList does not read as restaurant-only before customers reach deeper pages.
+- **Primary website CTA broadened** - Header, hero, footer, feature-page, legal-page, resource, Get Started, and supporting public CTAs now use `Create customer link` where they route into the main `/create-menu` funnel.
+- **Create-menu intake copy broadened** - `/create-menu` metadata and English/Hindi visible copy now describe menu, catalogue, price-list, and service-list photo/link sources instead of food-menu-only input language.
+- **Discovery and docs aligned** - `public/llms.txt`, main website docs, SEO/AEO docs, and the marketing/distribution tracker now record the broad-SMB conversion stance.
+
+### Boundaries
+
+- **No upload/runtime data model changed** - This is public website copy, metadata, locale, footer prompt, discovery, and documentation work only. It does not change image/link intake behavior, extraction, preview, claim/publish runtime, business-type data, schema generation, auth, pricing, Firebase rules, Cloud Functions, billing, or deployment.
+
+### Verification
+
+- Passed locale JSON parsing, stale-copy scan, `git diff --check`, `npm run verify:website-resource-locales`, `npm run verify:agent-readiness`, `npx tsc --noEmit --incremental false --pretty false`, and `npm run lint`.
+
+---
+
+## June 22, 2026 - MenuList Broad SMB Marketing Scope
+
+### Changed
+
+- **Marketing scope broadened** - The MenuList marketing/distribution plan now treats restaurants, cafes, salons, spas, and similar list-driven SMBs as first-class launch proof categories instead of choosing one narrow market.
+- **SEO launch plan aligned** - The MenuList SEO launch docs and main website SEO/AEO marketing brief now record broad customer-facing SMBs as the market scope while preserving current food/menu routes as implementation truth.
+- **Crowded-market note added** - The strategy now records that MenuList must avoid sounding like another QR menu tool, restaurant website builder, generic digital menu maker, link-in-bio page, social/PDF workaround, or local-agency setup offer.
+- **Execution plan updated** - The next marketing step is now a multi-category demo universe and asset brief, not a first-wedge selection.
+
+### Boundaries
+
+- **No runtime changed** - This is marketing strategy and documentation work only. It does not change website routes, public copy, upload/extraction, owner dashboard runtime, customer menu runtime, pricing, Firebase rules, Cloud Functions, billing, or deployment.
+
+---
+
+## June 22, 2026 - MenuList Create Menu Official Link Framing
+
+### Changed
+
+- **Create-menu conversion copy tightened** - `/create-menu` metadata and English/Hindi page copy now frame the flow as creating the official customer link from the current menu source.
+- **Powered-by CTA aligned** - Public customer-page `Powered by MenuList` conversion copy now points business owners toward creating their official customer link instead of generic menu creation.
+- **Marketing tracker updated** - The MenuList marketing/distribution action register now records homepage CTA review and `/create-menu` copy audit as done.
+
+### Boundaries
+
+- **No upload runtime changed** - This is public website copy, metadata, LLM context, and docs work only. It does not change upload/extraction APIs, preview/claim/publish behavior, auth, owner dashboard runtime, customer menu runtime, pricing, Firebase rules, Cloud Functions, billing, or deployment.
+
+### Verification
+
+- Passed locale JSON parsing, stale-copy scan, `git diff --check`, `npm run verify:website-resource-locales`, `npm run verify:agent-readiness`, `npx tsc --noEmit --incremental false --pretty false`, and `npm run lint`.
+
+---
+
+## June 22, 2026 - MenuList Presentation Sizing Polish
+
+### Changed
+
+- **Homepage presentation scale increased** - The public website now uses a wider content canvas, larger hero and section headings, and more section breathing room on desktop and mobile.
+- **Homepage hero override aligned** - The `en-GB` hero copy now matches the official customer-link framing instead of the older upload-first wording.
+- **Mobile cookie banner tightened** - The shared public cookie banner uses a shorter mobile layout so it interrupts less of the first fold.
+
+### Boundaries
+
+- **No product runtime changed** - This is public website CSS, locale, and documentation work only. It does not change owner dashboard runtime, customer menu runtime, pricing, Firebase rules, Cloud Functions, billing, or deployment.
+
+### Verification
+
+- Passed locale JSON parsing, `git diff --check`, `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, local route smoke for `/`, `/features`, `/pricing`, and `/features/official-business-page`, plus desktop/mobile screenshot checks in light and dark mode.
+
+---
+
+## June 22, 2026 - MenuList SEO Cross-Check
+
+### Added
+
+- **SEO verification log added** - `__docs__/menulist-seo-launch/menulist-seo-launch_verification.md` now records the cross-check scope, findings, fixed mismatches, verification commands, and remaining follow-up.
+
+### Fixed
+
+- **Stale SEO sequence corrected** - The SEO research brief now keeps code-side readiness and page review ahead of Search Console setup.
+- **Stale AI Menu Manager copy rule corrected** - Main website content docs no longer allow `AI-powered. Owner-approved.` as a public copy exception.
+
+### Verification
+
+- Passed `npm run verify:agent-readiness`, `npm run verify:website-resource-locales`, locale JSON parsing, Website namespace blocked-copy scan, `git diff --check`, and `npx tsc --noEmit --incremental false --pretty false`.
+
+### Boundaries
+
+- **No external setup run** - Search Console, Bing Webmaster Tools, IndexNow, directory submissions, audits, production builds, Vercel deploys, Firebase rules, Cloud Functions, billing, owner dashboard runtime, and customer menu runtime were not changed.
+
+---
+
+## June 22, 2026 - MenuList Public SEO Claim Boundary Copy
+
+### Changed
+
+- **AI Menu Manager public wording tightened** - Public locale copy now uses approval-based language instead of positive `AI-powered` shorthand for the AI Menu Manager launch/demo/final CTA wording.
+- **LLM context wording tightened** - `public/llms.txt` and `public/llms-full.txt` now avoid describing the forbidden generic positioning as `AI-powered restaurant software`.
+- **Website docs aligned** - Main website design/content/SEO docs now treat approval-based language as the allowed public phrasing for AI Menu Manager launch surfaces.
+
+### Boundaries
+
+- **No runtime behavior changed** - This is public website locale, LLM context, and documentation work only. It does not change website routes, sitemap, robots, metadata, structured data, owner dashboard runtime, AMM execution, customer menu runtime, Firebase rules, Cloud Functions, billing, external webmaster setup, or deployment.
+
+### Verification
+
+- Passed `npm run verify:agent-readiness`, `npm run verify:website-resource-locales`, locale JSON parsing, public `AI-powered` phrase scan, `git diff --check`, and `npx tsc --noEmit --incremental false --pretty false`.
+
+---
+
+## June 22, 2026 - MenuList SEO Code-Side Readiness Sequence
+
+### Added
+
+- **Code-side SEO readiness checklist added** - `__docs__/menulist-seo-launch/menulist-seo-launch_code-readiness-checklist.md` now defines the launch SEO gate before Search Console or other external setup.
+
+### Changed
+
+- **SEO action register reordered** - Search Console tasks are now held in an external setup queue until code-side sitemap, robots, canonical, metadata, structured-data, public-truth, locale, and claim-boundary checks pass.
+
+### Boundaries
+
+- **No runtime scope added** - This is documentation and operating-process work only. It does not change website routes, copy, sitemap, robots, metadata, structured data, customer menu runtime, Firebase rules, Cloud Functions, billing, external webmaster setup, or deployment.
+
+### Verification
+
+- Passed `npm run verify:agent-readiness`, `npm run verify:website-resource-locales`, and `git diff --check`.
+- TypeScript was not run because this pass changed documentation and operating process only.
+
+---
+
 ## June 22, 2026 - MenuList SEO Research Brief
 
 ### Added

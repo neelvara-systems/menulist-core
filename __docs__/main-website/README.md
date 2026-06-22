@@ -1,6 +1,6 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.72 (Dark Mode Readability and Border Reduction)
+**Version:** 3.6.82 (WhatsApp Test CTA Activation)
 **Status:** ✅ IMPLEMENTED — Canonical
 **Last Updated:** June 22, 2026
 **Workflow:** `.codex/workflows/website.md`
@@ -13,11 +13,49 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.72** | **Dark Mode Readability and Border Reduction** | **Dark website surfaces now use softer contrast, quieter card borders, and reduced shadow/border stacking so homepage, Features, and cookie consent read more clearly.** | **ACTIVE** |
+| **3.6.82** | **WhatsApp Test CTA Activation** | **The `/whatsapp` campaign route now opens the configured test WhatsApp onboarding number with a prefilled owner-started current-list message.** | **ACTIVE** |
+
+Version 3.6.82 switches the `/whatsapp` primary and final CTAs from the earlier `/create-menu` fallback to a prefilled click-to-WhatsApp link for the supplied test onboarding number `+1 555 657 1424` (`https://wa.me/15556571424`). The prefilled message starts from the same broad SMB current-list promise: menu, service list, rate card, catalog, package list, or price list. Production launch still needs the final public WhatsApp account, response owner, operating hours, and tracking decision. This is public website component/locale/docs work only; messaging-onboarding Functions runtime, provider secrets, webhook configuration, extraction/publish behavior, auth, owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, Vercel deployment, and outbound WhatsApp outreach were not changed.
+
+Version 3.6.81 remains WhatsApp Onboarding Campaign Page and is preserved below as the previous website version note.
+
+Version 3.6.81 adds the dedicated `/whatsapp` campaign route for the already implemented and tested messaging-onboarding flow. The page positions MenuList around WhatsApp-first current-list onboarding for menus, service lists, rate cards, package lists, catalogs, photos, screenshots, PDFs, and text. It uses localized English/Hindi copy, structured page metadata, a chat-style product proof visual, trust-boundary copy, `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The live CTA intentionally falls back to `/create-menu` until the public WhatsApp onboarding number is configured in the website layer. This is public website route/locale/CSS/discovery/docs work only; messaging-onboarding Functions runtime, provider secrets, webhook configuration, extraction/publish behavior, auth, owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.80 remains Readiness Cross-Check Polish and is preserved below as the previous website version note.
+
+Version 3.6.80 finalizes the broad-SMB code-side readiness pass. Chrome locale negotiation exposed stale `en-GB` acquisition copy, so the homepage and `/create-menu` overrides now match the broad customer-link/list framing. The homepage hero subtitle is tighter, mobile hero actions stay visible above the consent panel at a 390px CSS viewport, the shared public consent banner is more compact, and pricing proof copy now says `No scattered list files`. Chrome DevTools mobile emulation verified `/`, `/create-menu`, and `/pricing` with `390px` viewport and no horizontal overflow. This is public website locale/CSS/docs polish only; upload/extraction, preview, claim/publish, auth, owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.79 remains Metadata and Footer Cross-Check Polish and is preserved below as the previous website version note.
+
+Version 3.6.79 follows the broad-SMB homepage/runtime copy alignment with route metadata and mobile-heading cross-checks. `/get-started` now uses `Get Started - Create Your Customer Link` and describes menu, catalogue, price-list, and service-list sources. `/ai-menu-manager` now uses `AI Menu Manager for Owner-Approved Updates | MenuList` instead of a restaurant-only title, and its description says MenuList prepares the card for owner approval. `/how-it-works`, `/multi-location`, and `/resources` now use current-list, approved-source, and public-list wording in metadata instead of narrow menu-only titles. The shared footer CTA now says `Put one trusted customer link online.` so repeated footer headings stay readable on 320px and 360px mobile screens. This is public website metadata/locale/docs polish only; AI Menu Manager runtime, owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.78 remains Broad SMB Homepage Runtime Copy Alignment and is preserved below as the previous website version note.
+
+Version 3.6.78 applies the founder's broad-SMB direction to the live website runtime copy beyond CTAs. Shared website metadata now reads `MenuList - One Official Customer Link for Menus and Services`, the footer AI-summary prompt describes a menu, service list, price list, or catalogue source, and the primary English/Hindi homepage copy now uses current list / public list / official customer link language across the hero demo, problem section, source-to-action path, setup relief, public surfaces, search/discovery, workflow, public-truth loop, final CTA, and supporting pricing copy. The hero visual now uses a salon/spa-style service-list proof example so MenuList does not read as restaurant-only in the first viewport. Food-specific resource and industry pages remain allowed where the page itself is menu/restaurant/cafe-specific. This is public website locale/metadata/footer prompt/docs work only; business-type data, schema generation, upload/extraction APIs, claim/publish runtime, owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.77 remains Pricing Mobile Heading Cross-Check and is preserved below as the previous website version note.
+
+Version 3.6.77 cross-checks the broad-SMB website framing against narrow mobile viewports and tightens the pricing page headline system. `/pricing` now leads with `Keep one official customer link live.`, keeps services in the subline, and shortens the setup/decision headings so 320px mobile headings do not over-wrap. This is public pricing-page locale/docs polish only; plan data, subscription runtime, payment, checkout, auth, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.76 remains Broad SMB Conversion CTA and is preserved below as an earlier website version note.
+
+Version 3.6.76 applies the founder's broad-SMB marketing direction to the public conversion path. Header, hero, footer, feature-page, legal-page, Get Started, and resource CTAs now lead with `Create customer link` instead of `Upload your menu` where the button represents the main `/create-menu` funnel. `/create-menu` metadata and English/Hindi visible copy now describe menu, catalogue, price-list, and service-list photo/link sources, while preserving sign-in-first owner review and the existing image/link runtime. `public/llms.txt`, website docs, and the marketing/distribution tracker now mirror this broader acquisition stance. This is public website locale/metadata/discovery/docs work only; upload/extraction APIs, claim/publish runtime, auth behavior, pricing/payment, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.75 remains Create-Menu Official Link Framing and is preserved below as the previous website version note.
+
+Version 3.6.75 tightens the `/create-menu` acquisition surface for the new marketing/distribution operating plan. The page metadata, English/Hindi visible copy, preview-claim CTA, how-it-works copy, embedded public `Powered by MenuList` conversion CTA, and `public/llms.txt` route description now use official-customer-link framing. The route still requires sign-in before upload/link processing, still accepts a menu photo or owned public menu link, and still keeps owner review before publishing. This is public website locale/metadata/discovery/docs work only; upload/extraction APIs, claim/publish runtime, auth behavior, pricing/payment, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.74 remains Reference-Informed Presentation Sizing and is preserved below as the previous website version note.
+
+Version 3.6.74 compares the current MenuList homepage against the live AnswerLattice reference at `https://www.ecomsai.com/` and applies the useful sizing pattern without copying the brand style. The website now uses a 1248px content canvas, 60px desktop hero headlines, 44px desktop section headings, 34px mobile hero headlines, 30px mobile section headings, 112px desktop section padding, and 64px mobile section padding. The homepage hero keeps the official-customer-link promise visible in the `en-GB` override as well as the primary locale, lets desktop headline wrapping flow naturally, keeps the deliberate mobile break, and tightens the shared public cookie banner's mobile height so it interrupts less of the first fold. This is public website CSS/locale/docs polish only; owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.73 remains the SEO Claim Boundary Public Copy pass and is preserved below as the previous website version note.
+
+Version 3.6.73 removes the public `AI-powered` shorthand from AI Menu Manager launch copy and LLM context wording. The public wording now uses approval-based phrasing for the homepage/demo/final CTA surfaces, while preserving the shipped AI Menu Manager product name and approval-card story. This is public website locale/LLM-context/docs work only; website routes, sitemap, robots, structured data, owner dashboard runtime, AMM execution, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
+
+Version 3.6.72 remains Dark Mode Readability and Border Reduction and is preserved below as the previous website version note.
 
 Version 3.6.72 reduces dark-mode visual noise after the official-customer-link framing pass added more proof panels. Dark theme tokens now use slightly clearer gray surfaces, brighter secondary text, lower-opacity borders, softer shadows, and targeted dark overrides for shared cards, feature cards, lifecycle tiles, drift cards, proof pills, website-replacement panels, and MenuList's public cookie banner. This is public website CSS/docs work only; copy, routes, owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
-
-Version 3.6.71 remains the Analytics Feature Page Pass and is preserved below as the previous website version note.
 
 Version 3.6.71 adds `/features/analytics` as a generic dedicated feature page for the shipped owner analytics dashboard. The existing `/features` Menu analytics card now links to it, `FeatureDetailPage` renders the localized hero, signal strip, sticky journey, support, proof, and final CTA copy, and discovery coverage is registered in `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The copy is anchored to the implemented Owner Dashboard and mobile dashboard: today, overview, daily, weekly, monthly, and overall views; menu activity; Official Business Page actions; customer app activity; Business Health handoff; and privacy-conscious aggregate signals. Analytics is intentionally not added to the desktop header dropdown in this pass, preserving the restrained primary feature-navigation policy. This is public website route/locale/discovery/docs work only; owner dashboard runtime, mobile runtime, analytics aggregation, Firebase rules, Cloud Functions, pricing/payment, auth, customer menu runtime, and Vercel deployment were not changed.
 
@@ -477,8 +515,8 @@ Protected scope:
 | ICP              | Non-technical SMB owner first; chain operators second          | Clear buying pain without enterprise-heavy language   |
 | Visual direction | Direction A — Official Source Authority                       | Calm, credible, product-led                           |
 | Tone             | Premium calm, operationally clear, low hype                   | Supports trust and owner comprehension                |
-| CTA              | "Upload your menu →"                                          | Matches the non-technical owner action and routes to `/create-menu` |
-| Hero message     | "Turn your current menu into your official customer link." | Explains the buyer outcome before the upload step |
+| CTA              | "Create customer link →"                                      | Matches the broad customer-facing SMB acquisition path and routes to `/create-menu` |
+| Hero message     | "Turn your current menu or service list into your official customer link." | Explains the buyer outcome before the source step |
 | Homepage shape   | 16 focused sections plus sticky CTA                           | Adds a whole-page revenue path while preserving official-source discipline |
 | Proof strategy   | Public output, customer browse proof, deployment surfaces      | Shows value through believable product evidence       |
 | Protected scope  | Pricing/payment/auth/onboarding logic untouched               | Avoids breaking production billing and subscription flows |
@@ -771,6 +809,13 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.79 | June 22, 2026 | Updated Get Started, AI Menu Manager, How It Works, Multi-location, and Resources metadata, and shortened the shared footer CTA after mobile heading QA. |
+| 3.6.78 | June 22, 2026 | Aligned shared website metadata, footer AI-summary prompt, and primary English/Hindi homepage copy to the broad menu/service-list customer-link frame, with a salon/spa-style hero proof example. |
+| 3.6.77 | June 22, 2026 | Tightened pricing page H1/setup/decision heading copy after mobile heading QA so the official-customer-link framing remains readable at 320px. |
+| 3.6.76 | June 22, 2026 | Broadened primary website CTAs and `/create-menu` copy from food-menu-only wording to `Create customer link` and menu, price-list, catalogue, and service-list source language for broad SMB acquisition. |
+| 3.6.75 | June 22, 2026 | Reframed `/create-menu` metadata, visible upload-page copy, preview claim CTA, public powered-by CTA, and `llms.txt` route description around creating an official customer link from an owner-approved menu source. |
+| 3.6.74 | June 22, 2026 | Applied reference-informed presentation sizing to homepage content width, section rhythm, desktop/mobile heading scale, and compact mobile cookie banner behavior. |
+| 3.6.73 | June 22, 2026 | Removed public `AI-powered` shorthand from AI Menu Manager locale copy and LLM context wording, replacing it with approval-based language. |
 | 3.6.72 | June 22, 2026 | Reduced dark-mode website visual noise with softer gray tokens, quieter borders, lighter shadows, and targeted shared-card/cookie-banner dark overrides. |
 | 3.6.71 | June 22, 2026 | Added `/features/analytics` as a dedicated generic feature page, linked the `/features` Menu analytics card to it, and registered the route in sitemap/LLM discovery while keeping owner analytics runtime unchanged. |
 | 3.6.67 | June 21, 2026 | Added shared public AI summary footer links for MenuList, AnswerLattice, and CampaignCue, with product-specific prompts and claim boundaries. |

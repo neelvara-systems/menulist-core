@@ -2,7 +2,7 @@
 
 > **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
 > **Architecture:** Provider-Agnostic (WhatsApp v1 — Telegram/LINE/Viber future-ready)
-> **Status:** Implemented — WhatsApp runtime remains gated until real provider credentials are configured
+> **Status:** Implemented — WhatsApp runtime env enabled; live provider path requires real credentials and webhook registration
 > **Last Updated:** May 17, 2026
 > **Version:** 3.8
 
@@ -97,7 +97,7 @@ ENABLE_MESSAGING_ONBOARDING_TRACKING: true,      // Internal tracking (ON by def
 ENABLE_MESSAGING_ONBOARDING_DASHBOARD: true,     // Platform-only ops monitor
 
 // functions/src/messagingOnboarding/constants.ts reads runtime env
-process.env.ENABLE_MESSAGING_ONBOARDING          // Cloud Function webhook/scheduler hard stop until WhatsApp secrets are real
+process.env.ENABLE_MESSAGING_ONBOARDING          // Cloud Function webhook/scheduler runtime gate; MenuList env files set true
 process.env.MESSAGING_ONBOARDING_PROVIDERS       // comma-separated providers, default: whatsapp
 process.env.ENABLE_MESSAGING_ONBOARDING_TRACKING // defaults true
 ```

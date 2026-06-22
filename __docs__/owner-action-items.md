@@ -130,7 +130,7 @@ cd functions && npm run deploy
 | 4   | Generate test credentials for the non-production app only                                | Provides the real provider values needed by Firebase Functions without using production tokens                  | P0 (before enabling the feature) | ⬜     |
 | 5   | Set non-production Firebase secrets for the intended Firebase target                     | The messaging function needs real secrets; dummy WhatsApp secrets are not allowed                               | P0 (before enabling the feature) | ⬜     |
 | 6   | Register the Meta webhook URL for the non-production function                            | Required for inbound WhatsApp messages and media uploads to reach MenuList                                      | P0 (before live testing)         | ⬜     |
-| 7   | Enable `ENABLE_MESSAGING_ONBOARDING=true` only after real non-production secrets exist   | Prevents a half-enabled webhook from accepting traffic without valid provider access                            | P0 (before live testing)         | ⬜     |
+| 7   | Keep `ENABLE_MESSAGING_ONBOARDING=true` in MenuList Functions env files/templates         | Enables the runtime gate once real Firebase secrets and Meta webhook registration are in place                  | P0 (before live testing)         | ✅     |
 | 8   | Run the full test flow: text message, image/PDF upload, preview, approve, publish, reply | Proves the Cloud API path works before any owner-facing or customer-facing launch                               | P0 (before beta)                 | ⬜     |
 | 9   | Decide and register the production business entity path                                  | Meta production readiness needs a real business identity before serious launch                                  | P0 (before production launch)    | ⬜     |
 | 10  | Prepare India business verification documents                                            | Likely required/supporting documents include PAN, GST/Udyam/shop registration, address proof, or bank proof     | P0 (before production launch)    | ⬜     |
@@ -141,6 +141,8 @@ cd functions && npm run deploy
 | 15  | Create and approve utility templates for onboarding messages                             | Required for production-initiated WhatsApp messages outside the customer service window                         | P0 (before production launch)    | ⬜     |
 | 16  | Store production WhatsApp secrets separately from dev/staging secrets                    | Prevents test tokens, test phone IDs, or staging webhooks from leaking into production                          | P0 (before production launch)    | ⬜     |
 | 17  | Review current Meta WhatsApp pricing and convert the expected launch cost to INR         | Vendor pricing can change; launch cost planning must be based on current Meta pricing                           | P1 (before paid traffic)         | ⬜     |
+
+**Current website CTA note (June 22, 2026):** `/whatsapp` uses the supplied test number `+1 555 657 1424` for click-to-WhatsApp testing. This does not complete Meta app setup, Firebase secrets, webhook registration, approved test-recipient setup, or the dedicated production WhatsApp number.
 
 **How to do the development/staging setup:**
 

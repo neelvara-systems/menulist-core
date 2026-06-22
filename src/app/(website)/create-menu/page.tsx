@@ -19,14 +19,14 @@ import { useTranslations } from 'next-intl';
 import CreateMenuClient from './CreateMenuClient';
 
 export const metadata: Metadata = {
-    title: 'Upload or Import Your Current Menu — MenuList',
-    description: 'Sign in, upload a menu photo or public menu link, and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links.',
+    title: 'Create Your Official Customer Link — MenuList',
+    description: 'Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public.',
     alternates: {
         canonical: '/create-menu',
     },
     openGraph: {
-        title: 'Upload or Import Your Current Menu — MenuList',
-        description: 'Sign in, upload a menu photo or public menu link, and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links.',
+        title: 'Create Your Official Customer Link — MenuList',
+        description: 'Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public.',
         url: '/create-menu',
     },
 };
@@ -39,8 +39,8 @@ export default function CreateMenuPage() {
             <div className="ws-page">
                 <WebsitePageStructuredData
                     path="/create-menu"
-                    title="Upload or Import Your Current Menu - MenuList"
-                    description="Sign in, upload a menu photo or public menu link, and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links."
+                    title="Create Your Official Customer Link - MenuList"
+                    description="Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public."
                 />
                 <Header />
                 <div style={{
@@ -72,8 +72,8 @@ export default function CreateMenuPage() {
         <div className="ws-page">
             <WebsitePageStructuredData
                 path="/create-menu"
-                title="Upload or Import Your Current Menu - MenuList"
-                description="Sign in, upload a menu photo or public menu link, and preview the owner-approved source for your public menu, official page, QR assets, customer view, and share links."
+                title="Create Your Official Customer Link - MenuList"
+                description="Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public."
             />
             <Header />
             <CreateMenuClient />

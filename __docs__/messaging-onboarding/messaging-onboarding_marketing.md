@@ -2,16 +2,16 @@
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
 **Status:** Implementation-Complete Sales Reference
-**Last Updated:** May 17, 2026
+**Last Updated:** June 22, 2026
 **Audience:** Internal — Sales team, marketing, business development
 
 ---
 
 ## Elevator Pitch (30 seconds)
 
-> "Send your menu photos on WhatsApp. Get a live digital menu in minutes. No signup. No software to learn. Just send and go live."
+> "Send the menu, service list, rate card, package list, catalog, photo, PDF, or message your business already shares on WhatsApp. MenuList prepares one owner-approved public customer link."
 
-This is not a chatbot. This is not a support channel. This is a one-time activation tunnel that takes a business from zero digital presence to fully live — using the app they already trust.
+This is not a chatbot. This is not a support channel. This is an activation tunnel that turns the list a business already sends customers into a public, owner-approved customer source — using the app the owner already trusts.
 
 ---
 
@@ -34,17 +34,17 @@ MenuList Messaging Onboarding removes the wall entirely.
 
 The owner doesn't sign up. Doesn't create an account. Doesn't learn a dashboard.
 
-They send menu photos on WhatsApp — the app they already use every day — and MenuList handles extraction, structuring, preview, and approval without a dashboard. Publishing happens only after the owner approves the preview.
+They send the current list on WhatsApp — the app they already use every day — and MenuList handles extraction, structuring, preview, and approval before the owner needs to learn a dashboard. Publishing happens only after the owner approves the preview.
 
 After a few minutes of effort, the owner has:
 
-- A live official menu link
+- A live official customer link
 - QR and official business page access through existing MenuList share surfaces
 - A dashboard account (for future use)
 
 ### Why This Matters
 
-- **For owners:** Digital presence without digital effort
+- **For owners:** A current public list without dashboard-first effort
 - **For MenuList:** Scalable acquisition without sales calls
 - **For the market:** First infrastructure-grade messaging onboarding for SMBs
 
@@ -63,18 +63,18 @@ Average time to live: **2-7 days** with significant human effort.
 
 ### What MenuList Does
 
-- Send menu photos on WhatsApp → approve preview → live
-- Average time to live: **in minutes**
-- Human effort: **near zero** (just send photos and tap approve)
+- Send current list on WhatsApp → approve preview → official customer link live
+- Speed target: **minutes after provider intake, extraction, review, and approval complete**. Publish only measured averages once tracked.
+- Human effort: **low** (send current list, review, approve)
 - Sales involvement: **none**
 
 ### Intentional Differences
 
 | Aspect                 | Industry Standard | MenuList                |
 | ---------------------- | ----------------- | ----------------------- |
-| Onboarding channel     | Web dashboard     | WhatsApp                |
+| Onboarding channel     | Web dashboard     | WhatsApp-first intake   |
 | Time to live           | Days              | Minutes                 |
-| Human effort           | High (data entry) | Near zero (send photos) |
+| Human effort           | High (data entry) | Low (send current list) |
 | Sales dependency       | Required          | None                    |
 | Technical skill needed | Medium            | Zero                    |
 
@@ -92,34 +92,35 @@ Average time to live: **2-7 days** with significant human effort.
 
 ### Slide 2: The Solution
 
-**"Send menu. Get live."**
+**"Forward the list. Make it official."**
 
-- Owner sends menu photos on WhatsApp
+- Owner sends a menu, service list, rate card, package list, catalog, photo, PDF, screenshot, or message on WhatsApp
 - MenuList extracts, structures, and asks for approval before publishing
-- Live digital presence in minutes
-- No signup, no training, no dashboard required
+- Official customer link after owner approval
+- No dashboard-first onboarding required
 
 ### Slide 3: How It Works
 
-**3 steps. Live in minutes.**
+**3 steps. Official link after approval.**
 
-1. **Send** — Owner sends menu photos on WhatsApp
+1. **Send** — Owner sends the current list on WhatsApp
 2. **Review** — Owner sees preview, confirms details
-3. **Live** — Menu published, link delivered on WhatsApp
+3. **Live** — Public link is delivered on WhatsApp
 
 ### Slide 4: The Technology
 
-**Automatic menu intelligence.**
+**Structured extraction and review.**
 
-- Gemini AI reads menu photos and structures them
+- Extraction reads owner-submitted files and structures the list
 - Business info detected automatically (name, phone, address)
 - Quality validation ensures accuracy before publishing
-- Same extraction pipeline used by 100s of businesses
+- Publishing remains owner-approved
 
 ### Slide 5: Use Cases
 
-- **New restaurant** opens → sends menu → live same day
-- **Existing business** wants QR menu → sends photos → done in minutes
+- **New restaurant** opens → sends menu → official link same day
+- **Salon or spa** sends rate card → public service list after approval
+- **Existing business** wants QR menu → sends current list → QR/share surfaces after publish
 - **Multi-outlet chain** → each branch onboards independently via WhatsApp
 - **Sales team** onboards clients on the spot → no follow-up needed
 
@@ -146,30 +147,30 @@ Average time to live: **2-7 days** with significant human effort.
 
 ### Hero Headline
 
-> "Your menu. Live in minutes. Just send it on WhatsApp."
+> "Send your current list on WhatsApp. Get one official customer link."
 
 ### Subheading
 
-> "No signup. No software. Send your menu photos — we handle the rest."
+> "MenuList prepares a public preview from the menu, service list, rate card, package list, catalog, photo, PDF, screenshot, or message your business already sends customers."
 
 ### Key Benefits (5 bullets)
 
-- **Live in minutes** — Send photos, approve preview, done
-- **No signup needed** — Use WhatsApp, the app you already have
-- **Automatic menu reading** — We read your photos and create the menu
-- **Professional result** — QR code, digital menu, official business page
-- **Manage later** — Dashboard ready when you need it
+- **Start from the current list** — Send the file, photo, screenshot, PDF, or text already used with customers
+- **No dashboard first** — Use WhatsApp as the intake channel
+- **Owner review** — Preview before anything goes public
+- **Professional result** — Official customer link, QR, and business page access
+- **Manage later** — Dashboard ready when the owner needs it
 
 ### Social Proof Slots
 
-- "Used by restaurants, cafes, and salons across India"
-- "[X] businesses went live this month via WhatsApp"
-- Testimonial: "[Owner name], [Business] — 'I sent my menu and it was live in 3 minutes'"
+- "Built for restaurants, cafes, salons, spas, and service-list businesses"
+- Use verified counts only after measurement is available
+- Testimonial: "[Owner name], [Business] — 'Now staff sends one current link instead of old screenshots'"
 
 ### CTA Variants
 
-- "Send your menu now" (primary)
-- "Try it on WhatsApp" (secondary)
+- "Send list on WhatsApp" (primary on `/whatsapp`; currently wired to the supplied test number)
+- "Start from current list" (fallback for non-WhatsApp current-list setup paths)
 - "See how it works" (informational)
 
 ---
@@ -178,17 +179,17 @@ Average time to live: **2-7 days** with significant human effort.
 
 ### India Messaging (WhatsApp-first market)
 
-- **Positioning:** "The easiest way to put your menu online"
+- **Positioning:** "Forward your list. Get one official customer link."
 - **Channel:** WhatsApp forwards, local business groups, restaurant owner communities
 - **Language:** Hindi/English mix, casual, outcome-focused
-- **Key phrase:** "Menu bhejo, online ho jao" (Send menu, go online)
+- **Key phrase:** "List bhejo, official link pao" (Send list, get official link)
 
 ### Non-India Messaging (Global)
 
-- **Positioning:** "Digital menu setup in minutes via WhatsApp"
+- **Positioning:** "Official customer link setup via WhatsApp"
 - **Channel:** Google Ads, social media, local business directories
 - **Language:** English, professional, benefit-driven
-- **Key phrase:** "Send your menu. We handle the rest."
+- **Key phrase:** "Send the list. Review the public link."
 
 ---
 
@@ -200,11 +201,11 @@ Average time to live: **2-7 days** with significant human effort.
 
 ### Objection: "I don't need digital menu"
 
-> "Your customers already search for your menu online. This makes sure they find the right one — your official menu, always up to date."
+> "Customers already ask for the latest list. MenuList gives you one official customer link to send every time."
 
 ### Objection: "Sounds too easy — what's the catch?"
 
-> "No catch. Send your menu photos on WhatsApp. If you like the preview, approve it. That's it."
+> "No catch. Send the current list on WhatsApp. Review the preview, request corrections if needed, then approve before it goes public."
 
 ### Objection: "Is this free?"
 
@@ -217,11 +218,15 @@ Average time to live: **2-7 days** with significant human effort.
 ### USE:
 
 - "Send your menu"
+- "Send your current list"
+- "Send your rate card"
+- "Send your service list"
 - "Preview before publishing"
 - "Preview before publishing"
 - "Your official menu link"
+- "Your official customer link"
 - "Handled for you"
-- "No setup needed"
+- "No dashboard first"
 
 ### NEVER USE:
 
@@ -249,4 +254,4 @@ Never lead with pricing during onboarding. Lead with: "Get your menu live first.
 
 ---
 
-_Document Status: Implementation-Complete (v3.1 — Marketing collateral reflects implemented capabilities. Last updated: Feb 17, 2026.)_
+_Document Status: Implementation-Complete (v3.3 — Marketing collateral reflects the implemented WhatsApp-first messaging-onboarding flow, broad SMB list inputs, owner approval, `/whatsapp` campaign route, and test-number click-to-WhatsApp CTA. Production number, response owner, operating hours, consent copy, and tracking remain launch gates. Last updated: June 22, 2026.)_

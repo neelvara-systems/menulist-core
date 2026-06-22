@@ -48,10 +48,10 @@ export function buildResourceHubMetadata(locale?: string | null): Metadata {
     const path = buildWebsiteResourcePath(null, locale);
     const title = locale && locale !== 'en-US'
         ? `${copy.hub.title} - MenuList`
-        : 'Resources - MenuList | Keep One Public Menu Current';
+        : 'Resources - MenuList | Keep One Public List Current';
     const description = locale && locale !== 'en-US'
         ? copy.hub.subtitle
-        : 'Menu correctness, QR menu, Google menu source, restaurant menu SEO, AI search discovery, worksheets, and checklists for business owners.';
+        : 'Menu and service-list correctness, QR placement, Google links, PDFs, SEO, AI search discovery, worksheets, and checklists for business owners.';
 
     return {
         title,

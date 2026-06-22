@@ -2,7 +2,7 @@
 
 **Status:** Active consultant strategy  
 **Created:** June 22, 2026  
-**Scope:** MenuList product marketing, launch, distribution, channels, assets, and measurement. No runtime implementation.
+**Scope:** MenuList product marketing, launch, distribution, channels, assets, and measurement. Website campaign work is documented where shipped; backend messaging-onboarding runtime remains governed by `__docs__/messaging-onboarding/`.
 
 ## Consultant Position
 
@@ -14,9 +14,43 @@ It should be launched like a visible public-truth deployment system for SMBs:
 
 The marketing job is to make that transformation obvious, believable, and repeatable.
 
+## WhatsApp-First Moat Update
+
+The priority India wedge is now:
+
+> Send your current list on WhatsApp. MenuList turns it into one official customer link.
+
+This does not replace the broad-SMB strategy. It makes the broad strategy easier to understand because restaurants, cafes, bakeries, salons, spas, barbers, local services, studios, and package businesses already use WhatsApp to send the latest list customers ask for.
+
+The moat is not a WhatsApp button. The moat is a lower-friction path from existing owner behavior to MenuList public truth:
+
+```text
+current list in WhatsApp
+-> MenuList preview
+-> owner approval
+-> official customer link
+-> WhatsApp, Instagram, Google/profile link, QR, print, and staff replies
+```
+
+Guardrails:
+
+- Do not claim automatic WhatsApp catalog sync.
+- Do not claim official WhatsApp/Meta partnership.
+- Do not claim reply-command approval such as `APPROVE` until implemented and security-reviewed.
+- Do not bulk-message scraped businesses.
+- Keep "Send list on WhatsApp" live only on the controlled `/whatsapp` test-number CTA until the production destination, intake ownership, compliance language, and tracking path exist.
+
+The detailed operating plan is `menulist-marketing-distribution_whatsapp-first-hype-strategy.md`.
+
 ## Strategic Thesis
 
 MenuList wins when a business publishes one official customer link and places it on at least two real customer surfaces.
+
+MenuList should not choose one narrow industry as its identity. The first market is broader:
+
+> customer-facing SMBs whose customers need a current menu, service list, price list, package list, catalog, rate card, or public offering list before taking action.
+
+Restaurants and cafes are important, but they are not the whole market. Salons, spas, barbers, clinics, studios, caterers, local services, and retail counters are valid from day one when the current-list problem is real.
 
 The early marketing system must therefore optimize for:
 
@@ -53,15 +87,28 @@ The same current source can be used on QR, WhatsApp, Google, Instagram, screens,
 - design/content agency
 - social media scheduler
 
-## ICP Priority
+## Market Reality
 
-| Priority | Segment | Why now | First offer |
-| ---: | --- | --- | --- |
-| 1 | Restaurants, cafes, bakeries, cloud kitchens | Menus change and customers ask for current links | Send current menu, get official customer link |
-| 2 | Salons, spas, barbers, clinics, studios | Service lists and prices are often scattered across WhatsApp/Instagram | Send service list, get official public version |
-| 3 | Caterers, event services, classes, packages | Package lists need repeat sharing and updates | Send package list, get customer-ready link |
-| 4 | Multi-location SMBs | Consistency and outlet drift are painful | Review current public list consistency |
-| 5 | Setup partners | They can repeat setup across many clients | Partner-assisted official list setup |
+The market is already cluttered. MenuList will be compared against QR menu tools, restaurant website builders, link-in-bio pages, generic menu makers, social profiles, WhatsApp/PDF habits, and local setup agencies.
+
+The marketing response is not to claim every SMB workflow. The response is to own one practical job across many SMB categories:
+
+> turn the current customer-facing list into one official customer link.
+
+This lets MenuList stay broad without sounding generic.
+
+## Initial SMB Categories
+
+| Category | Current-list problem | First offer | Proof needed |
+| --- | --- | --- | --- |
+| Restaurants, cafes, bakeries, cloud kitchens | Menus, prices, specials, QR links, and PDFs go stale | Send current menu, get official customer link | public menu, QR, WhatsApp/link placement |
+| Salons, spas, barbers, studios | Service menus, packages, prices, and photos are scattered across WhatsApp/Instagram | Send service list, get official customer link | service list, Official Business Page, WhatsApp/Instagram link |
+| Caterers, event services, classes, packages | Package lists change and need repeat sharing | Send package/rate list, get customer-ready link | package page, share link, print/QR proof |
+| Clinics, repair shops, local services, retail counters | Rate cards, service lists, and business details need one current public source | Send service/rate list, get public version | contact actions, hours, price/rate list, QR/link proof |
+| Multi-location SMBs | One branch/outlet drifts from another | Review current public list consistency | HQ/outlet consistency story |
+| Setup partners | Agencies and freelancers can repeat the setup for many SMBs | Partner-assisted official list setup | partner brief and fulfillment checklist |
+
+The order of proof can vary by access, but public positioning should not say MenuList is only for restaurants.
 
 ## Launch Offer
 
@@ -139,10 +186,10 @@ Create realistic, founder-approved demo businesses:
 | 60-90 second launch walkthrough | Founder/product explanation | Not started |
 | 10-15 second vertical before-after clips | Instagram/Reels/Shorts/ads | Not started |
 | Website proof screenshots | Landing page and SEO pages | Not started |
-| Partner one-page brief | Agency/local consultant conversations | Not started |
-| Founder LinkedIn post pack | Launch build-in-public and credibility | Not started |
-| SMB outreach one-liners | Manual outreach | Not started |
-| Follow-up templates | Activation recovery | Not started |
+| Partner one-page brief | Agency/local consultant conversations | Drafted |
+| Founder LinkedIn post pack | Launch build-in-public and credibility | Drafted |
+| SMB outreach one-liners | Manual outreach | Drafted |
+| Follow-up templates | Activation recovery | Drafted |
 
 ## Channel Strategy
 
@@ -337,8 +384,8 @@ Stop or pause a channel when:
 ### Days 1-15 - Foundation
 
 - finalize this folder
-- choose first city or first vertical
-- define demo universe
+- lock the broad SMB category stance
+- define multi-category demo universe
 - prepare screenshot/video brief
 - audit `/create-menu` and homepage CTA fit before pushing traffic
 - create Product Hunt asset checklist
@@ -346,7 +393,7 @@ Stop or pause a channel when:
 
 ### Days 16-45 - Proof Pilot
 
-- onboard 20-50 founder-led pilot businesses or demo equivalents
+- onboard 20-50 founder-led pilot businesses or demo equivalents across restaurants/cafes and salons/spas first, then adjacent list-driven SMBs as access allows
 - publish official links
 - push every pilot into two customer surfaces
 - capture before/after proof
@@ -365,7 +412,7 @@ Stop or pause a channel when:
 
 | Input | Needed for |
 | --- | --- |
-| First city or first vertical | Pilot targeting and demo examples |
+| First reachable local/business network | Pilot targeting and owner introductions |
 | Demo business names/data approval | Screenshots and videos |
 | Budget ceiling for founder-assisted setup | Subsidy guardrail |
 | Whether founder can appear in videos | Launch walkthrough style |
@@ -378,7 +425,7 @@ Start with proof and activation, not traffic.
 
 The next execution step should be:
 
-1. pick first pilot wedge
-2. create demo universe and asset brief
-3. audit the upload/preview funnel wording
+1. create the multi-category demo universe and asset brief
+2. audit the upload/preview/publish path
+3. prepare category-specific proof messages for restaurants/cafes, salons/spas, and adjacent list-driven SMBs
 4. write Product Hunt and social asset copy only after proof surfaces exist

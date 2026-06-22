@@ -27,7 +27,7 @@ The main correction is strategic discipline:
 - Paid marketing is later, not first.
 - Outreach must be consent-aware and carefully throttled.
 - SEO and AI-search work must follow normal crawlable, useful content rules, not AEO/GEO hacks.
-- MenuList must stay broader than restaurant-only without losing the current menu/offering-list wedge.
+- MenuList must stay broader than restaurant-only without losing the current menu/offering-list job. Founder direction as of June 22, 2026: target broad customer-facing SMBs from the start, especially restaurants, cafes, salons, spas, and similar businesses where a current customer-facing list matters.
 - Every channel should push owners toward a current-list upload and an official public link, not generic demos, vanity engagement, or content impressions.
 
 ## Accepted Master Index
@@ -107,6 +107,8 @@ The website should move users toward:
 5. Place link on QR, WhatsApp, Google, Instagram, screen, or Menu Kit.
 
 **Risk:** Current `/create-menu` wording can look like a digital menu creator. Before heavy traffic, verify route copy and funnel behavior against current repo truth.
+
+**June 22 code pass:** Route copy, metadata, powered-by CTA, and LLM route description now use official-customer-link framing. Runtime upload -> preview -> claim still needs a separate verification pass before launch traffic.
 
 ### Point 5 - Demo SMB Examples and Launch Visual Assets
 
@@ -313,7 +315,7 @@ Blocked first:
 | ChatGPT direction | Decision | Reason |
 | --- | --- | --- |
 | Treat Product Hunt as central launch milestone | Partial | Product Hunt is useful for proof and feedback, but MenuList grows from current-list uploads, public surfaces, and city/vertical density. |
-| Keep broad SMB expansion central from day one | Partial | Broader SMB is correct, but the wedge must stay concrete: businesses with customer-facing lists. |
+| Keep broad SMB expansion central from day one | Accept with discipline | Broader SMB is correct, but the category must stay concrete: businesses with customer-facing lists. |
 | Use outreach broadly | Partial | Outreach is useful, but channel policy and consent risks make bulk WhatsApp/SMS/call campaigns unsafe. |
 | Build paid marketing plan now | Partial | Plan now, execute later after activation proof. |
 | SEO/AEO as a separate growth hack | Reject | Google guidance keeps foundational SEO, helpful content, crawlability, and structured content as the baseline. |

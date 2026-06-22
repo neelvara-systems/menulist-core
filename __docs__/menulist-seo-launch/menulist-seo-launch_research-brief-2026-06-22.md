@@ -16,13 +16,15 @@ The most important update from current Google guidance is that "AEO" and "GEO" s
 For MenuList, the SEO advantage should come from verified public truth:
 
 - one official customer link;
-- crawlable public menu and Official Business Page surfaces;
-- visible business/menu facts;
+- crawlable public menu, service-list, offering-list, and Official Business Page surfaces;
+- visible business, menu, service, package, price, rate-card, and offering facts;
 - stable canonical URLs;
 - sitemaps and public-truth indexing gates;
 - structured data that matches visible facts;
 - resource pages that solve real owner tasks;
 - Search Console review after launch.
+
+The product should not be narrowed to restaurants. The launch market is broad customer-facing SMBs where a current public list matters: restaurants, cafes, bakeries, salons, spas, barbers, studios, caterers, clinics, repair shops, retail counters, package businesses, and multi-location local businesses.
 
 Do not chase ranking hacks, AI-citation hacks, thin keyword pages, generic blog volume, fake local pages, fake reviews, or agency-led repositioning.
 
@@ -109,11 +111,13 @@ For MenuList, new pages are valid only when they map to a real owner/customer ta
 - Google Business Profile menu URL;
 - price-change checklist;
 - restaurant menu cleanup checklist;
+- salon, spa, or studio service-list cleanup checklist;
+- package-list or rate-card consistency workflow;
 - WhatsApp menu link;
 - multi-location menu source control;
 - PDF menu comparison when written carefully.
 
-Do not create generic blog volume, city pages, food-truck/bar pages, comparison pages, or keyword variants until there is real content ownership and real MenuList-fit workflow depth.
+Do not create generic blog volume, city pages, food-truck/bar pages, salon/spa pages, comparison pages, or keyword variants until there is real content ownership and real MenuList-fit workflow depth.
 
 ### 7. IndexNow Is Optional Later, Not Launch P0
 
@@ -131,18 +135,25 @@ This is a P2 research item after Google Search Console setup and the current sit
 
 ## Consultant Opinion
 
-MenuList's strongest SEO position is not "restaurant SEO software." It is "one official customer link backed by current public business/menu truth."
+MenuList's strongest SEO position is not "restaurant SEO software" or "QR menu maker." It is "one official customer link backed by current public business and list truth."
 
-The market has many QR menu makers and many SEO agencies. MenuList should avoid both categories as its public identity. The SEO work should make the product's current source of truth legible to humans, search engines, and AI/search systems without turning SEO into an owner burden.
+The market has many QR menu makers, restaurant website builders, generic digital-menu products, link-in-bio pages, social profiles, WhatsApp/PDF workflows, local setup agencies, and SEO agencies. MenuList should avoid those categories as its public identity. The SEO work should make the product's current source of truth legible to humans, search engines, and AI/search systems without turning SEO into an owner burden.
 
-The launch priority order should be:
+The first proof system should cover at least:
 
-1. Verify Search Console and submit the sitemap.
-2. Inspect core platform URLs and representative tenant URLs.
-3. Keep current technical SEO verifiers passing.
-4. Review high-value existing pages before adding new ones.
-5. Strengthen internal links from resources to product pages and from feature pages to resources.
-6. Use real owner workflows as content expansion, not keyword variants.
+- restaurants/cafes/bakeries: menu, QR, WhatsApp, and Google placement;
+- salons/spas/barbers/studios: service list, packages, prices, WhatsApp/Instagram/QR placement;
+- package or local-service businesses: rate card, service list, and public contact actions;
+- multi-location SMBs: consistent public list truth across branches.
+
+The launch priority order should now be:
+
+1. Keep the code-side SEO readiness checklist passing after every SEO/discovery change.
+2. Review high-value existing platform pages for broad-SMB fit before adding new pages.
+3. Strengthen internal links from resources to product pages and from feature pages to resources.
+4. Use real owner workflows as content expansion, not keyword variants.
+5. When the founder starts non-code setup, verify Search Console and submit the sitemap.
+6. Inspect core platform URLs and representative tenant URLs in Search Console after property access exists.
 7. Consider Bing Webmaster Tools and IndexNow after Google baseline data exists.
 
 ## Immediate Action Updates
@@ -154,3 +165,4 @@ Add these to the launch SEO operating loop:
 - Treat `llms.txt` as non-Google agent context, not a Google SEO claim.
 - Add IndexNow/Bing Webmaster Tools as a later research item.
 - Keep the source-of-truth split: main website docs for implementation, discovery infrastructure docs for public machine-readability, this folder for consultant decisions and action tracking.
+- Keep broad SMB proof visible in page plans and do not let SEO work collapse back into restaurant-only keywords.

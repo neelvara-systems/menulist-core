@@ -388,7 +388,7 @@ export default function PrivacyPolicyPage() {
                             We keep public privacy claims tied to the product behavior we can verify.
                         </p>
                         <div style={{ marginTop: 'var(--ws-space-8)' }}>
-                            <WebsiteButton href="/create-menu">Upload your menu →</WebsiteButton>
+                            <WebsiteButton href="/create-menu">Create customer link →</WebsiteButton>
                         </div>
                     </div>
                 </AnimateOnScroll>

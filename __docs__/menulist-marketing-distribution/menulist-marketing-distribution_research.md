@@ -9,10 +9,39 @@
 The current evidence supports a conservative but serious launch plan:
 
 1. Product Hunt is useful, but it rewards authentic engagement and clear launch assets. It is not a substitute for owner activation.
-2. India is a strong wedge for MenuList because internet, Instagram, LinkedIn, and WhatsApp/business messaging behavior are large enough for SMB acquisition, proof, and partner distribution.
+2. India is a strong launch environment for MenuList because internet, Instagram, LinkedIn, and WhatsApp/business messaging behavior are large enough for broad SMB acquisition, proof, and partner distribution.
 3. Google guidance supports normal useful content, crawlable pages, structured data, and non-commodity content. It does not support separate "AEO/GEO hack" pages.
 4. Email, WhatsApp, SMS, and calls carry compliance and reputation risk. Founder-led, consent-aware outreach is acceptable; broad automation is not.
 5. Paid marketing should start after the activation chain is measurable, not before.
+
+## WhatsApp-First Research Addendum
+
+**Decision:** WhatsApp-first onboarding is now the priority India wedge, but it must be implemented as consent-aware inbound intake and public-link publishing, not bulk WhatsApp outreach or unsupported WhatsApp automation.
+
+| Finding | Source | MenuList implication |
+| --- | --- | --- |
+| WhatsApp Business describes its catalog as a mobile storefront and says businesses can upload up to 500 items for customers to browse in the app. | https://whatsappbusiness.com/resources/resource-library/whatsapp-business-app-resources-whatsapp-business-catalog/ | MenuList can safely say SMBs already use WhatsApp to show products/services, but should position as one public customer link that complements WhatsApp. |
+| WhatsApp Business advises businesses to keep catalogs up to date and share them through customer conversations and status. | https://whatsappbusiness.com/resources/resource-library/whatsapp-business-app-resources-whatsapp-business-catalog/ | The MenuList enemy is stale files and scattered versions, not WhatsApp itself. |
+| Meta's catalog launch positioned catalogs as a way to avoid repeatedly sending product photos and information one by one. | https://about.fb.com/news/2019/11/introducing-catalogs-for-small-businesses/ | "Stop sending old PDFs/screenshots" is a valid creative angle when used without insulting owners. |
+| TechCrunch reported India is WhatsApp's largest market with more than 500 million accounts and documented spam risk from businesses. | https://techcrunch.com/2022/10/10/in-india-businesses-are-increasingly-spamming-users-on-whatsapp/ | WhatsApp is a credible India behavior wedge, but bulk outbound is a trust and compliance risk. |
+| TechCrunch reported many Indian merchants rely on WhatsApp Business for customer conversations, order-taking, support, and engagement. | https://techcrunch.com/2025/12/14/whatsapps-biggest-market-is-becoming-its-toughest-test/ | Founder-led "SMBs already run on WhatsApp" framing is evidence-backed enough for strategy, with no fake precision in public copy. |
+| WhatsApp Business Terms require lawful rights, permissions, and honoring stop/opt-out style requests. | https://www.whatsapp.com/legal/business-terms | Use owner-initiated click-to-WhatsApp and consented follow-up first. No scraped-number bulk campaigns. |
+| Meta developer guidance requires opt-in before businesses send WhatsApp messages. | https://developers.facebook.com/docs/whatsapp/overview/getting-opt-in/ | Product and ops must track consent/source before any automation. |
+| Cluely's public virality writeup says viral attention can create top-of-funnel, but product quality is what makes users stay. | https://cluely.com/blog/virality | MenuList can copy founder-led distribution mechanics, but hype must point to actual preview/publish activation. |
+| TechCrunch and Business Insider coverage of Cluely shows attention was driven by provocative founder-led content and controversy. | https://techcrunch.com/2025/06/20/cluely-a-startup-that-helps-cheat-on-everything-raises-15m-from-a16z/ and https://www.businessinsider.com/cluely-viral-ai-cheating-startup-15-million-a16z-2025-6 | MenuList should use high-volume founder-led proof, not ethical controversy or trust-damaging rage-bait. |
+| Google's SEO Starter Guide and helpful-content guidance emphasize useful, people-first content and no guaranteed indexing/ranking. | https://developers.google.com/search/docs/fundamentals/seo-starter-guide and https://developers.google.com/search/docs/fundamentals/creating-helpful-content | Build WhatsApp SEO pages as useful workflow pages with proof, not thin keyword pages. |
+
+Research-backed campaign direction:
+
+> Forward It. Make It Official.
+
+Research-backed launch challenge:
+
+> 100 WhatsApp Lists in 100 Hours.
+
+Research-backed guardrail:
+
+> WhatsApp is the front door. MenuList is the official customer-link system behind the source.
 
 ## Product Hunt Research
 
@@ -28,7 +57,7 @@ The current evidence supports a conservative but serious launch plan:
 
 | Finding | Source | MenuList implication |
 | --- | --- | --- |
-| India has more than 1 billion internet users in Digital 2026 reporting. | DataReportal Global Overview and India reports: https://datareportal.com/reports/digital-2026-global-overview-report and https://datareportal.com/reports/digital-2026-india | India is large enough for a local/business-type pilot. |
+| India has more than 1 billion internet users in Digital 2026 reporting. | DataReportal Global Overview and India reports: https://datareportal.com/reports/digital-2026-global-overview-report and https://datareportal.com/reports/digital-2026-india | India is large enough for a broad SMB pilot across restaurants, cafes, salons, spas, and other list-driven local businesses. |
 | DataReportal reports Instagram had 481 million users in India in late 2025. | https://datareportal.com/reports/digital-2026-india | Instagram/Reels is a practical visual proof channel for before/after MenuList transformations. |
 | DataReportal reports LinkedIn had 170 million members in India in late 2025. | https://datareportal.com/reports/digital-2026-india | LinkedIn is useful for founder credibility, partner recruitment, agencies, and multi-location owners. It is not the core channel for small restaurant/salon owners. |
 | Meta reports 91 percent of online adults in India chat with a business weekly, citing Kantar 2025. | https://about.fb.com/news/2026/05/introducing-business-ai-on-whatsapp-for-small-businesses-in-india/ | WhatsApp placement and customer messaging behavior matter. But this supports owner/customer surface placement, not unconsented bulk outbound. |
@@ -77,6 +106,7 @@ The current evidence supports a conservative but serious launch plan:
 ### Modified
 
 - "SMB-wide" stays limited to businesses with customer-facing lists.
+- The founder decision is to avoid a single-market identity. MenuList should launch as a broad customer-facing SMB system while using concrete category proof.
 - Product Hunt launch waits until proof assets and follow-up are ready.
 - Outreach starts as manual pilot, not automated campaign system.
 - SEO content starts with fewer high-quality pages, not programmatic page volume.
@@ -95,7 +125,8 @@ The current evidence supports a conservative but serious launch plan:
 | Item | Why it matters | Status |
 | --- | --- | --- |
 | Product Hunt category choice for MenuList | Affects launch discoverability and comparison set | Pending founder/product positioning pass |
-| First city or first vertical | Determines pilot scripts, demo assets, and outreach list | Pending founder choice |
+| Competitor and clutter scan by category | Needed before public outreach copy so MenuList does not sound like another QR/menu builder | Done in `menulist-marketing-distribution_market-clutter-scan.md` |
+| First reachable local/business network | Determines pilot introductions and order of outreach | Pending founder access/input |
 | Founder-approved demo tenant data | Needed for screenshots and videos | Pending |
 | Email sending domain and physical address policy | Needed before email outreach | Pending |
 | Legal review for India outreach | Needed before any SMS/call/WhatsApp scale | Pending |

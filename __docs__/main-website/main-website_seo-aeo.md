@@ -33,7 +33,11 @@
 
 > June 22, 2026 official customer link framing note: shared metadata, Features metadata, Pricing metadata, Official Business Page metadata, `llms.txt`, and `llms-full.txt` now lead with one approved source becoming one official customer link. The website still avoids ranking/citation promises and automatic unsupported external-platform update claims. Live production still requires the canonical domain and deployed LLM files to resolve from the chosen public domain.
 
+> June 22, 2026 broad SMB conversion note: public CTAs now use `Create customer link` where they route into the broad `/create-menu` funnel. `/create-menu` metadata now describes menu, catalogue, price-list, and service-list image/link sources so broad customer-facing SMBs are included without adding unsupported routes or category pages.
+
 > June 22, 2026 analytics feature page note: `/features/analytics` is now part of the canonical feature discovery set. Public SEO copy must frame Analytics as owner-dashboard period summaries for public menu, Official Business Page, and customer app activity across today, daily, weekly, monthly, and overall views. Do not frame it as customer profiling, revenue attribution, heatmaps, GPS tracking, BI, or guaranteed sales improvement.
+
+> June 22, 2026 WhatsApp onboarding campaign note: `/whatsapp` is now part of the canonical platform discovery set for the implemented messaging-onboarding flow. Public SEO copy may target WhatsApp menu link, WhatsApp service list, WhatsApp rate card, WhatsApp price list, and official customer link intent, but must preserve owner approval, no WhatsApp/Meta partnership claim, no automatic WhatsApp catalog sync claim, no scraped-number outreach, and no ranking/citation promises.
 
 ---
 
@@ -43,8 +47,8 @@
 
 | Page             | Title                                                                 | Source File                           |
 | ---------------- | --------------------------------------------------------------------- | ------------------------------------- |
-| Global Fallback  | MenuList - One Official Menu Source for Customers                     | `src/app/layout.tsx` via `src/constants/menulist/website.ts` |
-| Homepage         | MenuList - One Official Menu Source for Customers                     | `(website)/layout.tsx`                |
+| Global Fallback  | MenuList - One Official Customer Link for Menus and Services          | `src/app/layout.tsx` via `src/constants/menulist/website.ts` |
+| Homepage         | MenuList - One Official Customer Link for Menus and Services          | `(website)/layout.tsx`                |
 | Features         | Features — MenuList \| One Source, Every Customer Touchpoint          | `(website)/features/page.tsx`         |
 | Menu Import      | Menu Import - MenuList \| Upload the Menu You Already Have            | `(website)/features/menu-import/page.tsx` |
 | Menu Content Prep | Menu Content Prep - MenuList \| Descriptions, Images, and Languages | `(website)/features/menu-content-prep/page.tsx` |
@@ -54,19 +58,20 @@
 | Print-ready Kit  | Print-ready Kit - MenuList \| Templates, Editor, and Print Files | `(website)/features/print-ready-kit/page.tsx` |
 | Owner PWA Dashboard | Owner PWA Dashboard - MenuList \| Manage MenuList From Your Phone | `(website)/features/owner-phone-dashboard/page.tsx` |
 | Analytics        | Analytics - MenuList \| Customer Signals in the Owner Dashboard | `(website)/features/analytics/page.tsx` |
+| WhatsApp Onboarding | WhatsApp Menu and Service List Onboarding \| MenuList        | `(website)/whatsapp/page.tsx`        |
 | Menu Quality Validation | Menu Quality Validation - MenuList \| Catch Menu Issues Before Customers See Them | `(website)/features/menu-quality-validation/page.tsx` |
 | Business Health  | Business Health - MenuList \| AI Health Check for Your Menu            | `(website)/features/business-health/page.tsx` |
 | Customer Feedback Loop | Customer Feedback Loop - MenuList \| Private Guest Feedback        | `(website)/features/customer-feedback-loop/page.tsx` |
 | Public Discovery | Public Discovery - MenuList \| Clear Business Information for Search  | `(website)/features/public-discovery/page.tsx` |
-| How It Works     | How MenuList Works — From Current Menu to Official Public Source      | `(website)/how-it-works/page.tsx`     |
+| How It Works     | How MenuList Works — From Current List to Customer Link               | `(website)/how-it-works/page.tsx`     |
 | Pricing          | Pricing — MenuList \| Simple, Transparent Plans for Every Business    | `(website)/pricing/page.tsx`          |
-| Multi-Location   | Multi-Location Menu Management — MenuList \| One Menu, Every Outlet   | `(website)/multi-location/page.tsx`   |
+| Multi-Location   | Multi-Location Source Management — MenuList \| One Source, Every Location | `(website)/multi-location/page.tsx`   |
 | About            | About MenuList — Built in India for Growing Businesses                | `(website)/about/page.tsx`            |
 | Contact          | Contact Us — MenuList \| Get in Touch                                 | `(website)/contact/page.tsx`          |
-| Get Started      | Get Started — Create Your Official Menu Source                        | `(website)/get-started/page.tsx`      |
-| Create Menu      | Create Your Official Menu Source — MenuList                           | `(website)/create-menu/page.tsx`      |
+| Get Started      | Get Started — Create Your Customer Link                               | `(website)/get-started/page.tsx`      |
+| Create Menu      | Create Your Official Customer Link — MenuList                         | `(website)/create-menu/page.tsx`      |
 | Create Menu Success | Menu Published - MenuList                                         | `(website)/create-menu/success/page.tsx` (`noindex`) |
-| Resources        | Resources — MenuList \| Keep One Public Menu Current                  | `(website)/resources/page.tsx`        |
+| Resources        | Resources - MenuList \| Keep One Public List Current                  | `(website)/resources/page.tsx`        |
 | Resource Article | Dynamic per article from `src/content/websiteResources/en-US.ts` and reviewed locale packs | `(website)/resources/[slug]/page.tsx`, `(website)/[locale]/resources/[slug]/page.tsx` |
 | Industry Pages   | Dynamic per industry from `src/content/websiteIndustries.ts`          | `(website)/industries/*/page.tsx`     |
 | Trust & Security | Trust & Security — MenuList \| How We Keep Your Data Safe             | `(website)/trust-security/page.tsx`   |
@@ -82,6 +87,7 @@
 | Global fallback | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
 | Features       | See how MenuList moves from current menu or service list to prepared review, official customer link, QR, print, owner updates, feedback, and Business Health. |
 | Analytics      | MenuList shows today, daily, weekly, monthly, and overall customer activity from the public menu, Official Business Page, and customer app in the owner dashboard. |
+| WhatsApp Onboarding | Send a menu, service list, rate card, package list, or PDF on WhatsApp. MenuList prepares a preview, publishes after approval, and sends back one official customer link. |
 | Business Health | Business Health is an AI health check for your menu and public presence. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows. |
 | Customer Feedback Loop | Let customers send private feedback from the menu, Official Business Page, QR, or direct link so owners can review issues and keep the public source correct. |
 | How It Works   | Start with your current menu. MenuList prepares the owner-reviewed source behind the customer-facing menu and related public links.   |
@@ -90,7 +96,7 @@
 | About          | MenuList turns your menu into your entire online presence. Built for businesses that care about how they present themselves to customers.                           |
 | Contact        | Have questions about MenuList? Reach out to our team. We are here to help you get your menu online.                                                                 |
 | Get Started    | Start with your current menu and create the owner-approved source for the customer-facing version of your business.             |
-| Create Menu    | Start with your current menu and create the owner-approved source for the customer-facing version of your business.                      |
+| Create Menu    | Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public. |
 | Create Menu Success | Share the published MenuList menu link and next steps after setup. This route is intentionally `noindex, nofollow, nocache` with a self canonical to the non-query success path. |
 
 ### 1.3 Heading Hierarchy
@@ -348,7 +354,7 @@ Agent boundaries:
 <!-- Homepage (from layout.tsx default metadata) -->
 <meta
   property="og:title"
-  content="MenuList - One Official Menu Source for Customers"
+  content="MenuList - One Official Customer Link for Menus and Services"
 />
 <meta
   property="og:description"

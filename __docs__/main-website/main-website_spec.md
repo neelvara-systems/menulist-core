@@ -1,6 +1,6 @@
 # Main Website Strategy Spec
 
-**Version:** 3.6.71 — Analytics Feature Page
+**Version:** 3.6.77 — Broad SMB Conversion Readiness
 **Status:** CURRENT CONTEXT
 **Source:** ChatGPT conversation + Cascade validation + web research
 
@@ -24,6 +24,8 @@
 
 > June 22, 2026 Analytics feature page update: `/features/analytics` is now the public page for the shipped owner analytics dashboard. The page can explain today, overview, daily, weekly, monthly, and overall dashboard views across desktop and mobile, but must keep the claim boundary to aggregate owner summaries, not customer profiling, heatmaps, revenue attribution, BI, or guaranteed sales improvement.
 
+> June 22, 2026 broad SMB conversion update: the active website now uses `Create customer link ->` for the main `/create-menu` funnel and frames the source as a current menu, service list, catalogue, price list, rate card, or public offering list. Restaurants/cafes remain strong proof categories, but salons/spas and other list-driven SMBs are first-class positioning proof.
+
 ---
 
 ## Historical Strategy Context
@@ -32,7 +34,7 @@
 | ------------------ | ---------------------------------------- | --------------------------------------------- |
 | **Goal**           | Build trust + authority                  | Acquire customers + create buzz               |
 | **Tone**           | Premium calm, professional               | Direct, transformation-focused, energetic     |
-| **Hero message**   | "Your official menu. From one place."    | "Turn your current menu into your official customer link." |
+| **Hero message**   | "Your official menu. From one place."    | "Turn your current menu or service list into your official customer link." |
 | **Core narrative** | Source of truth, stays aligned           | Menu → Internet Presence (transformation)     |
 | **Emotion**        | Relief, trust                            | Surprise, curiosity, "why didn't this exist?" |
 | **Language**       | Operational words only                   | Transformation statements, direct outcomes    |
@@ -48,7 +50,7 @@
 | --- | ----------------------------------------- | ------------------- | ----------------------------------------------- |
 | 1   | "Menu → Internet Presence" narrative      | ✅ ADOPT            | Stronger than "source of truth" for acquisition |
 | 2   | Show transformation, not features         | ✅ ADOPT            | "Upload menu → business online" is compelling   |
-| 3   | Hero = transformation statement           | ✅ ADOPT            | Current version: "Turn your current menu into your official customer link." |
+| 3   | Hero = transformation statement           | ✅ ADOPT            | Current version: "Turn your current menu or service list into your official customer link." |
 | 4   | Before/After framing for problem section  | ✅ ADOPT            | Makes broken internet obvious                   |
 | 5   | Don't call it "QR menu tool" or "AI tool" | ✅ ADOPT            | Already follows language governance             |
 | 6   | Interactive demo in hero (future)         | ✅ DEFER            | Good idea but requires significant engineering  |
@@ -141,15 +143,15 @@ Current PAL contract:
 ### Hero (CHANGED)
 
 **Old:** "Your official menu. From one place."
-**New:** "Turn your current menu into your official customer link."
+**New:** "Turn your current menu or service list into your official customer link."
 
-- titlePart1: "Turn your current menu into"
+- titlePart1: "Turn your current menu or service list into"
 - titleHighlight: "your official customer link."
 - titlePart2: ""
-- subtitle: Transformation-focused, grounded in owner approval, but no longer re-lists every public output
-- CTA: "Upload your menu →" (action-oriented)
-- Secondary CTA: "See customer preview" (`#customer-demo`)
-- Caption: "Start with a 7-day setup. Review the public menu before choosing a paid plan."
+- subtitle: Transformation-focused, grounded in owner approval, and broad enough for menus, service lists, catalogues, and price lists
+- CTA: "Create customer link →" (broad acquisition action)
+- Secondary CTA: "See customer link" (`/features/official-business-page`)
+- Caption: "Start with a 7-day setup. Review the public version before choosing a paid plan."
 
 ### Problem (REFRAMED)
 
@@ -171,10 +173,10 @@ Current PAL contract:
 ### FinalCta (CHANGED)
 
 **Old:** "Make your menu official."
-**Current:** "Make one public menu customers can trust."
+**Current:** "Make one public source customers can trust."
 
 - Mirrors hero for consistent messaging
-- CTA: "Upload your menu →"
+- CTA: "Create customer link →"
 - No repeated proof stack below the button; the final CTA should close the page cleanly after the proof sections have already done their job.
 
 ### SmartFeatures (EXPANDED — v2.2 March 2026)
@@ -227,13 +229,13 @@ Current PAL contract:
 ### Now allowed (V2 only)
 
 - Direct transformation statements only when owner approval and public output remain clear.
-- Action-oriented CTAs ("Upload your menu")
+- Action-oriented CTAs ("Create customer link")
 - Problem-agitation framing ("Business menus on the internet are broken")
 - 7-day setup language aligned with pricing/funnel copy
 
 ### Core principle
 
-**Hype comes from the TRANSFORMATION, not from language.** Show the practical move from current menu -> reviewed public menu -> customer-facing surfaces. Let the product speak.
+**Hype comes from the TRANSFORMATION, not from language.** Show the practical move from current menu/service list -> reviewed public source -> customer-facing surfaces. Let the product speak.
 
 ---
 
@@ -241,7 +243,7 @@ Current PAL contract:
 
 | Page     | Title                                                 | Description                                                                                                      |
 | -------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Homepage | MenuList - One Official Menu Source for Customers | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
+| Homepage | MenuList - One Official Customer Link for Menus and Services | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
 
 ---
 

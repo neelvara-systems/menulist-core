@@ -12,6 +12,166 @@
 - Separate founder-side blockers from Codex-side work.
 - Do not leave important decisions only in chat.
 
+## June 22, 2026 - Test WhatsApp CTA Wired
+
+### Context
+
+Founder supplied test WhatsApp number `+1 555 657 1424` and asked for a cross-check against the WhatsApp-first hype strategy, the ChatGPT response, and the code/docs changes already made.
+
+### Decisions
+
+- Wired the `/whatsapp` primary and final CTAs to `https://wa.me/15556571424` with a prefilled owner-started current-list message.
+- Kept `/features/menu-import` as the secondary import-flow path instead of removing the upload/import fallback story.
+- Updated public CTA copy to `Send list on WhatsApp` so the campaign page matches the selected wedge.
+- Kept production launch gated on final public WhatsApp account, response owner, operating hours, consent copy, tracking, and permissioned proof assets.
+
+### Alignment Verdict
+
+- Aligned with the WhatsApp-first moat: the first action is now WhatsApp, not dashboard-first.
+- Aligned with broad SMB direction: the prefill and page copy include menus, service lists, rate cards, catalogs, package lists, and price lists.
+- Aligned with trust guardrails: no WhatsApp/Meta partnership, automatic catalog sync, scraped-number outreach, fake metrics, or publish-without-approval claim was added.
+- Partially complete against the full hype plan: `/whatsapp` and click-to-WhatsApp are live for the test number; sticky site-wide WhatsApp CTA, tracking, SEO cluster pages, public challenge ops, and proof assets remain controlled follow-up work.
+
+### Boundaries
+
+- No provider secret, webhook, Cloud Function, Firestore rule, Firebase deploy, Vercel deploy, production build, outbound WhatsApp message, ad, or tracking setup was changed.
+- The configured number is treated as a test number until the founder approves the production WhatsApp account and operating model.
+
+---
+
+## June 22, 2026 - WhatsApp-First Moat Strategy
+
+### Context
+
+Founder identified WhatsApp onboarding as a priority MenuList moat for India and asked for a deep consultant plan combining the pasted ChatGPT strategy, repo truth, and current market research.
+
+### Decision
+
+- Accepted WhatsApp-first onboarding as the priority India wedge.
+- Refined the safe core line to: `Send your current list on WhatsApp. MenuList turns it into one official customer link.`
+- Set the campaign name to `Forward It. Make It Official.`
+- Renamed the launch stunt from restaurant-only wording to `100 WhatsApp Lists in 100 Hours` so it covers restaurants, cafes, bakeries, salons, spas, service businesses, catalogs, packages, price lists, and rate cards.
+- Kept MenuList broad across customer-facing SMBs; WhatsApp is the front door, not a restaurant-only repositioning.
+
+### Codebase Reality
+
+- `/create-menu` already supports an owner-authenticated preview path with WhatsApp OTP, image upload, owned public-list link import, durable public drafts, extraction jobs, and claim/publish cache revalidation.
+- The current public `/create-menu` client upload tab accepts JPEG, PNG, and WebP image files, not direct public PDF upload.
+- Owner-side extraction has broader PDF support, and public link import can read supported public PDF/image links, but the WhatsApp campaign should not promise direct PDF forwarding as a fully live public self-serve path until product work or manual handoff is explicit.
+- Superseded by the later product-truth correction below: the native inbound WhatsApp messaging-onboarding pipeline exists and is documented under `__docs__/messaging-onboarding/`. Still do not claim WhatsApp catalog sync, official WhatsApp partnership, or WhatsApp-reply `APPROVE` publishing.
+
+### Research Used
+
+- WhatsApp Business catalog and help resources.
+- WhatsApp Business Terms and Meta opt-in guidance.
+- TechCrunch coverage on WhatsApp India/business usage and spam risk.
+- Cluely virality writing and press coverage.
+- Google Search Central SEO and helpful-content guidance.
+
+### Files Updated
+
+- `menulist-marketing-distribution_whatsapp-first-hype-strategy.md`
+- `README.md`
+- `menulist-marketing-distribution_strategy.md`
+- `menulist-marketing-distribution_research.md`
+- `menulist-marketing-distribution_execution-plan.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_consultant-log.md`
+
+### Blockers
+
+| Blocker | Owner | Why it matters |
+| --- | --- | --- |
+| Official WhatsApp destination number/account | Founder | Superseded by the later test CTA: test number is configured; final public account and operating ownership remain needed before production traffic |
+| Public PDF/file intake decision | Founder + Codex | Resolved after checking messaging-onboarding docs: WhatsApp file intake exists there; `/create-menu` remains image/link fallback |
+| Pilot business/partner access | Founder | Needed for real proof before challenge/paid launch |
+| Capacity ceiling | Founder | Prevents a public challenge from overwhelming manual preview work |
+
+### Next
+
+1. Replace the test WhatsApp number with the production destination when ready.
+2. Confirm operating owner, hours, consent copy, and tracking before broad click-to-WhatsApp traffic.
+3. Build fictional WhatsApp conversation screenshot/video assets from the on-page demo.
+4. Prepare the "100 WhatsApp Lists in 100 Hours" ops plan.
+5. Run a small permissioned pilot before paid click-to-WhatsApp tests.
+
+### Verification
+
+- Docs-only pass.
+- No runtime changes.
+- No Firebase changes.
+
+---
+
+## June 22, 2026 - WhatsApp Campaign Page Shipped and Product Truth Corrected
+
+### Context
+
+The founder clarified that the whole WhatsApp flow has already been implemented and tested, with its doc set under `__docs__/messaging-onboarding/`. The marketing plan previously treated native WhatsApp intake as a future gap, so the website and marketing docs needed to be corrected before campaign execution.
+
+### Decisions
+
+- Added public `/whatsapp` campaign route with localized English/Hindi copy, structured metadata, chat-style proof visual, trust boundaries, and safe `/create-menu` fallback CTA.
+- Registered `/whatsapp` in `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`.
+- Created `menulist-marketing-distribution_whatsapp-intake-playbook.md` for owner-facing message states, consent boundaries, and two-surface activation handoff.
+- Corrected the WhatsApp-first hype strategy and action register to show messaging-onboarding PDF/file intake as implemented through the WhatsApp runtime.
+- Kept click-to-WhatsApp CTA blocked until the founder confirms public phone/account, response ownership, hours, follow-up policy, and tracking decision.
+
+### Boundaries
+
+- No provider secret, webhook, Cloud Function, Firestore rule, Firebase deploy, Vercel deploy, or production build was changed.
+- No real WhatsApp message, outreach, Product Hunt setup, ad, or external tracking configuration was created.
+- No official WhatsApp/Meta partnership, automatic WhatsApp catalog sync, scraped-number outreach, or reply-command approval claim was added.
+
+### Next Work
+
+1. Founder confirms public WhatsApp onboarding number/account and response owner.
+2. Switch `/whatsapp` CTA from `/create-menu` fallback to prefilled click-to-WhatsApp only after the destination/tracking decision is final.
+3. Capture desktop/mobile proof screenshots or short videos from the new page and demo flow.
+4. Prepare the "100 WhatsApp Lists in 100 Hours" ops plan.
+5. Run a small permissioned pilot before paid click-to-WhatsApp tests.
+
+### Verification
+
+- Locale JSON parse passed for English and Hindi.
+- English/Hindi `Website.WhatsAppOnboardingPage` key parity passed.
+- `npm run verify:agent-readiness` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+- Local `/whatsapp` HTTP smoke returned 200 and expected title/H1/copy.
+- Playwright desktop and mobile screenshots rendered the hero, CTA, and chat proof visual without blank state or obvious overlap.
+- No deploy.
+
+## June 22, 2026 - Website Readiness Cross-Check
+
+### Context
+
+Founder asked to cross-check and make the broad-SMB marketing/website changes ready.
+
+### Decisions
+
+- Treated browser-negotiated locale behavior as launch-critical because Chrome selected `en-GB` and exposed stale menu-only funnel copy.
+- Kept the broad positioning: customer-facing SMBs with menus, service lists, catalogues, price lists, and public offer lists.
+- Kept Product Hunt, paid traffic, and assisted setup blocked until upload -> preview -> claim/publish is E2E verified with a real owner session.
+
+### Fixes Applied
+
+- Synced stale `en-GB` homepage and create-menu acquisition copy to the current broad customer-link framing.
+- Tightened homepage mobile hero spacing/actions and compacted the shared consent banner so the first-fold CTA stays visible.
+- Broadened pricing proof copy from scattered menu files to scattered list files.
+
+### Verification
+
+- Passed all-locale JSON parse, English/Hindi Website key parity, `verify:website-resource-locales`, `verify:agent-readiness`, TypeScript, lint, `git diff --check`, route HTTP/text smoke, and Chrome DevTools mobile screenshot checks.
+- Evidence is recorded in `__docs__/menulist-seo-launch/menulist-seo-launch_verification.md`.
+
+### Remaining
+
+- Authenticated upload -> preview -> claim/publish E2E.
+- Non-code search/distribution setup: Search Console, Bing Webmaster Tools, IndexNow decision, directory submissions, external audits, and launch outreach.
+
 ## June 22, 2026 - Operating Folder Created
 
 ### Context
@@ -73,7 +233,7 @@ The captured ChatGPT conversation covered 15 marketing/distribution points:
 
 | Input | Why |
 | --- | --- |
-| First wedge: city/vertical/partner | Determines pilot targeting and assets |
+| Broad SMB category stance | Resolved June 22, 2026: target broad customer-facing SMBs with current menus/service lists, not one isolated market |
 | Demo data approach | Determines screenshot/video safety |
 | Founder video preference | Determines launch video style |
 | Outreach sender identity | Needed before email/partner outreach |
@@ -88,4 +248,315 @@ The captured ChatGPT conversation covered 15 marketing/distribution points:
 
 ### Next Recommended Session
 
-Pick the first execution wedge and create the demo universe/asset brief.
+Create the multi-category demo universe and asset brief.
+
+---
+
+## June 22, 2026 - First Code Pass: Create-Menu Funnel Copy
+
+### Context
+
+Founder asked to do the code changes that can be done before finalizing the first marketing proof system.
+
+### Decisions
+
+- Kept the homepage structure unchanged because the current hero CTA already pointed to `/create-menu`; this CTA wording was later superseded by the broad-SMB conversion copy pass.
+- Reframed `/create-menu` as the path to create the official customer link from the current menu source.
+- Reframed embedded public `Powered by MenuList` CTA copy away from generic `Create your own menu in minutes`.
+- Kept upload, extraction, claim, publish, auth, and payment runtime out of scope.
+
+### Files Updated
+
+- `src/app/(website)/create-menu/page.tsx`
+- `public/locales/menulist.ai/en-US.json`
+- `public/locales/menulist.ai/hi-IN.json`
+- `public/llms.txt`
+- `__docs__/main-website/README.md`
+- `__docs__/main-website/main-website_content.md`
+- `__docs__/main-website/main-website_seo-aeo.md`
+- `__docs__/main-website/main-website_seo-aeo-marketing-brief.md`
+- `__docs__/menulist-marketing-distribution/menulist-marketing-distribution_action-register.md`
+- `__docs__/menulist-marketing-distribution/menulist-marketing-distribution_execution-plan.md`
+- `__docs__/menulist-marketing-distribution/menulist-marketing-distribution_source-review.md`
+
+### Remaining
+
+- Verify upload -> preview -> claim path before any Product Hunt launch or paid traffic.
+- Create category-specific proof before writing outreach and demo scripts.
+
+### Verification
+
+- Locale JSON parse passed for `en-US` and `hi-IN`.
+- Stale runtime/docs copy scan passed for the replaced generic create-menu wording.
+- `git diff --check` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run verify:agent-readiness` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `npm run lint` passed.
+
+---
+
+## June 22, 2026 - Broad SMB Conversion Copy Pass
+
+### Context
+
+Founder clarified that MenuList should not target one single market and should cater to list-driven SMBs such as restaurants, cafes, salons, spas, package businesses, and local services. A follow-up codebase audit found that the homepage headline and LLM context were already broad, but first-touch CTAs and `/create-menu` intake copy still leaned food-menu-only.
+
+### Decisions
+
+- Changed primary public website CTAs that represent the main acquisition funnel to `Create customer link`.
+- Broadened `/create-menu` metadata and English/Hindi visible copy to cover menu, price-list, catalogue, and service-list sources.
+- Kept menu-specific feature/resource pages allowed to use menu language where the page is explicitly about menus.
+- Kept upload, extraction, claim, publish, auth, pricing, Firebase, Cloud Functions, and deployment out of scope.
+
+### Files Updated
+
+- `src/app/(website)/create-menu/page.tsx`
+- `src/components/website/legal/PrivacyPolicyPage.tsx`
+- `src/components/website/legal/TermsOfServicePage.tsx`
+- `public/locales/menulist.ai/en-US.json`
+- `public/locales/menulist.ai/hi-IN.json`
+- `public/llms.txt`
+- `__docs__/main-website/README.md`
+- `__docs__/main-website/main-website_content.md`
+- `__docs__/main-website/main-website_seo-aeo.md`
+- `__docs__/main-website/main-website_seo-aeo-marketing-brief.md`
+- `__docs__/CHANGELOG.md`
+- `__docs__/menulist-marketing-distribution/menulist-marketing-distribution_action-register.md`
+
+### Remaining
+
+- Verify upload -> preview -> claim path before Product Hunt, paid traffic, or assisted-setup outreach.
+- Build the multi-category demo universe brief before adding new industry/service-list pages.
+
+### Verification
+
+- Locale JSON parse passed for `en-US` and `hi-IN`.
+- Stale broad-SMB conversion scan passed with only historical/allowed references left.
+- `git diff --check` passed.
+- `npm run verify:website-resource-locales` passed.
+- `npm run verify:agent-readiness` passed after aligning the website title verifier with the current broad title constant.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `npm run lint` passed.
+
+---
+
+## June 22, 2026 - Broad SMB Category Decision
+
+### Context
+
+Founder clarified that MenuList should not target one single market. The product should cater to as many relevant SMBs as possible, starting with obvious categories where a digital menu, service list, package list, price list, or rate card matters.
+
+### Decision
+
+- MenuList's launch market is broad customer-facing SMBs with current lists customers need to see.
+- Restaurants, cafes, salons, and spas are all first-class proof categories.
+- The first proof system should also leave room for bakeries, caterers, barbers, studios, clinics, repair shops, local services, retail counters, and multi-location SMBs.
+- The market is cluttered, so MenuList should not sound like another QR menu tool, restaurant website builder, generic digital menu maker, social page, or local-agency setup offer.
+
+### Positioning Update
+
+The shared proof line is:
+
+> Current list -> official customer link -> two customer surfaces.
+
+Category examples can change, but the promise stays the same.
+
+### Files Updated
+
+- `README.md`
+- `menulist-marketing-distribution_strategy.md`
+- `menulist-marketing-distribution_execution-plan.md`
+- `menulist-marketing-distribution_research.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_source-review.md`
+
+### Next Recommended Session
+
+Create `MLD-A001`: the multi-category demo universe brief.
+
+---
+
+## June 22, 2026 - Multi-Category Demo Universe Brief Created
+
+### Context
+
+Founder asked Codex to proceed with the next code-side/launch-prep step after broad-SMB SEO readiness: create or prepare the multi-category demo/proof universe before adding salon, spa, service-list, or local-service SEO pages.
+
+### Decisions
+
+- Created the canonical demo universe brief as `menulist-marketing-distribution_demo-universe.md`.
+- Set fictional demo businesses as the default until real customers give permission.
+- Required `Sample business. Demo data only.` labeling where an asset could be mistaken for a real customer case.
+- Defined six core demos: Local Table Cafe, Glow & Blade Studio, Spark Auto Detailing, PawKind Grooming, Lens & Vows Studio, and BloomBox Florals.
+- Defined four expanded demos: FlexPoint Studio, CleanFold Laundry, SkillBridge Coaching, and Urban Glow Group.
+- Moved MLD-A001 and MLD-R006 to done.
+
+### Boundaries
+
+- No public website route, SEO page, customer menu runtime, owner dashboard runtime, Firebase rule, Cloud Function, pricing, billing, build, or deployment change was made.
+- The brief is ready for asset production, but screenshots, videos, Product Hunt gallery files, and new service-list SEO pages are not created yet.
+
+### Next Work
+
+1. Create fictional source lists for the six core demos.
+2. Build a screenshot capture plan against safe MenuList routes/states.
+3. Draft Product Hunt gallery copy and short video scripts from the demo universe.
+4. Add salon/spa or service-list SEO pages only after proof assets exist.
+
+### Verification
+
+- `git diff --check` passed after the documentation update.
+
+---
+
+## June 22, 2026 - Demo Source Lists and Capture Plan Added
+
+### Context
+
+After MLD-A001 was created, the next practical blocker was raw demo material. Without source lists and a capture plan, Product Hunt assets, videos, screenshots, and service-list SEO pages would still depend on chat memory or ad hoc invented examples.
+
+### Decisions
+
+- Created `menulist-marketing-distribution_demo-source-lists.md` with fictional source material for all six core demos.
+- Created `menulist-marketing-distribution_screenshot-capture-plan.md` with capture surfaces, viewports, redaction rules, file naming, and approval gates.
+- Kept runtime demo tenant creation out of scope because there is no existing safe MenuList demo-seed pattern for this broad proof universe.
+- Moved MLD-A009 and MLD-A010 to done.
+
+### Boundaries
+
+- No Firestore writes, Storage uploads, seed scripts, website routes, public assets, Product Hunt files, production builds, deployments, or external setup were run.
+- The source lists are fictional and must stay labeled as demo/sample data where public assets could be mistaken for customer proof.
+
+### Next Work
+
+1. Draft Product Hunt gallery copy and short video scripts from these demos.
+2. Decide whether to create routed demo tenants for real product screenshots.
+3. Capture public product proof only after demo states are safe and approved.
+4. Add service-list SEO pages only after proof assets exist.
+
+### Verification
+
+- `git diff --check` passed after the docs update.
+
+---
+
+## June 22, 2026 - Product Hunt Asset Copy and Video Scripts Drafted
+
+### Context
+
+With the demo universe, source lists, and screenshot capture plan in place, the next unblocked launch-prep work was to turn that material into Product Hunt gallery copy and video scripts without creating public files or scheduling launch.
+
+### Decisions
+
+- Created `menulist-marketing-distribution_product-hunt-asset-pack.md`.
+- Created `menulist-marketing-distribution_launch-video-scripts.md`.
+- Moved MLD-A002, MLD-A003, MLD-A004, and MLD-A011 to done as draft-copy/script artifacts.
+- Kept Product Hunt launch draft, gallery image production, video recording, and scheduling out of scope.
+
+### Boundaries
+
+- No Product Hunt page was created or scheduled.
+- No image/video files were generated.
+- No public website assets were moved into `public/`.
+- No runtime, build, deploy, Firebase, billing, Search Console, or external setup work was done.
+
+### Next Work
+
+1. Founder decision: create routed demo tenants or use static source/mock visuals for first asset production.
+2. Produce actual gallery images and optional video.
+3. Build launch-day response plan and post-launch follow-up board.
+4. Add service-list SEO pages only after proof assets exist.
+
+### Verification
+
+- `git diff --check` passed after the docs update.
+
+---
+
+## June 22, 2026 - Create-Menu Pipeline Code Contract Verified
+
+### Context
+
+The launch funnel depends on upload -> preview -> claim/publish working before traffic or Product Hunt attention is sent into `/create-menu`.
+
+### Checks Run
+
+```bash
+npm run verify:menu-extraction-pipeline
+npm run verify:menu-extraction-pipeline:dry-run
+git diff --check
+```
+
+### Results
+
+- `npm run verify:menu-extraction-pipeline` passed 27/27 checks.
+- `npm run verify:menu-extraction-pipeline:dry-run` passed 48/48 checks.
+- `git diff --check` passed.
+
+### Decision
+
+MLD-F003 is complete as a code-contract verification. The remaining real smoke test is MLD-F007: run a safe demo upload -> preview -> claim -> publish path with approved demo data and Firebase/runtime access.
+
+### Boundaries
+
+- No real upload was submitted.
+- No Firestore writes, Storage writes, Cloud Functions, Firebase deploy, production build, Vercel deploy, Product Hunt setup, or Search Console setup was run.
+
+---
+
+## June 22, 2026 - Activation Tracking and Follow-Up Plan Added
+
+### Context
+
+After the create-menu pipeline code contract passed, the remaining launch funnel gap was not another page. It was the owner/customer-surface activation definition and follow-up states needed after a public link exists.
+
+### Decisions
+
+- Created `menulist-marketing-distribution_activation-follow-up.md`.
+- Defined activation as published MenuList customer link plus two customer surfaces active within seven days.
+- Documented valid customer surfaces, funnel states, tracking sheet columns, and follow-up templates.
+- Moved MLD-F004, MLD-F005, and MLD-A008 to done as docs-first planning artifacts.
+
+### Boundaries
+
+- No analytics instrumentation, CRM, email automation, WhatsApp automation, Firestore writes, external setup, deploy, or follow-up sending was done.
+- Runtime tracking remains deferred until the manual workflow is proven.
+
+### Verification
+
+- `git diff --check` passed after the docs update.
+
+---
+
+## June 22, 2026 - Launch Support Pack Completed
+
+### Context
+
+After the demo universe, Product Hunt copy, launch video scripts, and activation plan were drafted, the remaining docs-first launch gaps were founder content, partner positioning, manual outreach, launch-day routing, launch-week sequencing, and a follow-up board.
+
+The user also confirmed MenuList should stay broad across relevant SMB categories, not one market only, while recognizing that digital menus and adjacent SMB tools are already crowded.
+
+### Decisions
+
+- Created `menulist-marketing-distribution_market-clutter-scan.md` to document comparison sets and keep public copy out of generic QR/menu/site/booking language.
+- Created `menulist-marketing-distribution_founder-post-pack.md` for founder-led broad-SMB, Product Hunt, partner, and pilot posts.
+- Created `menulist-marketing-distribution_partner-brief.md` for setup partner conversations.
+- Created `menulist-marketing-distribution_outreach-scripts.md` for manual, consent-aware owner and partner outreach.
+- Created `menulist-marketing-distribution_launch-day-response-plan.md` for Product Hunt/public launch routing and reply boundaries.
+- Created `menulist-marketing-distribution_launch-week-content-calendar.md` for a practical launch-week sequence.
+- Created `menulist-marketing-distribution_post-launch-follow-up-board.md` for manual post-launch lead and activation tracking.
+- Moved MLD-A005, MLD-A006, MLD-A007, MLD-R005, MLD-L003, MLD-L004, and MLD-L005 to done as docs-first artifacts.
+
+### Boundaries
+
+- No outreach was sent.
+- No Product Hunt draft was created.
+- No post was scheduled.
+- No CRM, analytics instrumentation, email automation, WhatsApp automation, Firestore writes, external setup, production build, Vercel deploy, or Search Console setup was done.
+- Actual screenshots, final gallery images, final video files, routed demo tenants, and public service-list SEO pages remain blocked until proof assets exist.
+
+### Verification
+
+- `git diff --check` passed after the launch-support docs update.
+- Claim-boundary scan only found negative guardrail wording such as "do not claim", "does not replace", and "no guarantee" statements.

@@ -24,6 +24,23 @@ This folder covers MenuList only:
 
 This folder does not cover Answerlattice, CampaignCue, ConstantLayer, Canonica, MyCodex, GrowthOS, or KitStamp unless a future entry explicitly says a cross-product SEO issue affects MenuList.
 
+## Market Scope
+
+MenuList is not targeting one single market and should not be documented as a restaurant-only SEO or QR menu product.
+
+The launch SEO scope is broad customer-facing SMBs where customers need a current public list:
+
+- restaurants, cafes, bakeries, cloud kitchens, and food businesses;
+- salons, spas, barbers, studios, and service-menu businesses;
+- caterers, clinics, repair shops, classes, retail counters, and other local businesses with packages, prices, rate cards, catalogs, or service lists;
+- multi-location SMBs that need consistent public list truth across branches.
+
+Restaurants and cafes remain strong proof categories, but they are not the product identity. Salon, spa, and service-list proof must be visible early so MenuList does not get trapped as another restaurant-only menu builder.
+
+The market is already cluttered with QR menu tools, restaurant website builders, generic digital-menu makers, link-in-bio pages, social profiles, WhatsApp/PDF workflows, and local setup agencies. MenuList's defensible SEO/product line is:
+
+> Turn the current customer-facing list into one official customer link.
+
 ## Standing Consultant Decision
 
 MenuList should keep launch SEO mostly in-house.
@@ -78,6 +95,8 @@ Outside help, if used, should be narrow and fixed-scope only:
 | File | Purpose |
 | --- | --- |
 | [`menulist-seo-launch_research-brief-2026-06-22.md`](./menulist-seo-launch_research-brief-2026-06-22.md) | Current primary-source SEO/Search research translated into MenuList launch strategy. |
+| [`menulist-seo-launch_code-readiness-checklist.md`](./menulist-seo-launch_code-readiness-checklist.md) | Code-side launch SEO readiness gate to complete before Search Console or other external setup. |
+| [`menulist-seo-launch_verification.md`](./menulist-seo-launch_verification.md) | Cross-check evidence, findings, verification results, and remaining follow-ups. |
 | [`menulist-seo-launch_consultant-ledger.md`](./menulist-seo-launch_consultant-ledger.md) | Running log of SEO decisions, reviews, evidence, and claim boundaries. |
 | [`menulist-seo-launch_action-register.md`](./menulist-seo-launch_action-register.md) | Open and closed launch SEO tasks, owner-side blockers, and future candidates. |
 
@@ -120,3 +139,6 @@ As of June 22, 2026:
 - Public tenant menu and OBP sitemap inclusion are quality-gated.
 - Reviewed resource locale packs are verifier-covered.
 - The launch strategy is in-house SEO with Codex as internal consultant and optional fixed-scope outside audit only.
+- Execution sequence is code-side first. Search Console and other external setup remain queued until the founder starts non-code setup.
+- Positive public `AI-powered` shorthand was removed from AI Menu Manager locale copy and LLM context wording during the first code-side claim-boundary pass.
+- Market scope is broad customer-facing SMBs; restaurants/cafes and salons/spas are proof categories, not product limits.

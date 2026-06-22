@@ -194,9 +194,9 @@ font-family:
 
 | Token     | Element        | Weight | Desktop | Mobile | Line Height | Letter Spacing | Tailwind                               |
 | --------- | -------------- | ------ | ------- | ------ | ----------- | -------------- | -------------------------------------- |
-| `display` | Hero headline  | 700    | 56px    | 36px   | 1.1         | 0              | `text-[56px] md:text-[36px] font-bold` |
-| `h1`      | Page titles    | 700    | 48px    | 32px   | 1.15        | 0              | `text-5xl md:text-3xl font-bold`       |
-| `h2`      | Section titles | 600    | 36px    | 26px   | 1.2         | 0              | `text-4xl md:text-2xl font-semibold`   |
+| `display` | Hero headline  | 700    | 60px    | 34px   | 1.08-1.11   | 0              | Website CSS token                      |
+| `h1`      | Page titles    | 700    | 56-60px | 34px   | 1.08-1.12   | 0              | Website CSS token                      |
+| `h2`      | Section titles | 700    | 40-44px | 30px   | 1.12-1.13   | 0              | Website CSS token                      |
 | `h3`      | Subsections    | 600    | 24px    | 20px   | 1.3         | 0              | `text-2xl md:text-xl font-semibold`    |
 | `h4`      | Card titles    | 600    | 20px    | 18px   | 1.3         | 0              | `text-xl md:text-lg font-semibold`     |
 | `body-lg` | Hero subtext   | 400    | 20px    | 17px   | 1.6         | 0              | `text-xl md:text-[17px]`               |
@@ -228,8 +228,8 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 
 | Context                         | Desktop                         | Mobile | Tailwind          |
 | ------------------------------- | ------------------------------- | ------ | ----------------- |
-| Hero top/bottom padding         | 80px top / 64px bottom on main homepage hero, 96px/56px on supporting page heroes | 48px | `py-20 pb-16` / `py-24 pb-14` |
-| Standard section padding        | 80px                            | 48px   | `py-20 md:py-12`  |
+| Hero top/bottom padding         | 96px top / 72px bottom on main homepage hero, 96px/56px on supporting page heroes | 72px / 64px | Website CSS token |
+| Standard section padding        | 112px                           | 64px   | Website CSS token |
 | Between section groups          | 0 (background change separates) | —      | —                 |
 | Between elements within section | 48px                            | 32px   | `gap-12 md:gap-8` |
 | Between heading and content     | 24px                            | 16px   | `mb-6 md:mb-4`    |
@@ -263,7 +263,7 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 - MenuList and AnswerLattice may gate optional analytics scripts behind the shared banner. CampaignCue and ConstantLayer currently use the banner only as essential-storage acknowledgement.
 - Do not copy generic consent wording about ads, personalization, or cross-site tracking unless that exact behavior exists in the implementation.
 - Do not mount the banner on owner dashboards, customer menus, Official Business Pages, widgets, or private reader surfaces unless those surfaces receive their own privacy review.
-- Mobile layout must stay compact enough that the first public CTA remains reachable after one short scroll.
+- Mobile layout must stay compact enough that the first public CTA remains reachable after one short scroll. The compact mobile banner target is roughly 160-180px tall at 390px viewport width.
 
 ### 4.3.3 Public AI Summary Links
 
@@ -276,7 +276,7 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 ### 4.5 Mobile Polish Rules
 
 - Mobile interactive controls should use a 44px-class minimum tap box. Primary CTAs use 48px height where possible.
-- Mobile section rhythm should prefer 40-44px vertical padding over desktop-scale breathing room.
+- Mobile homepage and supporting-page sections now use 64px vertical padding for presentation readability. Dense controls, menus, and footer utility groups may stay tighter when 44px tap targets remain intact.
 - Dense mobile link groups may use two columns only when each item remains readable and tappable; otherwise fall back to one column.
 - Mobile footer links and social links must be tappable targets, not raw text links.
 - Avoid unsupported instant-propagation wording in mobile screenshots or locale overrides. Use approved-source language instead.
@@ -285,9 +285,9 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 ### 4.4 Layout Widths
 
 ```css
---container-max: 1200px; /* max-w-7xl — outermost container */
+--container-max: 1248px; /* website content canvas */
 --content-max: 1024px; /* max-w-5xl — grids, card layouts */
---reading-max: 720px; /* max-w-3xl — text blocks */
+--reading-max: 768px; /* max-w-3xl+ — section headings and text blocks */
 --narrow-max: 560px; /* max-w-xl — centered forms, CTAs */
 ```
 
@@ -407,7 +407,7 @@ Rules:
 
 - The homepage section belongs after the source-to-public workflow, not before the official-source promise.
 - The visual must show a message, a prepared operation card, approval controls, and a receipt. Avoid generic chatbot screenshots or abstract AI decoration.
-- Copy may use `AI Menu Manager` and `AI-powered. Owner-approved.` for this feature only.
+- Copy may use `AI Menu Manager`, `approval-based AI agent`, and `Approval-based. Owner-approved.` for this feature. Do not use `AI-powered` as public shorthand.
 - Keep the safety loop visible: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt.
 - Guided item/category/menu-area selection may be described as an owner-control proof on the dedicated page, but avoid UI-instruction copy such as dropdown walkthroughs.
 - Unsupported external posting must appear as manual task/export/handoff language, not a completed external update.

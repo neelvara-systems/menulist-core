@@ -7,14 +7,14 @@ import '@/styles/website.css';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'How MenuList Works — From Current Menu to AI Menu Manager',
-    description: 'Start from a menu photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version, then AI Menu Manager helps owners update it by message with approval before important changes go live.',
+    title: 'How MenuList Works — From Current List to Customer Link',
+    description: 'Start from a menu, catalogue, price list, service list, photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version, then keeps supported updates approval-based.',
     alternates: {
         canonical: '/how-it-works',
     },
     openGraph: {
-        title: 'How MenuList Works — From Current Menu to AI Menu Manager',
-        description: 'Start from a menu photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version, then AI Menu Manager helps owners update it by message with approval before important changes go live.',
+        title: 'How MenuList Works — From Current List to Customer Link',
+        description: 'Start from a menu, catalogue, price list, service list, photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version, then keeps supported updates approval-based.',
         url: '/how-it-works',
     },
 };
@@ -24,8 +24,8 @@ export default function Page() {
         <div className="ws-page">
             <WebsitePageStructuredData
                 path="/how-it-works"
-                title="How MenuList Works - From Current Menu to AI Menu Manager"
-                description="Start from a menu photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version, then AI Menu Manager helps owners update it by message with approval before important changes go live."
+                title="How MenuList Works - From Current List to Customer Link"
+                description="Start from a menu, catalogue, price list, service list, photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version, then keeps supported updates approval-based."
             />
             <Header />
             <ProductPage />

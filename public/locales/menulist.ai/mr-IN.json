@@ -3290,7 +3290,7 @@
             "successAnother": "Send another message"
         },
         "Pricing": {
-            "proof2": "AI-powered. Owner-approved.",
+            "proof2": "Approval-based. Owner-approved.",
             "decision2Desc": "Starter covers simple publishing. Pro adds AI Menu Manager, stronger presentation, and owner controls. Premium supports location governance.",
             "proReinforcementAdvice": "Starter is enough for one current public menu. Choose Pro when AI Menu Manager, presentation, languages, and owner controls matter."
         },
@@ -3300,7 +3300,7 @@
             "subtitle": "AI Menu Manager lets owners tell MenuList what changed. MenuList prepares an operation card, waits for approval when the change is important, then applies supported work through the same MenuList systems you already use.",
             "demoLabel": "AI Menu Manager approval card demo",
             "demoTitle": "AI Menu Manager",
-            "demoSubtitle": "AI-powered. Owner-approved.",
+            "demoSubtitle": "Approval-based. Owner-approved.",
             "ownerLabel": "Owner message",
             "ownerCommand": "Masala tea 20 now",
             "proposalLabel": "Prepared update",
@@ -3398,7 +3398,7 @@
             "safety2Title": "Clear manual tasks",
             "safety2Desc": "Unsupported external posting is shown honestly as a manual step or export handoff.",
             "finalEyebrow": "Launch hook",
-            "finalTitle": "AI-powered menu operations, owner-approved.",
+            "finalTitle": "Approval-based menu operations, owner-approved.",
             "finalHighlight": "owner-approved",
             "finalSubtitle": "Create the official menu once. Then keep it current by telling MenuList what changed.",
             "finalCta": "Upload your menu",

@@ -6,8 +6,8 @@ import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-const title = 'AI Menu Manager for Restaurants | MenuList';
-const description = 'Prepare price, sold-out, special, photo, import, design, and publishing cards from simple messages. AI prepares the card; you approve before supported changes go live.';
+const title = 'AI Menu Manager for Owner-Approved Updates | MenuList';
+const description = 'Prepare price, sold-out, special, photo, import, design, and publishing cards from simple messages. MenuList prepares the card; you approve before supported changes go live.';
 
 export const metadata: Metadata = {
   title,

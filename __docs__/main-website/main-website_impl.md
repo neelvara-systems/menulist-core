@@ -1,6 +1,6 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.70 Official Customer Link Framing Pass
+**Status:** IMPLEMENTED — v3.6.82 WhatsApp Test CTA Activation
 **Last Updated:** June 22, 2026
 **Audience:** Developers
 
@@ -10,7 +10,7 @@
 
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
 
-The latest metadata parity pass keeps the existing website copy and page structure intact while aligning shared SEO/AEO metadata to the production MenuList canonical URL. Root fallback metadata, website layout metadata, homepage JSON-LD, and page-level JSON-LD read from `src/constants/menulist/website.ts`; `/create-menu/success` is a server metadata wrapper around the existing client success UI and is intentionally `noindex, nofollow, nocache` with a self canonical to the non-query success path.
+The latest WhatsApp onboarding campaign pass adds `/whatsapp` as a public campaign route for the implemented messaging-onboarding flow and wires its primary/final CTA to the supplied test WhatsApp onboarding number `+1 555 657 1424` through `https://wa.me/15556571424`. Root fallback metadata, website layout metadata, homepage JSON-LD, and page-level JSON-LD read from `src/constants/menulist/website.ts`; `/create-menu/success` is a server metadata wrapper around the existing client success UI and is intentionally `noindex, nofollow, nocache` with a self canonical to the non-query success path.
 
 ```
 Route Group: src/app/(website)/
@@ -28,6 +28,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 |-------|------|-----------|------|----------|
 | `/` | `(website)/page.tsx` | `HomePage` | Server shell with client homepage sections | Default from layout + server JSON-LD |
 | `/ai-menu-manager` | `(website)/ai-menu-manager/page.tsx` | `AiMenuManagerPage` | Server route + client feature page | Per-page `export const metadata` |
+| `/whatsapp` | `(website)/whatsapp/page.tsx` | `WhatsAppOnboardingPage` | Server route + client campaign page | Per-page `export const metadata` |
 | `/features` | `(website)/features/page.tsx` | `FeaturesPage` | Server | Per-page `export const metadata` |
 | `/features/menu-import` | `(website)/features/menu-import/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
 | `/features/menu-content-prep` | `(website)/features/menu-content-prep/page.tsx` | `FeatureDetailPage` | Server route + client feature page | Per-page `export const metadata` |
@@ -64,10 +65,11 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 | `/terms-of-service` | `(website)/terms-of-service/page.tsx` | `TermsOfServicePage` | Server | Per-page |
 | `/refund-policy` | `(website)/refund-policy/page.tsx` | `RefundPolicyPage` | Server | Per-page |
 
-**Total: 152 routes (8 core + feature campaign pages + 3 create-menu + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
+**Total: 153 routes (8 core + WhatsApp campaign + feature campaign pages + 3 create-menu + 16 English resources + 112 reviewed localized resources + 4 industry pages + 1 redirect + 3 legal + 1 trust)**
 
 ### Notes
 - Homepage (`/`) is a server route that renders `SchemaMarkup` as server HTML before mounting the client homepage composition.
+- `/whatsapp` is the public campaign route for the implemented messaging-onboarding flow. It uses localized copy, page-level structured data, a chat-style proof visual, trust boundaries, `PLATFORM_DISCOVERY_PAGES`, static sitemap, and LLM context coverage. Its primary and final CTA use a page-local external anchor to open the supplied test WhatsApp number with a prefilled owner-started onboarding message.
 - `/product` is a framework-level permanent redirect to `/how-it-works` (legacy URL preservation) and is intentionally omitted from sitemap and LLM discovery inventories.
 - `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows a locale-backed guided-setup fallback when OFF.
 - `/create-menu/success` is a post-setup utility route that may carry query-string menu URLs. It must remain outside discovery inventories and emit explicit `noindex, nofollow, nocache` robots metadata from the server wrapper, with a self canonical to `/create-menu/success`.
@@ -98,7 +100,7 @@ LocalisationProvider (locale from next-intl/server)
 `src/components/shared/publicAiSummaryLinks/PublicAiSummaryLinks.tsx` is the shared footer-level AI summary shortcut used by MenuList, AnswerLattice, and CampaignCue public marketing websites. MenuList mounts it in `Footer.tsx` with a localized label and a product-boundary prompt that points to the canonical website and `llms.txt`.
 
 **Default metadata (from layout):**
-- Title: `MenuList - One Official Menu Source for Customers`
+- Title: `MenuList - One Official Customer Link for Menus and Services`
 - Description: `Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks.`
 - Metadata base: production `https://menulist.ai` from `src/constants/menulist/website.ts`
 - Canonical: `https://menulist.ai`
@@ -135,6 +137,8 @@ LocalisationProvider (locale from next-intl/server)
 **Official customer link framing pass:** v3.6.70 makes the current website story explicit: one approved menu source becomes one official customer link, then QR, print, actions, owner updates, feedback, and health checks stay connected. `InteractiveWorkflowSection.tsx` now uses six guided lifecycle steps, `WebsiteReplacementBlock.tsx` is mounted on the homepage, pricing, and Official Business Page feature page, Pricing/Features/OBP metadata and locale copy are updated, and `public/llms.txt` / `public/llms-full.txt` use the same customer-link framing. The public Features page adds a lifecycle strip before the feature catalog. External-sync website copy is bounded as supported connected-system snapshot export only. This is public website component/CSS/locale/metadata/discovery/docs work only; owner dashboard runtime labels, customer menu/OBP runtime, pricing/payment/Razorpay/subscription logic, Firebase rules, Cloud Functions, and Vercel deployment were not changed.
 
 **Analytics feature page:** v3.6.71 adds `/features/analytics` for the existing owner analytics dashboard. The route shell renders `FeatureDetailPage` with the `analytics` config, localized English/Hindi copy, and page metadata. The `/features` Menu analytics card now links to it, and platform discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The page stays bounded to implemented desktop/mobile Owner Dashboard behavior: today, overview, daily, weekly, monthly, and overall views; public menu activity; Official Business Page actions; customer app activity; aggregate privacy-conscious signals; and Business Health handoff. It is intentionally not added to the desktop header dropdown in this pass. This is public website route/locale/discovery/docs work only; owner dashboard runtime, mobile runtime, analytics aggregation, Firebase rules, Cloud Functions, pricing/payment, auth, customer menu runtime, and Vercel deployment were not changed.
+
+**WhatsApp onboarding campaign page:** v3.6.82 keeps `/whatsapp` as the campaign route for the implemented messaging-onboarding flow and switches the primary/final CTA to a prefilled `wa.me/15556571424` test-number link. The route renders `WhatsAppOnboardingPage`, uses English/Hindi `Website.WhatsAppOnboardingPage` locale keys, and is registered in `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The page markets broad current-list intake: menus, service lists, rate cards, package lists, catalogs, photos, screenshots, PDFs, and text. Claims are intentionally bounded: owner approval before publish, no WhatsApp/Meta partnership claim, no automatic WhatsApp catalog sync claim, and no scraped-number outreach. Production campaign launch still needs the final public WhatsApp account, response owner, operating hours, consent copy, and tracking decision.
 
 **Public truth loop homepage bridge:** v3.6.69 adds `PublicTruthLoopSection.tsx` immediately after `InteractiveWorkflowSection`. The section makes the post-publish loop visible: current menu source -> owner approval -> customer surfaces -> feedback/activity signals -> source stays current. It also shows the three practical output families owners understand fastest: customer menu, Official Business Page, and print/QR kit. This is a compact proof bridge, not a new dashboard/analytics/SEO section, and it does not claim automatic external-platform updates, ranking, citation, POS sync, or fake customer metrics.
 

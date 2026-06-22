@@ -1,7 +1,7 @@
 # Messaging Onboarding — Firebase Cost Tracking
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
-**Status:** Implementation-Complete — WhatsApp runtime gated until real provider credentials are configured
+**Status:** Implementation-Complete — WhatsApp runtime env enabled; live provider path requires real credentials and webhook registration
 **Last Updated:** June 11, 2026
 **Priority:** HIGH — Every onboarding session triggers multiple operations. Scales with acquisition volume.
 

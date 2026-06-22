@@ -58,7 +58,7 @@ const socialLinks = [
 ];
 
 const MENU_LIST_AI_SUMMARY_PROMPT = [
-  'Please summarize what MenuList does, who it is for, and how it turns one owner-approved menu source into a public menu, Official Business Page, QR links, print files, customer actions, and owner workflows.',
+  'Please summarize what MenuList does, who it is for, and how it turns one owner-approved menu, service list, price list, or catalogue source into an official customer link, Official Business Page, QR links, print files, customer actions, and owner workflows.',
   'Use https://menulist.ai and https://menulist.ai/llms.txt as context.',
   'Do not invent ranking promises, AI citation guarantees, automatic external-platform updates, or unsupported POS/account posting claims.',
 ].join(' ');

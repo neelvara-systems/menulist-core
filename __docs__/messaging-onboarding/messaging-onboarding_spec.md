@@ -1,7 +1,7 @@
 # Messaging Onboarding — Product Specification
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
-**Status:** Implementation-Complete — WhatsApp runtime gated until real provider credentials are configured
+**Status:** Implementation-Complete — WhatsApp runtime env enabled; live provider path requires real credentials and webhook registration
 **Last Updated:** May 17, 2026
 **Source:** ChatGPT Brainstorm (Feb 16, 2026) + Cascade Architecture Validation + Deep Codebase Cross-Check (Feb 17) + Review #5 Final Spec Walkthrough + Review #6 Blocks/Stress-Test Cross-Check + Runtime Code Audit (May 17, 2026)
 
@@ -643,7 +643,7 @@ All messages follow Language Governance — no hype, no AI language, calm profes
 
 | Flag                             | Type     | Default        | Purpose                                                                                                   |
 | -------------------------------- | -------- | -------------- | --------------------------------------------------------------------------------------------------------- |
-| `ENABLE_MESSAGING_ONBOARDING`    | boolean  | App config currently `true`; Cloud Function runtime env currently `false` | App/preview surfaces are available; Cloud Function webhooks and schedulers remain hard-stopped until real WhatsApp secrets exist. |
+| `ENABLE_MESSAGING_ONBOARDING`    | boolean  | App config currently `true`; Cloud Function runtime env templates currently `true` | App/preview surfaces are available; Cloud Function webhooks and schedulers process when real WhatsApp secrets and webhook registration exist. |
 | `MESSAGING_ONBOARDING_PROVIDERS` | string[] | `['whatsapp']` | Runtime env comma-separated provider list. Only enabled providers accept and process webhooks.             |
 
 ### Zero-Impact Guarantees

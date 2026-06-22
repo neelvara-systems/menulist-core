@@ -12,7 +12,7 @@
 
 MenuList now has a complete public website discovery layer around one disciplined idea:
 
-> MenuList is the current approved menu source layer for businesses that need the public customer-facing version of their menu and business information to stay correct across QR, Google/menu links, WhatsApp/social links, websites, PDFs/print assets, screens, branch pages, search engines, and AI answer systems.
+> MenuList is the current approved public-list source layer for businesses that need the customer-facing version of their menu, service list, price list, catalogue, and business information to stay correct across QR, Google/menu links, WhatsApp/social links, websites, PDFs/print assets, screens, branch pages, search engines, and AI answer systems.
 
 This work was not a generic blog launch. It created an evergreen resource and industry content system that supports product-led acquisition, owner education, SEO, and AEO.
 
@@ -86,7 +86,7 @@ Intentional non-event:
 
 Primary KPI:
 
-> Resource reader to upload menu click.
+> Resource reader to create customer link click.
 
 Traffic alone is not the main success metric.
 
@@ -104,14 +104,23 @@ Before a restaurant can improve menu layout, pricing, item names, photos, descri
 
 If Google shows one menu, QR opens another, WhatsApp carries an old PDF, Instagram points somewhere else, staff sends a screenshot, and each branch has a different price list, the business has a public trust problem before it has a menu optimization problem.
 
+June 22, 2026 founder direction broadens the market scope. The current live website route set is food/menu-heavy, but MenuList should not be treated as restaurant-only. For salons, spas, barbers, studios, clinics, repair shops, caterers, retail counters, and similar SMBs, the equivalent job is the current customer-facing list: service menu, package list, price list, rate card, catalog, or offering list.
+
+Broad positioning line:
+
+> Turn the current customer-facing list into one official customer link.
+
 ### Approved Positioning
 
 Use these ideas:
 
 - one official menu source
+- one official customer link
 - current approved menu
+- current service list, package list, price list, or rate card when the business is not a restaurant
 - public customer-facing version
 - clear menu URL
+- clear customer link
 - structured public page
 - search and AI systems
 - answer engines
@@ -126,7 +135,9 @@ Use these ideas:
 Do not call MenuList:
 
 - a generic QR menu maker
-- AI-powered restaurant software
+- generic AI restaurant software
+- a restaurant-only website builder
+- a generic local-business page builder
 - a food delivery marketplace
 - a POS replacement
 - a guaranteed SEO tool
@@ -152,7 +163,7 @@ Do not claim:
 
 | URL | Page title | Role |
 | --- | --- | --- |
-| `/` | MenuList - One Official Menu Source for Customers | Primary product-led homepage |
+| `/` | MenuList - One Official Customer Link for Menus and Services | Primary product-led homepage |
 | `/features` | Features - MenuList \| No Extra Work for Your Menu | Product capability overview |
 | `/features/menu-import` | Menu Import - MenuList \| Upload the Menu You Already Have | Upload/import campaign page |
 | `/features/official-business-page` | Official Business Page - MenuList \| One Current Customer Link | Official public business page campaign |
@@ -160,12 +171,12 @@ Do not claim:
 | `/features/owner-phone-dashboard` | Owner PWA Dashboard - MenuList \| Manage MenuList From Your Phone | Owner phone/PWA workflow campaign |
 | `/features/business-health` | Business Health - MenuList \| AI Health Check for Your Menu | Business Health campaign page |
 | `/features/public-discovery` | Public Discovery - MenuList \| Clear Business Information for Search and AI | Search/answer-system source clarity campaign |
-| `/how-it-works` | How MenuList Works - From Current Menu to Official Public Source | Explains upload, review, publish, and public surfaces |
-| `/multi-location` | Multi-Location Menu Management - MenuList \| One Menu, Every Outlet | Multi-location product proof |
+| `/how-it-works` | How MenuList Works - From Current List to Customer Link | Explains source intake, review, publish, and public surfaces |
+| `/multi-location` | Multi-Location Source Management - MenuList \| One Source, Every Location | Multi-location product proof |
 | `/pricing` | Pricing - MenuList \| Simple, Transparent Plans for Every Business | Commercial decision page |
-| `/create-menu` | Upload or Import Your Current Menu - MenuList | Primary conversion/upload page |
-| `/get-started` | Get Started - Create Your Official Menu Source | Guided setup/sign-in support page |
-| `/resources` | Resources - MenuList \| Keep One Public Menu Current | Evergreen resource hub |
+| `/create-menu` | Create Your Official Customer Link - MenuList | Primary conversion page for menu, price-list, catalogue, or service-list sources |
+| `/get-started` | Get Started - Create Your Customer Link | Guided setup/sign-in support page |
+| `/resources` | Resources - MenuList \| Keep One Public List Current | Evergreen resource hub |
 | `/trust-security` | Trust & Security - MenuList \| How We Keep Your Data Safe | Trust and security support |
 | `/about` | About MenuList - Built in India for Growing Businesses | Company/context page |
 | `/contact` | Contact Us - MenuList \| Get in Touch | Contact page |
@@ -206,6 +217,8 @@ Notes:
 | `/industries/cafes-bakeries` | Digital Menu Source for Cafes and Bakeries \| MenuList | Explain current menu control for cafes, bakeries, dessert shops, beverage counters, seasonal specials, and print materials |
 | `/industries/takeaway-cloud-kitchens` | Public Menu Source for Takeaways and Cloud Kitchens \| MenuList | Explain menu consistency for takeaways, pickup kitchens, cloud kitchens, packaging, WhatsApp, Google, social profiles, and share links |
 | `/industries/multi-location-food-businesses` | Multi-location Menu Source Control \| MenuList | Explain master menu, outlet overrides, branch pricing, local availability, QR links, Google links, and public branch pages |
+
+Current implementation note: these live industry pages are food/menu proof pages. They are not the full market boundary. Future broad-SMB proof should add salon/spa/service-list and adjacent local-service workflows only after the demo universe and page depth are approved.
 
 ### Localized Resource Pages
 
@@ -439,7 +452,9 @@ Marketing should review:
 - Are important search terms present without sounding spammy?
 - Are titles too long for target SERP display?
 - Should any title use `restaurant`, `cafe`, `takeaway`, `cloud kitchen`, or `multi-location` more directly?
+- For broad-SMB pages, should the page use `salon`, `spa`, `service list`, `package list`, `price list`, `rate card`, or `local service` only when the workflow depth is real?
 - Should `Official Menu Source` or `Current Approved Menu` be the dominant phrase?
+- Should `Official Customer Link` or `Current Customer-Facing List` be the broader non-food phrase?
 
 ### Missing Content Review
 
@@ -454,6 +469,10 @@ The accepted direction after team feedback is captured in [Marketing Feedback Re
 | `/resources/instagram-menu-link` | Many owners use Instagram bio/highlights for menu access | Avoid social-growth guarantees |
 | `/resources/menu-price-change-checklist` | Clear owner workflow around price changes | Review before publishing, update every surface |
 | `/resources/branch-menu-consistency-checklist` | Deepens multi-location usefulness | Master menu plus branch overrides |
+| `/resources/service-list-cleanup-checklist` | Broadens beyond restaurants with salon, spa, studio, clinic, repair, and local-service list cleanup | Same official customer link thesis; no thin category page |
+| `/resources/service-price-list-checklist` | Clear owner workflow around services, packages, rates, and price changes | Review before publishing, update public surfaces |
+| `/industries/salons-spas` | Proves MenuList is not restaurant-only where services, packages, prices, photos, WhatsApp, Instagram, and QR links matter | Current service list plus official customer link |
+| `/industries/local-services` | Covers repair shops, studios, clinics, classes, and other list-driven local businesses | Keep broad but specific; avoid generic local-business page-builder copy |
 | `/industries/bars-pubs` | Bars need drinks, happy hours, temporary availability, and QR/table menus | Current approved public menu source |
 | `/industries/food-trucks` | Food trucks have changing locations and availability | Current menu plus clear customer-facing link |
 | `/compare/qr-menu-maker-vs-official-menu-source` | Differentiates from generic QR tools | Be factual, not hostile |
@@ -508,6 +527,8 @@ This feedback should not be treated as a signal to create a generic content libr
 
 ### Accepted Quality-Pass Priorities
 
+These priorities were accepted for the current live menu/food route set. After the June 22, 2026 founder direction, the next planning pass must review broad-SMB fit before adding another food-only expansion.
+
 | Priority | Page / cluster | Why it matters | Marketing review job |
 | --- | --- | --- | --- |
 | 1 | `/resources/official-menu-source` | Category-definition page for the official menu source concept | Make the concept sharp, owner-readable, and conversion-aware |
@@ -528,12 +549,15 @@ Current implementation note: the core English pages listed above have now receiv
 | `/resources/menu-link-for-whatsapp` | Add | WhatsApp is a real SMB distribution surface and fits the one official URL thesis | Do not position as WhatsApp automation |
 | `/resources/menu-price-change-checklist` | Add | Price changes create immediate public trust and staff/customer mismatch risk | Keep it operational: review, publish, update public surfaces |
 | `/resources/restaurant-menu-cleanup-checklist` | Add | Clear top-of-funnel diagnostic for old PDFs, menu photos, QR cards, and social links | Focus on cleanup before publishing, not SEO guarantees |
+| `/resources/service-list-cleanup-checklist` | Add after demo proof | Strong bridge for salons, spas, studios, clinics, repair shops, and other list-driven SMBs | Needs concrete examples; do not make a generic service-business SEO article |
+| `/resources/service-price-list-checklist` | Add after demo proof | Supports package/rate-card businesses and broad price-list maintenance | Keep it operational, not ranking-led |
+| `/industries/salons-spas` | Add after demo proof | Required proof that MenuList is not restaurant-only | Needs real service-list workflow, screenshots, and CTA path |
 | `/compare/pdf-menu-vs-menulist` | Add carefully | High conversion intent for owners stuck with old PDFs | Treat PDF as a useful backup/export, not as the enemy |
 | `/compare/qr-menu-maker-vs-official-menu-source` | Add after core polish | Good differentiation page | Avoid hostile comparison language and "best QR menu maker" framing |
 
 ### Deferred For Now
 
-Do not prioritize `/industries/bars-pubs` or `/industries/food-trucks` in this release unless MenuList is ready to support those verticals with specific examples, workflows, and CTAs. Thin industry pages would weaken the product-led website and create avoidable SEO risk.
+Do not prioritize `/industries/bars-pubs`, `/industries/food-trucks`, `/industries/salons-spas`, or broad local-service pages in this release unless MenuList is ready to support those verticals with specific examples, workflows, screenshots, and CTAs. Thin industry pages would weaken the product-led website and create avoidable SEO risk.
 
 ### Language Decision
 
@@ -554,7 +578,7 @@ This keeps the category strong while making the operational value clear to resta
 
 - No ranking guarantees.
 - No AI visibility guarantees.
-- No "AI-powered restaurant software" positioning.
+- No "generic AI restaurant software" positioning.
 - No attack on PDF menus or QR tools.
 - No thin industry pages.
 - No generic blog expansion.

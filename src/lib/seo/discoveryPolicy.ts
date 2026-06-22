@@ -62,6 +62,13 @@ export const PLATFORM_DISCOVERY_PAGES: PlatformDiscoveryPage[] = [
         priority: 0.92,
     },
     {
+        label: 'WhatsApp Onboarding',
+        path: '/whatsapp',
+        description: 'WhatsApp-first onboarding for menus, service lists, rate cards, catalogs, and price lists into one official customer link',
+        changeFrequency: 'monthly',
+        priority: 0.94,
+    },
+    {
         label: 'Menu Import',
         path: '/features/menu-import',
         description: 'Upload a menu photo, PDF, typed menu, or permission-confirmed public menu link for owner review before publishing',

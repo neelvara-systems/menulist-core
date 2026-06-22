@@ -15,7 +15,7 @@
 4. **Tone:** Premium calm + practical. Not fancy, not salesy, not startup-y.
 5. **Language:** Operational words only. No AI-hype, no jargon, no marketing buzzwords.
 
-> AI Menu Manager launch note (June 17, 2026): `AI Menu Manager` is the public feature name by founder decision. This is a narrow exception for this feature only. The website may use `AI-powered. Owner-approved.` and `approval-based AI menu operations` for AI Menu Manager, while the overall MenuList product remains positioned as one official menu source customers can trust.
+> AI Menu Manager launch note (June 17, 2026; tightened June 22, 2026): `AI Menu Manager` is the public feature name by founder decision. This is a narrow feature-name exception only. Public copy may use `approval-based AI agent`, `Approval-based. Owner-approved.`, and `approval-based AI menu operations` for AI Menu Manager, while the overall MenuList product remains positioned as one official menu source customers can trust. Do not use `AI-powered` as public shorthand.
 
 > Resources planning note (June 1, 2026): The next content expansion should be an evergreen `/resources` layer, not a chronological blog. Planned resources must keep the same official-source discipline as the homepage: owner-useful quick answers, checklists, worksheets, comparison tables, and practical next steps without ranking guarantees, AI citation promises, or generic restaurant-tech hype. Use `__docs__/main-website/main-website_resources-plan.md` as the tracker before writing or implementing resource copy.
 
@@ -25,7 +25,7 @@
 
 > Public truth indexing note (June 2, 2026): The business-page strategy is handled in the customer-facing tenant/OBP/menu discovery layer, not by creating more website articles. Existing public tenant pages now use a central indexability gate for metadata and sitemap inclusion. Marketing should not request keyword-variant restaurant pages, AI-written business pages, or city/category directory pages until owner-approval, source-confidence, and claim/update rules are documented.
 
-> Privacy and analytics note (June 5, 2026): Main MenuList website analytics are consent-gated. Google Analytics and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Upload your menu` or `See customer preview` actions. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
+> Privacy and analytics note (June 5, 2026; CTA label updated June 22, 2026): Main MenuList website analytics are consent-gated. Google Analytics and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Create customer link` or `See customer preview` actions. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
 
 > Business Health website note (June 17, 2026): Business Health may now be promoted as MenuList's AI health check for the menu and public presence. This is a diagnostic-only AI positioning: Business Health checks cached MenuList facts, shows what needs attention, says No action needed when stable, and hands fixes to AI Menu Manager or existing owner screens. Do not call it a chatbot, autonomous business agent, revenue optimizer, prediction system, competitor tracker, or direct public-truth editor.
 
@@ -37,7 +37,11 @@
 
 > Visual Profile Completion website note (June 17, 2026): Visual Profile Completion is mentioned only as a supporting Official Business Page proof point. Public copy may say MenuList shows when key profile photos are missing. Do not create a standalone page, nav item, homepage section, AI photo-placement claim, gallery-manager claim, social-posting claim, or ranking promise.
 
-> Official customer link framing note (June 22, 2026): the website spine is now `one approved menu source -> one official customer link -> QR, print, actions, owner updates, feedback, and health checks stay connected`. The first-fold copy should make owners understand they are creating the official link customers use everywhere, not only uploading a menu. The lifecycle vocabulary is `Start -> Prepare -> Publish -> Place -> Operate -> Improve`. Do not add a `/restaurant-website` page until the canonical domain, LLM context, homepage, pricing, OBP, and claim boundaries are stable.
+> Official customer link framing note (June 22, 2026): the website spine is now `one approved menu/service-list source -> one official customer link -> QR, print, actions, owner updates, feedback, and health checks stay connected`. The first-fold copy should make owners understand they are creating the official link customers use everywhere, not only uploading a food menu. The lifecycle vocabulary is `Start -> Prepare -> Publish -> Place -> Operate -> Improve`. Do not add a `/restaurant-website` page until the canonical domain, LLM context, homepage, pricing, OBP, and claim boundaries are stable.
+
+> Broad SMB conversion CTA note (June 22, 2026): primary public CTAs that represent the main `/create-menu` funnel should read `Create customer link ->` instead of `Upload your menu ->`. This keeps restaurants/cafes included while also making sense for salons, spas, studios, clinics, repair shops, retail counters, and service-list businesses. Menu-specific feature/resource pages may still use menu language when the page itself is menu-specific.
+
+> Broad SMB homepage runtime copy note (June 22, 2026): the homepage and shared website metadata should no longer depend on food-menu-only examples in the first viewport or core conversion path. Use `menu or service list`, `current list`, `public list`, and `official customer link` where the copy represents MenuList's broad SMB promise. Restaurant/cafe proof can remain on menu-specific resource, industry, and feature pages, but the core homepage must also visibly work for salons, spas, studios, clinics, repair shops, retail counters, and other list-driven SMBs.
 
 ---
 
@@ -69,7 +73,7 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Canonical section policy:** the homepage is intentionally compressed to reduce mobile and first-visit density. `InteractiveWorkflowSection` is the six-stage lifecycle spine, `PublicTruthLoopSection` proves that published surfaces return to the same approved source, and `WebsiteReplacementBlock` answers the lightweight website/customer-link doubt before AI Menu Manager appears. `BusinessHealthSection` is mounted as the single owner-dashboard USP proof after the prepared capability grid and before the education/discovery bridge. `ResourcesSection` remains a compact lower-page education/discovery bridge before FAQ; it must not turn the homepage into a blog index. `RevenuePathSection`, `StatsSection`, `SearchDiscoverySection`, `AnalyticsInsightsSection`, `SmartFeaturesSection`, `BusinessSection`, and `IndustrySection` remain in the repo as supporting components/future page material, but they are not mounted in the current homepage composition.
 
-**Growth Kits placement policy (June 1, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: upload the current menu and publish one official customer-facing version. Growth Kits may be considered later as a small Pro/Premium pricing or Features-page proof point after owner usage validates demand.
+**Growth Kits placement policy (June 1, 2026; wording aligned June 22, 2026):** do not add GrowthOS, Growth Kits, or `Today's Sales Pack` to the homepage. The homepage must stay focused on the first owner action: start from the current menu or service-list source and publish one official customer-facing version. Growth Kits may be considered later as a small Pro/Premium pricing or Features-page proof point after owner usage validates demand.
 
 **Print files placement policy (June 5, 2026):** do not add a separate Menu Card Export or Print Assets homepage section. The homepage may show `Print files` as one compact output of the approved menu source, while the Features page can explain the practical owner outcome: paper menu PDFs, table cards, counter cards, and printer handoff files generated from the same current approved menu. `/resources/digital-menu-vs-pdf-menu` continues to carry the broader PDF-vs-digital explanation. The Pro/Premium layout suggestion must not be promoted on the homepage; if public pricing copy later needs it, describe it plainly as `layout suggestion on Pro and Premium`, not as an AI PDF feature.
 
@@ -81,9 +85,11 @@ Supporting pages now share the same official-source discipline through shared he
 
 **Analytics feature page policy (June 22, 2026):** `/features/analytics` is the dedicated public page for the shipped owner analytics dashboard. It may describe today, overview, daily, weekly, monthly, and overall dashboard views; menu sessions; engaged sessions; item taps; searches; action rate; Official Business Page actions; customer app activity; desktop/mobile owner dashboard availability; and privacy-conscious aggregate reporting. It must not imply customer profiling, heatmaps, exact GPS tracking, revenue attribution, POS revenue, guaranteed sales lift, or a generic BI product. Analytics is linked from the `/features` Menu analytics card and discovery files, not added to the desktop header dropdown in this pass.
 
-**AI Menu Manager placement policy (June 17, 2026):** AI Menu Manager is now the website growth hook after the source-to-public workflow. The homepage should first establish one approved MenuList source, then show how AI Menu Manager keeps that source current by message. The dedicated public route is `/ai-menu-manager`. Copy must keep the loop explicit: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Unsupported external posting must be described as a manual task/export/handoff, not direct completion. As of v3.6.63, the dedicated page may mention guided item/category/menu-area selection as owner control, but it should not read like UI instructions or weaken the natural-language promise.
+**WhatsApp onboarding campaign page policy (June 22, 2026):** `/whatsapp` is the public campaign route for the implemented messaging-onboarding flow. It should own the WhatsApp-first wedge without turning MenuList into a WhatsApp replacement, Meta partner claim, automatic catalog-sync claim, or bulk outreach tool. The page may describe sending menus, service lists, rate cards, package lists, catalogs, photos, screenshots, PDFs, and text through the onboarding channel; preview preparation; owner approval before publish; and one official customer link/QR after publish. The live website CTA now uses the supplied test WhatsApp onboarding number `+1 555 657 1424`; production launch still needs the final public WhatsApp account, response owner, operating hours, consent note, and tracking decision.
 
-**CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Upload your menu →" for non-technical SMB owners. The destination explains the flow publicly, then requires sign-in before accepting a menu photo or a permission-confirmed public menu link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel.
+**AI Menu Manager placement policy (June 17, 2026):** AI Menu Manager is now the website growth hook after the source-to-public workflow. The homepage should first establish one approved MenuList source, then show how AI Menu Manager keeps that source current by message. The dedicated public route is `/ai-menu-manager`. Copy must keep the loop explicit: owner intent -> prepared card -> approval when needed -> existing MenuList operation -> receipt. Unsupported external posting must be described as a manual task/export/handoff, not direct completion. As of v3.6.63, the dedicated page may mention guided item/category/menu-area selection as owner control, but it should not read like UI instructions or weaken the natural-language promise. As of v3.6.73, public AI Menu Manager copy uses approval-based language instead of `AI-powered` shorthand.
+
+**CTA rule:** Primary public CTAs now point to `/create-menu` and should consistently read "Create customer link →" when the CTA represents the broad acquisition funnel. The destination explains the flow publicly, then requires sign-in before accepting a menu, catalogue, price-list, or service-list image or a permission-confirmed public list link. `/get-started` remains a guided setup/sign-in page for owners who need account context, not the first upload funnel. Menu-specific feature/resource pages can still use menu wording when the page itself is explicitly about menu import, menu engineering, QR menus, or restaurant guidance.
 
 ---
 
@@ -145,13 +151,13 @@ Industry pages explain how the same official-source layer applies to common food
 
 **Headline:**
 
-> Turn your current menu into your official customer link.
+> Turn your current menu or service list into your official customer link.
 
 **Subline:**
 
 > Start with a photo, PDF, existing menu link, or typed menu. MenuList prepares it for review, then keeps your public menu, business page, QR, print files, customer actions, owner updates, feedback, and health checks connected to the version you approve.
 
-**Primary CTA:** Upload your menu →
+**Primary CTA:** Create customer link →
 **Secondary CTA:** See customer link (`/features/official-business-page`)
 **Micro-trust line:** Start with a 7-day setup. Review the public menu before choosing a paid plan.
 
@@ -162,15 +168,15 @@ Industry pages explain how the same official-source layer applies to common food
 **Notes:**
 
 - Direction A: official customer-link outcome first, current-menu owner action second.
-- Hero must communicate current menu -> official customer link -> connected QR/print/actions/updates loop in under 5 seconds.
-- The visual line break in the hero headline must preserve readable whitespace in DOM/accessibility text. The rendered H1 should read `Turn your current menu into your official customer link.`
+- Hero must communicate current menu/service list -> official customer link -> connected QR/print/actions/updates loop in under 5 seconds.
+- The visual line break in the hero headline must preserve readable whitespace in DOM/accessibility text. The rendered H1 should read `Turn your current menu or service list into your official customer link.`
 - Avoid "digital menu maker", "AI menu generator", and generic dashboard visuals.
 - Existing menu link copy is allowed as a source-intake proof only. Do not call it scraping, marketplace import, automatic cloning, or automatic publishing.
 - Avoid using "no account needed" as a hero or upload-page proof point. Keep the funnel promise aligned to the current setup model: "Start with a 7-day setup. Review before choosing a paid plan."
 
 **AI Menu Manager teaser:** Show a compact hero teaser:
 
-> New: AI Menu Manager — Update your menu by message
+> New: AI Menu Manager - Update your list by message
 
 ---
 
@@ -178,28 +184,28 @@ Industry pages explain how the same official-source layer applies to common food
 
 **Purpose:**
 
-This section shows the practical path from the menu a business already has to the customer actions that matter. It keeps the source-of-truth idea, but explains it in plain owner language.
+This section shows the practical path from the menu or service list a business already has to the customer actions that matter. It keeps the source-of-truth idea, but explains it in plain owner language.
 
 **Eyebrow:**
 
-> From menu to customer action
+> Upload, review, publish, share
 
 **Headline:**
 
-> Your menu should help customers choose faster.
+> Your public list should help customers choose faster.
 
 **Supporting text:**
 
-> MenuList turns the menu you already use into the customer-facing version customers can trust before they call, visit, order, or share.
+> MenuList turns the menu or service list you already use into the customer-facing version customers can trust before they call, visit, order, book, or share.
 
 **Path steps:**
 
 | Step | Label | Title | Description |
 | --- | --- | --- | --- |
-| 1 | Start | Use your current menu | Photo, PDF, link, or typed items. The owner-approved version is the starting point. |
-| 2 | Publish | Customers see one clear page | The live menu and official page replace old files, screenshots, and broken links. |
-| 3 | Share | Put the same menu everywhere | QR, web link, screen, and PDF all point back to the current menu. |
-| 4 | Action | Customers can act quickly | Call, WhatsApp, directions, order, and share stay close to the menu. |
+| 1 | Start | Use your current list | Photo, PDF, link, or typed items and services. The owner-approved version is the starting point. |
+| 2 | Publish | Customers see one clear page | The customer link and official page replace old files, screenshots, and broken links. |
+| 3 | Share | Put the same link everywhere | QR, web link, screen, and PDF all point back to the current source. |
+| 4 | Action | Customers can act quickly | Call, WhatsApp, directions, order, book, and share stay close to the list. |
 
 **Trust panel:**
 
@@ -221,11 +227,11 @@ This section shows the practical path from the menu a business already has to th
 
 **Section heading:**
 
-> Business menus on the internet are broken.
+> Business menus and service lists online are broken.
 
 **Supporting text:**
 
-> Your Google listing shows old prices. The QR menu has items you removed. The PDF on WhatsApp is from months ago. Customers see different versions everywhere they look — and none of them are correct.
+> Your Google listing shows old prices. The QR link has items or services you removed. The PDF on WhatsApp is from months ago. Customers see different versions everywhere they look, and none of them are correct.
 
 **Visual stack:**
 
@@ -236,8 +242,8 @@ The section now uses a split layout: left-side narrative, right-side public-drif
 | Tile | Short Label | Description |
 | --- | --- | --- |
 | 1 | Outdated Google listing | Old prices and hours still showing to customers searching for you |
-| 2 | Wrong QR menu | Items you removed months ago still visible when customers scan |
-| 3 | Old PDF on WhatsApp | Last year's menu still circulating in customer group chats |
+| 2 | Wrong QR link | Items or services you removed months ago still visible when customers scan |
+| 3 | Old PDF on WhatsApp | Last year's menu or service sheet still circulating in customer group chats |
 | 4 | Inconsistent pricing | Different prices on different platforms — customers notice |
 
 **Notes:**
@@ -568,11 +574,11 @@ MenuList turns approved menu and business details into visible public pages, ser
 
 **Section heading:**
 
-> The official menu leaves the screen.
+> The official customer link leaves the screen.
 
 **Supporting text:**
 
-> A correct public link matters only when customers can find it. MenuList helps place the official menu where your business already speaks to customers.
+> A correct public link matters only when customers can find it. MenuList helps place the official customer link where your business already speaks to customers.
 
 **Deployment cards:**
 
@@ -673,7 +679,7 @@ Key FAQ topics:
 
 > Start from the menu you already have. MenuList turns it into the official customer-facing version of your business.
 
-**Button:** Upload your menu →
+**Button:** Create customer link →
 
 **Final CTA proof stack:** Removed in v3.6.1. The closing CTA should stay short after the homepage has already explained upload, review, publishing, customer surfaces, and FAQ.
 
@@ -693,7 +699,7 @@ Key FAQ topics:
 
 > Start with your current menu. MenuList prepares the owner-approved source for the customer-facing surfaces your business uses.
 
-**CTA:** Upload your menu →
+**CTA:** Create customer link →
 
 **Source map visual:**
 
@@ -874,7 +880,7 @@ Key FAQ topics:
 
 > Your menu deserves one official home.
 
-**CTA:** Upload your menu →
+**CTA:** Create customer link →
 
 **Sub-text:**
 
@@ -896,7 +902,7 @@ Key FAQ topics:
 
 > MenuList handles the public places your menu touches, so you can stay focused on the business.
 
-**CTA:** Upload your menu →
+**CTA:** Create customer link →
 
 **Notes:**
 
@@ -1187,7 +1193,7 @@ Description:
 
 > Business Health checks the latest MenuList facts: menu state, public surfaces, customer attention, locations, and freshness. It shows what needs attention and keeps real changes inside approved AI Menu Manager or owner-screen flows.
 
-**Primary CTA:** Upload your menu →
+**Primary CTA:** Create customer link →
 
 **Secondary CTA:** See all features
 
@@ -1357,17 +1363,25 @@ Right-side sticky cards:
 
 **Headline:**
 
-> Keep your official customer link live, current, and owner-approved.
+> Keep one official customer link live.
 
 **Subline:**
 
-> Menu, prices, business page, QR, print files, customer actions, owner updates, feedback, and health checks stay connected to one approved source.
+> Menu, services, prices, business page, QR, print files, customer actions, owner updates, feedback, and health checks stay connected to one approved source.
 
 **Proof row:**
 
-- Look professional from one source
+- Official link customers can trust
 - No scattered menu files
-- No outdated public PDFs
+- Owner-approved updates
+
+**Setup heading:**
+
+> Start with 7-day setup, then keep the same customer link live.
+
+**Decision heading:**
+
+> You are buying the system around your approved customer link.
 
 ---
 
@@ -1383,7 +1397,7 @@ Right-side sticky cards:
 
 ### CTA on Plan Cards
 
-> Upload your menu →
+> Create customer link →
 
 ### Below Plans: Credit / Enhancement Packs
 
@@ -1480,9 +1494,114 @@ Right-side sticky cards:
 
 ### CTA
 
-> Make your menu source official.
+> Make your public source official.
 
-**CTA:** Upload your menu →
+**CTA:** Create customer link →
+
+---
+
+## Page 4B: WhatsApp Onboarding (/whatsapp)
+
+**Purpose:** Public campaign page for the implemented messaging-onboarding flow. It should make the WhatsApp-first acquisition wedge visible for broad SMBs while keeping the claim boundary owner-trust-safe.
+
+**Metadata title:**
+
+> WhatsApp Menu and Service List Onboarding | MenuList
+
+**Metadata description:**
+
+> Send a menu, service list, rate card, package list, or PDF on WhatsApp. MenuList prepares a preview, publishes after approval, and sends back one official customer link.
+
+**Heading:**
+
+> Send your current list on WhatsApp. Get one official customer link.
+
+**Subline:**
+
+> MenuList turns a menu, service list, rate card, package list, catalog, photo, PDF, or message into an owner-approved public page, link, and QR. Start from the list you already send customers.
+
+**Primary CTA:**
+
+> Send list on WhatsApp
+
+**CTA destination:** Prefilled click-to-WhatsApp CTA using the supplied test onboarding number `+1 555 657 1424` (`https://wa.me/15556571424`). Replace this with the final public onboarding account before production campaign launch.
+
+**Proof visual:**
+
+Chat-style sequence:
+
+1. Owner sends the latest rate card or list attachment.
+2. MenuList acknowledges preview preparation.
+3. Preview card shows the public customer link.
+4. Owner approves.
+5. MenuList sends the official link for WhatsApp, Instagram, Google profile links, QR, and staff replies.
+
+**Sections:**
+
+1. How it works: send current list, MenuList prepares, owner reviews, official link goes live.
+2. Broad SMB use: restaurants/cafes/bakeries, salons/spas/barbers, services/studios, catalog/retail counters.
+3. Why it matters: less old-file confusion, owner-approved truth, reusable link.
+4. Trust boundaries: no WhatsApp replacement claim, no Meta partnership claim, no automatic catalog-sync claim, no scraped-number bulk blasting.
+
+**Notes:**
+
+- This page markets an implemented flow documented under `__docs__/messaging-onboarding/`.
+- Treat the public WhatsApp CTA as a test-number activation until the final onboarding account, response owner, operating hours, consent note, and tracking decision are approved.
+- Do not claim official WhatsApp/Meta partnership, automatic WhatsApp catalog sync, bulk message outreach, or publish-without-approval behavior.
+
+---
+
+## Page 5A: Create Menu (/create-menu)
+
+**Purpose:** Primary public conversion path for starting from the business's current menu, price-list, catalogue, or service-list source and creating the official customer link. The page must not read like a generic digital-menu maker or food-only QR menu tool.
+
+**Metadata title:**
+
+> Create Your Official Customer Link — MenuList
+
+**Metadata description:**
+
+> Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public.
+
+**Heading:**
+
+> Create your official customer link
+
+**Subline:**
+
+> Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared customer-facing version before anything goes public.
+
+**Input options:**
+
+- Upload photo
+- Use existing link
+
+**Proof strip:**
+
+- Account connected before upload
+- Owner review before publishing
+- Works for menus, price lists, and service lists
+
+**How it works block:**
+
+1. Add the source customers already see.
+2. Review the customer-facing version.
+3. Publish the official link.
+
+**Preview claim CTA:**
+
+> Create official link
+
+**Public powered-by CTA:**
+
+> Create your official customer link
+
+**Notes:**
+
+- This pass changes public copy/metadata only. Upload, extraction, claim, publish, auth, billing, and dashboard runtime stay unchanged.
+- The page remains sign-in-first before upload/link processing.
+- Link import copy must say owned or permissioned link. Do not imply generic scraping, marketplace import, automatic cloning, or publishing without owner review.
+- The conversion outcome is the official customer link, not merely a generated menu.
 
 ---
 
@@ -1494,11 +1613,11 @@ Right-side sticky cards:
 
 **Heading:**
 
-> Start with the menu you already use
+> Start with the list customers already see
 
 **Subline:**
 
-> Sign in once, add the current menu, and review the prepared preview before publishing.
+> Sign in once, add the current menu, price list, catalogue, or service list, and review the prepared preview before publishing.
 
 **Proof strip:**
 
@@ -1506,7 +1625,7 @@ Right-side sticky cards:
 - Owner review before publishing
 - Dashboard setup comes next
 
-**Primary action:** Upload your menu → (`/create-menu`)
+**Primary action:** Create customer link → (`/create-menu`)
 **Secondary action:** Login (`/signin?callbackUrl=/dashboard`)
 
 **Below card:**
@@ -1518,7 +1637,7 @@ Right-side sticky cards:
 - Extremely clean, centered page
 - No form fields (Google OAuth handles everything)
 - Primary upload path → `/create-menu`; returning-owner sign-in goes to `/dashboard`, while pricing remains available from nav and publish/setup decisions.
-- Supporting cards explain current-menu start, owner approval, and pricing as the next decision without changing auth/payment behavior.
+- Supporting cards explain current public-list start, owner approval, and pricing as the next decision without changing auth/payment behavior.
 
 ---
 
@@ -1600,7 +1719,7 @@ Right-side sticky cards:
 - Multi-Location → `/multi-location`
 - Pricing → `/pricing`
 - Login (subtle sign-in button; no pricing detour)
-- Upload your menu → `/create-menu` (primary button)
+- Create customer link → `/create-menu` (primary button)
 
 ---
 
@@ -1614,19 +1733,19 @@ The footer is now a revenue and trust layer, not only a legal/navigation block. 
 
 Eyebrow:
 
-> Ready when the menu is
+> Ready when the source is
 
 Headline:
 
-> Put your menu online from the version you trust.
+> Put one trusted customer link online.
 
 Body:
 
-> Start from the menu you already have. MenuList prepares the customer-facing version, then keeps your public page, QR, screen, PDF, and links aligned.
+> Start from the menu, price list, catalogue, or service list you already have. MenuList prepares the customer-facing version and keeps the links and materials around it.
 
 Primary CTA:
 
-> Upload your menu →
+> Create customer link →
 
 Secondary CTA:
 
@@ -1640,11 +1759,11 @@ Secondary CTA:
 
 **Logo + tagline:**
 
-> MenuList — One official source for your menu and business details.
+> MenuList - One official source for your menu, services, and business details.
 
 **Source line:**
 
-> MenuList keeps the menu you approve behind the links and materials customers use.
+> MenuList keeps the list you approve behind the links and materials customers use.
 
 **AI summary shortcut:**
 
@@ -1728,12 +1847,13 @@ The removed global helper components were useful during early conversion hardeni
 
 | Page           | Title Tag                                              | Meta Description                                                                                                                           |
 | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Homepage       | MenuList - One Official Menu Source for Customers | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
-| Product        | How MenuList Works — One Menu, Everywhere              | See how MenuList keeps your menu correct across QR, official pages, screens, web links, and print outputs from one approved source.         |
-| Multi-Location | MenuList for Chains & Multi-Location Businesses        | Manage menus across all your locations from one place. Master menu, per-location control, instant sync.                                    |
+| Homepage       | MenuList - One Official Customer Link for Menus and Services | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
+| Product        | How MenuList Works — From Current List to Customer Link | Start from a menu, catalogue, price list, service list, photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version, then keeps supported updates approval-based. |
+| Multi-Location | Multi-Location Source Management — MenuList \| One Source, Every Location | Manage menus and service lists across locations from one approved source. A master source can keep every outlet aligned without manual coordination. |
 | Pricing        | MenuList Pricing — Simple, Transparent Plans           | Start managing your official menu. Simple plans with transparent pricing in INR. No hidden fees.                                           |
 | About          | About MenuList — Built in India for Growing Businesses | MenuList is a public menu infrastructure system built in India for cafes, service businesses, and growing teams that publish customer-facing offers. |
-| Get Started    | Get Started — Create Your Official Menu Source         | Start with your current menu and create the owner-approved source for the customer-facing version of your business. |
+| Get Started    | Get Started — Create Your Customer Link                | Sign in once, add your current menu, catalogue, price list, or service list, and review the prepared preview before publishing your MenuList link. |
+| Resources      | Resources - MenuList \| Keep One Public List Current   | Menu and service-list correctness, QR placement, Google links, PDFs, SEO, AI search discovery, worksheets, and checklists for business owners. |
 | Contact        | Contact MenuList                                       | Have a question about MenuList? Reach out to our team.                                                                                     |
 | Privacy        | Privacy Policy — MenuList                              | MenuList privacy policy. How we handle data, consent-gated website analytics, and retention.                                               |
 | Terms          | Terms of Service — MenuList                            | MenuList terms of service for all users and businesses.                                                                                    |

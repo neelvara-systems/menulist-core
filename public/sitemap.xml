@@ -21,6 +21,12 @@
     <priority>0.92</priority>
   </url>
   <url>
+    <loc>https://menulist.ai/whatsapp</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.94</priority>
+  </url>
+  <url>
     <loc>https://menulist.ai/features/menu-import</loc>
     <lastmod>2026-06-10</lastmod>
     <changefreq>monthly</changefreq>

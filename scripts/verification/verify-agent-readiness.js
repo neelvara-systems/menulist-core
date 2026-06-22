@@ -234,7 +234,7 @@ function verifyMenuListDiscovery() {
   }
   assert(getPlatformDiscoveryBaseUrl() === 'https://menulist.ai', 'MenuList discovery base URL must default to https://menulist.ai');
   assertIncludes(menulistWebsiteConstants, 'getProductDeploymentTarget("menulist", "production").url', 'MenuList website canonical URL constant');
-  assertIncludes(menulistWebsiteConstants, 'MenuList - One Official Menu Source for Customers', 'MenuList website title constant');
+  assertIncludes(menulistWebsiteConstants, 'MenuList - One Official Customer Link for Menus and Services', 'MenuList website title constant');
   assertIncludes(rootLayout, 'MENULIST_SITE_TITLE', 'MenuList root layout metadata');
   assertIncludes(rootLayout, 'MENULIST_SITE_DESCRIPTION', 'MenuList root layout metadata');
   assertIncludes(rootLayout, 'MENULIST_SITE_URL', 'MenuList root layout metadata');

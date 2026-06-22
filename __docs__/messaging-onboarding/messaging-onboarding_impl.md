@@ -1,7 +1,7 @@
 # Messaging Onboarding — Implementation Plan
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
-**Status:** Implementation-Complete — WhatsApp runtime gated until real provider credentials are configured
+**Status:** Implementation-Complete — WhatsApp runtime env enabled; live provider path requires real credentials and webhook registration
 **Architecture:** Firebase Cloud Functions + Firestore State Machine + Provider-Agnostic Adapter Layer
 **Last Updated:** May 17, 2026
 
@@ -1359,10 +1359,10 @@ match /messagingOnboardingEvents/{eventId} {
 | File | Current Value | Purpose |
 | ---- | ------------- | ------- |
 | `src/config/features.ts` → `ENABLE_MESSAGING_ONBOARDING` | `true` | Keeps app/preview surfaces available. |
-| Runtime env `ENABLE_MESSAGING_ONBOARDING` read by `functions/src/messagingOnboarding/constants.ts` | `false` until real provider credentials are configured | Hard-stops Cloud Function webhook/scheduler processing without a code change. |
+| Runtime env `ENABLE_MESSAGING_ONBOARDING` read by `functions/src/messagingOnboarding/constants.ts` | `true` in MenuList Functions env files/templates | Allows Cloud Function webhook/scheduler processing when real provider credentials and Meta webhook registration exist. |
 | Runtime env `MESSAGING_ONBOARDING_PROVIDERS` read by `functions/src/messagingOnboarding/constants.ts` | `whatsapp` | Enables only configured providers. |
 
-Do not enable the Cloud Function runtime flag with dummy WhatsApp secrets. Missing real provider credentials are an operational blocker, not an application fallback case.
+Do not use dummy WhatsApp secrets. Missing real provider credentials are an operational blocker, not an application fallback case.
 
 ### Shared Secrets (All Providers)
 

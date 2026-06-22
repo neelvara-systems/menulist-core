@@ -235,7 +235,7 @@
    firebase functions:secrets:set WHATSAPP_APP_SECRET
    firebase functions:secrets:set WHATSAPP_VERIFY_TOKEN
    ```
-3. Set runtime env `ENABLE_MESSAGING_ONBOARDING=true` only after those secrets are real; optionally set `MESSAGING_ONBOARDING_PROVIDERS=whatsapp`.
+3. Runtime env files now set `ENABLE_MESSAGING_ONBOARDING=true`; verify those secrets are real before routing Meta webhooks to the function. `MESSAGING_ONBOARDING_PROVIDERS=whatsapp` remains the active provider list.
 4. Deploy Cloud Functions: `cd functions && npm run deploy`
 5. Register webhook URL with Meta: `https://us-central1-{project}.cloudfunctions.net/messagingOnboarding/whatsapp`
 6. Deploy Firestore indexes: `firebase deploy --only firestore:indexes`
