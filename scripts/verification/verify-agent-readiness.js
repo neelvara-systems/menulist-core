@@ -223,6 +223,9 @@ function verifyMenuListDiscovery() {
   const rootLayout = read('src/app/layout.tsx');
   const websiteLayout = read('src/app/(website)/layout.tsx');
   const createMenuSuccessPage = read('src/app/(website)/create-menu/success/page.tsx');
+  const signinPage = read('src/app/(global-pages)/signin/page.tsx');
+  const forgotPasswordPage = read('src/app/(global-pages)/forgot-password/page.tsx');
+  const clientMenuPage = read('src/app/client/[[...slug]]/page.tsx');
   const homepage = read('src/app/(website)/page.tsx');
   const nextConfig = read('next.config.js');
   const middleware = read('src/middleware.ts');
@@ -260,6 +263,35 @@ function verifyMenuListDiscovery() {
   assertIncludes(createMenuSuccessPage, 'index: false', 'MenuList create-menu success robots');
   assertIncludes(createMenuSuccessPage, 'follow: false', 'MenuList create-menu success robots');
   assertIncludes(createMenuSuccessPage, 'nocache: true', 'MenuList create-menu success robots');
+  assertIncludes(signinPage, 'index: false', 'MenuList signin page noindex metadata');
+  assertIncludes(signinPage, 'follow: false', 'MenuList signin page noindex metadata');
+  assertIncludes(forgotPasswordPage, 'index: false', 'MenuList forgot-password page noindex metadata');
+  assertIncludes(forgotPasswordPage, 'follow: false', 'MenuList forgot-password page noindex metadata');
+  assertIncludes(clientMenuPage, 'const missingProjectPath = shouldLoadProjectMetadata', 'MenuList stale public menu noindex guard');
+  assertIncludes(clientMenuPage, "reason: 'missing_menu_content' as const", 'MenuList stale public menu noindex reason');
+  assertIncludes(clientMenuPage, 'missingProjectFallbackCanonical', 'MenuList stale public menu canonical fallback');
+  assertIncludes(clientMenuPage, 'Menu not available | ${resolvedStoreName}', 'MenuList stale public menu title');
+  assertIncludes(clientMenuPage, 'let resolvedPublicTruthRobots = publicTruthRobots', 'MenuList stale public menu detail noindex guard');
+  assertIncludes(clientMenuPage, 'contextSegments.length >= 2', 'MenuList stale public menu detail noindex guard');
+  assertIncludes(clientMenuPage, 'Menu detail not available | ${resolvedStoreName}', 'MenuList stale public menu detail title');
+  assertIncludes(middleware, 'NOINDEX_PATH_PREFIXES', 'MenuList middleware noindex path registry');
+  assertIncludes(middleware, "response.headers.set('X-Robots-Tag', 'noindex, nofollow')", 'MenuList middleware X-Robots-Tag noindex header');
+  for (const noindexPrefix of [
+    '/signin',
+    '/forgot-password',
+    '/error',
+    '/dashboard',
+    '/app',
+    '/account',
+    '/billing',
+    '/settings',
+    '/api',
+    '/client',
+    '/create-menu/success',
+    '/create-menu/preview',
+  ]) {
+    assertIncludes(middleware, `'${noindexPrefix}'`, `MenuList middleware noindex prefix ${noindexPrefix}`);
+  }
   assertNotIncludes(nextConfig, "source: '/product', destination: '/how-it-works', permanent: true", 'MenuList global redirects');
   assertIncludes(middleware, "pathname === '/product'", 'MenuList legacy product redirect');
   assertIncludes(middleware, "url.pathname = '/how-it-works'", 'MenuList legacy product redirect');

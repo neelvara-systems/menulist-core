@@ -132,7 +132,7 @@ MenuList SEO language must stay inside these boundaries:
 
 ## Current Baseline
 
-As of June 22, 2026:
+As of June 23, 2026:
 
 - Main website SEO/AEO docs are implemented and current.
 - Platform sitemap/robots/canonical metadata/JSON-LD are verifier-covered.
@@ -142,3 +142,8 @@ As of June 22, 2026:
 - Execution sequence is code-side first. Search Console and other external setup remain queued until the founder starts non-code setup.
 - Positive public `AI-powered` shorthand was removed from AI Menu Manager locale copy and LLM context wording during the first code-side claim-boundary pass.
 - Market scope is broad customer-facing SMBs; restaurants/cafes and salons/spas are proof categories, not product limits.
+- Auth/internal noindex behavior is explicit for `/signin`, `/forgot-password`, app/internal/API paths, and create-menu preview/success transitions.
+- Stale public tenant project/menu slug paths and stale item/category detail paths preserve customer recovery but emit `noindex, follow` and canonicalize to the current tenant/outlet/menu surface.
+- Placeholder-backed salon/spa, service-list, and local-service industry pages now exist for code-side review: `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses`.
+- Placeholder assets remain temporary and must be replaced with routed demo screenshots or permissioned proof before Product Hunt gallery use, paid traffic, broad partner outreach, or final public launch visuals.
+- Search Console remains blocked until production host alignment is fixed: live `menulist.online` serves the app but advertises `menulist.ai`, while `menulist.ai` currently serves a `/lander` shell.

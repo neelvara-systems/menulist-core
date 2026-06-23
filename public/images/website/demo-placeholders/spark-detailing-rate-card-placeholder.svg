@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1270" height="760" viewBox="0 0 1270 760" role="img" aria-labelledby="title desc">
+  <title id="title">Spark Auto Detailing placeholder rate-card demo</title>
+  <desc id="desc">Sample placeholder showing a local service rate card becoming one official customer link.</desc>
+  <rect width="1270" height="760" fill="#f6f9fc"/>
+  <rect x="50" y="46" width="1170" height="668" rx="28" fill="#ffffff" stroke="#d8e5ed" stroke-width="2"/>
+  <text x="88" y="105" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Spark Auto Detailing</text>
+  <text x="88" y="142" fill="#5b6f82" font-family="Inter, Arial, sans-serif" font-size="20">Sample business. Demo data only.</text>
+  <rect x="92" y="192" width="470" height="370" rx="22" fill="#f7fafc" stroke="#d8e5ed"/>
+  <text x="126" y="242" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="800">Old rate-card problem</text>
+  <line x1="126" y1="286" x2="498" y2="286" stroke="#d8e5ed" stroke-width="2"/>
+  <text x="126" y="329" fill="#52677b" font-family="Inter, Arial, sans-serif" font-size="18">Workshop poster has old package prices</text>
+  <text x="126" y="371" fill="#52677b" font-family="Inter, Arial, sans-serif" font-size="18">WhatsApp replies use copied text</text>
+  <text x="126" y="413" fill="#52677b" font-family="Inter, Arial, sans-serif" font-size="18">Instagram story expires or goes stale</text>
+  <text x="126" y="455" fill="#52677b" font-family="Inter, Arial, sans-serif" font-size="18">Customers ask for rates again</text>
+  <rect x="126" y="492" width="278" height="42" rx="21" fill="#fdeeee"/>
+  <text x="148" y="519" fill="#98453f" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">Different copies circulate</text>
+  <path d="M613 376h96" stroke="#5d9ad6" stroke-width="8" stroke-linecap="round"/>
+  <path d="M688 350l30 26-30 26" fill="none" stroke="#5d9ad6" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="768" y="154" width="360" height="470" rx="30" fill="#10233d"/>
+  <rect x="796" y="188" width="304" height="402" rx="22" fill="#ffffff"/>
+  <text x="826" y="238" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Current packages</text>
+  <text x="826" y="271" fill="#52677b" font-family="Inter, Arial, sans-serif" font-size="15">One official customer link</text>
+  <rect x="826" y="312" width="244" height="62" rx="16" fill="#f4f7fa" stroke="#d8e5ed"/>
+  <text x="848" y="338" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">Bike foam wash</text>
+  <text x="848" y="360" fill="#52677b" font-family="Inter, Arial, sans-serif" font-size="14">from $9</text>
+  <rect x="826" y="390" width="244" height="62" rx="16" fill="#f4f7fa" stroke="#d8e5ed"/>
+  <text x="848" y="416" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">Interior clean</text>
+  <text x="848" y="438" fill="#52677b" font-family="Inter, Arial, sans-serif" font-size="14">from $29</text>
+  <rect x="826" y="468" width="244" height="62" rx="16" fill="#f4f7fa" stroke="#d8e5ed"/>
+  <text x="848" y="494" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">Full detailing package</text>
+  <text x="848" y="516" fill="#52677b" font-family="Inter, Arial, sans-serif" font-size="14">inquiry required</text>
+  <rect x="826" y="546" width="244" height="34" rx="17" fill="#0f2945"/>
+  <text x="902" y="568" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="800">WhatsApp inquiry</text>
+  <rect x="88" y="620" width="526" height="42" rx="21" fill="#eef6fd"/>
+  <text x="114" y="647" fill="#234b73" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="800">Placeholder asset - replace with approved screenshot/video</text>
+</svg>

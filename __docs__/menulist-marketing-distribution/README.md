@@ -35,13 +35,21 @@ This follows the existing MenuList marketing strategy: transformation must be vi
 | [menulist-marketing-distribution_research.md](./menulist-marketing-distribution_research.md) | Current market, channel, launch, SEO, messaging, and compliance research |
 | [menulist-marketing-distribution_strategy.md](./menulist-marketing-distribution_strategy.md) | Consultant-level strategy, positioning, funnel, channels, assets, and metrics |
 | [menulist-marketing-distribution_whatsapp-first-hype-strategy.md](./menulist-marketing-distribution_whatsapp-first-hype-strategy.md) | Priority WhatsApp-first moat, hype, SEO, website, product, and compliance plan |
+| [menulist-marketing-distribution_launch-distribution-review.md](./menulist-marketing-distribution_launch-distribution-review.md) | Review of the WhatsApp-first, not WhatsApp-only launch-platform and international-acquisition plan |
+| [menulist-marketing-distribution_end-to-end-growth-research-2026-06-23.md](./menulist-marketing-distribution_end-to-end-growth-research-2026-06-23.md) | End-to-end growth research memo connecting SEO, WhatsApp, outreach, paid, partners, Product Hunt, and the private Growth Engine |
 | [menulist-marketing-distribution_whatsapp-intake-playbook.md](./menulist-marketing-distribution_whatsapp-intake-playbook.md) | Owner-facing WhatsApp intake states, campaign message rules, consent guardrails, and two-surface activation handoff |
+| [menulist-marketing-distribution_whatsapp-compliance-checklist.md](./menulist-marketing-distribution_whatsapp-compliance-checklist.md) | Consent, opt-out, proof-permission, and no-bulk-outreach guardrails for WhatsApp/DM/email campaigns |
+| [menulist-marketing-distribution_whatsapp-seo-content-briefs.md](./menulist-marketing-distribution_whatsapp-seo-content-briefs.md) | WhatsApp SEO/content cluster briefs with proof gates and route deferral rules |
+| [menulist-marketing-distribution_100-smb-lists-ops-playbook.md](./menulist-marketing-distribution_100-smb-lists-ops-playbook.md) | Draft "100 SMB Lists in 100 Hours" challenge operations playbook and run gates |
 | [menulist-marketing-distribution_execution-plan.md](./menulist-marketing-distribution_execution-plan.md) | Sequenced execution calendar and workstreams |
 | [menulist-marketing-distribution_market-clutter-scan.md](./menulist-marketing-distribution_market-clutter-scan.md) | Competitive clutter map and positioning guardrails for QR/menu/site/booking comparisons |
+| [menulist-marketing-distribution_market-pod-lead-board.md](./menulist-marketing-distribution_market-pod-lead-board.md) | Manual international market-pod lead board fields, scoring, statuses, and first-sprint template |
 | [menulist-marketing-distribution_demo-universe.md](./menulist-marketing-distribution_demo-universe.md) | Fictional broad-SMB demo businesses, proof matrix, screenshot requirements, and asset brief |
 | [menulist-marketing-distribution_demo-source-lists.md](./menulist-marketing-distribution_demo-source-lists.md) | Fictional source-list material for the six core demo businesses |
 | [menulist-marketing-distribution_screenshot-capture-plan.md](./menulist-marketing-distribution_screenshot-capture-plan.md) | Route, viewport, redaction, and approval plan for safe launch screenshots |
+| [menulist-marketing-distribution_demo-placeholder-assets.md](./menulist-marketing-distribution_demo-placeholder-assets.md) | Temporary placeholder assets for salon/spa, service-list, local-service pages, and launch-video planning |
 | [menulist-marketing-distribution_product-hunt-asset-pack.md](./menulist-marketing-distribution_product-hunt-asset-pack.md) | Product Hunt thumbnail, gallery, tagline, maker-comment, and reply-bank draft copy |
+| [menulist-marketing-distribution_product-hunt-launch-page-spec.md](./menulist-marketing-distribution_product-hunt-launch-page-spec.md) | Future `/launch/product-hunt` page spec, copy, route gates, and tracking plan |
 | [menulist-marketing-distribution_launch-video-scripts.md](./menulist-marketing-distribution_launch-video-scripts.md) | 10-15 second vertical scripts and 60-90 second walkthrough script |
 | [menulist-marketing-distribution_activation-follow-up.md](./menulist-marketing-distribution_activation-follow-up.md) | Two-surface activation definition, funnel states, tracking columns, and follow-up templates |
 | [menulist-marketing-distribution_founder-post-pack.md](./menulist-marketing-distribution_founder-post-pack.md) | Founder LinkedIn/X launch, pilot, partner, and broad-SMB positioning post drafts |
@@ -82,10 +90,11 @@ The first serious marketing system should be:
 1. Tighten the core public promise around current lists becoming one official customer source.
 2. Treat the first market as customer-facing SMBs with current menus, service lists, price lists, packages, catalogs, or rate cards, not one isolated industry.
 3. Make WhatsApp-first intake the priority India wedge, using `menulist-marketing-distribution_whatsapp-first-hype-strategy.md` as the active plan.
-4. Build a proof asset pack using the demo universe in `menulist-marketing-distribution_demo-universe.md`.
-5. Run a controlled multi-category founder-led pilot before broad paid spend.
-6. Use Product Hunt as a public proof and feedback event, not the primary growth engine.
-7. Use paid ads only after two-surface activation and follow-up conversion are measurable.
+4. Keep the wider launch doctrine WhatsApp-first, not WhatsApp-only: use the local owner messaging/list surface by market.
+5. Build a proof asset pack using the demo universe in `menulist-marketing-distribution_demo-universe.md`.
+6. Run a controlled multi-category founder-led pilot before broad paid spend.
+7. Use Product Hunt as a public proof and feedback event, not the primary growth engine.
+8. Use paid ads only after two-surface activation and follow-up conversion are measurable.
 
 ## Current Next Step
 
@@ -93,9 +102,11 @@ The WhatsApp-first moat plan, public `/whatsapp` route, test-number CTA, and cam
 
 1. replace the supplied test number `+1 555 657 1424` with the final public WhatsApp destination number/account;
 2. confirm response ownership, operating hours, consent copy, and tracking before broad traffic;
-3. prepare fictional or permissioned screenshot/video assets from the WhatsApp conversation demo;
-4. run a small permissioned pilot;
-5. only then launch "100 WhatsApp Lists in 100 Hours" or paid click-to-WhatsApp tests.
+3. replace the temporary placeholder demo assets with fictional routed screenshots or permissioned screenshot/video assets from the WhatsApp conversation demo and demo universe;
+4. use the manual market-pod lead board after founder chooses first city, vertical, contact path, and sender identity;
+5. treat Tuesday, August 11, 2026 as a conditional Product Hunt target, not a scheduled launch;
+6. run a small permissioned pilot;
+7. only then launch "100 WhatsApp Lists in 100 Hours" or paid click-to-WhatsApp tests.
 
 ## Market Reality
 

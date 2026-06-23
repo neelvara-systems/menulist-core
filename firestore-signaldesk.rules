@@ -1,0 +1,244 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /signaldeskTeamMembers/{memberId} {
+      allow read: if isSignalDeskPlatformAdmin()
+        || isSignedInSignalDeskMember()
+        || (isAuthenticated() && memberId == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /signaldeskRolePolicies/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskControlRoomSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskFoundationSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskQueueSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskChannelHealthSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskConnectorSettings/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskSourceHealthSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskAiEvalSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskCostDailySummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskKillSwitches/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskIncidents/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskTargetSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskSourceRunSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskSourcePolicies/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskEvidencePacketSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskDecisionSnapshots/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskTemplateSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskDraftSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskApprovalQueue/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskConversationSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskMessageExports/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskOutcomeSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskDemandSignalSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskWebhookEvents/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskAuditEvents/{docId} {
+      allow read: if isSignalDeskPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /signaldeskIdempotencyKeys/{docId} {
+      allow read, write: if false;
+    }
+
+    match /signaldeskAiOperationLedger/{docId} {
+      allow read: if isSignalDeskPlatformAdmin();
+      allow write: if false;
+    }
+
+    match /signaldeskProviderAccounts/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskBudgetPolicies/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskVendorRuns/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskEnrichmentResults/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskEnrichmentWaterfalls/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskModelRoutes/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskModelEvals/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskApprovalPackets/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskMarketPods/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskAudienceSegments/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskSequencerHandoffs/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskSequencerSteps/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskSenderDomains/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskRunTimelines/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskSelfServiceCtas/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSignalDeskPlatformAdmin() {
+      return isAuthenticated()
+        && request.auth.token.platformRole == 'PLATFORM';
+    }
+
+    function isSignedInSignalDeskMember() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/signaldeskTeamMembers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/signaldeskTeamMembers/$(request.auth.uid)).data.active == true;
+    }
+
+    function canReadSignalDesk() {
+      return isSignalDeskPlatformAdmin() || isSignedInSignalDeskMember();
+    }
+  }
+}

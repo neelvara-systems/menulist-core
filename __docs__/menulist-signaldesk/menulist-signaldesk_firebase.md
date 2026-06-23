@@ -1,0 +1,322 @@
+# MenuList SignalDesk - Firebase Cost Plan
+
+**Status:** Foundation config, connector settings, Apify source broker, owned email sequencer queue, gated provider/source/AI/channel runtime, and investment-control ledgers implemented; deploy skipped in this session
+**Created:** June 23, 2026
+**Cost impact now:** Local verification only; no deployed SignalDesk project or production data writes.
+**Runtime posture:** Dedicated SignalDesk Firebase projects are configured in code but still need owner-side project creation/access before deployment.
+
+## Firebase Target Decision
+
+Proposed projects, not created:
+
+| Environment | Proposed Firebase project |
+| --- | --- |
+| QA/local | `menulist-signaldesk-qa` |
+| Production | `menulist-signaldesk` |
+
+Do not store SignalDesk target, contact, source, message, or suppression data inside MenuList's `menulist` or `menulist-qa` Firestore projects except through a narrow outcome bridge.
+
+Implementation files created:
+
+```txt
+firebase-signaldesk.json
+firestore-signaldesk.rules
+firestore-signaldesk.indexes.json
+storage-signaldesk.rules
+src/lib/firebase/signaldeskConfig.ts
+src/lib/firebase/signaldeskFirebaseClient.ts
+src/lib/firebase/signaldeskFirebaseAdmin.ts
+functions-signaldesk/
+```
+
+Environment variables must use the full `MENULIST_SIGNALDESK_*` prefix. Do not create shorthand env keys such as `SD_*`.
+
+## Cost Principles
+
+SignalDesk must be summary-first.
+
+Hard rules:
+
+1. No dashboard reads raw event collections.
+2. No broad real-time listeners.
+3. No offset pagination.
+4. No giant target documents.
+5. No message arrays inside target documents.
+6. No raw webhook payloads in Firestore.
+7. No raw scraped payloads in Firestore.
+8. No source-provider run without source policy and cost cap.
+9. No AI worker without typed output, prompt version, eval status, and budget cap.
+10. No send/export without suppression check.
+11. No mobile raw PII reads.
+12. No campaign dashboard from raw messages.
+13. No SignalDesk UI reads from MenuList `stores`, `projects`, customer sessions, or owner dashboard collections.
+14. No SignalDesk Cloud Function runs in the default MenuList `functions/` codebase unless it is a tiny MenuList-owned bridge endpoint.
+15. No AI call from list screens, dashboards, or mobile summaries.
+16. No provider webhook writes raw payloads to Firestore.
+17. No contact reveal without audit and role permission.
+
+The corrected review explicitly recommends summary docs such as `leadSummaries`, `targetSummaries`, `conversationSummaries`, `campaignSummaries`, `channelHealthSummaries`, `costDailySummaries`, and `sourceRunSummaries` (`../growth-engine/growth-engine_private-internal-tool-review-2026-06-23.md:359`).
+
+## Summary-First Screen Contract
+
+| Screen | Default reads | Detail reads allowed |
+| --- | --- | --- |
+| `/signaldesk` | `signaldeskControlRoomSummaries`, `signaldeskQueueSummaries`, `signaldeskCostDailySummaries` | No raw events |
+| `/signaldesk/targets` | `signaldeskTargetSummaries` | Target detail only after opening a target |
+| `/signaldesk/imports` | `signaldeskSourceRunSummaries` | Import rows only after opening a run |
+| `/signaldesk/approvals` | `signaldeskApprovalQueue` and compact target refs | Evidence/draft detail only after opening a work item |
+| `/signaldesk/inbox` | `signaldeskConversationSummaries` | Messages only after opening a conversation |
+| `/signaldesk/attribution` | `signaldeskOutcomeSummaries` | Attribution touches only after opening a target/action |
+| `/signaldesk/settings` | `signaldeskConnectorSettings`, `signaldeskSenderDomains`, `signaldeskChannelHealthSummaries`, `signaldeskProviderAccounts` | No raw secrets; no provider payloads |
+| `/signaldesk/control-room` | Control-room, channel, source, AI, queue, cost summaries | Raw incident/debug reads only after admin drill-down |
+
+No default screen may subscribe to a raw collection with a real-time listener.
+
+## Hot Collections
+
+| Collection | Purpose | Normal UI reads |
+| --- | --- | --- |
+| `signaldeskTargetSummaries` | Target list rows | Paginated list, filtered by status/segment/updatedAt |
+| `signaldeskTargets` | Target detail | Single target detail |
+| `signaldeskSourceRunSummaries` | Import/source-run dashboard | Recent bounded list |
+| `signaldeskSourcePolicies` | Approved source rules | Small policy list |
+| `signaldeskContactIdentities` | Contact/channel identities | Target detail only |
+| `signaldeskChannelIdentities` | Email/phone/WhatsApp/social identities | Target detail only |
+| `signaldeskSuppressionLedger` | Unsubscribe/DNC/wrong-contact/complaint/bounce | Identity lookup only |
+| `signaldeskEvidencePacketSummaries` | Evidence rows | Target detail only |
+| `signaldeskDecisionSnapshots` | Decision trail | Target/campaign detail only |
+| `signaldeskTemplateSummaries` | Template list | Small policy list |
+| `signaldeskApprovalQueue` | Human review queue | Paginated queue |
+| `signaldeskConversationSummaries` | Inbox rows | Paginated list |
+| `signaldeskCampaignSummaries` | Campaign/sequence summaries | Small list |
+| `signaldeskOutcomeSummaries` | MenuList outcome attribution | Summary dashboard |
+| `signaldeskDemandSignalSummaries` | QR/link/share/claim signals | Summary dashboard |
+| `signaldeskChannelHealthSummaries` | Sender/channel health | Small summary list |
+| `signaldeskConnectorSettings` | Email, Meta, Apify, and fallback sequencer connector metadata plus env-derived readiness | Settings/channels summary list |
+| `signaldeskCostDailySummaries` | Daily cost by source/worker/channel | Small summary list |
+| `signaldeskIncidents` | Safety/compliance incidents | Paginated list |
+| `signaldeskKillSwitches` | Emergency controls | Small list |
+| `signaldeskAuditEvents` | Mutation/contact reveal/send/export audit | Bounded audit list only |
+| `signaldeskIdentityIndex` | Dedupe lookup by normalized identity hash | Point lookup only |
+| `signaldeskAiOperationLedger` | AI operation accounting | Cost/debug summary writer only |
+| `signaldeskIdempotencyKeys` | Retry and webhook dedupe | Point lookup only |
+| `signaldeskProviderAccounts` | Provider account/use approval and spend caps | Small policy/admin list |
+| `signaldeskBudgetPolicies` | Per-provider/global/route/pod budget caps | Small policy/admin list |
+| `signaldeskVendorRuns` | Provider run readiness/cost/result summary | Recent bounded list |
+| `signaldeskEnrichmentResults` | Normalized field-level enrichment output | Target/source detail and bounded source list |
+| `signaldeskEnrichmentWaterfalls` | Provider order, stop rules, max credits, retention | Small policy/admin list |
+| `signaldeskModelRoutes` | AI task route, provider/model, status, cost cap | Small policy/admin list |
+| `signaldeskModelEvals` | AI route quality summary | AI/admin summary list |
+| `signaldeskApprovalPackets` | Owner-ready decision packet | Approval queue/detail list |
+| `signaldeskMarketPods` | Founder-approved pod plan | Attribution/control-room summary |
+| `signaldeskAudienceSegments` | Dynamic signal/source/outcome criteria | Attribution/control-room summary |
+| `signaldeskSequencerHandoffs` | Owned email queue plus optional external execution-rail readiness | Channels summary list |
+| `signaldeskSequencerSteps` | Owned email step state, schedule, body preview, send status | Channels summary list and future due-step worker |
+| `signaldeskSenderDomains` | Sender auth/ramp/bounce/complaint/unsubscribe/risk | Channels/control-room summary |
+| `signaldeskRunTimelines` | Founder-readable run trace | Control-room bounded list |
+| `signaldeskSelfServiceCtas` | Proof/activation CTA copy | Template/control-room summary |
+
+## Cold / Detail Collections
+
+| Collection | Purpose | UI rule |
+| --- | --- | --- |
+| `signaldeskSourceCandidates` | Imported raw candidate metadata after normalization | Not a dashboard source |
+| `signaldeskImportRows` | Import row status and validation errors | Import detail only |
+| `signaldeskEvidencePackets` | Full evidence and rejected facts | Target detail/debug only |
+| `signaldeskMessages` | Conversation messages | Conversation detail only |
+| `signaldeskMessageEvents` | Delivery/click/reply events | Never dashboard scan |
+| `signaldeskAiWorkerRuns` | AI worker input/output summary | Admin/debug only |
+| `signaldeskEvalRuns` | AI eval results | Admin QA only |
+| `signaldeskWebhookEvents` | Normalized provider webhook events | Admin/debug only |
+| `signaldeskAttributionTouches` | Full attribution chain | Analytics/export only |
+| `signaldeskDataRequests` | Access/correction/deletion requests | Compliance only |
+
+## Write Optimization Contract
+
+Each mutation should write in one bounded unit of work:
+
+1. canonical detail doc or append-only event;
+2. compact summary update;
+3. audit event;
+4. idempotency record for retryable/external actions;
+5. cost ledger record when AI, provider, import, webhook, or export work runs.
+
+Use server transactions only when state consistency requires them. Use batched writes for import rows and summary updates. Do not add new API routes that only re-read Firestore data already available through a product-local DAL.
+
+## Import Optimization
+
+| Step | Optimization |
+| --- | --- |
+| Upload | Store original file in Storage with lifecycle policy. |
+| Normalize | Strip blocked fields before Firestore writes. |
+| Allowed-use guard | Do not normalize, hash, store, index, or suppress-check email/phone/social contact values when the source policy disallows contact use. |
+| Dedupe | Compute identity hashes and query `signaldeskIdentityIndex` by doc ID. |
+| Write | Batch rows in bounded chunks. |
+| Errors | Store compact row errors, not raw row payloads in dashboards. |
+| UI | Read `signaldeskSourceRunSummaries` by status/date. |
+
+## AI Cost Optimization
+
+| Worker | Cache key |
+| --- | --- |
+| Fit/current-list scoring | `targetEvidenceHash + workerVersion + ruleVersion` |
+| Evidence summary | `sourceFactHash + policyVersion + workerVersion` |
+| Draft generation | `templateVersion + variableHash + evidenceHash + guardrailVersion` |
+| Reply classification | `messageHash + classifierVersion + ruleVersion` |
+
+Rules:
+
+- no AI calls from default list/dashboard/mobile views;
+- daily worker budgets stored in `signaldeskCostDailySummaries`;
+- each AI call writes `signaldeskAiOperationLedger`;
+- eval samples are capped;
+- low-confidence output writes review work, not action.
+
+## Webhook and Provider Optimization
+
+- Verify provider signatures before writes where supported.
+- Dedupe by provider event ID through `signaldeskIdempotencyKeys`.
+- Normalize payloads into compact event docs.
+- Store raw payloads only in Storage when proof is required.
+- Update conversation/channel/source summaries in the same worker path.
+- Pause channel automatically when complaint/bounce thresholds cross configured limits.
+
+## Product Boundary Cost Rule
+
+MenuList bridge reads/writes must be sparse and event-shaped:
+
+| Allowed | Blocked |
+| --- | --- |
+| route token lookup | broad MenuList `stores` scan |
+| compact outcome event | direct MenuList `projects` write |
+| linked MenuList reference ID | public menu publish mutation |
+| attribution touch | owner billing mutation |
+| operator evidence note | customer session copy |
+
+Any future MenuList-side bridge route must document its reads/writes in both SignalDesk and MenuList docs before implementation.
+
+## Storage
+
+Use Cloud Storage for:
+
+- original CSV/import files;
+- large source payloads if retention policy allows;
+- raw provider webhook payloads when needed for short-lived audit;
+- evidence bundles too large for Firestore;
+- exports;
+- AI eval datasets;
+- incident evidence packages.
+
+Firestore stores refs, hashes, timestamps, status, compact normalized fields, and retention class.
+
+## Read / Write Cost Model
+
+| Flow | Expected reads | Expected writes | Cost control |
+| --- | ---: | ---: | --- |
+| Manual import 100 rows | 100-400 dedupe/suppression reads | 100 candidate writes + summary writes | Batch writes, hash keys, contact-scoped suppression checks, no raw payload dashboard. |
+| Target list page | 1 paginated query | 0 | Summary collection only, page size 20-50. |
+| Target detail | 5-12 doc reads | 0 | Read only selected detail docs. |
+| AI score target | 2-5 reads | 2-4 writes | Cache by target evidence hash. |
+| Evidence packet | 2-5 reads | 1-3 writes | Store large evidence in Storage. |
+| Draft message | 3-6 reads | 1-2 writes | Template + target + evidence only; no full history. |
+| Approve action | 2-4 reads | 2-5 writes | Write approval, decision snapshot, audit event. |
+| Export/send email | 5-10 reads | 3-8 writes | Recheck suppression and sender; write compact events. |
+| Queue owned email step | 7-12 reads | 5-8 writes | Reuses approved-message, source-policy, sender-domain, pause, and prior-contact checks; writes handoff, step, audit, timeline, and cost. |
+| Send owned email step | 7-12 reads | 8-12 writes | Rechecks pauses, suppression, recipient, email env; writes message export, conversation, handoff, step, target, audit, timeline, and channel health. |
+| Save connector setting | 1-4 reads | 3-5 writes | Writes connector metadata, channel or source status, audit, control summary, and cost summary. No raw secrets stored. |
+| Apify source provider run | 4-8 reads plus per-row import checks | Import-path writes plus 4-7 provider ledger writes | Requires Apify provider account, budget policy, active provider source policy, evidence-use permission, env token/Actor readiness, and per-run cap. Stores normalized target rows and webhook payload hashes only. |
+| Reply capture | 2-6 reads | 3-8 writes | Update conversation summary and target summary. |
+| Outcome event | 2-5 reads | 3-6 writes | Update attribution and summaries, no raw scan. |
+| Dashboard load | 5-15 summary reads | 0 | No raw event/message reads. |
+| Provider budget check | 2-4 reads | 0-2 writes | Read provider account and budget policy; increment spend only after an approved run actually spends. |
+| Enrichment waterfall run | 5-9 reads | 4-5 writes | Check source-provider pause first, reuse existing approved source value when available, otherwise write one ready/blocked vendor summary, result record, timeline, audit, and cost record without external spend. |
+| AI route run | 5-9 reads | 6-10 writes | Check AI-worker pause first; read route/account/budget/evidence, write AI run, snapshot, ledger, eval, spend, timeline, and cost summary. |
+| Approval packet | 4-8 reads | 3-5 writes | Read target/draft/evidence/CTA/sender, write packet, timeline, audit, and optional approval pointer. |
+| Sequencer handoff | 6-10 reads | 3-5 writes | Check approved message, prior contact, provider account, and sender domain; write ready/blocked handoff only. |
+
+## Index Strategy
+
+Minimum indexes:
+
+- target summaries by status + updatedAt;
+- target summaries by segment + updatedAt;
+- target summaries by nextAction + updatedAt;
+- approval queue by status + priority + dueAt;
+- evidence packet summaries by targetId + updatedAt;
+- conversation summaries by status + lastMessageAt;
+- suppression ledger by identityHash + channel;
+- audit events by actorId + createdAt;
+- incidents by status + severity + updatedAt;
+- cost daily summaries by date + category;
+- outcome summaries by date + source/channel.
+
+Do not index:
+
+- raw message body;
+- raw source payload fields;
+- raw webhook payload refs;
+- AI prompt text;
+- full evidence text;
+- unrestricted contact values.
+
+## Retention Defaults
+
+| Data | Default retention |
+| --- | --- |
+| Import CSV | 30 days unless approved longer |
+| Source candidate raw payload | 30 days max unless source policy says shorter |
+| Evidence packet summary | 12 months |
+| Message body | Minimum necessary; exact retention needs compliance decision |
+| Suppression ledger | Indefinite or legal minimum needed to avoid recontact |
+| Audit events | 24 months minimum |
+| AI worker run detail | 90 days, summaries longer |
+| Cost summaries | 24 months |
+
+## Implemented Firebase Foundation
+
+| Area | Current implementation |
+| --- | --- |
+| Firebase CLI config | `firebase-signaldesk.json` points to `functions-signaldesk`, `firestore-signaldesk.rules`, `firestore-signaldesk.indexes.json`, and `storage-signaldesk.rules`. |
+| Firestore rules | Default deny; platform admins and active SignalDesk team members can read allowed collections; all client writes are denied. |
+| Storage rules | Default deny; internal import/evidence/export/incident paths are read-restricted; all client writes/deletes are denied. |
+| Indexes | Summary-first indexes added for targets, approval queue, evidence packet latest-by-target reads, conversations, suppression, audit, incidents, cost, and outcomes. |
+| Admin config | `signaldeskFirebaseAdmin` resolves shared/separate mode, full SignalDesk env names, and optional Firestore database ID. |
+| Client config | `signaldeskFirebaseClient` resolves shared/separate mode without using the default MenuList client for separate projects. |
+| Functions | `functions-signaldesk` builds locally; provider webhooks, AI workers, and scheduled summaries are flag-disabled in the skeleton. |
+| Investment controls | Provider accounts, budget policies, vendor runs, enrichment results, waterfalls, model routes/evals, approval packets, market pods, audience segments, sequencer handoffs, sender domains, run timelines, and self-service CTAs are product-local collections. |
+| Rules for new controls | Client reads are limited to platform admins or active SignalDesk team members; client writes remain denied for every new investment-control collection. |
+
+## Implemented Write Paths
+
+| Flow | Runtime write behavior | Cost control |
+| --- | --- | --- |
+| Default seed | Writes source policy, template, provider accounts, budget policies, model routes, default market pod, audience segment, CTA, waterfall, sender domain, timeline, audit event, and daily cost summary. | Admin-only action, idempotent doc IDs for core defaults, and existing provider/budget spend counters are preserved. |
+| Manual import | Writes source run summary, target summary/detail, source candidate, identity index, contact identity when present, audit event, control summary, and cost summary. | Capped at 50 rows per request; no dashboard reads raw import rows. |
+| Target score | Writes AI worker run, decision snapshot, AI operation ledger, target summary update, audit event, and cost summary. | Rules-based zero-provider-cost scoring until AI provider/eval budget is approved. |
+| Evidence packet | Writes evidence detail, evidence summary, target summary update, audit event, and cost summary. | Detail reads only after target action; summaries feed list views. |
+| Draft and approval | Writes draft summary, approval queue item, approval packet, run timeline, target summary update, queue summary, audit event, and cost summary. | Human approval remains mandatory before export; draft carries evidence refs and CTA refs. |
+| Export | Writes message export, conversation summary, target summary update, approval/draft status update, audit event, and cost summary. | Export-only; provider send remains disabled. |
+| Assisted channel handoff | Writes message export, conversation summary, approval/draft status update, channel health summary, target summary update, audit event, and cost summary. | Requires approved draft, clear suppression, contact-use approval, inactive channel/global kill switches, and email contact readiness when channel is email. |
+| Provider send | Writes message export, conversation summary, approval/draft status update, channel health summary, target summary update, audit event, and cost summary after provider success. | Runtime adapter exists but global provider-send flag remains false until compliance setup is complete. |
+| Provider webhook | Writes normalized webhook event, optional inbound message/conversation, optional suppression event, channel/source health summary, and queue summary where relevant. | Requires HMAC/shared-secret verification and stores payload hash, not raw payload. |
+| Source provider run | Checks source-provider pause, calls approved source provider, writes source-run/import docs through the import path, source health summary, vendor run, run timeline, audit event, provider spend, and provider cost estimate. | Google Places uses a narrow field mask and no contact fields. Apify uses env-controlled Actor ID, 1-20 row cap, max charge cap, no raw dataset storage, and source-policy contact stripping. Foursquare is blocked pending source approval. |
+| AI assist | Checks AI-worker pause, writes AI worker run, decision snapshot, AI operation ledger, model eval, run timeline, provider spend, audit event, and cost summary. | AI route must be active, Gemini-backed, and within provider/budget policy; no AI calls from dashboard/list/mobile views. |
+| Provider/budget/model/waterfall/segment/sender/CTA upserts | Writes the relevant compact control doc, audit event, and cost summary. | All client writes are denied; changes go through protected admin action API and permission checks; provider/budget upserts preserve existing spend counters. |
+| Enrichment waterfall run | Checks source-provider pause, writes one skipped/ready/blocked vendor run summary, normalized enrichment result, run timeline, audit event, and cost summary. | No external provider connector is called yet; approved source values are reused without provider spend. |
+| Approval packet create | Writes or refreshes approval packet, optional approval pointer, run timeline, audit event, and cost summary. | Packet compresses evidence/draft/suppression/source/sender/CTA risk for owner approval. |
+| Sequencer handoff | Writes ready/blocked sequencer handoff, run timeline, audit event, and cost summary. | No Smartlead/Instantly/lemlist API call; readiness requires approved message, provider account approval, prior-contact guard, and sender-domain readiness. |
+| Reply capture | Writes conversation summary, message, reply classification, optional contact-scoped suppression event, target summary update, queue summary, audit event, and cost summary. | DNC/wrong-contact replies use the same email/phone/Instagram/Messenger suppression IDs that import/manual capture checks; manual capture and signed provider webhook capture both normalize into the same conversation/suppression model. |
+| Outcome and demand signal | Writes compact event and summary docs plus audit/control/cost summaries. | SignalDesk-only bridge; no MenuList truth writes. |
+
+## Open Firebase Questions
+
+| Question | Needed before |
+| --- | --- |
+| Create/grant access to exact Firebase project IDs | Deploy rules, indexes, storage rules, and functions |
+| Firestore region | Project creation |
+| Seed admin/team membership source | Non-platform member access |
+| BigQuery export need | Not first build |
+| Message body retention | Inbox implementation |
+| Storage bucket lifecycle | Import/provider implementation |
+| Firestore rules role source for non-platform operators | First non-founder operator account |
+| Apify source Actor selection and terms review | First real Apify run |

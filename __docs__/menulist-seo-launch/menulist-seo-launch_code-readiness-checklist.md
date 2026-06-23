@@ -32,8 +32,8 @@ Only after these are true, and after the founder decides to start non-code setup
 | --- | --- | --- |
 | Canonical domain and URL constants use the production MenuList identity. | `src/constants/menulist/website.ts`, `scripts/verification/verify-agent-readiness.js` | Verify before external setup |
 | Platform sitemap includes only intended public website/resource/industry routes and excludes tenant menu URLs. | `src/app/sitemap.ts`, `src/lib/seo/discoveryPolicy.ts` | Verify before external setup |
-| Platform robots allows public discovery surfaces and blocks private/app/API/internal routes. | `public/robots.txt` | Verify before external setup |
-| Route-level noindex behavior exists for internal, success, preview, or non-discovery states that must not rank. | `src/components/website/WebsiteSuccessPageNoIndex.tsx`, `scripts/verification/verify-agent-readiness.js` | Verify before external setup |
+| Platform robots allows public discovery surfaces and blocks private/app/API/internal routes. | `public/robots.txt`, `src/lib/seo/discoveryPolicy.ts` | Verify before external setup |
+| Route-level/header noindex behavior exists for internal, auth, success, preview, or non-discovery states that must not rank. | `src/app/(global-pages)/signin/page.tsx`, `src/app/(global-pages)/forgot-password/page.tsx`, `src/middleware.ts`, `scripts/verification/verify-agent-readiness.js` | Verify before external setup |
 | Public tenant menu and OBP sitemap inclusion is quality-gated. | `src/lib/seo/publicTruthIndexing.ts`, `src/app/client/sitemap.ts`, `src/app/client/robots.ts` | Verify before external setup |
 | Structured data represents visible page facts and does not include fake reviews, hidden FAQs, invented ratings, or unsupported claims. | `src/components/website/SchemaMarkup.tsx`, `src/components/website/WebsitePageStructuredData.tsx` | Verify before external setup |
 | Public website copy stays inside approved claim boundaries. | `public/locales/menulist.ai/*.json`, `public/llms.txt`, `public/llms-full.txt`, `__docs__/main-website/` | Verify before external setup |
@@ -59,6 +59,16 @@ npx tsc --noEmit --incremental false
 Do not run production builds, Vercel deploys, or external setup unless explicitly requested.
 
 ## Current Baseline
+
+As of June 23, 2026, after validating the external ChatGPT SEO audit:
+
+- `menulist.online` robots/sitemap endpoints returned 200 in live curl checks, but they advertise `menulist.ai` canonical discovery URLs.
+- `menulist.ai` currently returns a `/lander` shell, not the MenuList app, so production host alignment is a blocker before Search Console.
+- `/signin` and `/forgot-password` now have explicit noindex metadata.
+- Middleware now emits `X-Robots-Tag: noindex, nofollow` for auth/app/API/internal/create-menu preview and success paths.
+- Platform robots/discovery policy now includes the missing internal/auth path prefixes.
+- Missing public tenant project/menu slug paths now emit `noindex, follow`, canonicalize to the tenant or outlet root, and remain out of tenant sitemap while keeping the customer fallback ladder.
+- Stale item/category detail paths under a real menu now emit `noindex, follow` and canonicalize to the current menu page.
 
 As of June 22, 2026, after creating this checklist:
 

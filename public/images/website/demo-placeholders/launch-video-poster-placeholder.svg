@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-labelledby="title desc">
+  <title id="title">MenuList launch video poster placeholder</title>
+  <desc id="desc">Vertical placeholder poster for a future MenuList demo walkthrough video.</desc>
+  <rect width="1080" height="1920" fill="#f6f9fc"/>
+  <rect x="90" y="120" width="900" height="1680" rx="54" fill="#ffffff" stroke="#d8e5ed" stroke-width="4"/>
+  <text x="150" y="260" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="62" font-weight="850">MenuList</text>
+  <text x="150" y="338" fill="#52677b" font-family="Inter, Arial, sans-serif" font-size="34">Sample walkthrough placeholder</text>
+  <rect x="150" y="460" width="780" height="640" rx="42" fill="#10233d"/>
+  <circle cx="540" cy="780" r="96" fill="#ffffff" opacity="0.95"/>
+  <path d="M512 726v108l92-54z" fill="#10233d"/>
+  <text x="150" y="1228" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="850">Current list</text>
+  <text x="150" y="1302" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="850">Official customer link</text>
+  <text x="150" y="1376" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="850">Two public surfaces</text>
+  <rect x="150" y="1510" width="700" height="72" rx="36" fill="#eef6fd"/>
+  <text x="190" y="1556" fill="#234b73" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="800">Sample business. Demo data only.</text>
+  <text x="150" y="1668" fill="#52677b" font-family="Inter, Arial, sans-serif" font-size="28">Replace with approved video or final poster before campaign use.</text>
+</svg>

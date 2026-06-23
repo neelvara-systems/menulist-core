@@ -178,6 +178,13 @@ Scheduling rule:
 
 Do not schedule until the asset pack, launch page, and follow-up workflow are ready. Product Hunt allows scheduling up to one month ahead, but early scheduling does not replace readiness.
 
+Conditional target:
+
+- Target date: Tuesday, August 11, 2026.
+- Target time: 12:01am Pacific / 12:31pm IST.
+- Status: target only, not scheduled.
+- Move the date if production WhatsApp readiness, demo proof assets, Product Hunt visuals/video, launch URL, offer, and response coverage are not ready before the scheduling window.
+
 ## Phase 6 - Launch Week
 
 **Goal:** Convert attention into activation paths.
@@ -250,6 +257,40 @@ Stop-loss:
 
 Pause any paid test that generates traffic without activated public businesses.
 
+## Phase 9 - International Market Pods
+
+**Goal:** Reach real SMB owners internationally without pretending every market uses the same front door.
+
+Launch doctrine:
+
+> WhatsApp-first, not WhatsApp-only.
+
+Global promise:
+
+> Send the list your business already uses. MenuList turns it into one official customer link.
+
+Market pods:
+
+| Pod | Markets | Primary front door | Status |
+| --- | --- | --- | --- |
+| 1 | India + GCC | WhatsApp | First controlled pilot and challenge candidate |
+| 2 | LATAM | WhatsApp + Instagram | After India/GCC proof and Spanish/Portuguese review |
+| 3 | US, Canada, Australia, UK | Google/Instagram/upload-first | Use current-list audit and partner motion |
+| 4 | Japan, Taiwan, Thailand | LINE + upload | Research/docs first |
+| 5 | Korea | Kakao + upload | Research/docs first |
+| 6 | China/WeChat | Deferred | Requires local ecosystem, compliance, and partner decision |
+
+Weekly market-pod workflow:
+
+1. Pick one city, one vertical, and one acquisition channel.
+2. Build a 50-100 lead list with visible public-list drift signals.
+3. Score only businesses where the list actually matters to customers.
+4. Send a specific manual audit, not generic SaaS outreach.
+5. Ask for the current list as the first conversion event.
+6. Prepare preview, ask for owner approval, publish link, and activate two customer surfaces.
+
+Do not create `/global`, `/in`, `/ae`, `/us`, `/br`, `/mx`, `/line`, or `/kakao` routes until the relevant pod has proof assets, localized copy, intake path, and owner/compliance decisions.
+
 ## Current Next Step
 
 Founder decision recorded:
@@ -279,8 +320,17 @@ The docs-first launch-support pack is complete, and the WhatsApp-first moat plan
 Next:
 
 1. replace the test number with the official WhatsApp destination and confirm response ownership;
-2. add tracking and consent copy for the direct prefilled WhatsApp CTA;
-3. prepare fictional WhatsApp conversation screenshot/video assets from the on-page demo;
-4. prepare the "100 WhatsApp Lists in 100 Hours" ops plan;
-5. run a small permissioned pilot;
-6. resume Product Hunt/gallery work after WhatsApp proof assets exist.
+2. prepare fictional or permissioned public demo pages, screenshots, and videos from the demo universe;
+3. add tracking and consent copy for the direct prefilled WhatsApp CTA;
+4. choose the first market-pod city, vertical, contact path, and outreach sender identity;
+5. keep Tuesday, August 11, 2026 as a Product Hunt target only if readiness gates pass;
+6. run a small permissioned pilot;
+7. resume Product Hunt/gallery scheduling work only after WhatsApp proof assets and follow-up coverage exist.
+
+Now completed from the prior pending list:
+
+- WhatsApp compliance checklist;
+- WhatsApp SEO/content briefs;
+- "100 SMB Lists in 100 Hours" ops playbook;
+- market-pod lead board template;
+- Product Hunt launch-page spec.

@@ -1,0 +1,44 @@
+# SignalDesk Foundation - Documentation Hub
+
+**Feature:** SignalDesk Foundation
+**Status:** Initial doc set
+**Created:** June 23, 2026
+**Last Updated:** June 23, 2026
+**Parent project:** [MenuList SignalDesk](../README.md)
+
+---
+
+## What This Feature Covers
+
+SignalDesk Foundation is the base layer for the private internal tool:
+
+- internal access boundary;
+- team roles;
+- audit events;
+- contact reveal audit;
+- kill switches;
+- feature/config flags;
+- admin-only control room primitives.
+
+This must exist before target imports, AI scoring, drafts, sends, inbox work, or attribution.
+
+## Quick Navigation
+
+| Document | Purpose |
+| --- | --- |
+| [Specification](./signaldesk-foundation_spec.md) | Business requirements and role model. |
+| [Implementation Plan](./signaldesk-foundation_impl.md) | Technical blueprint and future file/contracts plan. |
+| [Firebase Cost Plan](./signaldesk-foundation_firebase.md) | Collections, reads/writes, audit and kill-switch cost model. |
+| [Compliance Policy](./signaldesk-foundation_compliance.md) | Access, audit, contact reveal, and emergency-control rules. |
+| [Mobile Support](./signaldesk-foundation_mobile-support.md) | Mobile emergency-control scope. |
+| [Test Cases](./signaldesk-foundation_test-cases.md) | Foundation test matrix. |
+
+## Why This Is First
+
+The corrected review says the first build must start with team auth, roles, and audit logs because the internal tool handles PII and send decisions (`../../growth-engine/growth-engine_private-internal-tool-review-2026-06-23.md:215`).
+
+## Version History
+
+| Version | Date | Changes |
+| --- | --- | --- |
+| 0.1 | 2026-06-23 | Created first per-feature SignalDesk doc set. |

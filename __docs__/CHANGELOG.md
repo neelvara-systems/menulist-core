@@ -6,6 +6,108 @@
 
 ---
 
+## June 23, 2026 - MenuList SignalDesk Apify Source Broker
+
+### Added
+
+- **Apify Source Broker added** - SignalDesk can now run an env-controlled Apify source Actor through the existing source-provider flow, with provider approval, budget caps, source-policy enforcement, normalized target imports, connector readiness, and webhook status logging.
+
+### Boundaries
+
+- **No scrape-and-send path** - Apify rows still pass through source policy, dedupe, suppression, evidence, draft, and approval gates before any outreach workflow.
+- **No raw provider payload storage** - Firestore stores normalized target fields, provider run summaries, webhook event metadata, and payload hashes only.
+- **No deploy or send change** - No Firebase deploy, paid campaign automation, provider send enablement, external sequencer API call, or real Apify run was executed.
+
+---
+
+## June 23, 2026 - MenuList Placeholder-Backed Service Industry Pages
+
+### Added
+
+- **Service industry pages added** - Added `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses` using the existing industry landing-page shell and page structured data.
+- **Placeholder demo assets added** - Added labelled sample/demo SVG placeholders for salon service-list proof, multi-category service-list proof, local-service rate-card proof, and a launch-video poster under `public/images/website/demo-placeholders/`.
+- **Discovery coverage added** - Added the new industry URLs to `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`.
+- **Placeholder asset docs added** - Added `menulist-marketing-distribution_demo-placeholder-assets.md` and updated SEO/marketing operating docs.
+
+### Boundaries
+
+- **Placeholders are temporary** - Final routed screenshots/videos or permissioned customer proof still must replace the placeholders before Product Hunt gallery use, paid traffic, broad partner outreach, or final public campaign visuals.
+- **No backend or deploy changed** - No upload/extraction runtime, demo tenant creation, customer menu/OBP runtime, Firebase deploy, Vercel deploy, production build, Search Console setup, sitemap submission, or DNS change was run.
+
+---
+
+## June 23, 2026 - MenuList Stale Public Menu Noindex
+
+### Changed
+
+- **Stale public menu paths noindex added** - Public tenant project/menu URLs that no longer resolve now keep the customer fallback ladder but emit `noindex, follow` metadata instead of inheriting indexable OBP metadata.
+- **Stale menu detail paths noindex added** - Stale item/category detail URLs under a real menu now emit `noindex, follow` and canonicalize to the current menu page.
+- **Stale canonical fallback tightened** - Missing project/menu slug paths now canonicalize back to the tenant or outlet root instead of self-canonicalizing the stale URL.
+- **Verifier updated** - `verify:agent-readiness` now checks the stale public menu noindex guard.
+- **Discovery docs updated** - Public truth indexing docs now record the customer-fallback-but-noindex behavior.
+
+### Boundaries
+
+- **Fallback UX preserved** - Old QR/PWA paths still guide customers back to the current menu or business page.
+- **No external setup** - No Search Console setup, sitemap submission, production build, Vercel deploy, Firebase deploy, DNS change, or customer data change was run.
+
+---
+
+## June 23, 2026 - MenuList Launch Pending Work Cross-Check
+
+### Added
+
+- **WhatsApp compliance checklist added** - Added consent, opt-out, sender identity, proof-permission, data-handling, and no-bulk-outreach guardrails for WhatsApp/DM/email campaigns.
+- **Challenge ops playbook added** - Added the gated `100 SMB Lists in 100 Hours` operating plan, run gates, qualification rules, proof rules, content cadence, stop rules, and pilot version.
+- **WhatsApp SEO briefs added** - Added proof-gated WhatsApp content-route briefs without creating new routes.
+- **Market-pod lead board added** - Added lead-board fields, scoring, status values, CSV header, and first-sprint template for international acquisition.
+- **Product Hunt launch-page spec added** - Added the future `/launch/product-hunt` page spec, copy, route gates, and tracking plan without implementing the route.
+
+### Changed
+
+- **Marketing action register updated** - Codex-side pending docs are now marked done; true blockers remain production WhatsApp account, response ownership, proof assets, founder sender identity, first market-pod choice, pilot businesses, and launch scheduling.
+
+### Boundaries
+
+- **Docs only** - No website route, Product Hunt draft, external account setup, WhatsApp provider change, outreach, paid ad, Firebase deploy, Vercel deploy, or production build was run.
+
+---
+
+## June 23, 2026 - MenuList Launch Distribution Review
+
+### Added
+
+- **Launch distribution review added** - `menulist-marketing-distribution_launch-distribution-review.md` now validates the WhatsApp-first, not WhatsApp-only launch playbook against repo truth and primary platform guidance.
+- **International market-pod plan recorded** - Marketing docs now track India/GCC, LATAM, US/UK/Canada/Australia, LINE-first, Kakao-first, and deferred WeChat paths as gated acquisition pods rather than immediate route work.
+
+### Changed
+
+- **Product Hunt target gated** - Tuesday, August 11, 2026 is documented as a conditional Product Hunt target only, pending production WhatsApp readiness, demo proof assets, launch URL, offer, and response coverage.
+- **SEO launch gates aligned** - SEO docs now keep `/global`, country, LINE, and Kakao pages deferred until proof assets, localization, intake paths, and claim review exist.
+
+### Boundaries
+
+- **Docs only** - No website route, Product Hunt draft, external platform setup, WhatsApp automation, outreach, paid ad, Firebase deploy, Vercel deploy, or production build was run.
+
+---
+
+## June 23, 2026 - MenuList SEO Noindex Hardening
+
+### Changed
+
+- **Auth pages noindex added** - `/signin` and `/forgot-password` now define explicit noindex/nofollow metadata instead of inheriting indexable root metadata.
+- **Internal-route crawler header added** - Middleware now emits `X-Robots-Tag: noindex, nofollow` for auth, dashboard/app/account/billing/settings, API, direct internal client, create-menu success, and create-menu preview paths.
+- **Robots policy expanded** - Platform robots/discovery policy now includes the missing internal/auth path prefixes.
+- **Verifier updated** - `verify:agent-readiness` now checks auth noindex metadata and middleware noindex header coverage.
+- **SEO docs updated** - SEO launch docs record that live `menulist.online` endpoints return 200 but currently advertise `menulist.ai`, while `menulist.ai` itself does not yet serve the MenuList app.
+
+### Boundaries
+
+- **No canonical host switch** - The repo still treats `menulist.ai` as production and `menulist.online` as preview/QA. Changing that requires a deployment/domain decision.
+- **No deployment or external setup** - No Vercel deploy, production build, Firebase deploy, Search Console setup, sitemap submission, or DNS change was run.
+
+---
+
 ## June 22, 2026 - WhatsApp Test CTA Wired
 
 ### Changed

@@ -1,0 +1,130 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "signaldeskTargetSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskTargetSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "segment", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskTargetSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nextAction", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskApprovalQueue",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "priority", "order": "ASCENDING" },
+        { "fieldPath": "dueAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskEvidencePacketSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "targetId", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskConversationSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "lastInboundAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskSuppressionLedger",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "identityHash", "order": "ASCENDING" },
+        { "fieldPath": "channel", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskAuditEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "actorId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskIncidents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "severity", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskCostDailySummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "day", "order": "DESCENDING" },
+        { "fieldPath": "category", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskOutcomeSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "day", "order": "DESCENDING" },
+        { "fieldPath": "source", "order": "ASCENDING" },
+        { "fieldPath": "channel", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskSequencerHandoffs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "provider", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskSequencerSteps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "scheduledAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskSequencerSteps",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sequencerHandoffId", "order": "ASCENDING" },
+        { "fieldPath": "stepNumber", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskConnectorSettings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "connectorKind", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

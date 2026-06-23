@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1270" height="760" viewBox="0 0 1270 760" role="img" aria-labelledby="title desc">
+  <title id="title">MenuList service-list proof grid placeholder</title>
+  <desc id="desc">Sample placeholder showing different SMB list types that can become official customer links.</desc>
+  <rect width="1270" height="760" fill="#f8fafc"/>
+  <rect x="54" y="52" width="1162" height="656" rx="30" fill="#ffffff" stroke="#dbe7ef" stroke-width="2"/>
+  <text x="96" y="116" fill="#0f2945" font-family="Inter, Arial, sans-serif" font-size="36" font-weight="850">Menus, service lists, packages, catalogs, and rates</text>
+  <text x="96" y="154" fill="#5d7082" font-family="Inter, Arial, sans-serif" font-size="20">Sample businesses. Demo data only. Placeholder proof grid.</text>
+  <g font-family="Inter, Arial, sans-serif">
+    <rect x="96" y="210" width="315" height="178" rx="22" fill="#f6f9fc" stroke="#dbe7ef"/>
+    <text x="128" y="260" fill="#0f2945" font-size="24" font-weight="800">Salon service list</text>
+    <text x="128" y="298" fill="#5d7082" font-size="17">Prices, durations, packages</text>
+    <rect x="128" y="326" width="174" height="34" rx="17" fill="#e7f0f8"/>
+    <text x="148" y="349" fill="#234b73" font-size="14" font-weight="800">Official link</text>
+    <rect x="477" y="210" width="315" height="178" rx="22" fill="#f6f9fc" stroke="#dbe7ef"/>
+    <text x="509" y="260" fill="#0f2945" font-size="24" font-weight="800">Local service rate card</text>
+    <text x="509" y="298" fill="#5d7082" font-size="17">Packages, add-ons, inquiry</text>
+    <rect x="509" y="326" width="174" height="34" rx="17" fill="#e7f0f8"/>
+    <text x="529" y="349" fill="#234b73" font-size="14" font-weight="800">WhatsApp link</text>
+    <rect x="858" y="210" width="315" height="178" rx="22" fill="#f6f9fc" stroke="#dbe7ef"/>
+    <text x="890" y="260" fill="#0f2945" font-size="24" font-weight="800">Retail catalog</text>
+    <text x="890" y="298" fill="#5d7082" font-size="17">Seasonal products, prices</text>
+    <rect x="890" y="326" width="174" height="34" rx="17" fill="#e7f0f8"/>
+    <text x="910" y="349" fill="#234b73" font-size="14" font-weight="800">Customer actions</text>
+    <rect x="96" y="432" width="315" height="178" rx="22" fill="#f6f9fc" stroke="#dbe7ef"/>
+    <text x="128" y="482" fill="#0f2945" font-size="24" font-weight="800">Pet grooming list</text>
+    <text x="128" y="520" fill="#5d7082" font-size="17">Size-based services</text>
+    <rect x="128" y="548" width="174" height="34" rx="17" fill="#e7f0f8"/>
+    <text x="148" y="571" fill="#234b73" font-size="14" font-weight="800">Reception QR</text>
+    <rect x="477" y="432" width="315" height="178" rx="22" fill="#f6f9fc" stroke="#dbe7ef"/>
+    <text x="509" y="482" fill="#0f2945" font-size="24" font-weight="800">Photography packages</text>
+    <text x="509" y="520" fill="#5d7082" font-size="17">Starting prices, add-ons</text>
+    <rect x="509" y="548" width="174" height="34" rx="17" fill="#e7f0f8"/>
+    <text x="529" y="571" fill="#234b73" font-size="14" font-weight="800">Inquiry handoff</text>
+    <rect x="858" y="432" width="315" height="178" rx="22" fill="#f6f9fc" stroke="#dbe7ef"/>
+    <text x="890" y="482" fill="#0f2945" font-size="24" font-weight="800">Cafe menu</text>
+    <text x="890" y="520" fill="#5d7082" font-size="17">QR, Google, counter link</text>
+    <rect x="890" y="548" width="174" height="34" rx="17" fill="#e7f0f8"/>
+    <text x="910" y="571" fill="#234b73" font-size="14" font-weight="800">Current menu</text>
+  </g>
+  <rect x="96" y="642" width="536" height="42" rx="21" fill="#eef6fd"/>
+  <text x="122" y="669" fill="#234b73" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="800">Placeholder asset - replace with approved MenuList screenshots</text>
+</svg>

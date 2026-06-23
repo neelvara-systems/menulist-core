@@ -243,12 +243,15 @@ For each tenant:
 | Answerlattice | `localhost:3000/__answerlattice`  | `answerlattice.menulist.online`, `www.answerlattice.menulist.online`           | `answerlattice.com`, `www.answerlattice.com`         | Answerlattice website and product routes          |
 | CampaignCue | `localhost:3000/__campaigncue` | `campaigncue.menulist.online` | `campaigncue.ai`, `www.campaigncue.ai` | CampaignCue website and workspace routes |
 | MyCodex  | `localhost:3000/__mycodex`   | `menulist.digital`, `www.menulist.digital` | `menulist.digital`, `www.menulist.digital` | Internal documentation reader on Vercel      |
+| SignalDesk | `localhost:3000/signaldesk` | `signaldesk.menulist.online` | `signaldesk.menulist.ai` | Private MenuList marketing and distribution app |
 
 Source of truth: `src/constants/deploymentTargets.ts`.
 
 ConstantLayer is deliberately a product-domain site route, not a MenuList tenant/custom domain and not a database-backed product. It rewrites to `/sites/constantlayer`, has no owner/product app route, and uses an empty Firebase project id in `src/constants/deploymentTargets.ts`.
 
 Internal portfolio aliases `/cl`, `/ml`, `/al`, and `/cc` are guarded by `src/middleware.ts` and only resolve on the MyCodex product host or already-resolved MyCodex requests. They do not change product slugs, env names, Firebase targets, or public canonical URLs. `/cl` is only a shortcut to the ConstantLayer public site route group.
+
+SignalDesk also has a MyCodex-host app alias: `/sd`. `https://menulist.digital/sd` rewrites to `/signaldesk`, `/sd/targets` rewrites to `/signaldesk/targets`, and `/sd/signin` rewrites to the shared sign-in page so the callback can return to `/sd`. This alias is for private testing/operation only and does not make SignalDesk a public `/sites` product.
 
 `menulist.digital` is deliberately a product domain, not a MenuList tenant/custom domain. Middleware must rewrite it to `/sites/mycodex` before the client-domain branch can treat unknown hosts as restaurant custom domains.
 
@@ -257,6 +260,8 @@ MyCodex is an internal documentation reader. It reserves `MC` as its internal pr
 MyCodex PWA assets are scoped to the MyCodex product host. `src/app/sites/mycodex/layout.tsx` points to `/mycodex.webmanifest`, `/mycodex-logo.svg`, MyCodex PNG icons, and Apple startup images under `/mycodex-splash/`. `src/components/ServiceWorkerRegister.tsx` registers `/mycodex-sw.js` only when `resolveDomain()` returns the `mycodex` product host. The worker is a private-docs offline shell: it caches `/offline` plus static MyCodex logo assets only, and does not cache markdown, `__docs__` pages, or document HTML.
 
 MyCodex reads markdown from `__docs__` at runtime. `next.config.js` therefore includes `./__docs__/**/*` in `experimental.outputFileTracingIncludes` for `/sites/mycodex` routes so Vercel serverless functions receive the same documentation files that local `/__mycodex` reads from disk. Do not broaden this include to MenuList or Answerlattice routes unless those products also gain explicit filesystem-backed runtime content.
+
+SignalDesk is a private app route, not a public product website. It is declared in `src/constants/deploymentTargets.ts` for URL/Firebase target selection, but it is not registered in `src/constants/productDomains.ts` because there is no `/sites/signaldesk` public site. `src/middleware.ts` handles known SignalDesk hosts separately and rewrites them to `/signaldesk/*`; it also handles the MyCodex-host `/sd` alias. `src/constants/urls.ts` reserves the `signaldesk` subdomain so it is not mistaken for a restaurant tenant. `src/components/signaldesk/SignalDeskPathProvider.tsx` keeps app navigation on `/sd/*` when the request arrived through the alias.
 
 | Env var | Required on Vercel | Purpose |
 | ------- | ------------------ | ------- |
@@ -288,10 +293,11 @@ Used by: CORS (`corsValidation.ts`), sitemap (`sitemap.ts`), screen URLs (`scree
 ### Adding a New Vercel Domain
 
 1. If it is a product/internal platform host, add it to the matching product in `src/constants/deploymentTargets.ts`.
-2. Add or update the product site entry in `src/constants/productDomains.ts`.
-3. Confirm `ALL_PRODUCT_DOMAINS` includes the host so `PLATFORM_DOMAINS` excludes it from tenant/custom-domain routing.
-4. Add the domain to the Vercel project and point DNS to Vercel.
-5. Do not add product hosts through owner custom-domain flows.
+2. Add or update the product site entry in `src/constants/productDomains.ts` when the host serves a public `/sites/{productId}` website.
+3. For private app-only hosts such as SignalDesk, add explicit middleware handling and reserve the subdomain in `src/constants/urls.ts` instead of adding a fake public site.
+4. Confirm product-site hosts appear in `ALL_PRODUCT_DOMAINS`, or private app hosts bypass tenant/custom-domain routing through their dedicated middleware branch.
+5. Add the domain to the Vercel project and point DNS to Vercel.
+6. Do not add product hosts through owner custom-domain flows.
 
 ---
 

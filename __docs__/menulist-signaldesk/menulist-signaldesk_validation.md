@@ -1,0 +1,393 @@
+# MenuList SignalDesk - Implementation Validation
+
+**Status:** Gated runtime expansion, connector settings, Apify source broker, and owned email sequencer queue validated locally; deep flow cross-check complete
+**Created:** June 23, 2026
+**Scope:** Product identity, protected app shell, summary API, kill switch API, workspace read API, action API, internal workflow, gated source/AI/channel/webhook runtime, dedicated Firebase config/rules/indexes/storage rules, and functions skeleton.
+
+## Current Verdict
+
+The SignalDesk internal workflow plus gated runtime expansion is implemented and locally validated.
+
+The implemented flow covers source policy, manual import, dedupe/provenance, rules-based scoring, Google Places source-provider import, Apify Source Broker import, Gemini AI assist with model route/budget gating, evidence packets, evidence-bound drafts, approval packets, connector settings, export-only email rail, owned email sequencer queue, assisted WhatsApp/Instagram/Messenger handoff, sender-domain risk state, blocked/ready external sequencer handoff records, signed provider webhooks, manual inbox replies, outcomes, demand signals, audience segments, market pods, enrichment waterfalls, vendor run ledgers, normalized enrichment results, provider registry, budget policies, model evals, run timelines, self-service CTAs, control-room summaries, workspace reads, and audit.
+
+Provider send is wired but disabled by `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND: false`. It must remain disabled until sender identity, physical address, unsubscribe, bounce/complaint/suppression handling, approved source lists, provider credentials, and project access are ready. Paid campaign automation, real external paid-provider adapters except the gated Apify source broker, real external sequencer API calls, and Firebase deploy were explicitly skipped for this slice.
+
+## From-Scratch Docs/Code Parity Cross-Check - June 23, 2026
+
+The fresh cross-check rebuilt the SignalDesk docs inventory, code inventory, section/action contracts, protected route map, public-surface isolation check, Firebase rule parse, Functions skeleton build, and local route/API smoke from repo truth.
+
+| Finding | Classification | Fix |
+| --- | --- | --- |
+| `/signaldesk/settings` existed in routes, UI nav, and the `SignalDeskSection` union, but `src/app/api/signaldesk/workspace/route.ts` did not accept `settings` in its section allowlist. | Code mismatch | Added `settings` to the protected workspace API section allowlist so authenticated Settings requests load the Settings workspace instead of falling back to dashboard. |
+| `menulist-signaldesk_feature-map.md` still described source-provider runs and assisted channel routing as excluded/later even though the gated Google Places/Apify source providers and assisted channel plumbing are implemented. | Stale docs | Updated the feature map to mark implemented runtime slices, keep cold sends/provider sends/paid campaigns skipped, and reflect monorepo product-isolated runtime status. |
+| `menulist-signaldesk_action-register.md` reused `SD-I034` for two different implementation rows. | Documentation integrity | Renumbered the prior-contact/prior-outcome spend guard row to `SD-I041` and added this parity pass plus the Settings API alignment as tracked actions. |
+
+Final verdict after fixes: PASS for the implemented and intentionally skipped scope. The remaining blockers are still owner/access/policy blockers, not code/docs parity failures.
+
+## Apify Source Broker - June 23, 2026
+
+SignalDesk now includes Apify as a gated source/evidence broker. It does not run arbitrary browser-supplied Actors, does not store raw dataset payloads, and does not bypass source policy or approval gates.
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Feature gate | `src/config/features.ts` adds `ENABLE_MENULIST_SIGNALDESK_APIFY_SOURCE_BROKER` beside the broader source-provider flag. |
+| Env constants | `src/constants/signaldesk/integrations.ts` adds `MENULIST_SIGNALDESK_APIFY_API_TOKEN`, `MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID`, `MENULIST_SIGNALDESK_APIFY_WEBHOOK_SECRET`, and the Apify API base URL. |
+| Types | `src/types/signaldesk/index.ts` adds `apify` to source provider, provider, and connector kind unions, with connector channel `source`. |
+| Source adapter | `src/lib/signaldesk/sourceProviders.ts` runs the env-controlled Actor through Apify's synchronous dataset-items endpoint, normalizes `owner/actor` slugs to Apify's `owner~actor` API form, applies both returned-row and charge caps, and normalizes rows into target import fields. |
+| Workflow guard | `src/lib/signaldesk/workflowServer.ts` blocks Apify when the broker flag is off, requires source-provider policy/evidence use, checks provider account and budget, writes provider spend, and imports through the existing target import path. |
+| Defaults | `src/lib/signaldesk/workflowServer.ts` seeds Apify as disabled/owner-held until the source Actor, policy, and budget are approved. |
+| Connector settings | `src/lib/signaldesk/workflowServer.ts` derives Apify readiness from env without storing token/secret values; `src/components/signaldesk/SignalDeskWorkspace.tsx` exposes Apify in Settings. |
+| Sources UI | `src/components/signaldesk/SignalDeskWorkspace.tsx` adds Apify as a source provider, a max-results cap input, and an owner approval control for the Apify discovery provider account. |
+| API validation | `src/app/api/signaldesk/actions/route.ts` validates Apify source runs, provider accounts, and connector settings through the existing protected action API. |
+| Webhook status events | `src/app/api/signaldesk/webhooks/[provider]/route.ts` and `src/lib/signaldesk/webhookServer.ts` accept `/api/signaldesk/webhooks/apify`, verify a shared secret header, store only normalized event metadata and payload hash, and update source health. |
+| Documentation | `__docs__/menulist-signaldesk/menulist-signaldesk_apify-source-broker.md` records the source-policy, provider approval, env Actor, no-raw-payload, and no-direct-send rules. |
+
+Final cross-check fix: the adapter now accepts copied `owner/actor-name` values by normalizing them to Apify's `owner~actor-name` API form, sends both `limit` and `maxItems`, and uses the same 5-25 cent estimated cap that the provider budget guard checks before the external call.
+
+## Owned Email Sequencer Self-Build - June 23, 2026
+
+The third-party sequencer review changed the implementation order. SignalDesk now attempts the self-owned path first and keeps Smartlead/Instantly/lemlist as optional fallback rails.
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Self-build decision | `__docs__/menulist-signaldesk/signaldesk-email-rail/signaldesk-email-rail_owned-sequencer.md` records why low-volume owned sequencing is feasible before Smartlead. |
+| Feature gate | `src/config/features.ts` adds `ENABLE_MENULIST_SIGNALDESK_OWNED_EMAIL_SEQUENCER` while keeping `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND` disabled. |
+| Types | `src/types/signaldesk/index.ts` adds `owned-email`, sequencer provider typing, queued approval state, handoff fields, and `SignalDeskSequencerStepSummary`. |
+| Collections | `src/constants/signaldesk/database.ts` adds `signaldeskSequencerSteps`; `firestore-signaldesk.rules` allows internal read-only access; `firestore-signaldesk.indexes.json` adds handoff and step indexes. |
+| Defaults | `src/lib/signaldesk/workflowServer.ts` seeds `owned-email` as an approved internal sequencer provider with no external credential requirement. |
+| Queue creation | `src/lib/signaldesk/workflowServer.ts` creates an `owned-email` handoff plus ready step only after approved-message, sender-domain, email-env, source-policy, suppression, prior-contact, global/email/campaign pause, and audit gates. |
+| Send execution | `src/lib/signaldesk/workflowServer.ts` adds `sendSignalDeskOwnedSequenceStepServer`, which remains blocked while provider send is disabled and rechecks pauses, suppression, recipient, and email readiness before SMTP send. |
+| API | `src/app/api/signaldesk/actions/route.ts` adds `send-owned-sequence-step` validation, permission mapping, and safe block errors. |
+| Client DAL | `src/database/signaldesk/index.ts` adds the new action to the SignalDesk action union. |
+| UI | `src/components/signaldesk/SignalDeskWorkspace.tsx` defaults the Channels screen to `owned-email`, supports owned rail approval, sender ready/hold controls, queue creation, handoff listing, step listing, and gated send-step action. |
+
+## Connector Settings - June 23, 2026
+
+SignalDesk now has a dedicated internal Settings surface for email SMTP, Meta WhatsApp, Meta Instagram, Meta Messenger, and Smartlead fallback connector records.
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Route | `src/app/(signaldesk)/signaldesk/settings/page.tsx` renders the Settings workspace section. |
+| Nav and screen | `src/components/signaldesk/SignalDeskWorkspace.tsx` adds Settings navigation, connector form state, connector save action, connector list, sender-domain controls, channel health, and provider account summaries. |
+| Types | `src/types/signaldesk/index.ts` adds `settings`, connector kind/readiness/secret-state types, and `SignalDeskConnectorSettingSummary`. |
+| Collection | `src/constants/signaldesk/database.ts` adds `signaldeskConnectorSettings`. |
+| Env constants | `src/constants/signaldesk/integrations.ts` adds full-name Smartlead env keys and reuses the existing full-name email/Meta env keys. |
+| Server action | `src/lib/signaldesk/workflowServer.ts` adds env-derived connector readiness and `upsertSignalDeskConnectorSettingServer`. |
+| API | `src/app/api/signaldesk/actions/route.ts` validates `upsert-connector-setting`, maps it to `channel.configure`, and routes through the existing protected action API. |
+| Client DAL | `src/database/signaldesk/index.ts` adds the new action to the client action union. |
+| Rules/indexes | `firestore-signaldesk.rules` exposes connector settings as read-only to SignalDesk users; `firestore-signaldesk.indexes.json` adds the connector kind/status index. |
+| Security boundary | `__docs__/menulist-signaldesk/menulist-signaldesk_connector-settings.md` records the no-raw-secret storage rule. |
+
+## Owner Control Reframe - June 23, 2026
+
+The founder POV is now part of the implementation record: SignalDesk should market and distribute MenuList with Danny mainly observing, monitoring, approving, pausing, or redirecting.
+
+| Area | Evidence |
+| --- | --- |
+| Owner-control doctrine | `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:8` through `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:24` defines the founder/system responsibility split. |
+| Automation ladder | `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:35` through `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:46` keeps record/recommend/prepare/assist separate from disabled send and skipped spend. |
+| Approval boundaries | `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:88` through `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:100` lists the human-approved gates. |
+| Dashboard copy | `src/components/signaldesk/SignalDeskWorkspace.tsx:34` through `src/components/signaldesk/SignalDeskWorkspace.tsx:52` frames dashboard/target/approval pages around observe, monitor, and approve. |
+| Dashboard operating strip | `src/components/signaldesk/SignalDeskWorkspace.tsx:203` through `src/components/signaldesk/SignalDeskWorkspace.tsx:219` renders Observe, Monitor, Approve as the first dashboard model. |
+| Control-room audit reasons | `src/components/signaldesk/SignalDeskWorkspace.tsx:360` through `src/components/signaldesk/SignalDeskWorkspace.tsx:410` removes operator-centric approval/pause reason strings. |
+| Responsive UI style | `src/components/signaldesk/SignalDeskWorkspace.module.scss:117` through `src/components/signaldesk/SignalDeskWorkspace.module.scss:144` styles the dashboard operating strip. |
+
+## Web Research Gate Additions - June 23, 2026
+
+The web research pass added only gates that fit the owner-control model. It did not enable provider send, paid campaigns, Firebase deploy, public pages, or extra source providers.
+
+| Area | Evidence |
+| --- | --- |
+| Research addendum | `__docs__/menulist-signaldesk/menulist-signaldesk_web-research-addendum-2026-06-23.md:1` through `__docs__/menulist-signaldesk/menulist-signaldesk_web-research-addendum-2026-06-23.md:124` records sources, adopted gates, rejected additions, and follow-up work. |
+| Compliance additions | `__docs__/menulist-signaldesk/menulist-signaldesk_compliance.md:33` through `__docs__/menulist-signaldesk/menulist-signaldesk_compliance.md:48` adds sender, Meta channel, Places, TCPA, and AI risk rules. |
+| Owner-control gates | `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:48` through `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:58` defines sender health, channel window, source retention, AI risk, and consent gates. |
+| Investment posture | `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:60` through `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:74` allows paid AI/provider use only behind policy, budget, provenance, suppression, and approval controls. |
+| Approval-packet shape | `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:115` through `__docs__/menulist-signaldesk/menulist-signaldesk_owner-control-model.md:127` defines the owner approval packet. |
+| Backlog items | `__docs__/menulist-signaldesk/menulist-signaldesk_action-register.md:61` through `__docs__/menulist-signaldesk/menulist-signaldesk_action-register.md:65` adds implementation follow-ups for sender health, channel windows, source retention, approval packets, and AI quality monitoring. |
+
+## Solo-Founder Investment Plan - June 23, 2026
+
+The solo-founder investment plan adds paid AI/provider strategy without enabling provider send, buying accounts, running external providers, implementing paid campaigns, or deploying Firebase.
+
+| Area | Evidence |
+| --- | --- |
+| Core investment posture | `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:8` through `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:40` defines SignalDesk as the internal MenuList distribution operating system and keeps founder posture observe/monitor/approve/pause-or-redirect. |
+| Research sources | `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:42` through `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:58` records Apollo, Hunter, ZeroBounce, Places, Firecrawl, Tavily, Exa, OpenAI, Gemini, Anthropic, Resend/Postmark, FTC, Gmail, and market-practice source inputs. |
+| Recommended stack | `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:60` through `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:75` defines provider candidates, sequencer/execution-rail candidates, and hard gates. |
+| Market-practice updates | `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:77` through `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:90` records the added waterfall, duplicate guard, audience/signal, sequencer, sender-domain, run timeline, and self-service CTA updates. |
+| Apollo boundary | `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:92` through `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:115` allows Apollo for high-value B2B/company/person enrichment while rejecting blind mass imports and contact reveal before source policy approval. |
+| AI router | `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:117` through `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:140` defines cheap-model versus strong-model routing and hard AI limits. |
+| Operating agents and data model | `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:142` through `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:182` defines the internal agent graph and data additions. |
+| Budget and build order | `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:184` through `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:221` defines budget tiers, provider purchase cautions, and build slices A-J. |
+| First 30 days and non-negotiables | `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:223` through `__docs__/menulist-signaldesk/menulist-signaldesk_solo-founder-investment-plan-2026-06-23.md:273` defines the first operating plan, success metrics, boundaries, and next recommendation. |
+| Action register | `__docs__/menulist-signaldesk/menulist-signaldesk_action-register.md:36` through `__docs__/menulist-signaldesk/menulist-signaldesk_action-register.md:81` tracks the new documentation and implementation actions. |
+| Founder decisions | `__docs__/menulist-signaldesk/menulist-signaldesk_action-register.md:111` through `__docs__/menulist-signaldesk/menulist-signaldesk_action-register.md:116` adds paid-provider budget, eval-set, strong-model budget, sequencer rail, sender-domain risk, and self-service CTA decisions. |
+
+## Market Practice Cross-Check - June 23, 2026
+
+The market-practice cross-check reviewed current Clay/Apollo/no-code/sequencer/deliverability patterns and updated the SignalDesk plan without enabling providers, sequencers, sender automation, scraping, paid campaigns, or deploys.
+
+| Area | Evidence |
+| --- | --- |
+| Research verdict | `__docs__/menulist-signaldesk/menulist-signaldesk_market-practice-cross-check-2026-06-23.md:8` through `__docs__/menulist-signaldesk/menulist-signaldesk_market-practice-cross-check-2026-06-23.md:41` defines the market stack and rejected scrape/enrich/auto-send shortcut. |
+| Sources reviewed | `__docs__/menulist-signaldesk/menulist-signaldesk_market-practice-cross-check-2026-06-23.md:43` through `__docs__/menulist-signaldesk/menulist-signaldesk_market-practice-cross-check-2026-06-23.md:61` records Clay, Smartlead, lemlist, n8n, Zapier, Make, Instantly, Gmail, Gartner, and over-automation source inputs. |
+| Adopted updates | `__docs__/menulist-signaldesk/menulist-signaldesk_market-practice-cross-check-2026-06-23.md:63` through `__docs__/menulist-signaldesk/menulist-signaldesk_market-practice-cross-check-2026-06-23.md:167` defines data layer, waterfall, duplicate guard, signal plays, personalization, sequencer, no-code, deliverability, and self-service proof updates. |
+| Rejected practices and final shape | `__docs__/menulist-signaldesk/menulist-signaldesk_market-practice-cross-check-2026-06-23.md:169` through `__docs__/menulist-signaldesk/menulist-signaldesk_market-practice-cross-check-2026-06-23.md:199` rejects unsafe market practices and defines the updated SignalDesk operating shape. |
+
+## Investment-Control Runtime - June 23, 2026
+
+The non-paid, non-deploy investment-control slice is implemented. It adds internal controls and summary records before any paid-provider scale, without connecting Apollo/Hunter/ZeroBounce/Firecrawl/Tavily/Exa/Postmark/Resend/Smartlead/Instantly/lemlist accounts.
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Shared types | `src/types/signaldesk/index.ts:55` through `src/types/signaldesk/index.ts:76` defines provider, budget, status, and AI task unions; `src/types/signaldesk/index.ts:340` through `src/types/signaldesk/index.ts:524` defines provider accounts, budgets, vendor runs, enrichment results, waterfalls, model routes/evals, approval packets, market pods, audience segments, sequencer handoffs, sender domains, run timelines, and CTAs. |
+| Workspace payload | `src/types/signaldesk/index.ts:561` through `src/types/signaldesk/index.ts:591` adds the new summary arrays to `SignalDeskWorkspaceData`. |
+| Collections | `src/constants/signaldesk/database.ts:50` through `src/constants/signaldesk/database.ts:63` defines the new product-local collections. |
+| Firestore rules | `firestore-signaldesk.rules:145` through `firestore-signaldesk.rules:213` allows only authenticated SignalDesk readers to read the new summary collections and denies client writes. |
+| Workspace defaults | `src/lib/signaldesk/workflowServer.ts:233` through `src/lib/signaldesk/workflowServer.ts:264` initializes the new workspace arrays. |
+| Budget guard | `src/lib/signaldesk/workflowServer.ts:379` through `src/lib/signaldesk/workflowServer.ts:435` checks provider account approval, per-run/daily/monthly caps, provider budget policy, and writes spend increments. |
+| Prior-contact guard | `src/lib/signaldesk/workflowServer.ts:437` through `src/lib/signaldesk/workflowServer.ts:461` blocks suppressed, contacted, replied, converted, outcome-bearing, or non-new-conversation targets. |
+| Approval packet helper | `src/lib/signaldesk/workflowServer.ts:511` through `src/lib/signaldesk/workflowServer.ts:554` creates packet risk/action summaries from evidence, draft, sender readiness, suppression, and prior-contact state. |
+| Model route guard | `src/lib/signaldesk/workflowServer.ts:556` through `src/lib/signaldesk/workflowServer.ts:572` resolves active model routes, blocks non-Gemini runtime providers, and checks AI provider budget. |
+| Evidence-bound draft fields | `src/lib/signaldesk/workflowServer.ts:649` through `src/lib/signaldesk/workflowServer.ts:680` injects proof CTA copy and evidence IDs into rendered drafts. |
+| Default investment controls | `src/lib/signaldesk/workflowServer.ts:841` through `src/lib/signaldesk/workflowServer.ts:1019` seeds provider accounts, budget policies, model routes, market pod, audience segment, CTA, waterfall, sender domain, and defaults timeline. |
+| Control upserts | `src/lib/signaldesk/workflowServer.ts:1056` through `src/lib/signaldesk/workflowServer.ts:1244` implements provider account, budget policy, model route, waterfall, audience segment, sender domain, and self-service CTA upserts. |
+| Enrichment waterfall runtime | `src/lib/signaldesk/workflowServer.ts:1246` through `src/lib/signaldesk/workflowServer.ts:1410` checks source policy, prior-contact state, existing approved data, provider budget readiness, writes vendor runs, enrichment results, timeline, audit, and cost summary without external provider spend. |
+| Approval packet action | `src/lib/signaldesk/workflowServer.ts:1413` through `src/lib/signaldesk/workflowServer.ts:1480` builds or refreshes approval packets and links them to approvals. |
+| Sequencer handoff action | `src/lib/signaldesk/workflowServer.ts:1483` through `src/lib/signaldesk/workflowServer.ts:1531` writes ready/blocked sequencer handoffs after approved-message, provider account, sender-domain, recipient, and prior-contact checks. |
+| Source provider ledger | `src/lib/signaldesk/workflowServer.ts:1748` through `src/lib/signaldesk/workflowServer.ts:1778` adds vendor run, provider spend, and run timeline writes to source-provider runs. |
+| AI route/eval runtime | `src/lib/signaldesk/workflowServer.ts:1844` through `src/lib/signaldesk/workflowServer.ts:1938` routes AI assist through model routes/budget checks, writes model evals, provider spend, run timeline, and cost summary. |
+| Draft approval packet | `src/lib/signaldesk/workflowServer.ts:1989` through `src/lib/signaldesk/workflowServer.ts:2098` blocks non-evidence/non-personalization/prior-contact targets, writes evidence-bound draft fields, creates approval packet, and writes approval timeline. |
+| Approval review packet sync | `src/lib/signaldesk/workflowServer.ts:2101` through `src/lib/signaldesk/workflowServer.ts:2145` syncs approval decisions into approval packets. |
+| API schemas and actions | `src/app/api/signaldesk/actions/route.ts:45` through `src/app/api/signaldesk/actions/route.ts:271` validates the new action envelope and payloads; `src/app/api/signaldesk/actions/route.ts:273` through `src/app/api/signaldesk/actions/route.ts:347` maps permissions and safe block errors; `src/app/api/signaldesk/actions/route.ts:524` through `src/app/api/signaldesk/actions/route.ts:612` executes the new actions. |
+| Workspace UI controls | `src/components/signaldesk/SignalDeskWorkspace.tsx:474` through `src/components/signaldesk/SignalDeskWorkspace.tsx:520` wires waterfall, packet, sequencer, provider approval, and sender-domain actions; `src/components/signaldesk/SignalDeskWorkspace.tsx:614` through `src/components/signaldesk/SignalDeskWorkspace.tsx:642` renders provider/budget policy controls; `src/components/signaldesk/SignalDeskWorkspace.tsx:681` through `src/components/signaldesk/SignalDeskWorkspace.tsx:720` renders approval packets; `src/components/signaldesk/SignalDeskWorkspace.tsx:795` through `src/components/signaldesk/SignalDeskWorkspace.tsx:909` renders audience/market pod/waterfall/vendor/result controls; `src/components/signaldesk/SignalDeskWorkspace.tsx:913` through `src/components/signaldesk/SignalDeskWorkspace.tsx:1062` renders AI route/eval and sender/sequencer controls; `src/components/signaldesk/SignalDeskWorkspace.tsx:1065` through `src/components/signaldesk/SignalDeskWorkspace.tsx:1107` renders run timelines, CTAs, and investment holds. |
+
+## Runtime Expansion - June 23, 2026
+
+The second implementation pass completed the remaining non-paid, non-deploy runtime work:
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Runtime flags | `src/config/features.ts:31` through `src/config/features.ts:45` keep SignalDesk private, enable source providers, AI provider calls, provider webhooks, and assisted channels, and keep provider send disabled. |
+| Integration constants | `src/constants/signaldesk/integrations.ts:1` through `src/constants/signaldesk/integrations.ts:32` define full `MENULIST_SIGNALDESK_*` env names, Google Places Text Search endpoint/field mask, Gemini model default, and Meta Graph version. |
+| Source providers | `src/lib/signaldesk/sourceProviders.ts:44` through `src/lib/signaldesk/sourceProviders.ts:68` call Google Places Text Search with a narrow field mask and capped results; `src/lib/signaldesk/sourceProviders.ts:71` through `src/lib/signaldesk/sourceProviders.ts:74` blocks Foursquare until source approval. |
+| Source-provider action | `src/lib/signaldesk/workflowServer.ts:1715` through `src/lib/signaldesk/workflowServer.ts:1781` gates provider runs by feature flag, active provider source policy, evidence approval, provider budget, import reuse, vendor ledger, timeline, audit, and cost tracking. |
+| AI assist | `src/lib/signaldesk/aiProvider.ts:31` through `src/lib/signaldesk/aiProvider.ts:36` limits the assistant to supplied facts; `src/lib/signaldesk/aiProvider.ts:58` through `src/lib/signaldesk/aiProvider.ts:92` calls the Gemini gateway and returns JSON-only output. |
+| AI action | `src/lib/signaldesk/workflowServer.ts:1844` through `src/lib/signaldesk/workflowServer.ts:1938` gates AI provider calls through model route and provider budget, stores worker run/snapshot/ledger/eval/timeline data, and records cost. |
+| Channel readiness/send adapter | `src/lib/signaldesk/providerAdapters.ts:22` through `src/lib/signaldesk/providerAdapters.ts:66` requires channel credentials and email compliance fields; `src/lib/signaldesk/providerAdapters.ts:74` through `src/lib/signaldesk/providerAdapters.ts:151` implements SMTP and Meta send adapters without enabling send. |
+| Assisted channel handoff | `src/lib/signaldesk/workflowServer.ts:2256` through `src/lib/signaldesk/workflowServer.ts:2283` creates approved-message handoffs for assisted channels without provider send and blocks email handoff when sender domain is not ready. |
+| Provider send hard stop | `src/lib/signaldesk/workflowServer.ts:2285` through `src/lib/signaldesk/workflowServer.ts:2322` keeps real send behind the disabled provider-send flag plus channel and sender-domain readiness checks. |
+| Signed webhooks | `src/app/api/signaldesk/webhooks/[provider]/route.ts:26` through `src/app/api/signaldesk/webhooks/[provider]/route.ts:61` exposes only signed provider POST handling with rate limiting and generic rejection. |
+| Signature-before-DB order | `src/lib/signaldesk/webhookServer.ts:97` through `src/lib/signaldesk/webhookServer.ts:115` verifies email or Meta signatures before acquiring Firebase; unsigned local webhook smoke returned HTTP 400 with `Invalid SignalDesk webhook signature`. |
+| Webhook normalization | `src/lib/signaldesk/webhookServer.ts:117` through `src/lib/signaldesk/webhookServer.ts:203` stores normalized events, inbound messages, suppression records, and channel health summaries. |
+| Workspace reads | `src/lib/signaldesk/workflowServer.ts:720` through `src/lib/signaldesk/workflowServer.ts:817` adds bounded workspace reads for approvals, templates, attribution, policies, sources, AI, channels, control room, and audit. |
+| Action API | `src/app/api/signaldesk/actions/route.ts:45` through `src/app/api/signaldesk/actions/route.ts:72` adds source-provider, AI, handoff, send, and investment-control action names; `src/app/api/signaldesk/actions/route.ts:142` through `src/app/api/signaldesk/actions/route.ts:271` validates their payloads; `src/app/api/signaldesk/actions/route.ts:273` through `src/app/api/signaldesk/actions/route.ts:299` gates them by permission. |
+| UI | `src/components/signaldesk/SignalDeskWorkspace.tsx:83` through `src/components/signaldesk/SignalDeskWorkspace.tsx:100` adds Source, AI, Channels, and Control Room navigation; `src/components/signaldesk/SignalDeskWorkspace.tsx:453` through `src/components/signaldesk/SignalDeskWorkspace.tsx:535` wires provider, AI, waterfall, packet, sequencer, sender-domain, handoff, and send actions; `src/components/signaldesk/SignalDeskWorkspace.tsx:913` through `src/components/signaldesk/SignalDeskWorkspace.tsx:1062` renders the AI/channel runtime panels. |
+
+## Cross-Check Hardening - June 23, 2026
+
+The post-implementation cross-check found and fixed five internal workflow gaps before handoff:
+
+| Area | Finding | Fix Evidence |
+| --- | --- | --- |
+| Firebase config fallback | Server code could try the expected SignalDesk project ID without explicit SignalDesk Firebase config. | `src/lib/firebase/signaldeskConfig.ts:69` through `src/lib/firebase/signaldeskConfig.ts:76` require explicit client/admin config for separate mode; `src/lib/signaldesk/server.ts:19` through `src/lib/signaldesk/server.ts:23`, `src/lib/signaldesk/access.ts:53` through `src/lib/signaldesk/access.ts:57`, and `src/lib/signaldesk/workflowServer.ts:187` through `src/lib/signaldesk/workflowServer.ts:190` return no DB unless SignalDesk Firebase is configured or the emulator is active. |
+| Validation logging | Action and kill-switch validation failures returned 400 without the SignalDesk security log path. | `src/lib/signaldesk/apiGuards.ts:19` through `src/lib/signaldesk/apiGuards.ts:31` adds `logSignalDeskValidationFailure`; `src/app/api/signaldesk/actions/route.ts:354` through `src/app/api/signaldesk/actions/route.ts:376` uses it for action payload validation; `src/app/api/signaldesk/kill-switches/route.ts:42` through `src/app/api/signaldesk/kill-switches/route.ts:50` uses it for pause input validation. |
+| Source-policy allowed use | Import previously stored contact values and contact identity hashes even when a source policy disallowed contact use. | `src/lib/signaldesk/workflowServer.ts:334` through `src/lib/signaldesk/workflowServer.ts:345` centralizes policy use; `src/lib/signaldesk/workflowServer.ts:612` through `src/lib/signaldesk/workflowServer.ts:624` makes contact-free identity hashing possible; `src/lib/signaldesk/workflowServer.ts:1534` through `src/lib/signaldesk/workflowServer.ts:1699` only reads, stores, suppresses, and indexes contact data when contact use is approved. |
+| Evidence and draft gates | Drafts could be queued without an evidence packet, and evidence always allowed draft personalization. | `src/lib/signaldesk/workflowServer.ts:1941` through `src/lib/signaldesk/workflowServer.ts:1987` requires source-policy evidence approval and only adds draft personalization when approved; `src/lib/signaldesk/workflowServer.ts:1989` through `src/lib/signaldesk/workflowServer.ts:2015` blocks drafts without evidence, personalization approval, draft-ready target state, or prior-contact clearance. |
+| Export readiness | Export trusted approval state without proving draft existence, draft approval, evidence, contact policy, and contact readiness. | `src/lib/signaldesk/workflowServer.ts:2324` through `src/lib/signaldesk/workflowServer.ts:2352` blocks export unless the approval, target, draft, evidence, contact policy, contactability, suppression, prior-contact state, and kill-switch gates all pass. |
+
+Additional API hardening: `src/app/api/signaldesk/actions/route.ts:301` through `src/app/api/signaldesk/actions/route.ts:352` now returns only allowlisted workflow-state errors to callers and masks unknown action failures.
+
+## Deep Flow Cross-Check - June 23, 2026
+
+The latest end-to-end flow audit checked action schemas, permissions, workflow guards, UI action wiring, Firestore rules/indexes, cost counters, source/evidence/draft/channel paths, and documentation parity. It found and fixed seven concrete runtime gaps:
+
+| Area | Finding | Fix Evidence |
+| --- | --- | --- |
+| Provider credential gate | Approved/evaluation provider accounts with missing credentials could pass the budget gate before failing later in the provider adapter. | `src/lib/signaldesk/workflowServer.ts:379` through `src/lib/signaldesk/workflowServer.ts:413` now blocks missing credentials inside the provider budget guard; `src/app/api/signaldesk/actions/route.ts:301` through `src/app/api/signaldesk/actions/route.ts:340` returns that workflow hold as a safe action error. |
+| Spend counter preservation | Default seed and provider/budget config upserts reset daily/monthly spend counters to zero. | `src/lib/signaldesk/workflowServer.ts:850` through `src/lib/signaldesk/workflowServer.ts:940` preserves existing provider and budget spend during default seeding; `src/lib/signaldesk/workflowServer.ts:1087` through `src/lib/signaldesk/workflowServer.ts:1145` preserves spend during provider account and budget policy upserts. |
+| Latest evidence reads | Draft, packet, and AI paths read an arbitrary evidence packet for a target when multiple packets existed. | `src/lib/signaldesk/workflowServer.ts:271` through `src/lib/signaldesk/workflowServer.ts:273` orders target evidence by `updatedAt` descending; `firestore-signaldesk.indexes.json:36` through `firestore-signaldesk.indexes.json:42` adds the matching composite index. |
+| Waterfall vendor ledger | Waterfall runs pre-wrote synthetic skipped rows for every provider before budget checks. | `src/lib/signaldesk/workflowServer.ts:1358` through `src/lib/signaldesk/workflowServer.ts:1429` now writes one accurate vendor run summary for reused source data, ready-held provider state, or blocked provider reasons, and lowers the write estimate accordingly. |
+| AI route cost cap | AI route estimates could inflate low model-route caps to the minimum estimate before budget checking. | `src/lib/signaldesk/workflowServer.ts:562` through `src/lib/signaldesk/workflowServer.ts:574` now honors the configured route cap and blocks zero-cost executable routes. |
+| Assisted email parity | Assisted/provider email handoff checked sender readiness but did not enforce the same contact-ready guard as manual email export. | `src/lib/signaldesk/workflowServer.ts:2278` through `src/lib/signaldesk/workflowServer.ts:2322` now blocks email handoff/send unless target contactability is ready. |
+| Suppression reimport safety | DNC/wrong-contact replies wrote target-scoped suppression records, while imports checked contact-scoped email/phone suppression records. | `src/lib/signaldesk/workflowServer.ts:1589` through `src/lib/signaldesk/workflowServer.ts:1597` checks email, phone, and Instagram suppression during import; `src/lib/signaldesk/workflowServer.ts:2211` through `src/lib/signaldesk/workflowServer.ts:2227` maps replies to the same contact-scoped suppression IDs; `src/lib/signaldesk/workflowServer.ts:2499` through `src/lib/signaldesk/workflowServer.ts:2510` writes those suppression records from DNC/wrong-contact replies. |
+
+## Owner-Operator Page and Workflow Audit - June 23, 2026
+
+This audit treated MenuList as the operator's own product and SignalDesk as the system that must let the founder observe, monitor, approve, pause, and redirect distribution.
+
+| Page / flow | Owner-use verdict |
+| --- | --- |
+| Dashboard | Usable as the owner operating view: observe/monitor/approve strip, metrics, operating state, safety, queues, cost, and incidents are loaded from bounded summaries. |
+| Targets | Usable for first source-list work: import, score, evidence, and draft actions are wired to guarded server workflows. Remaining runtime validation intentionally blocks bad order, suppressed targets, or missing evidence. |
+| Imports | Usable as source-run history; suppression and duplicate counts are visible from compact summaries. |
+| Policies | Hardened for owner control: source policy creation now exposes contact/evidence/personalization permissions, provider policies default to evidence-only, and provider registry quick approvals cover Google Places and Gemini. See `src/components/signaldesk/SignalDeskWorkspace.tsx:341` through `src/components/signaldesk/SignalDeskWorkspace.tsx:379` and `src/components/signaldesk/SignalDeskWorkspace.tsx:637` through `src/components/signaldesk/SignalDeskWorkspace.tsx:700`. |
+| Templates | Usable for draft creation and draft review; draft runtime still blocks missing evidence, missing personalization permission, prior contact, and non-draft-ready targets. |
+| Approvals | Usable for packet review, approve/reject, and manual export; export still rechecks suppression, source contact permission, draft approval, evidence, contact readiness, prior contact, and pause state. |
+| Inbox | Hardened for real owner operation: manual reply capture now lets the owner choose email, manual, WhatsApp, Instagram, or Messenger instead of silently recording every reply as email. See `src/app/api/signaldesk/actions/route.ts:122` through `src/app/api/signaldesk/actions/route.ts:126` and `src/components/signaldesk/SignalDeskWorkspace.tsx:800` through `src/components/signaldesk/SignalDeskWorkspace.tsx:811`. |
+| Attribution | Usable for manual outcome and demand-signal capture; remains SignalDesk-only and does not mutate MenuList store/project truth. |
+| Sources | Hardened for live source-provider work: source-provider runs now require provider source policies in the UI instead of accidentally using a manual policy; provider/source pause is enforced server-side. See `src/components/signaldesk/SignalDeskWorkspace.tsx:901` through `src/components/signaldesk/SignalDeskWorkspace.tsx:935` and `src/lib/signaldesk/workflowServer.ts:1286` through `src/lib/signaldesk/workflowServer.ts:1289`. |
+| AI | Hardened for owner cost control: AI route runs honor configured caps, require provider credentials/budget, and now stop when `ai-worker` is paused. See `src/lib/signaldesk/workflowServer.ts:1814` through `src/lib/signaldesk/workflowServer.ts:1817` and `src/lib/signaldesk/workflowServer.ts:1875` through `src/lib/signaldesk/workflowServer.ts:1880`. |
+| Channels | Usable for approved handoff, sequencer-ready/blocked records, sender-domain visibility, channel health, and webhook visibility. Real provider send remains disabled. |
+| Control Room | Hardened for real operations: global pause remains in the header and scoped pause now supports email, WhatsApp, Instagram, Messenger, source provider, AI worker, campaign, and MenuList bridge scopes. See `src/components/signaldesk/SignalDeskWorkspace.tsx:1144` through `src/components/signaldesk/SignalDeskWorkspace.tsx:1167` and `src/lib/signaldesk/workflowServer.ts:334` through `src/lib/signaldesk/workflowServer.ts:337`. |
+| Audit | Usable as admin-only action history behind `audit.view`. |
+| Webhooks | Hardened for channel safety: provider webhook suppression now maps email, WhatsApp, Instagram, and Messenger to the same contact-scoped suppression IDs used by import/manual reply checks. See `src/lib/signaldesk/webhookServer.ts:21` through `src/lib/signaldesk/webhookServer.ts:27`, `src/lib/signaldesk/webhookServer.ts:104` through `src/lib/signaldesk/webhookServer.ts:115`, and `src/lib/signaldesk/webhookServer.ts:190` through `src/lib/signaldesk/webhookServer.ts:200`. |
+| UI resilience | Hardened for long operator data: row/list text now wraps instead of overflowing compact tables, and policy checkboxes collapse to one column on narrow screens. See `src/components/signaldesk/SignalDeskWorkspace.module.scss:41` through `src/components/signaldesk/SignalDeskWorkspace.module.scss:45`, `src/components/signaldesk/SignalDeskWorkspace.module.scss:413` through `src/components/signaldesk/SignalDeskWorkspace.module.scss:437`, and `src/components/signaldesk/SignalDeskWorkspace.module.scss:468` through `src/components/signaldesk/SignalDeskWorkspace.module.scss:471`. |
+
+## Runtime Evidence
+
+| Area | Evidence |
+| --- | --- |
+| Product code | `src/constants/product.ts:13` defines the product ID map and `src/constants/product.ts:18` adds `SIGNALDESK: 'SD'`. |
+| Deployment target | `src/constants/deploymentTargets.ts:12` includes `signaldesk`; local/preview/production Firebase targets are set at `src/constants/deploymentTargets.ts:59`, `src/constants/deploymentTargets.ts:103`, and `src/constants/deploymentTargets.ts:147`. |
+| Feature flags | `src/config/features.ts:24` records the private/internal boundary and `src/config/features.ts:31` through `src/config/features.ts:45` add the SignalDesk runtime flags with provider send disabled. |
+| Full env names | `src/constants/signaldesk/firebase.ts:10` through `src/constants/signaldesk/firebase.ts:26` use only `MENULIST_SIGNALDESK_*` and `NEXT_PUBLIC_MENULIST_SIGNALDESK_*` names. |
+| Env validation | `src/lib/env/validateEnv.ts:25` imports SignalDesk env keys, `src/lib/env/validateEnv.ts:82` through `src/lib/env/validateEnv.ts:95` add SignalDesk to the product env matrix, and `src/lib/env/validateEnv.ts:104` through `src/lib/env/validateEnv.ts:110` adds the display name. |
+| Routes | `src/constants/signaldesk/routes.ts:1` through `src/constants/signaldesk/routes.ts:20` define internal app and API paths under `/signaldesk` and `/api/signaldesk`. |
+| Collections | `src/constants/signaldesk/database.ts:1` through `src/constants/signaldesk/database.ts:56` define product-local SignalDesk collections and summary doc IDs. |
+| Protected shell | `src/app/(signaldesk)/layout.tsx:40` through `src/app/(signaldesk)/layout.tsx:62` enforce the feature flag, auth session, active/verified user state, platform block check, and SignalDesk access context before rendering. |
+| Internal UI | `src/components/signaldesk/SignalDeskWorkspace.tsx:37` through `src/components/signaldesk/SignalDeskWorkspace.tsx:100` define the first route modules, and `src/components/signaldesk/SignalDeskWorkspace.tsx:139` through `src/components/signaldesk/SignalDeskWorkspace.tsx:205` wire summary refresh and global pause actions. |
+| Roles and access | `src/lib/signaldesk/access.ts:6` through `src/lib/signaldesk/access.ts:49` define roles/permissions, and `src/lib/signaldesk/access.ts:76` through `src/lib/signaldesk/access.ts:119` resolves platform admin or active team-member access. |
+| API guards | `src/lib/signaldesk/apiGuards.ts:12` through `src/lib/signaldesk/apiGuards.ts:49` enforce runtime and permission checks; `src/lib/signaldesk/apiGuards.ts:51` through `src/lib/signaldesk/apiGuards.ts:77` apply rate limits. |
+| Overview API | `src/app/api/signaldesk/overview/route.ts:14` through `src/app/api/signaldesk/overview/route.ts:35` protect the route, rate-limit it, and return no-store overview data. |
+| Kill switch API | `src/app/api/signaldesk/kill-switches/route.ts:18` through `src/app/api/signaldesk/kill-switches/route.ts:31` validate input, and `src/app/api/signaldesk/kill-switches/route.ts:33` through `src/app/api/signaldesk/kill-switches/route.ts:73` protect, permission-check, rate-limit, and execute the update. |
+| Summary-first server read | `src/lib/signaldesk/server.ts:193` through `src/lib/signaldesk/server.ts:247` read control-room, queue, cost, kill-switch, and incident summaries only. |
+| Kill-switch write path | `src/lib/signaldesk/server.ts:254` through `src/lib/signaldesk/server.ts:315` writes the kill switch, audit event, and control-room summary in bounded operations. |
+| Workspace API | `src/app/api/signaldesk/workspace/route.ts` protects section-specific bounded reads behind `withAuth()`, permission checks, and `DATA_READ` rate limits. |
+| Action API | `src/app/api/signaldesk/actions/route.ts` validates every workflow action with Zod, gates each action by permission, and applies write/AI rate limits. |
+| Workflow service | `src/lib/signaldesk/workflowServer.ts` implements source policies, target import, dedupe, scoring, evidence, drafts, approvals, exports, replies, outcomes, demand signals, summaries, and audit writes. |
+| Workspace UI | `src/components/signaldesk/SignalDeskWorkspace.tsx` renders module-specific controls for targets, imports, policies, templates, approvals, inbox, attribution, control room, and audit. |
+| Client DAL/hook | `src/database/signaldesk/index.ts` and `src/hooks/signaldesk/useSignalDeskOverview.ts` use the protected workspace/action APIs without direct client Firestore reads. |
+| Firebase config | `src/lib/firebase/signaldeskConfig.ts:23` through `src/lib/firebase/signaldeskConfig.ts:68` resolve expected project, mode, config presence, and shared/separate behavior. |
+| Firebase client | `src/lib/firebase/signaldeskFirebaseClient.ts:27` through `src/lib/firebase/signaldeskFirebaseClient.ts:42` use shared or dedicated client resources without defaulting separate projects to MenuList data. |
+| Firebase admin | `src/lib/firebase/signaldeskFirebaseAdmin.ts:144` through `src/lib/firebase/signaldeskFirebaseAdmin.ts:181` resolve and export the SignalDesk admin app, Firestore, Storage, and Auth handles. |
+| Firebase CLI config | `firebase-signaldesk.json:1` through `firebase-signaldesk.json:25` points the SignalDesk codebase to dedicated functions, Firestore rules/indexes, and Storage rules. |
+| Firestore rules | `firestore-signaldesk.rules:5` through `firestore-signaldesk.rules:7` default deny all documents; `firestore-signaldesk.rules:21` through `firestore-signaldesk.rules:99` allow read-only access to approved internal collections; `firestore-signaldesk.rules:110` through `firestore-signaldesk.rules:127` define auth/member checks. |
+| Storage rules | `storage-signaldesk.rules:5` through `storage-signaldesk.rules:27` default deny and restrict internal paths; `storage-signaldesk.rules:29` through `storage-signaldesk.rules:46` define auth/member checks. |
+| Functions skeleton | `functions-signaldesk/package.json:4` through `functions-signaldesk/package.json:14` define build/deploy/log scripts; `functions-signaldesk/src/index.ts:5` through `functions-signaldesk/src/index.ts:27` defines the health check; `functions-signaldesk/src/constants/features.ts:1` through `functions-signaldesk/src/constants/features.ts:6` keeps provider, AI, and scheduled work disabled. |
+| Build separation | `tsconfig.json:68` through `tsconfig.json:73` exclude `functions-signaldesk` from the main Next.js typecheck, and `.gitignore:18` through `.gitignore:21` ignore generated functions output. |
+
+## Verification Commands
+
+| Command | Result |
+| --- | --- |
+| `npx tsc --noEmit --incremental false --pretty false` | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after investment-control implementation | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after deep flow cross-check | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after owner-operator page/workflow audit | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after owned email sequencer implementation | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after connector settings implementation | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after Apify Source Broker implementation | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after final Apify Source Broker cross-check | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after from-scratch docs/code parity cross-check | Passed. |
+| `npm install` in `functions-signaldesk/` | Passed; local shell is Node 18 while the functions package declares Node 22, so npm printed an engine warning. |
+| `npm run build` in `functions-signaldesk/` | Passed. |
+| `npm run build` in `functions-signaldesk/` after from-scratch docs/code parity cross-check | Passed. |
+| `firebase emulators:exec --only firestore,storage --project demo-signaldesk --config firebase-signaldesk.json "true"` | Passed; Firestore and Storage emulators parsed the SignalDesk config/rules and exited cleanly. |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` after investment-control rules update | Passed; Firestore emulator parsed the new SignalDesk rules and exited cleanly. |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` after deep flow cross-check | Passed; Firestore emulator parsed rules and the new evidence-packet index. |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` after owner-operator page/workflow audit | Passed. |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` after owned email sequencer rules/index update | Passed; Firestore emulator parsed the owned sequencer step rules and indexes. |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` after connector settings rules/index update | Passed; Firestore emulator parsed connector settings rules and indexes. |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` after Apify Source Broker implementation | Passed; Firestore emulator parsed SignalDesk rules and indexes. |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` after final Apify Source Broker cross-check | Passed; Firestore emulator parsed SignalDesk rules and indexes. |
+| `firebase emulators:exec --only firestore,storage --project demo-signaldesk --config firebase-signaldesk.json "true"` after from-scratch docs/code parity cross-check | Passed; Firestore and Storage rules parsed. |
+| Local route smoke on `npx next dev -p 3003` for all 13 SignalDesk pages | Passed; `/signaldesk`, `/targets`, `/imports`, `/approvals`, `/templates`, `/inbox`, `/attribution`, `/policies`, `/sources`, `/ai`, `/channels`, `/control-room`, and `/audit` compiled and returned HTTP 200 locally. |
+| Local route smoke on `npx next dev -p 3004` after owned email sequencer implementation | Passed; all 13 SignalDesk pages compiled and returned HTTP 200 locally. |
+| Local route smoke on `npx next dev -p 3005` after connector settings implementation | Passed; all 14 SignalDesk pages including `/signaldesk/settings` compiled and returned HTTP 200 locally. |
+| Local route smoke on `npx next dev -p 3006` after Apify Source Broker implementation | Passed; all 14 SignalDesk pages compiled and returned HTTP 200 locally. |
+| Local route smoke on `npx next dev -p 3007` after final Apify Source Broker cross-check | Passed; all 14 SignalDesk pages compiled and returned HTTP 200 locally. |
+| Local route smoke on `npx next dev -p 3008` after from-scratch docs/code parity cross-check | Passed; all 14 SignalDesk pages compiled and returned HTTP 200 locally. |
+| Local route/routing smoke on `npx next dev -p 3000` after URL routing alignment | Passed; `/signaldesk/settings` returned HTTP 200 with `X-Robots-Tag: noindex, nofollow`; `Host: signaldesk.menulist.ai` plus `/targets` returned HTTP 200 with `x-middleware-rewrite: /signaldesk/targets` and SignalDesk product headers. |
+| Local MyCodex-host alias smoke on `npx next dev -p 3000` after `/sd` routing | Passed; `Host: menulist.digital` plus `/sd`, `/sd/targets`, and `/sd/settings` returned HTTP 200 with `x-product-base-path: /sd`, SignalDesk product headers, noindex, and rewrites to `/signaldesk*`; `/sd/signin?callbackUrl=/sd` rewrote to `/signin`; `Host: menulist.ai` plus `/sd` returned HTTP 404. |
+| Browser alias sign-in smoke with Chrome host resolver for `menulist.digital -> 127.0.0.1` | Passed; unauthenticated `http://menulist.digital:3000/sd` landed at `/sd/signin?callbackUrl=%2Fsd`, preserving the SignalDesk testing alias. |
+| Local unauthenticated API smoke on `npx next dev -p 3003` | Passed; overview, workspace, actions, and kill-switch APIs returned HTTP 401 with security logging. |
+| Local unauthenticated API smoke on `npx next dev -p 3004` after owned email sequencer implementation | Passed; overview, channels workspace, `send-owned-sequence-step`, and kill-switch APIs returned HTTP 401 with security logging. |
+| Local unauthenticated API smoke on `npx next dev -p 3005` after connector settings implementation | Passed; overview, settings workspace, `upsert-connector-setting`, and kill-switch APIs returned HTTP 401 with security logging. |
+| Local unauthenticated API smoke on `npx next dev -p 3006` after Apify Source Broker implementation | Passed; overview/workspace/action/kill-switch APIs returned HTTP 401, and unsigned `/api/signaldesk/webhooks/apify` returned HTTP 400. |
+| Local unauthenticated API smoke on `npx next dev -p 3007` after final Apify Source Broker cross-check | Passed; overview, sources workspace, Apify source-run action, Apify connector action, and kill-switch APIs returned HTTP 401; unsigned `/api/signaldesk/webhooks/apify` returned HTTP 400. |
+| Local unauthenticated API smoke on `npx next dev -p 3008` after from-scratch docs/code parity cross-check | Passed; overview, dashboard/settings/audit workspace APIs, seed/defaults, Apify run, connector action, and kill-switch returned HTTP 401; unsigned Apify webhook returned HTTP 400; unknown webhook provider returned HTTP 404. |
+| Local unauthenticated API smoke on `npx next dev -p 3000` after URL routing alignment | Passed; `/api/signaldesk/workspace?section=settings` returned HTTP 401 with `X-Robots-Tag: noindex, nofollow`. |
+| SignalDesk enum/contract parity script after from-scratch docs/code parity cross-check | Passed; section, nav, action, connector, and kill-switch contracts match across types, routes, DAL, and UI. |
+| SignalDesk docs integrity script after from-scratch docs/code parity cross-check | Passed; 104 active SignalDesk docs follow naming rules and have no duplicate action-register IDs. |
+| Public-surface isolation scan after from-scratch docs/code parity cross-check | Passed; no SignalDesk exposure found in public website, sitemap, robots, middleware public/client shells, or website components. |
+| `npx next dev -p 3002` then `curl -I -sS http://localhost:3002/signaldesk` | Passed; `/signaldesk` compiled and responded `200 OK` in the local dev server. |
+| `curl -I -sS http://localhost:3002/signaldesk/sources` | Passed; `/signaldesk/sources` responded `200 OK`. |
+| `curl -I -sS http://localhost:3002/signaldesk/ai` | Passed; `/signaldesk/ai` responded `200 OK`. |
+| `curl -I -sS http://localhost:3002/signaldesk/channels` | Passed; `/signaldesk/channels` responded `200 OK`. |
+| `curl -I -sS http://localhost:3002/signaldesk` after owner-control UI update | Passed; `/signaldesk` responded `200 OK`. |
+| `curl -i -sS http://localhost:3002/api/signaldesk/overview` without a session | Passed; returned `401 Unauthorized`. |
+| `curl -i -sS http://localhost:3002/api/signaldesk/workspace?section=targets` without a session | Passed; returned `401 Unauthorized`. |
+| `curl -i -sS http://localhost:3002/api/signaldesk/actions ...` without a session | Passed; returned `401 Unauthorized`. |
+| `curl -i -sS http://localhost:3002/api/signaldesk/kill-switches ...` without a session | Passed; returned `401 Unauthorized`. |
+| `curl -i -sS http://localhost:3002/api/signaldesk/webhooks/whatsapp ...` without a Meta signature | Passed; returned `400 Webhook rejected` and logged `Invalid SignalDesk webhook signature` before Firebase access. |
+| `rg -n "signaldesk|SignalDesk" public 'src/app/(website)' src/components/website public/sitemap.xml public/robots.txt src/middleware.ts src/app/client src/components/templates/main-app` | Passed; no public website, sitemap, robots, middleware, client-shell, or app-template exposure found. |
+| `git diff --check` | Passed. |
+| `git diff --check` after investment-control implementation | Passed. |
+| `git diff --check` after owned email sequencer implementation | Passed. |
+| `git diff --check` after connector settings implementation | Passed. |
+| `git diff --check` after Apify Source Broker implementation | Passed. |
+| `git diff --check` after final Apify Source Broker cross-check | Passed. |
+| `git diff --check` after from-scratch docs/code parity cross-check | Passed. |
+| `rg -n "[ \t]+$" src/lib/signaldesk/workflowServer.ts src/app/api/signaldesk/actions/route.ts firestore-signaldesk.indexes.json firestore-signaldesk.rules __docs__/menulist-signaldesk/menulist-signaldesk_validation.md __docs__/menulist-signaldesk/menulist-signaldesk_firebase.md` | Passed; no trailing whitespace found in touched SignalDesk files. |
+| `rg -n "[ \t]+$" ...owned sequencer touched files` | Passed; no trailing whitespace found in touched code, rules, indexes, or docs. |
+| `rg -n "[ \t]+$" ...connector settings touched files` | Passed; no trailing whitespace found in touched code, rules, indexes, or docs. |
+| `rg -n "[[:blank:]]$" ...Apify Source Broker touched files` | Passed; no trailing whitespace found in touched code or docs. |
+| `rg -n "[[:blank:]]$" ...final Apify Source Broker cross-check files` | Passed; no trailing whitespace found in touched code or docs. |
+| `rg -n "[[:blank:]]$" ...from-scratch docs/code parity touched files` | Passed; no trailing whitespace found in touched code or docs. |
+| `rg -n "[[:blank:]]$" ...touched SignalDesk docs` | Passed for action register, implementation plan, Firebase plan, validation, solo-founder investment plan, and market-practice cross-check; no trailing whitespace found. |
+
+## Confirmed Boundaries
+
+- No public SignalDesk website page was created.
+- No SignalDesk route was added to MenuList owner/customer navigation.
+- No SignalDesk route was added to the public sitemap or robots surfaces.
+- Dedicated SignalDesk hostnames rewrite to the private `/signaldesk` app and are reserved away from MenuList tenant/custom-domain routing.
+- MyCodex-host `/sd` is an internal testing/operation alias for SignalDesk only; it does not change canonical product domains or expose a public SignalDesk website.
+- No MenuList `stores`, `projects`, menu publish, billing, or customer output path was changed for SignalDesk.
+- No external provider account was configured; internal provider registry records and held defaults were implemented.
+- No raw connector secrets are stored in Firestore; connector settings store metadata and env-derived secret states only.
+- No raw Apify dataset payload is stored in Firestore; Apify source rows normalize into target imports and webhook events store payload hashes only.
+- No arbitrary browser-supplied Apify Actor ID is accepted; Apify source execution uses `MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID`.
+- No real source import ran during local verification.
+- No real Apify run was executed during local verification.
+- No target, contact, message, or suppression data was created during local verification.
+- No provider send was enabled or executed.
+- Owned email sequencer queue was implemented, but no owned email was sent because provider send remains disabled.
+- No paid provider account was purchased, connected, or configured.
+- No new AI model provider beyond the existing gated Gemini assist path was implemented; OpenAI/Anthropic routes are held as policy records only.
+- No external sequencer API was connected or called; Smartlead/Instantly/lemlist remain optional blocked/ready handoff records behind the owned email rail.
+- No paid campaign automation was implemented.
+- No Firebase deploy was run.
+
+## Remaining Blockers
+
+| Blocker | Why it matters |
+| --- | --- |
+| Firebase project creation/access | Required before deploying `firebase-signaldesk.json`, rules, indexes, storage rules, or functions to `menulist-signaldesk-qa` / `menulist-signaldesk`. |
+| Local SignalDesk Firebase mode/env | Current `.env` points the default Firebase project at `ecomsai` and has no `MENULIST_SIGNALDESK_FIREBASE_MODE` / SignalDesk project override; authenticated local data-flow smoke needs shared mode, separate SignalDesk credentials, or `FIRESTORE_EMULATOR_HOST`. |
+| First market pod | Required before using the import/scoring workflow with real prospects. |
+| First approved source list | Required before using import, evidence, scoring, and draft workflow with real prospects. |
+| Sender identity and physical address policy | Required before email/export readiness. |
+| Suppression/unsubscribe/bounce/complaint policy | Required before any provider send or export path can leave draft mode. |
+| Provider credentials and webhook secrets | Required before Google Places, Gemini, SMTP, WhatsApp, Instagram, Messenger, or signed inbound webhooks can run against real systems. |
+| Apify source Actor and token | Required before Apify can run against a real Actor; Actor selection and terms review remain owner/compliance-controlled. |
+| First paid-provider budget and eval set | Required before buying or connecting paid provider plans beyond small test usage; the registry/governor now exists to hold the decision. |
+| External provider adapters | Required before Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, Postmark, Resend, Smartlead, Instantly, or lemlist can run against real systems. |
+| First sender domain policy | Required before any provider send, real sequencer handoff, domain warmup, or domain rotation decision; sender-domain risk records now exist. |
+| Strong-model adapter approval | Required before OpenAI/Anthropic routes move from held policy records into executable model routes. |
+| Authenticated workflow smoke data | Required to verify seed -> import -> score -> evidence -> draft -> packet -> approval -> export/handoff with real session access and emulator or QA Firebase. |
+| Team-member seed policy | Required for non-platform growth team members to access SignalDesk. |
+| Paid campaign automation | Explicitly skipped for this slice and still out of scope. |
+| Firebase deploy | Explicitly skipped for this slice and still out of scope. |
+
+## Next Implementation Slice
+
+The next safe non-skipped slice is authenticated workflow proof and first provider-eval preparation, not paid campaigns, provider send, or Firebase deploy. Build order:
+
+1. run an authenticated seed/import/score/evidence/draft/packet/approval/export smoke in emulator or QA after owner/session access is available;
+2. choose first market pod, approved source list, monthly provider cap, sender-domain policy, and first proof CTA;
+3. choose one narrow provider eval set, likely Google Places/manual plus one research/enrichment pair before Apollo-scale contact reveal;
+4. implement only the selected external provider adapter behind existing source policy, budget policy, waterfall, prior-contact, audit, and timeline gates;
+5. keep provider send disabled until sender/compliance gates are complete;
+6. keep paid campaign automation and Firebase deploy deferred until the owner explicitly asks for them.

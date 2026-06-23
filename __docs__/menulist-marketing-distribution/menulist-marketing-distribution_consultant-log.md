@@ -12,6 +12,246 @@
 - Separate founder-side blockers from Codex-side work.
 - Do not leave important decisions only in chat.
 
+## June 23, 2026 - Placeholder Demo Asset Bridge
+
+### Context
+
+Founder approved using placeholder demo assets for now so Codex could proceed past the blocker that demo public pages, screenshots, and videos were still pending before salon/spa/service-list SEO pages.
+
+### Decision
+
+Use clearly labelled synthetic placeholders as a temporary bridge. They can support layout, SEO route review, and internal launch preparation, but they do not count as final customer proof.
+
+### Files Added
+
+- `public/images/website/demo-placeholders/glow-blade-service-list-placeholder.svg`
+- `public/images/website/demo-placeholders/service-list-proof-grid-placeholder.svg`
+- `public/images/website/demo-placeholders/spark-detailing-rate-card-placeholder.svg`
+- `public/images/website/demo-placeholders/launch-video-poster-placeholder.svg`
+- `menulist-marketing-distribution_demo-placeholder-assets.md`
+
+### Runtime Surfaces Added
+
+- `/industries/salons-spas`
+- `/industries/service-list-businesses`
+- `/industries/local-service-businesses`
+
+### Remaining Founder-Side Requirement
+
+Replace placeholders with approved routed demo screenshots or permissioned assets before Product Hunt gallery use, paid traffic, broad partner outreach, or final public campaign visuals.
+
+### Verification
+
+Passed `git diff --check`, `npm run verify:agent-readiness`, `npm run verify:website-resource-locales`, `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, local HTTP/text smoke for the three new industry routes and four SVG assets, and browser desktop/mobile render checks for title/H1, placeholder image loading, placeholder label presence, and horizontal overflow.
+
+---
+
+## June 23, 2026 - End-to-End Growth Research and Marketing Verdict
+
+### Context
+
+Founder asked Codex to act as the end-to-end MenuList marketing expert, use the full conversation context, perform web research, and identify what else must be done.
+
+### Decision
+
+MenuList marketing should center on one repeatable job:
+
+> Turn the current customer-facing list into one official customer link.
+
+The WhatsApp-first India wedge remains valid, but only as consent-aware intake and click-to-message, not bulk WhatsApp outreach or platform-sync claims.
+
+The private Growth Engine should be built as an internal acquisition control room for the MenuList team. It should support sourcing, scoring, evidence packets, approved drafts, inbox/reply handling, attribution, suppression, and demand signals. It should not become a public product or autonomous outbound machine.
+
+### Sources Checked
+
+- Google AI Search optimization guidance.
+- Google Search Console guidance.
+- Google Business Profile menu/services guidance.
+- WhatsApp opt-in, policy, and click-to-WhatsApp materials.
+- FTC CAN-SPAM and Gmail sender guidance.
+- Google Maps Platform terms, GBP API policy, and Foursquare Places terms.
+- Apify Google Maps scraper market pages.
+- Toast restaurant operator survey, Restaurant Dive website behavior report, Rio SEO local search behavior study.
+- Product Hunt launch preparation guidance.
+- India DPDP Act source.
+
+### File Added
+
+- `menulist-marketing-distribution_end-to-end-growth-research-2026-06-23.md`
+
+### Action Register
+
+- Added `MLD-R008` for the end-to-end growth research and private Growth Engine alignment.
+
+### Remaining Founder-Side Blockers
+
+- Production host/canonical alignment before Search Console.
+- Production WhatsApp number/account, response owner, hours, consent copy, and tracking.
+- First market pod: city, vertical, contact path, and sender identity.
+- Approved demo tenant/source and proof assets.
+- Email sender identity, physical address policy, unsubscribe, and suppression.
+- Budget ceiling before any paid click-to-WhatsApp test.
+
+### Boundaries
+
+No outreach, paid ad, Product Hunt launch, external account setup, Vercel deploy, Firebase deploy, production build, WhatsApp provider configuration, or real customer-data operation was run.
+
+---
+
+## June 23, 2026 - Full Session Cross-Check
+
+### Context
+
+Founder asked to cross-check everything done in the whole session.
+
+### Scope Checked
+
+- Current dirty worktree and changed-file inventory.
+- Marketing/distribution action register.
+- SEO launch action register.
+- WhatsApp runtime flags and `/whatsapp` test-number CTA references.
+- Auth/internal noindex changes.
+- Stale public menu slug noindex behavior.
+- Launch distribution, Product Hunt, international market-pod, compliance, and WhatsApp SEO docs.
+- Claim boundaries across website/docs/LLM context.
+
+### Verification Commands
+
+```bash
+git diff --check
+npm run verify:env-targets
+npm run verify:agent-readiness
+npm run verify:website-resource-locales
+npm run verify:public-business-truth
+npx tsc --noEmit --incremental false --pretty false
+npm run lint
+```
+
+### Result
+
+All commands passed.
+
+The claim-boundary scan found only negative guardrail wording, archived historical examples, or existing `do not claim` language. No positive unsupported public claim was found in the live website copy checked in this pass.
+
+### Remaining Pending Items
+
+No Codex-side launch documentation item remains open from this session. Remaining work is intentionally gated:
+
+- production WhatsApp number/account, response owner, and operating hours;
+- runtime tracking decision beyond the manual board;
+- demo public pages, screenshots, and videos;
+- founder video/sender identity and budget ceiling;
+- approved pilot businesses or partner leads;
+- first market-pod city, vertical, contact path, and sender identity;
+- Product Hunt profile/draft/scheduling after proof assets and launch URL are ready;
+- Search Console and production host alignment;
+- paid ads, directories, Show HN, country pages, LINE/Kakao, and AppSumo later.
+
+### Non-Session Artifacts Observed
+
+`routes-manifest.json` and `tmp/` are untracked existing artifacts that appear older and unrelated to this MenuList marketing/SEO pass. They were inspected and left untouched.
+
+### Boundaries
+
+No production build, Vercel deploy, Firebase deploy, external account setup, Product Hunt draft, ad, outreach, WhatsApp provider secret, or real customer data operation was run.
+
+---
+
+## June 23, 2026 - Pending Launch Work Cross-Check
+
+### Context
+
+Founder asked whether anything was still pending and asked Codex to cross-check and do the needful.
+
+### Cross-Check Result
+
+Codex-side docs that were still pending have now been completed:
+
+- WhatsApp compliance checklist.
+- WhatsApp SEO/content briefs.
+- "100 SMB Lists in 100 Hours" ops playbook.
+- Product Hunt launch-page spec.
+- Market-pod lead board template.
+
+### Remaining True Blockers
+
+These are not Codex-documentation gaps anymore:
+
+| Blocker | Owner | Why it remains pending |
+| --- | --- | --- |
+| Production WhatsApp destination | Founder | `/whatsapp` still uses the supplied test number until production account/number is approved. |
+| Response owner and hours | Founder | Needed before broad WhatsApp traffic. |
+| Runtime tracking decision | Founder + Codex | Manual board exists; runtime instrumentation is still a separate product decision. |
+| Demo public pages/screenshots/videos | Founder + Codex | Needs approved demo tenant/source and visual production pass. |
+| First market-pod lead list | Founder + Codex | Founder must choose first city, vertical, contact path, and sender identity before real lead collection. |
+| Product Hunt draft/scheduling | Founder + Codex | Waits on proof assets, launch URL readiness, offer approval, and response coverage. |
+| Paid ads and broad outreach | Founder | Blocked until production WhatsApp readiness, proof, tracking, and pilot results exist. |
+
+### Files Added
+
+- `menulist-marketing-distribution_whatsapp-compliance-checklist.md`
+- `menulist-marketing-distribution_whatsapp-seo-content-briefs.md`
+- `menulist-marketing-distribution_100-smb-lists-ops-playbook.md`
+- `menulist-marketing-distribution_market-pod-lead-board.md`
+- `menulist-marketing-distribution_product-hunt-launch-page-spec.md`
+
+### Boundaries
+
+- No code route, Product Hunt draft, external account setup, outreach, paid ad, Firebase deploy, Vercel deploy, production build, or WhatsApp provider setting was changed.
+
+---
+
+## June 23, 2026 - Launch Platform and International Acquisition Review
+
+### Context
+
+Founder pasted a new ChatGPT launch-distribution playbook that expanded the WhatsApp-first strategy into Product Hunt timing, LinkedIn/X/Instagram/YouTube/HN/Reddit/directories, partner launch, international market pods, and country-specific intake channels.
+
+### Decisions
+
+- Accepted the deeper launch doctrine: WhatsApp-first, not WhatsApp-only.
+- Kept the MenuList-owned public wording centered on `official customer link` instead of drifting into unsupported platform claims.
+- Accepted `Forward any SMB list into one official customer link` as the Product Hunt-facing tagline candidate.
+- Accepted Tuesday, August 11, 2026 at 12:01am Pacific / 12:31pm IST as a conditional Product Hunt target, not a scheduled launch.
+- Accepted market-pod acquisition: India/GCC first, LATAM second, US/Canada/Australia/UK upload/Google/Instagram-first, LINE/Kakao markets later, WeChat/China deferred.
+- Kept Product Hunt as a credibility, feedback, and partner event rather than the primary SMB acquisition channel.
+
+### Boundaries
+
+- No `/global`, `/in`, `/ae`, `/us`, `/launch/product-hunt`, `/examples`, `/partners`, or `/audit` code route was added.
+- No Product Hunt launch was scheduled.
+- No outreach, paid ads, external platform setup, WhatsApp automation, Firebase deploy, Vercel deploy, or production build was run.
+- Do not claim WhatsApp Catalog sync, official WhatsApp/Meta partnership, reply-command approval, automatic Google/Instagram/Yelp/Apple/LINE/Kakao updates, or AppSumo readiness.
+
+### Sources Checked
+
+- Product Hunt launch and preparation guides.
+- Hacker News Show HN guidelines.
+- WhatsApp Business Messaging Policy.
+- Google Business Profile.
+- Apple Business Connect.
+- LINE Official Account.
+- KakaoTalk Channel.
+
+### Files Updated
+
+- `menulist-marketing-distribution_launch-distribution-review.md`
+- `README.md`
+- `menulist-marketing-distribution_action-register.md`
+- `menulist-marketing-distribution_execution-plan.md`
+- `menulist-marketing-distribution_product-hunt-asset-pack.md`
+- `menulist-marketing-distribution_research.md`
+- `menulist-marketing-distribution_consultant-log.md`
+
+### Next
+
+1. Replace the test WhatsApp number with the production destination before broad traffic.
+2. Create final demo public pages, screenshots, and videos.
+3. Build the market-pod lead board fields.
+4. Keep the August 11 Product Hunt date gated by proof assets, launch URL, offer, and launch-day response coverage.
+
+---
+
 ## June 22, 2026 - Test WhatsApp CTA Wired
 
 ### Context

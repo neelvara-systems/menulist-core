@@ -1,7 +1,7 @@
 # SEO & AEO Strategy — MenuList Main Website
 
 **Status:** ✅ IMPLEMENTED  
-**Last Updated:** June 22, 2026
+**Last Updated:** June 23, 2026
 
 > May 18, 2026 update: the homepage now includes a search/AI discovery proof section. It is grounded in existing owner SEO/AEO settings, Business Copy Setup, schema.org output, sitemap/robots policy, and LLM discovery files. The public wording must stay conservative: MenuList prepares a clearer official source for search engines and AI systems to read; it does not promise rankings, AI citations, Google Maps updates, or external-platform placement.
 
@@ -38,6 +38,12 @@
 > June 22, 2026 analytics feature page note: `/features/analytics` is now part of the canonical feature discovery set. Public SEO copy must frame Analytics as owner-dashboard period summaries for public menu, Official Business Page, and customer app activity across today, daily, weekly, monthly, and overall views. Do not frame it as customer profiling, revenue attribution, heatmaps, GPS tracking, BI, or guaranteed sales improvement.
 
 > June 22, 2026 WhatsApp onboarding campaign note: `/whatsapp` is now part of the canonical platform discovery set for the implemented messaging-onboarding flow. Public SEO copy may target WhatsApp menu link, WhatsApp service list, WhatsApp rate card, WhatsApp price list, and official customer link intent, but must preserve owner approval, no WhatsApp/Meta partnership claim, no automatic WhatsApp catalog sync claim, no scraped-number outreach, and no ranking/citation promises.
+
+> June 23, 2026 external SEO audit validation note: live checks showed `menulist.online` robots and sitemap endpoints return 200, but the app served there emits `menulist.ai` canonical/sitemap URLs while `menulist.ai` currently serves a `/lander` shell. Keep the codebase production canonical as `menulist.ai` unless the deployment matrix changes, but do not submit Search Console until the chosen canonical host actually serves the MenuList app. This pass also adds explicit noindex metadata for `/signin` and `/forgot-password`, middleware `X-Robots-Tag: noindex, nofollow` for auth/app/API/internal/create-menu preview and success paths, and expanded platform robots/discovery disallows for internal route prefixes.
+
+> June 23, 2026 stale public menu note: missing public tenant project/menu slug paths now preserve the customer fallback ladder for old QR/PWA paths but emit `noindex, follow` and canonicalize to the tenant or outlet root. Stale item/category detail paths under a real menu also emit `noindex, follow` and canonicalize to the current menu page. These fallback/detail pages are customer recovery surfaces, not indexable public truth pages.
+
+> June 23, 2026 placeholder-backed service industry note: `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses` are now in the public discovery set with existing industry-page metadata and WebPage/BreadcrumbList structured data. The pages use visibly labelled sample/demo placeholder SVGs until routed demo screenshots or permissioned proof are available. Do not use the placeholders as customer proof in Product Hunt, paid traffic, broad outreach, or final launch visuals.
 
 ---
 

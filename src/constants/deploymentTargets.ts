@@ -9,7 +9,7 @@
  */
 
 export type DeploymentStage = 'local' | 'preview' | 'production';
-export type DeploymentProductId = 'menulist' | 'constantlayer' | 'answerlattice' | 'campaigncue' | 'mycodex';
+export type DeploymentProductId = 'menulist' | 'constantlayer' | 'answerlattice' | 'campaigncue' | 'mycodex' | 'signaldesk';
 
 export interface ProductDeploymentTarget {
     productId: DeploymentProductId;
@@ -56,6 +56,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '/__campaigncue',
             firebaseProjectId: 'campaigncue-qa',
         },
+        signaldesk: {
+            productId: 'signaldesk',
+            url: 'http://localhost:3000/signaldesk',
+            domains: [],
+            devPathPrefix: '',
+            firebaseProjectId: 'menulist-signaldesk-qa',
+        },
         mycodex: {
             productId: 'mycodex',
             url: 'http://localhost:3000/__mycodex/',
@@ -93,6 +100,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             devPathPrefix: '',
             firebaseProjectId: 'campaigncue-qa',
         },
+        signaldesk: {
+            productId: 'signaldesk',
+            url: 'https://signaldesk.menulist.online',
+            domains: ['signaldesk.menulist.online'],
+            devPathPrefix: '',
+            firebaseProjectId: 'menulist-signaldesk-qa',
+        },
         mycodex: {
             productId: 'mycodex',
             url: 'https://menulist.digital',
@@ -129,6 +143,13 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
             domains: ['campaigncue.ai', 'www.campaigncue.ai'],
             devPathPrefix: '',
             firebaseProjectId: 'campaigncue',
+        },
+        signaldesk: {
+            productId: 'signaldesk',
+            url: 'https://signaldesk.menulist.ai',
+            domains: ['signaldesk.menulist.ai'],
+            devPathPrefix: '',
+            firebaseProjectId: 'menulist-signaldesk',
         },
         mycodex: {
             productId: 'mycodex',
@@ -182,7 +203,7 @@ export function resolveKnownProductIdByHostname(hostname: string | null | undefi
     if (!hostname) return null;
     const normalizedHost = hostname.split(':')[0].toLowerCase();
 
-    for (const productId of ['menulist', 'constantlayer', 'answerlattice', 'campaigncue', 'mycodex'] as DeploymentProductId[]) {
+    for (const productId of ['menulist', 'constantlayer', 'answerlattice', 'campaigncue', 'mycodex', 'signaldesk'] as DeploymentProductId[]) {
         if (getKnownProductDomains(productId).includes(normalizedHost)) {
             return productId;
         }

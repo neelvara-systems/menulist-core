@@ -153,6 +153,24 @@
     <priority>0.76</priority>
   </url>
   <url>
+    <loc>https://menulist.ai/industries/salons-spas</loc>
+    <lastmod>2026-06-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/industries/service-list-businesses</loc>
+    <lastmod>2026-06-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.72</priority>
+  </url>
+  <url>
+    <loc>https://menulist.ai/industries/local-service-businesses</loc>
+    <lastmod>2026-06-23</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://menulist.ai/resources</loc>
     <xhtml:link rel="alternate" hreflang="en-US" href="https://menulist.ai/resources" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://menulist.ai/resources" />

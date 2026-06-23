@@ -15,6 +15,7 @@ export const PRODUCT_IDS = {
     ANSWERLATTICE: 'AL',
     CAMPAIGNCUE: 'CC',
     MYCODEX: 'MC',
+    SIGNALDESK: 'SD',
     SURFACE_OS: 'SF',
     GROWTH_OS: 'GR',
     KITSTAMP: 'KS',

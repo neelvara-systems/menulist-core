@@ -7,6 +7,232 @@
 
 ---
 
+## June 23, 2026 - Placeholder-Backed Service Industry Route Verification
+
+### Trigger
+
+Founder approved adding demo placeholders so Codex could proceed past the pending demo public pages/screenshots/videos gate before salon/spa/service-list SEO pages.
+
+### Scope
+
+- New placeholder-backed industry routes:
+  - `/industries/salons-spas`
+  - `/industries/service-list-businesses`
+  - `/industries/local-service-businesses`
+- Placeholder SVG assets under `public/images/website/demo-placeholders/`.
+- Platform discovery registry, static sitemap, `llms.txt`, and `llms-full.txt`.
+- SEO launch and marketing-distribution docs.
+
+### Checks Performed
+
+```bash
+git diff --check
+npm run verify:agent-readiness
+npm run verify:website-resource-locales
+npx tsc --noEmit --incremental false --pretty false
+npm run lint
+npx next dev -p 3033
+# local HTTP/text smoke for the three new industry routes and four SVG assets
+# browser desktop/mobile render checks for title/H1, placeholder image loading,
+# placeholder label visibility, and horizontal overflow
+```
+
+### Result
+
+All final checks passed.
+
+The first local text-smoke probe used full H1 strings and falsely failed two routes because the website headline component splits highlighted text. The corrected probe used stable title/body/image strings and passed.
+
+Browser checks passed for all three new routes on desktop/default width and `390 x 844` mobile width:
+
+- expected page title present;
+- expected H1 present;
+- placeholder SVG image present and loaded;
+- `Placeholder proof asset` label visible;
+- no horizontal overflow.
+
+### Remaining SEO/Discovery Blockers
+
+- Placeholder assets still need approved routed screenshots/videos or permissioned proof before broad campaign use.
+- Production host alignment remains blocked before Search Console: the chosen canonical host must serve the MenuList app consistently with sitemap/canonical URLs.
+- Search Console verification/submission/URL inspection remains owner-side and should wait for host alignment/deploy.
+
+---
+
+## June 23, 2026 - Full Session Verification Refresh
+
+### Trigger
+
+Founder asked Codex to cross-check everything done in the whole session.
+
+### Scope
+
+- SEO launch docs and action register.
+- Public website discovery policy, robots, middleware noindex headers, and verifier updates.
+- Public tenant stale menu slug metadata/canonical behavior.
+- WhatsApp-first marketing/distribution docs that affect future SEO/content route decisions.
+- Public claim boundaries in website/docs/LLM context.
+
+### Checks Performed
+
+```bash
+git diff --check
+npm run verify:env-targets
+npm run verify:agent-readiness
+npm run verify:website-resource-locales
+npm run verify:public-business-truth
+npx tsc --noEmit --incremental false --pretty false
+npm run lint
+# plus markdown relative-link checker for touched SEO and marketing docs
+# plus live endpoint refresh for menulist.online and menulist.ai
+```
+
+### Result
+
+All commands passed.
+
+Additional consistency checks confirmed:
+
+- Messaging-onboarding app and Functions flags remain enabled for MenuList.
+- `/whatsapp` still uses the supplied test number and is still gated before production traffic.
+- New WhatsApp SEO/content briefs do not create routes and keep route expansion behind proof assets.
+- Stale public menu slug and item/category detail paths now remain customer recovery surfaces while emitting `noindex, follow`.
+- Auth/internal pages and paths are covered by metadata, middleware `X-Robots-Tag`, robots/discovery policy, and verifier checks.
+- Markdown relative links in the touched SEO and marketing-distribution docs resolve.
+- Live endpoint refresh still shows the production host alignment blocker: `menulist.online` serves app discovery while advertising `menulist.ai`, and `menulist.ai` still serves the `/lander` shell.
+
+### Remaining SEO/Discovery Blockers
+
+- Production host alignment remains blocked: Search Console should wait until the chosen production host serves the MenuList app consistently with canonical/sitemap URLs.
+- Country/channel SEO pages remain deferred until proof assets, localized copy, intake path, and claim review exist.
+- WhatsApp child SEO pages remain deferred until production CTA, screenshots, and pilot questions justify them.
+
+---
+
+## June 23, 2026 - Pending SEO Cross-Check And Stale Menu Noindex Fix
+
+### Trigger
+
+Founder asked whether anything was still pending and asked Codex to cross-check and do the needed work.
+
+### Scope
+
+- SEO launch action register pending-state review.
+- Public tenant sitemap and metadata gate review.
+- Stale or deleted project/menu slug behavior.
+- Worktree status and verification coverage.
+- Current live host/discovery endpoint behavior.
+
+### Finding Fixed
+
+The public tenant route intentionally keeps a customer fallback ladder when a requested project/menu slug no longer resolves, so old QR links and PWA entry points can guide customers back to `/menu`, outlet OBP, or brand OBP. The metadata path did not distinguish that stale project URL from an OBP when no project resolved, which could let a soft-not-found URL inherit indexable OBP metadata.
+
+Fix:
+
+- `src/app/client/[[...slug]]/page.tsx` now detects missing project paths and stale item/category detail paths during metadata generation.
+- Missing project/menu slug paths emit `noindex, follow`.
+- The canonical for a missing project path falls back to the tenant root or outlet root instead of the stale requested URL.
+- Stale item/category detail paths emit `noindex, follow` and canonicalize to the current menu page.
+- The visible customer fallback ladder remains unchanged.
+- `scripts/verification/verify-agent-readiness.js` now checks the stale public menu and detail noindex guards.
+
+### Checks Performed
+
+```bash
+git diff --check
+npm run verify:agent-readiness
+npm run verify:website-resource-locales
+npx tsc --noEmit --incremental false --pretty false
+npm run lint
+```
+
+### Live Host Refresh
+
+After the code/doc fix, live endpoint checks still showed the same owner/deployment blocker:
+
+- `https://menulist.online/robots.txt` returned `200` and advertised `Sitemap: https://menulist.ai/sitemap.xml`.
+- `https://menulist.online/sitemap.xml` returned `200` and its first `<loc>` was `https://menulist.ai`.
+- `https://menulist.online/client/sitemap.xml` returned `301` to `/`, which is expected because tenant sitemap access is via tenant-host `/sitemap.xml`, not direct platform `/client/sitemap.xml`.
+- `https://menulist.ai/` returned `200` with the `/lander` shell, so Search Console remains blocked until production hosting is aligned.
+
+### Pending After This Fix
+
+- Code-side stale menu soft-index risk is fixed.
+- Production host alignment remains blocked by owner/deployment/DNS: `menulist.ai` must serve the MenuList app before Search Console.
+- Search Console verification/submission/URL inspection remains owner-side and should wait for host alignment.
+- Demo public pages/screenshots/videos remain the next blocker before salon/spa/service-list SEO page expansion.
+- Production WhatsApp destination, consent/tracking, and launch proof assets remain marketing-distribution blockers, not SEO code blockers.
+
+---
+
+## June 23, 2026 - External Technical SEO Audit Validation
+
+### Trigger
+
+Founder pasted an external ChatGPT response listing pending technical SEO risks before launch and asked Codex to check it against the current MenuList codebase and live surface.
+
+### Scope
+
+- Live discovery endpoints and canonical host behavior.
+- Auth/internal noindex behavior.
+- Platform robots/discovery disallow policy.
+- `/create-menu` indexability decision.
+- SEO launch operating docs and verifier coverage.
+
+### Checks Performed
+
+```bash
+curl -sSI https://menulist.online/robots.txt
+curl -sSI https://menulist.online/sitemap.xml
+curl -sSI https://menulist.online/client/sitemap.xml
+curl -sSI https://www.menulist.online/
+curl -sSI https://menulist.ai/robots.txt
+curl -sS https://menulist.online/robots.txt
+curl -sS https://menulist.online/sitemap.xml
+curl -sS https://menulist.online/ | rg "canonical|menulist.ai|menulist.online"
+curl -sS "https://menulist.online/signin?callbackUrl=%2Fdashboard" | rg "robots|canonical|Authentication"
+curl -sS https://menulist.online/create-menu | rg "Create Your Official Customer Link|Checking your account|canonical"
+git diff --check
+npm run verify:agent-readiness
+npm run verify:website-resource-locales
+npx tsc --noEmit --incremental false --pretty false
+npm run lint
+npx next dev -p 3024
+node - <<'NODE'
+const routes = [
+  '/signin?callbackUrl=%2Fdashboard',
+  '/forgot-password',
+  '/dashboard',
+  '/api/health-check-seo-noindex-test',
+  '/client',
+  '/create-menu/success',
+];
+(async () => {
+  for (const route of routes) {
+    const res = await fetch(`http://localhost:3024${route}`, { redirect: 'manual' });
+    console.log(`${route} -> ${res.status} x-robots=${res.headers.get('x-robots-tag') || '(missing)'} location=${res.headers.get('location') || ''}`);
+  }
+})().catch((err) => { console.error(err); process.exit(1); });
+NODE
+```
+
+### Results
+
+- External claim that `menulist.online` robots and sitemap endpoints return internal errors was not current: `/robots.txt` and `/sitemap.xml` returned 200 in live checks.
+- Real blocker found: `menulist.online` serves the app but emits `menulist.ai` canonical/sitemap URLs, while `menulist.ai` currently serves a `/lander` shell. Search Console should wait until the chosen canonical host serves the app.
+- `/create-menu` is a public SEO landing page, not only an auth transition page; it already has server-rendered public copy and should remain indexable.
+- `/signin` and `/forgot-password` now define explicit noindex/nofollow metadata.
+- Middleware now emits `X-Robots-Tag: noindex, nofollow` for auth, app, account, billing, settings, API, direct internal client, create-menu success, and preview paths.
+- Platform robots/discovery policy now includes the missing auth/internal disallow prefixes.
+- `verify:agent-readiness`, `verify:website-resource-locales`, TypeScript, lint, and `git diff --check` passed.
+- Local runtime header probe on `http://localhost:3024` confirmed `X-Robots-Tag: noindex, nofollow` for `/signin`, `/forgot-password`, `/dashboard`, `/api/*`, `/client` redirect, and `/create-menu/success`.
+
+### Readiness Decision
+
+The confirmed code-side noindex gap is fixed. Canonical host alignment is not solved in code because the repo still treats `menulist.ai` as production and `menulist.online` as preview; changing that requires owner/deployment/DNS decision before Search Console. The later June 23 pending cross-check fixed the stale public menu soft-index risk by noindexing missing project slug fallback pages while preserving the customer fallback ladder.
+
+---
+
 ## June 22, 2026 - Final Code-Side Readiness Pass
 
 ### Trigger

@@ -22,6 +22,31 @@ export const FEATURE_FLAGS = {
     ENABLE_MYCODEX_AUDIO_READER: true,
 
     /**
+     * Enable the private MenuList SignalDesk internal growth workspace.
+     *
+     * SignalDesk is not a MenuList owner/customer feature and must not expose a
+     * public website, public help route, customer menu route, or owner sidebar
+     * entry. Runtime data must use the dedicated SignalDesk Firebase target.
+     */
+    ENABLE_MENULIST_SIGNALDESK_APP_SHELL: true,
+    ENABLE_MENULIST_SIGNALDESK_IMPORTS: true,
+    ENABLE_MENULIST_SIGNALDESK_AI_INTELLIGENCE: true,
+    ENABLE_MENULIST_SIGNALDESK_DRAFTS: true,
+    ENABLE_MENULIST_SIGNALDESK_APPROVALS: true,
+    ENABLE_MENULIST_SIGNALDESK_EMAIL_EXPORT: true,
+    ENABLE_MENULIST_SIGNALDESK_INBOX: true,
+    ENABLE_MENULIST_SIGNALDESK_OUTCOME_BRIDGE: true,
+    ENABLE_MENULIST_SIGNALDESK_DEMAND_SIGNALS: true,
+    ENABLE_MENULIST_SIGNALDESK_CONTROL_ROOM: true,
+    ENABLE_MENULIST_SIGNALDESK_SOURCE_PROVIDERS: true,
+    ENABLE_MENULIST_SIGNALDESK_APIFY_SOURCE_BROKER: true,
+    ENABLE_MENULIST_SIGNALDESK_AI_PROVIDER_CALLS: true,
+    ENABLE_MENULIST_SIGNALDESK_PROVIDER_WEBHOOKS: true,
+    ENABLE_MENULIST_SIGNALDESK_ASSISTED_CHANNELS: true,
+    ENABLE_MENULIST_SIGNALDESK_OWNED_EMAIL_SEQUENCER: true,
+    ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND: false,
+
+    /**
      * Enable the internal Website Asset Operating System package.
      *
      * This is a separate-product-style internal architecture used only by

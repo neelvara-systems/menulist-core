@@ -69,6 +69,7 @@
     "node_modules",
     "functions",
     "functions-answerlattice",
+    "functions-signaldesk",
     "src/__tests__"
   ]
 }

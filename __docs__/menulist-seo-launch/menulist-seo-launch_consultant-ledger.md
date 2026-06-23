@@ -23,6 +23,97 @@ Keep implementation details in the source docs. This ledger records the consulta
 
 ## Entries
 
+### June 23, 2026 - Placeholder-Backed Service-List Industry Pages Added
+
+**Trigger:** Founder approved using demo placeholders for now so Codex could proceed past the pending demo screenshots/videos gate before salon/spa/service-list SEO pages.
+
+**Decision / change:** Added placeholder-backed industry pages for `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses`. The pages use the existing industry landing-page shell, metadata pattern, `WebsitePageStructuredData`, platform discovery registry, static sitemap, and LLM context. Placeholder assets are visibly labelled as sample/demo assets and must be replaced before broad campaign use.
+
+**Evidence checked:**
+
+- Existing industry implementation in `src/content/websiteIndustries.ts` and `src/components/website/industries/IndustryLandingPage.tsx`.
+- Existing discovery registry in `src/lib/seo/discoveryPolicy.ts`.
+- Static discovery files: `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`.
+- Marketing placeholder inventory: `__docs__/menulist-marketing-distribution/menulist-marketing-distribution_demo-placeholder-assets.md`.
+
+**Follow-up:** Replace placeholder assets with routed demo screenshots or permissioned proof before Product Hunt gallery use, paid traffic, broad partner outreach, or final public launch visuals. Search Console submission still waits for production host alignment.
+
+---
+
+### June 23, 2026 - Stale Public Menu Paths Noindex Hardened
+
+**Trigger:** Founder asked what was still pending and requested another cross-check. The remaining code-side SEO risk was stale public tenant project/menu URLs that keep the customer fallback ladder.
+
+**Decision / change:** Preserve the fallback ladder for old QR links and PWA recovery, but treat missing project/menu slug paths as non-indexable recovery pages. Metadata now emits `noindex, follow` and canonicalizes to the tenant or outlet root instead of the stale requested URL. Stale item/category detail paths under a real menu also emit `noindex, follow` and canonicalize to the current menu page.
+
+**Evidence checked:**
+
+- `src/app/client/[[...slug]]/page.tsx` metadata and fallback branches.
+- `src/app/client/sitemap.ts` tenant sitemap gating.
+- `src/lib/seo/publicTruthIndexing.ts` public truth gate.
+- `__docs__/discovery-infrastructure/public-truth-indexing-policy.md` source documentation.
+
+**Follow-up:** Production host alignment and Search Console remain owner/deployment blockers. Demo proof assets remain the gate before creating salon/spa/service-list SEO pages.
+
+---
+
+### June 23, 2026 - WhatsApp SEO Briefs Added Without Route Expansion
+
+**Trigger:** Pending marketing/distribution cross-check found MLD-W008 still open for WhatsApp SEO content briefs.
+
+**Decision / change:** Added `__docs__/menulist-marketing-distribution/menulist-marketing-distribution_whatsapp-seo-content-briefs.md` as the content brief source for future WhatsApp menu-link, service-list, rate-card, price-list, catalog-link, PDF-vs-public-link, and checklist pages. No new routes were created.
+
+**Evidence checked:**
+
+- Existing `/whatsapp` campaign route is already the live WhatsApp-first page.
+- SEO action register already gates route expansion behind proof assets, localized copy, intake path, and claim review.
+- Product Hunt and WhatsApp compliance checks confirm route copy must avoid upvote manipulation, official partnership, bulk outreach, catalog sync, and automatic external-platform update claims.
+
+**Follow-up:** Keep `/whatsapp` as the canonical campaign page until demo proof assets, screenshots, production CTA, and pilot questions justify specific child pages.
+
+---
+
+### June 23, 2026 - Launch Distribution Review Cross-Linked To SEO Gates
+
+**Trigger:** Founder pasted a launch-platform and international-acquisition strategy that recommended Product Hunt timing, global market pages, country pages, LINE/Kakao paths, directory submissions, and SEO expansion around WhatsApp-first onboarding.
+
+**Decision / change:** Accepted the channel doctrine as WhatsApp-first, not WhatsApp-only, but kept SEO/page expansion gated. `/global`, `/in`, `/ae`, `/us`, `/br`, `/mx`, `/line`, and `/kakao` remain content-roadmap candidates, not immediate route work. Country and channel pages need proof assets, localized copy review, intake-path decisions, claim-boundary review, and route-specific docs before implementation.
+
+**Evidence checked:**
+
+- `__docs__/menulist-marketing-distribution/menulist-marketing-distribution_launch-distribution-review.md`
+- Product Hunt launch/preparation guidance for timing, scheduling, assets, and upvote rules.
+- Hacker News Show HN guidelines that require a tryable product and reject landing-page-only submissions.
+- WhatsApp Business Messaging Policy opt-in/opt-out and no-spam boundaries.
+- Google Business Profile, Apple Business Connect, LINE Official Account, and KakaoTalk Channel public business-surface documentation.
+
+**Follow-up:** Keep SEO expansion behind proof and readiness gates. The next SEO-adjacent work is not country-route creation; it is production WhatsApp readiness, demo proof assets, and a manual market-pod lead board that can show which pages deserve to exist.
+
+---
+
+### June 23, 2026 - External ChatGPT Technical SEO Review Validated
+
+**Trigger:** Founder pasted an external ChatGPT audit claiming live robots/sitemap errors, canonical host risk, tenant rendering risk, auth noindex gaps, `/create-menu` ambiguity, schema checks, cache freshness, and tenant sitemap eligibility concerns.
+
+**Decision / change:** Treated the audit as input, not authority. Live checks showed `https://menulist.online/robots.txt` and `https://menulist.online/sitemap.xml` return 200, so the endpoint-broken P0 was stale or environment-specific. The real live risk is canonical-host alignment: `.online` serves the app but emits `.ai` canonical/sitemap URLs, while `.ai` currently serves a `/lander` shell. This is an infrastructure blocker before Search Console, not a reason to rewrite the product-domain matrix in code.
+
+**Code-side changes accepted:**
+
+- Added explicit noindex metadata to `/signin` and `/forgot-password`.
+- Added middleware `X-Robots-Tag: noindex, nofollow` coverage for auth, app, account, billing, settings, API, internal client, create-menu success, and preview paths.
+- Extended platform robots/discovery disallow lists for missing internal/auth paths.
+- Updated `verify:agent-readiness` so noindex metadata/header coverage is checked.
+
+**Evidence checked:**
+
+- Live `curl -I` on `menulist.online/robots.txt`, `menulist.online/sitemap.xml`, `menulist.online/client/sitemap.xml`, `www.menulist.online`, `menulist.ai`, `www.menulist.ai`, `/signin`, and `/create-menu`.
+- `src/constants/deploymentTargets.ts` confirms preview `menulist.online` and production `menulist.ai`.
+- `src/lib/seo/discoveryPolicy.ts`, `src/app/sitemap.ts`, `public/robots.txt`, and website metadata currently target the production canonical domain.
+
+**Follow-up:** Founder must align production DNS/hosting for the chosen canonical host before Search Console. Do not submit `menulist.ai` while it serves a `/lander` shell. This pass did not resolve stale public menu fallback indexing; the later June 23 stale-public-menu entry records that fix.
+
+---
+
 ### June 22, 2026 - Demo Universe Gate Added Before Service-List SEO Pages
 
 **Trigger:** Founder asked Codex to proceed with the multi-category demo/proof universe or prepare what is needed before adding salon, spa, service-list, or local-service SEO pages.

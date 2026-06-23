@@ -34,6 +34,10 @@ import {
     resolveKnownProductIdByHostname,
 } from '@constant/deploymentTargets';
 import {
+    SIGNALDESK_BASE_PATH,
+    SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH,
+} from '@constant/signaldesk/routes';
+import {
     ANSWERLATTICE_HOSTED_HELP_DEV_PREFIX,
     ANSWERLATTICE_HOSTED_HELP_INTERNAL_BASE_PATH,
     getAnswerlatticeHostedHelpRewritePath,
@@ -61,6 +65,28 @@ import { NextRequest, NextResponse } from 'next/server';
 // ═══════════════════════════════════════════════════════════════
 // Security Headers (shared across all routing paths)
 // ═══════════════════════════════════════════════════════════════
+
+const NOINDEX_PATH_PREFIXES = [
+    '/signin',
+    '/forgot-password',
+    '/error',
+    '/dashboard',
+    '/app',
+    '/account',
+    '/billing',
+    '/settings',
+    '/api',
+    '/client',
+    SIGNALDESK_BASE_PATH,
+    '/create-menu/success',
+    '/create-menu/preview',
+] as const;
+
+function shouldApplyNoindexHeader(pathname: string): boolean {
+    return NOINDEX_PATH_PREFIXES.some((prefix) =>
+        pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
+}
 
 function applySecurityHeaders(request: NextRequest, response: NextResponse): NextResponse {
     // Use VERCEL_ENV to distinguish real production from preview deployments.
@@ -167,6 +193,10 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     response.headers.delete('X-Powered-By');
     response.headers.delete('Server');
 
+    if (shouldApplyNoindexHeader(request.nextUrl.pathname)) {
+        response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    }
+
     return response;
 }
 
@@ -262,9 +292,82 @@ const MYCODEX_PRODUCT_ALIAS_HOSTS = new Set([
     'www.menulist.digital',
 ]);
 
+const SIGNALDESK_HOST_PASSTHROUGH_PATHS = [
+    '/signin',
+    '/forgot-password',
+    '/error',
+    '/unauthorized',
+] as const;
+
 function canUseInternalProductAliases(hostname: string | null, knownProductId: string | null): boolean {
     const normalizedHost = normalizeHostname(hostname);
     return knownProductId === MYCODEX_PRODUCT_SLUG || MYCODEX_PRODUCT_ALIAS_HOSTS.has(normalizedHost);
+}
+
+function isSignalDeskHostPassthroughPath(pathname: string): boolean {
+    return SIGNALDESK_HOST_PASSTHROUGH_PATHS.some((prefix) =>
+        pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
+}
+
+function buildSignalDeskHostRewritePath(pathname: string): string {
+    if (!pathname || pathname === '/') return SIGNALDESK_BASE_PATH;
+    if (pathname === SIGNALDESK_BASE_PATH || pathname.startsWith(`${SIGNALDESK_BASE_PATH}/`)) {
+        return pathname;
+    }
+    return `${SIGNALDESK_BASE_PATH}${pathname}`;
+}
+
+function getSignalDeskRequestHeaders(request: NextRequest, basePath = SIGNALDESK_BASE_PATH): Headers {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-product-id', 'signaldesk');
+    requestHeaders.set('x-product-name', 'MenuList SignalDesk');
+    requestHeaders.set('x-product-base-path', basePath);
+    return requestHeaders;
+}
+
+function setSignalDeskProductHeaders(response: NextResponse, basePath = SIGNALDESK_BASE_PATH): NextResponse {
+    response.headers.set('x-product-id', 'signaldesk');
+    response.headers.set('x-product-name', 'MenuList SignalDesk');
+    response.headers.set('x-product-base-path', basePath);
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return response;
+}
+
+function nextSignalDeskResponse(request: NextRequest, basePath = SIGNALDESK_BASE_PATH): NextResponse {
+    const response = NextResponse.next({
+        request: {
+            headers: getSignalDeskRequestHeaders(request, basePath),
+        },
+    });
+    return setSignalDeskProductHeaders(response, basePath);
+}
+
+function rewriteSignalDeskResponse(request: NextRequest, url: URL, basePath = SIGNALDESK_BASE_PATH): NextResponse {
+    const response = NextResponse.rewrite(url, {
+        request: {
+            headers: getSignalDeskRequestHeaders(request, basePath),
+        },
+    });
+    return setSignalDeskProductHeaders(response, basePath);
+}
+
+function resolveSignalDeskMyCodexAliasPath(pathname: string): {
+    basePath: string;
+    strippedPath: string;
+} | null {
+    const prefix = SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH;
+    if (pathname !== prefix && !pathname.startsWith(`${prefix}/`)) return null;
+
+    return {
+        basePath: prefix,
+        strippedPath: pathname.slice(prefix.length) || '/',
+    };
+}
+
+function buildSignalDeskAliasRewritePath(strippedPath: string): string {
+    if (isSignalDeskHostPassthroughPath(strippedPath)) return strippedPath;
+    return buildSignalDeskHostRewritePath(strippedPath);
 }
 
 function resolveMyCodexProductAliasPath(pathname: string): {
@@ -419,16 +522,45 @@ export async function middleware(request: NextRequest) {
         if (!domainInfo.isClient) {
             const url = request.nextUrl.clone();
             url.pathname = '/';
-            return NextResponse.redirect(url, 301);
+            return applySecurityHeaders(request, NextResponse.redirect(url, 301));
         }
     }
 
+    // Dedicated SignalDesk hostnames are private app hosts, not restaurant
+    // tenant subdomains and not public /sites product pages.
+    if (knownProductId === 'signaldesk') {
+        if (shouldBypassDomainRouting(pathname) || isSignalDeskHostPassthroughPath(pathname)) {
+            return applySecurityHeaders(request, nextSignalDeskResponse(request));
+        }
+
+        const url = request.nextUrl.clone();
+        const rewritePath = buildSignalDeskHostRewritePath(pathname);
+        url.pathname = rewritePath;
+        const response = rewritePath === pathname
+            ? nextSignalDeskResponse(request)
+            : rewriteSignalDeskResponse(request, url);
+        return applySecurityHeaders(request, response);
+    }
+
     // Internal/test-only aliases for portfolio/product landing pages:
-    // /cl -> ConstantLayer, /ml -> MenuList, /al -> Answerlattice, /cc -> CampaignCue.
+    // /cl -> ConstantLayer, /ml -> MenuList, /al -> Answerlattice, /cc -> CampaignCue,
+    // /sd -> SignalDesk private app.
     // Production canonical domains continue through the normal product routing.
     // These are path aliases only; product slugs, env names, and Firebase
     // targets remain the canonical per-product values.
     if (canUseInternalProductAliases(hostname, knownProductId)) {
+        const signalDeskAliasMatch = resolveSignalDeskMyCodexAliasPath(pathname);
+        if (signalDeskAliasMatch) {
+            const { basePath, strippedPath } = signalDeskAliasMatch;
+            const url = request.nextUrl.clone();
+            const rewritePath = buildSignalDeskAliasRewritePath(strippedPath);
+            url.pathname = rewritePath;
+            const response = rewritePath === pathname
+                ? nextSignalDeskResponse(request, basePath)
+                : rewriteSignalDeskResponse(request, url, basePath);
+            return applySecurityHeaders(request, response);
+        }
+
         const aliasMatch = resolveMyCodexProductAliasPath(pathname);
         if (aliasMatch) {
             const { product, basePath, strippedPath } = aliasMatch;

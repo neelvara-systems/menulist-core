@@ -1,4 +1,5 @@
 import { useTranslations } from 'next-intl';
+import Image from 'next/image';
 import { LuArrowRight, LuCheckCircle2 } from 'react-icons/lu';
 import type { WebsiteIndustryPage } from '@/content/websiteIndustries';
 import WebsiteButton from '../shared/WebsiteButton';
@@ -53,6 +54,28 @@ export default function IndustryLandingPage({ page }: IndustryLandingPageProps) 
                     </div>
                 </div>
             </section>
+
+            {page.demo ? (
+                <section className="ws-section ws-section--subtle">
+                    <div className="ws-container ws-industry-demo">
+                        <AnimateOnScroll preset="card" className="ws-industry-demo__copy">
+                            <p className="ws-page-hero__eyebrow">{page.demo.label}</p>
+                            <WebsiteHeadline as="h2" text={page.demo.title} />
+                            <p>{page.demo.caption}</p>
+                        </AnimateOnScroll>
+                        <AnimateOnScroll preset="card" className="ws-industry-demo__visual">
+                            <Image
+                                src={page.demo.imageSrc}
+                                alt={page.demo.imageAlt}
+                                width={1270}
+                                height={760}
+                                loading="lazy"
+                                unoptimized
+                            />
+                        </AnimateOnScroll>
+                    </div>
+                </section>
+            ) : null}
 
             <section className="ws-section ws-section--subtle">
                 <div className="ws-container">

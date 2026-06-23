@@ -134,7 +134,7 @@ The `/resources` layer is an evergreen MenuList public website surface, not a ch
 
 ### Canonical Implementation Scope
 
-Industry pages explain how the same official-source layer applies to common food-business types without turning MenuList into a marketplace, POS replacement, or ranking tool.
+Industry pages explain how the same official-source layer applies to common list-driven SMB types without turning MenuList into a marketplace, POS replacement, booking system, or ranking tool.
 
 **Current route set:**
 
@@ -142,8 +142,13 @@ Industry pages explain how the same official-source layer applies to common food
 2. `/industries/cafes-bakeries`
 3. `/industries/takeaway-cloud-kitchens`
 4. `/industries/multi-location-food-businesses`
+5. `/industries/salons-spas`
+6. `/industries/service-list-businesses`
+7. `/industries/local-service-businesses`
 
-**Content rule:** Industry pages may describe fit, common public-menu problems, how MenuList helps, and related resource links. They must not claim category-specific revenue lift, automatic Google updates, delivery-marketplace replacement, POS replacement, or guaranteed search/AI visibility.
+**Content rule:** Industry pages may describe fit, common public-list problems, how MenuList helps, placeholder or approved demo proof, and related resource links. They must not claim category-specific revenue lift, automatic Google updates, delivery-marketplace replacement, POS replacement, booking replacement, job-management replacement, or guaranteed search/AI visibility.
+
+**Placeholder proof note (June 23, 2026):** `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses` currently use labelled sample/demo SVG placeholders from `public/images/website/demo-placeholders/`. Replace those assets with routed demo screenshots or permissioned proof before broad campaign use.
 
 ---
 

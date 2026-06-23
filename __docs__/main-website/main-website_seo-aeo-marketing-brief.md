@@ -542,7 +542,7 @@ These priorities were accepted for the current live menu/food route set. After t
 
 These are useful additions, but only after the core pages above are polished enough to carry the category.
 
-Current implementation note: the core English pages listed above have now received the live quality pass. The additional pages below are still not live routes.
+Current implementation note: the core English pages listed above have now received the live quality pass. `/industries/salons-spas` is now a placeholder-backed live route, and `/industries/service-list-businesses` plus `/industries/local-service-businesses` were added as placeholder-backed broad-SMB industry routes. The resource/checklist candidates below are still not live routes.
 
 | Candidate | Recommendation | Reason | Guardrail |
 | --- | --- | --- | --- |
@@ -551,13 +551,13 @@ Current implementation note: the core English pages listed above have now receiv
 | `/resources/restaurant-menu-cleanup-checklist` | Add | Clear top-of-funnel diagnostic for old PDFs, menu photos, QR cards, and social links | Focus on cleanup before publishing, not SEO guarantees |
 | `/resources/service-list-cleanup-checklist` | Add after demo proof | Strong bridge for salons, spas, studios, clinics, repair shops, and other list-driven SMBs | Needs concrete examples; do not make a generic service-business SEO article |
 | `/resources/service-price-list-checklist` | Add after demo proof | Supports package/rate-card businesses and broad price-list maintenance | Keep it operational, not ranking-led |
-| `/industries/salons-spas` | Add after demo proof | Required proof that MenuList is not restaurant-only | Needs real service-list workflow, screenshots, and CTA path |
+| `/industries/salons-spas` | Added as placeholder-backed route | Required proof that MenuList is not restaurant-only | Replace placeholder proof with routed screenshots before broad campaign use |
 | `/compare/pdf-menu-vs-menulist` | Add carefully | High conversion intent for owners stuck with old PDFs | Treat PDF as a useful backup/export, not as the enemy |
 | `/compare/qr-menu-maker-vs-official-menu-source` | Add after core polish | Good differentiation page | Avoid hostile comparison language and "best QR menu maker" framing |
 
 ### Deferred For Now
 
-Do not prioritize `/industries/bars-pubs`, `/industries/food-trucks`, `/industries/salons-spas`, or broad local-service pages in this release unless MenuList is ready to support those verticals with specific examples, workflows, screenshots, and CTAs. Thin industry pages would weaken the product-led website and create avoidable SEO risk.
+Do not prioritize `/industries/bars-pubs`, `/industries/food-trucks`, or additional broad local-service pages in this release unless MenuList is ready to support those verticals with specific examples, workflows, screenshots, and CTAs. The newly added salon/spa, service-list, and local-service industry routes are placeholder-backed; final campaign use still requires routed screenshots or permissioned proof. Thin industry pages would weaken the product-led website and create avoidable SEO risk.
 
 ### Language Decision
 

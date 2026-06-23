@@ -1,0 +1,203 @@
+import {
+    SIGNALDESK_APIFY_API_BASE,
+    SIGNALDESK_GOOGLE_PLACES_FIELD_MASK,
+    SIGNALDESK_GOOGLE_PLACES_TEXT_SEARCH_ENDPOINT,
+    SIGNALDESK_INTEGRATION_ENV,
+} from "@constant/signaldesk/integrations";
+import type { SignalDeskSourceProviderId } from "@type/signaldesk";
+
+type SourceProviderInput = {
+    city?: string;
+    country?: string;
+    maxResults: number;
+    provider: SignalDeskSourceProviderId;
+    query: string;
+};
+
+type SourceProviderTargetRow = {
+    category?: string;
+    city?: string;
+    country?: string;
+    currentListUrl?: string;
+    displayName: string;
+    email?: string;
+    instagram?: string;
+    notes?: string;
+    phone?: string;
+    website?: string;
+};
+
+const env = (key: string) => process.env[key]?.trim() || "";
+const clampMaxResults = (value: number) => Math.min(Math.max(value, 1), 20);
+const estimateApifyCostCapUsd = (maxResults: number) => (
+    Math.min(0.25, Math.max(0.05, clampMaxResults(maxResults) * 0.01))
+);
+const normalizeApifyActorId = (actorId: string) => actorId.trim().replace(/\//g, "~");
+
+const firstString = (...values: unknown[]) => {
+    for (const value of values) {
+        if (typeof value === "string" && value.trim()) return value.trim();
+        if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    }
+    return "";
+};
+
+const firstArrayString = (value: unknown) => {
+    if (!Array.isArray(value)) return "";
+    return value.map((item) => (
+        typeof item === "string"
+            ? item
+            : firstString((item as any)?.name, (item as any)?.title, (item as any)?.category)
+    )).filter(Boolean).join(", ");
+};
+
+const normalizePlaceRow = (place: any, input: SourceProviderInput): SourceProviderTargetRow | null => {
+    const displayName = String(place?.displayName?.text || "").trim();
+    if (!displayName) return null;
+    return {
+        category: String(place?.primaryType || "").replace(/_/g, " ") || undefined,
+        city: input.city,
+        country: input.country,
+        currentListUrl: String(place?.googleMapsUri || ""),
+        displayName,
+        notes: [
+            place?.businessStatus ? `Google business status: ${place.businessStatus}` : "",
+            place?.formattedAddress ? `Address: ${place.formattedAddress}` : "",
+        ].filter(Boolean).join(" | ") || undefined,
+    };
+};
+
+async function runGooglePlacesSearch(input: SourceProviderInput): Promise<SourceProviderTargetRow[]> {
+    const apiKey = env(SIGNALDESK_INTEGRATION_ENV.GOOGLE_PLACES_API_KEY);
+    if (!apiKey) throw new Error("Google Places provider is not configured");
+
+    const textQuery = [input.query, input.city, input.country].filter(Boolean).join(" ");
+    const response = await fetch(SIGNALDESK_GOOGLE_PLACES_TEXT_SEARCH_ENDPOINT, {
+        body: JSON.stringify({
+            pageSize: clampMaxResults(input.maxResults),
+            textQuery,
+        }),
+        headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": apiKey,
+            "X-Goog-FieldMask": SIGNALDESK_GOOGLE_PLACES_FIELD_MASK,
+        },
+        method: "POST",
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(`Google Places provider failed: ${response.status}`);
+
+    return (Array.isArray(payload?.places) ? payload.places : [])
+        .map((place: any) => normalizePlaceRow(place, input))
+        .filter(Boolean)
+        .slice(0, clampMaxResults(input.maxResults)) as SourceProviderTargetRow[];
+}
+
+const normalizeApifyRow = (item: any, input: SourceProviderInput): SourceProviderTargetRow | null => {
+    const displayName = firstString(
+        item?.title,
+        item?.name,
+        item?.businessName,
+        item?.companyName,
+        item?.placeName,
+    );
+    if (!displayName) return null;
+
+    const category = firstString(
+        item?.category,
+        item?.categoryName,
+        item?.mainCategory,
+        firstArrayString(item?.categories),
+    );
+    const city = firstString(item?.city, item?.cityName, item?.address?.city, input.city);
+    const country = firstString(item?.country, item?.countryCode, item?.address?.country, input.country);
+    const website = firstString(item?.website, item?.websiteUrl, item?.site, item?.homepage);
+    const mapsUrl = firstString(
+        item?.googleMapsUrl,
+        item?.googleMapsUri,
+        item?.googleUrl,
+        item?.placeUrl,
+        item?.url,
+    );
+    const address = firstString(item?.address, item?.formattedAddress, item?.location?.address);
+    const emailValue = Array.isArray(item?.emails) ? item.emails[0] : item?.emails;
+    const phoneValue = Array.isArray(item?.phones) ? item.phones[0] : item?.phones;
+    const socials = typeof item?.socials === "object" && item.socials ? item.socials : {};
+    const phone = firstString(item?.phone, item?.phoneNumber, item?.phoneUnformatted, item?.contactPhone, phoneValue);
+    const email = firstString(item?.email, item?.contactEmail, emailValue);
+    const instagram = firstString(item?.instagram, item?.instagramUrl, (socials as any).instagram);
+
+    return {
+        category: category || undefined,
+        city: city || undefined,
+        country: country || undefined,
+        currentListUrl: mapsUrl || undefined,
+        displayName,
+        email: email || undefined,
+        instagram: instagram || undefined,
+        notes: [
+            "Apify normalized dataset item.",
+            address ? `Address: ${address}` : "",
+            item?.totalScore ? `Rating: ${item.totalScore}` : "",
+            item?.reviewsCount ? `Reviews: ${item.reviewsCount}` : "",
+        ].filter(Boolean).join(" | "),
+        phone: phone || undefined,
+        website: website || undefined,
+    };
+};
+
+async function runApifySourceSearch(input: SourceProviderInput): Promise<SourceProviderTargetRow[]> {
+    const apiToken = env(SIGNALDESK_INTEGRATION_ENV.APIFY_API_TOKEN);
+    const actorId = normalizeApifyActorId(env(SIGNALDESK_INTEGRATION_ENV.APIFY_SOURCE_ACTOR_ID));
+    if (!apiToken || !actorId) throw new Error("Apify provider is not configured");
+
+    const maxResults = clampMaxResults(input.maxResults);
+    const maxChargeUsd = estimateApifyCostCapUsd(maxResults);
+    const textQuery = [input.query, input.city, input.country].filter(Boolean).join(" ");
+    const locationQuery = [input.city, input.country].filter(Boolean).join(", ");
+    const endpoint = new URL(`/v2/actors/${encodeURIComponent(actorId)}/run-sync-get-dataset-items`, SIGNALDESK_APIFY_API_BASE);
+    endpoint.searchParams.set("clean", "true");
+    endpoint.searchParams.set("format", "json");
+    endpoint.searchParams.set("limit", String(maxResults));
+    endpoint.searchParams.set("maxItems", String(maxResults));
+    endpoint.searchParams.set("maxTotalChargeUsd", maxChargeUsd.toFixed(2));
+    endpoint.searchParams.set("timeout", "120");
+
+    const response = await fetch(endpoint.toString(), {
+        body: JSON.stringify({
+            language: "en",
+            locationQuery,
+            maxCrawledPlacesPerSearch: maxResults,
+            searchStringsArray: [textQuery],
+        }),
+        headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+        },
+        method: "POST",
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(`Apify provider failed: ${response.status}`);
+
+    const items = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.items)
+            ? payload.items
+            : Array.isArray(payload?.data?.items)
+                ? payload.data.items
+                : [];
+
+    return items
+        .map((item: any) => normalizeApifyRow(item, input))
+        .filter(Boolean)
+        .slice(0, maxResults) as SourceProviderTargetRow[];
+}
+
+export async function runSignalDeskSourceProvider(input: SourceProviderInput): Promise<SourceProviderTargetRow[]> {
+    if (input.provider === "google-places") return runGooglePlacesSearch(input);
+    if (input.provider === "apify") return runApifySourceSearch(input);
+    if (input.provider === "foursquare") throw new Error("Foursquare provider is blocked pending source approval");
+    throw new Error("Source provider is not configured");
+}

@@ -190,6 +190,9 @@ Industry pages:
 - https://menulist.ai/industries/cafes-bakeries
 - https://menulist.ai/industries/takeaway-cloud-kitchens
 - https://menulist.ai/industries/multi-location-food-businesses
+- https://menulist.ai/industries/salons-spas
+- https://menulist.ai/industries/service-list-businesses
+- https://menulist.ai/industries/local-service-businesses
 
 ## Preferred Positioning
 

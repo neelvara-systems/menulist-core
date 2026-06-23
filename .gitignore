@@ -18,6 +18,7 @@
 # Firebase Functions
 functions/lib
 functions-answerlattice/lib
+functions-signaldesk/lib
 
 # misc
 .DS_Store

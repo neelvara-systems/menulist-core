@@ -53,6 +53,33 @@ Research-backed guardrail:
 | Product Hunt content requires a direct URL, name, tagline, description, tags, thumbnail, and gallery assets. | Product Hunt preparation content checklist: https://www.producthunt.com/launch/preparing-for-launch | Build Product Hunt assets as a formal workstream, not the night before. |
 | Product Hunt discourages gimmicky taglines and paid hunters/promoters. | Product Hunt preparation and before-launch docs: https://www.producthunt.com/launch/preparing-for-launch and https://www.producthunt.com/launch/before-launch | Use founder-led launch and plain positioning. Do not buy votes, traffic, or a hunter. |
 
+## Launch Platform and International Acquisition Addendum - June 23, 2026
+
+**Decision:** Accept the new launch doctrine as WhatsApp-first, not WhatsApp-only. Product Hunt remains a credibility and feedback event. International client acquisition should use market pods, starting with the channel where local SMB owners already send or display current lists.
+
+| Finding | Source | MenuList implication |
+| --- | --- | --- |
+| Product Hunt says 12:01am Pacific gives a full 24-hour homepage cycle and launches can be scheduled up to one month ahead. | https://www.producthunt.com/launch/preparing-for-launch | Tuesday, August 11, 2026 at 12:01am Pacific / 12:31pm IST is a valid target only if readiness gates pass before scheduling. |
+| Product Hunt says makers can hunt their own products and warns not to ask directly for upvotes. | https://www.producthunt.com/launch | Founder-led Product Hunt launch is acceptable. Outreach should ask for feedback, comments, or real product action, not votes. |
+| Product Hunt preparation materials call for a direct URL, clear tagline, thumbnail, gallery, video, maker comment, pricing, and promo details. | https://www.producthunt.com/launch/preparing-for-launch | Current asset pack is useful but incomplete until final visuals, video, launch URL, offer, and response coverage exist. |
+| Hacker News Show HN guidelines require something users can try and say not to submit landing pages, lists, fundraisers, or signup/email-gated demos. | https://news.ycombinator.com/showhn.html | Show HN should wait for public demo pages or a tryable flow, not the Product Hunt landing page. |
+| WhatsApp Business Messaging Policy requires opt-in for business-initiated messages, opt-out honoring, no misleading/spammy communication, and template rules outside the 24-hour service window. | https://whatsappbusiness.com/policy/ | Keep click-to-WhatsApp inbound-first. Do not bulk-message scraped SMB numbers or imply official WhatsApp partnership. |
+| Google Business Profile is a public business surface for Search/Maps information, posts, offers, events, reviews, messages, and profile updates. | https://business.google.com/en-all/business-profile/ | Google Maps/GBP research is valid lead discovery. MenuList should not claim it updates Google automatically. |
+| Apple Business Connect lets businesses customize place cards across Apple apps with photos, key information, and promotions. | https://www.apple.com/newsroom/2023/01/introducing-apple-business-connect/ | Apple is a later placement-checklist surface for some markets, not a launch integration claim. |
+| LINE Official Account is built for stores/companies and reports more than three million official accounts in Japan. | https://www.lycbiz.jp/en/other | LINE-first markets are valid later-market research, but require separate localization, intake, and compliance decisions. |
+| KakaoTalk Channel supports business communication patterns including chats, reservations, consultations, and smart/chatbot-style flows. | https://www.kakaocorp.com/page/service/service/KakaoTalkChannel?lang=ENG | Kakao is a later Korea-market research path, not current MenuList product scope. |
+
+Market-pod decision:
+
+| Pod | Markets | Primary front door | Launch stance |
+| --- | --- | --- | --- |
+| 1 | India + GCC | WhatsApp | Start here after production WhatsApp readiness and proof assets. |
+| 2 | LATAM | WhatsApp + Instagram | Add after initial proof and Spanish/Portuguese review. |
+| 3 | US, Canada, Australia, UK | Google/Instagram/upload-first | Use public-list audits and partner motion. |
+| 4 | Japan, Taiwan, Thailand | LINE + upload | Research/docs first. |
+| 5 | Korea | Kakao + upload | Research/docs first. |
+| 6 | China/WeChat | Deferred | Requires local ecosystem, compliance, and partner decisions. |
+
 ## India and SMB Channel Research
 
 | Finding | Source | MenuList implication |
@@ -102,6 +129,9 @@ Research-backed guardrail:
 - Use LinkedIn for founder, partner, and multi-location credibility.
 - Use founder-led outreach and partner-led introductions before automation.
 - Use paid ads only after funnel measurement is live.
+- Use WhatsApp-first, not WhatsApp-only, as the launch-channel doctrine.
+- Use market pods for international acquisition instead of launching everywhere at once.
+- Treat Tuesday, August 11, 2026 as a conditional Product Hunt target, not a scheduled launch.
 
 ### Modified
 
@@ -110,6 +140,8 @@ Research-backed guardrail:
 - Product Hunt launch waits until proof assets and follow-up are ready.
 - Outreach starts as manual pilot, not automated campaign system.
 - SEO content starts with fewer high-quality pages, not programmatic page volume.
+- `/global`, `/in`, `/ae`, `/us`, `/line`, and `/kakao` are content-roadmap candidates, not immediate code tasks.
+- Public List Drift Score should start as a manual audit worksheet, not an automated score.
 
 ### Rejected
 
@@ -119,6 +151,9 @@ Research-backed guardrail:
 - Unconsented WhatsApp/SMS/call blasts.
 - Generic "AI menu" creative.
 - Fear-based outreach that says a business is losing sales without proof.
+- Public claims that WhatsApp reply `APPROVE` publishes a list before a product/security implementation exists.
+- Launch-month AppSumo or review-platform push before support load, pricing, and plan limits are stable.
+- Claims that MenuList automatically updates Google, Instagram, Yelp, Apple, LINE, Kakao, POS, or WhatsApp Catalog.
 
 ## Open Research Items
 

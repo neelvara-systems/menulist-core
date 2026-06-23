@@ -1,0 +1,25 @@
+{
+  "functions": [
+    {
+      "source": "functions-signaldesk",
+      "codebase": "signaldesk",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore-signaldesk.rules",
+    "indexes": "firestore-signaldesk.indexes.json"
+  },
+  "storage": {
+    "rules": "storage-signaldesk.rules"
+  }
+}

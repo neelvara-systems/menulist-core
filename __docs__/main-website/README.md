@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.82 (WhatsApp Test CTA Activation)
+**Version:** 3.6.85 (Placeholder-Backed Service Industry Pages)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 22, 2026
+**Last Updated:** June 23, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,19 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.82** | **WhatsApp Test CTA Activation** | **The `/whatsapp` campaign route now opens the configured test WhatsApp onboarding number with a prefilled owner-started current-list message.** | **ACTIVE** |
+| **3.6.85** | **Placeholder-Backed Service Industry Pages** | **Salon/spa, service-list, and local-service industry pages now exist with clearly labelled placeholder demo assets while final screenshots/videos remain pending.** | **ACTIVE** |
+
+Version 3.6.85 adds placeholder-backed broad-SMB industry pages for `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses`. The pages reuse the existing industry landing-page shell, metadata pattern, `WebsitePageStructuredData`, `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The placeholder SVG assets live under `public/images/website/demo-placeholders/` and are visibly labelled as sample/demo placeholders. They unblock code-side service-list SEO review, but final routed screenshots/videos or permissioned proof must replace them before Product Hunt gallery use, paid traffic, broad partner outreach, or final public campaign visuals. This is public website route/discovery/docs work only; upload/extraction, demo tenant creation, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, Search Console setup, sitemap submission, production build, Vercel deploy, and DNS were not changed.
+
+Version 3.6.84 remains Public Menu Noindex Hardening and is preserved below as the previous website version note.
+
+Version 3.6.84 tightens public tenant discovery behavior for stale project/menu slug paths and stale item/category detail paths. When a public tenant URL no longer resolves to a real project, the visible customer fallback ladder remains in place for old QR links and PWA entry points, but metadata now emits `noindex, follow` and canonicalizes to the tenant or outlet root instead of the stale URL. When a menu exists but a requested item/category detail no longer resolves, the detail URL emits `noindex, follow` and canonicalizes to the current menu page. `verify:agent-readiness` checks these guards. This is public tenant SEO metadata/docs work only; no website route, owner dashboard runtime, Firebase rules, Cloud Functions, Search Console setup, sitemap submission, production build, Vercel deploy, or DNS change was run.
+
+Version 3.6.83 remains SEO Noindex Hardening and is preserved below as the previous website version note.
+
+Version 3.6.83 validates the external ChatGPT technical SEO review against live endpoints and repo truth. `/signin` and `/forgot-password` now define noindex/nofollow metadata, middleware emits `X-Robots-Tag: noindex, nofollow` for auth/app/API/internal/create-menu preview and success paths, platform robots/discovery disallows include the missing internal/auth prefixes, and `verify:agent-readiness` checks these noindex contracts. Live curl checks showed `menulist.online` robots and sitemap endpoints return 200 but advertise `menulist.ai` canonical discovery URLs while `menulist.ai` currently serves a `/lander` shell, so Search Console remains blocked until the chosen canonical host serves the app. This is website discovery/auth-indexing code and docs work only; canonical host selection, DNS, Vercel deploy, production build, Firebase rules, Cloud Functions, customer menu/OBP runtime, owner dashboard runtime, Search Console, and sitemap submission were not changed.
+
+Version 3.6.82 remains WhatsApp Test CTA Activation and is preserved below as the previous website version note.
 
 Version 3.6.82 switches the `/whatsapp` primary and final CTAs from the earlier `/create-menu` fallback to a prefilled click-to-WhatsApp link for the supplied test onboarding number `+1 555 657 1424` (`https://wa.me/15556571424`). The prefilled message starts from the same broad SMB current-list promise: menu, service list, rate card, catalog, package list, or price list. Production launch still needs the final public WhatsApp account, response owner, operating hours, and tracking decision. This is public website component/locale/docs work only; messaging-onboarding Functions runtime, provider secrets, webhook configuration, extraction/publish behavior, auth, owner dashboard runtime, customer menu/OBP runtime, pricing/payment, Firebase rules, Cloud Functions, Vercel deployment, and outbound WhatsApp outreach were not changed.
 

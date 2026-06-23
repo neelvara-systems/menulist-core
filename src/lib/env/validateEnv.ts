@@ -22,6 +22,7 @@ import {
     CAMPAIGNCUE_FIREBASE_ENV,
     CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS,
 } from '@constant/campaigncue/firebase';
+import { SIGNALDESK_FIREBASE_PROJECT_ID_ENV_KEYS } from '@constant/signaldesk/firebase';
 
 interface EnvValidationResult {
     valid: boolean;
@@ -89,6 +90,7 @@ const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
         'ANSWERLATTICE_FIREBASE_PROJECT_ID',
     ],
     campaigncue: CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS,
+    signaldesk: SIGNALDESK_FIREBASE_PROJECT_ID_ENV_KEYS,
     mycodex: [],
 } as const;
 
@@ -104,6 +106,7 @@ const describeProduct = (productId: DeploymentProductId) => {
     if (productId === 'constantlayer') return 'ConstantLayer';
     if (productId === 'answerlattice') return 'Answerlattice';
     if (productId === 'campaigncue') return 'CampaignCue';
+    if (productId === 'signaldesk') return 'MenuList SignalDesk';
     return 'MyCodex';
 };
 

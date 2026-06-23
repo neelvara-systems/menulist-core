@@ -10,14 +10,17 @@
  *   Local: /__constantlayer       — ConstantLayer website
  *   Local: /__answerlattice        — Answerlattice website
  *   Local: /__campaigncue          — CampaignCue website
+ *   Local: /signaldesk             — private MenuList SignalDesk app
  *   QA: menulist.online       — MenuList preview/staging
  *   QA: constantlayer.menulist.online — ConstantLayer preview/staging
  *   QA: answerlattice.menulist.online — Answerlattice preview/staging
  *   QA: campaigncue.menulist.online — CampaignCue preview/staging
+ *   QA: signaldesk.menulist.online — private SignalDesk preview app
  *   Prod: menulist.ai         — MenuList production
  *   Prod: constantlayer.in    — ConstantLayer production
  *   Prod: answerlattice.com        — Answerlattice production
  *   Prod: campaigncue.ai      — CampaignCue production
+ *   Prod: signaldesk.menulist.ai — private SignalDesk production app
  *   [future product domains] — SurfaceOS / GrowthOS / KitStamp websites
  *   app.menulist.ai          — Owner/staff dashboard (authenticated)
  *   {subdomain}.menulist.online — Customer-facing digital menu in local/staging
@@ -264,6 +267,7 @@ export const RESERVED_SUBDOMAINS = [
     HELP_SUBDOMAIN,
     SUPPORT_SUBDOMAIN,
     'status',
+    'signaldesk',
     CONSTANTLAYER_PRODUCT_SLUG,
     CAMPAIGNCUE_PRODUCT_SLUG,
 ];

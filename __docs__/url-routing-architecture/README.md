@@ -82,11 +82,12 @@ Tenant (account container — billing, stores list)
 
 Requests are classified before tenant routing:
 
-1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, ConstantLayer, Answerlattice, CampaignCue, and MyCodex by deployment stage.
+1. `src/constants/deploymentTargets.ts` defines the active domains for MenuList, ConstantLayer, Answerlattice, CampaignCue, MyCodex, and private SignalDesk app hosts by deployment stage.
 2. `src/constants/productDomains.ts` registers enabled product sites and maps product hosts to `/sites/{productId}` route groups.
 3. `src/lib/multiTenant/domainResolver.ts` checks `resolveProductSiteByHostname()` before treating a host as a platform, subdomain, or custom tenant domain.
 4. `src/middleware.ts` rewrites product domains directly to their product route group and never sends them through `/client`.
-5. MyCodex product routes require the MyCodex login/session cookie outside localhost so internal docs are not publicly readable.
+5. Dedicated SignalDesk hosts are private app hosts and rewrite to `/signaldesk`, not `/sites/signaldesk` and not `/client`.
+6. MyCodex product routes require the MyCodex login/session cookie outside localhost so internal docs are not publicly readable.
 
 | Host                                    | Classification | Rewrite / Behavior                 |
 | --------------------------------------- | -------------- | ---------------------------------- |
@@ -95,6 +96,7 @@ Requests are classified before tenant routing:
 | `answerlattice.com` / `www.answerlattice.com` | Product | Public site: `/sites/answerlattice`; app routes: `/answerlattice/*` |
 | `campaigncue.ai` / `www.campaigncue.ai` | Product | Public site: `/sites/campaigncue`; owner app: `/campaigncue/app` |
 | `menulist.digital` / `www.menulist.digital` | Product | `/sites/mycodex` |
+| `signaldesk.menulist.ai` / `signaldesk.menulist.online` | Private app host | `/signaldesk` |
 | `brand.menulist.ai` | Tenant | `/client` |
 | Verified restaurant custom domain | Tenant | `/client` |
 
@@ -117,6 +119,8 @@ Localhost `/__mycodex` remains open for development.
 
 Internal portfolio aliases `/cl`, `/ml`, `/al`, and `/cc` are only enabled on the MyCodex product host or an already-resolved MyCodex request. They are convenience path aliases for private portfolio navigation, not public canonical product URLs, tenant paths, Firebase targets, or product-code aliases. `/cl` maps to the ConstantLayer public site route group.
 
+SignalDesk uses the app-only MyCodex-host alias `/sd`. `https://menulist.digital/sd` rewrites to the private `/signaldesk` app, and SignalDesk navigation preserves `/sd/*` while serving through that host. `/sd/signin` rewrites to the shared sign-in page so the callback can return to `/sd`.
+
 #### Product Site Vs Product App Routes
 
 `src/app/sites/[productId]` is public website only. It is the place for unauthenticated product marketing pages, public resources, robots output, sitemap output, legal pages, and other discovery surfaces.
@@ -128,6 +132,7 @@ Authenticated owner dashboards, product workspaces, admin tools, and paid/runtim
 | ConstantLayer | `src/app/sites/constantlayer` | None | Static entity/trust site only; no product app route. MyCodex-only alias: `/cl`. |
 | Answerlattice | `src/app/sites/answerlattice` | `src/app/(answerlattice)/answerlattice` | Dashboard roots rewrite to `/answerlattice/*`. |
 | CampaignCue | `src/app/sites/campaigncue` | `src/app/(campaigncue)/campaigncue` | `/app` rewrites to `/campaigncue/app`; local `/__campaigncue/app` also rewrites to `/campaigncue/app`. |
+| SignalDesk | None | `src/app/(signaldesk)/signaldesk` | Local `/signaldesk`; dedicated hosts rewrite to `/signaldesk/*`; MyCodex-host alias `/sd` rewrites to `/signaldesk/*`. |
 
 This separation keeps public SEO/discovery surfaces away from authenticated owner runtime code, keeps product files easy to inventory, and prevents future products from hiding dashboards below `sites/`.
 

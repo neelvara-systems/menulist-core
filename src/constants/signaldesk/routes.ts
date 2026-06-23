@@ -1,0 +1,28 @@
+export const SIGNALDESK_BASE_PATH = "/signaldesk";
+export const SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH = "/sd";
+export const SIGNALDESK_API_BASE_PATH = "/api/signaldesk";
+
+export const SIGNALDESK_ROUTES = {
+    DASHBOARD: SIGNALDESK_BASE_PATH,
+    TARGETS: `${SIGNALDESK_BASE_PATH}/targets`,
+    IMPORTS: `${SIGNALDESK_BASE_PATH}/imports`,
+    APPROVALS: `${SIGNALDESK_BASE_PATH}/approvals`,
+    TEMPLATES: `${SIGNALDESK_BASE_PATH}/templates`,
+    INBOX: `${SIGNALDESK_BASE_PATH}/inbox`,
+    ATTRIBUTION: `${SIGNALDESK_BASE_PATH}/attribution`,
+    POLICIES: `${SIGNALDESK_BASE_PATH}/policies`,
+    SOURCES: `${SIGNALDESK_BASE_PATH}/sources`,
+    AI: `${SIGNALDESK_BASE_PATH}/ai`,
+    CHANNELS: `${SIGNALDESK_BASE_PATH}/channels`,
+    SETTINGS: `${SIGNALDESK_BASE_PATH}/settings`,
+    CONTROL_ROOM: `${SIGNALDESK_BASE_PATH}/control-room`,
+    AUDIT: `${SIGNALDESK_BASE_PATH}/audit`,
+} as const;
+
+export const SIGNALDESK_API_ROUTES = {
+    ACTIONS: `${SIGNALDESK_API_BASE_PATH}/actions`,
+    OVERVIEW: `${SIGNALDESK_API_BASE_PATH}/overview`,
+    KILL_SWITCHES: `${SIGNALDESK_API_BASE_PATH}/kill-switches`,
+    WEBHOOKS: `${SIGNALDESK_API_BASE_PATH}/webhooks`,
+    WORKSPACE: `${SIGNALDESK_API_BASE_PATH}/workspace`,
+} as const;

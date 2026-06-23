@@ -88,7 +88,9 @@ Growth Engine may generate a lead preview or audit artifact, but that artifact i
 | Document | Purpose |
 | --- | --- |
 | [Decision Brief](./growth-engine_decision-brief.md) | Founder-level product and repo decision. |
-| [ChatGPT Review](./growth-engine_chatgpt-review-2026-05-31.md) | Review of the attached conversation, accepted/rejected points, and risks. |
+| [ChatGPT Review - 2026-05-31](./growth-engine_chatgpt-review-2026-05-31.md) | Review of the attached conversation, accepted/rejected points, and risks. |
+| [ChatGPT Review - 2026-06-23](./growth-engine_chatgpt-review-2026-06-23.md) | Review of the AI Lead Generation Automation conversation with all 164 messages mapped, accepted/rejected points, policy checks, and Growth Engine fit decisions. |
+| [Private Internal Tool Review - 2026-06-23](./growth-engine_private-internal-tool-review-2026-06-23.md) | Re-review of the same AI Lead Generation Automation conversation under the corrected assumption that this is a private, from-scratch internal tool for Danny and the MenuList growth team, not a MenuList product feature or public launch. |
 | [Distribution Architecture](./growth-engine_distribution-architecture.md) | New direction lock: lead gen becomes MenuList-owned distribution infrastructure. |
 | [Automation Workflow Blueprint](./growth-engine_automation-workflow-blueprint.md) | Implementation-ready automation model based on researched GTM workflows and MenuList-specific distribution needs. |
 | [Connections And Activation Screen](./growth-engine_connections-activation-screen.md) | Internal control screen for adapter IDs, provider credentials, email pipeline, WhatsApp pipeline, webhooks, budgets, kill switches, and activation gates. |

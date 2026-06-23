@@ -24,8 +24,9 @@ Until one exists:
 
 - source-before visuals can be static mockups based on `menulist-marketing-distribution_demo-source-lists.md`;
 - product screenshots must either use existing safe routes/states or wait for a demo tenant;
-- public website pages should not show service-list customer proof as if it were a real customer;
-- SEO pages for salon/spa or service-list cleanup should wait for screenshot proof.
+- public website pages must not show service-list customer proof as if it were a real customer;
+- placeholder-backed salon/spa, service-list, and local-service industry pages may exist when the assets are visibly labelled as sample/demo placeholders;
+- final Product Hunt, paid traffic, partner, and broad outreach assets still require approved routed screenshots or permissioned customer assets.
 
 ---
 
@@ -86,10 +87,10 @@ Do not move images into `public/images/website/` until founder approval.
 | CAP-004 | Local Table Cafe | Public customer menu | Demo tenant public route needed | Blocked | Product Hunt, website proof |
 | CAP-005 | Local Table Cafe | QR/table-card proof | Demo tenant or generated asset needed | Blocked | Product Hunt, vertical clip |
 | CAP-006 | Glow & Blade Studio | Source-before rate card | Static mockup from demo source lists | Ready to create | Service-list proof |
-| CAP-007 | Glow & Blade Studio | Public service-list page | Demo tenant public route needed | Blocked | Salon/spa SEO proof |
+| CAP-007 | Glow & Blade Studio | Public service-list page | Demo tenant public route needed; placeholder visible at `/industries/salons-spas` | Placeholder only | Salon/spa SEO proof |
 | CAP-008 | Glow & Blade Studio | Official Business Page | Demo tenant OBP route needed | Blocked | Website proof, gallery |
 | CAP-009 | Spark Auto Detailing | Package/rate-card before state | Static mockup from demo source lists | Ready to create | Local-service proof |
-| CAP-010 | Spark Auto Detailing | Public package page | Demo tenant public route needed | Blocked | Gallery, outreach |
+| CAP-010 | Spark Auto Detailing | Public package page | Demo tenant public route needed; placeholder visible at `/industries/local-service-businesses` | Placeholder only | Gallery, outreach |
 | CAP-011 | PawKind Grooming | Size-based service list | Demo tenant public route needed | Blocked | Service-list variety proof |
 | CAP-012 | Lens & Vows Studio | Package-list public page | Demo tenant public route needed | Blocked | High-consideration services proof |
 | CAP-013 | BloomBox Florals | Catalog-lite public page | Demo tenant public route needed | Blocked | Retail/catalog proof |

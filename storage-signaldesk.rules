@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    match /signaldesk/imports/{fileName} {
+      allow read: if canReadSignalDesk();
+      allow write, delete: if false;
+    }
+
+    match /signaldesk/evidence/{allPaths=**} {
+      allow read: if canReadSignalDesk();
+      allow write, delete: if false;
+    }
+
+    match /signaldesk/exports/{allPaths=**} {
+      allow read: if canReadSignalDesk();
+      allow write, delete: if false;
+    }
+
+    match /signaldesk/incidents/{allPaths=**} {
+      allow read: if isSignalDeskPlatformAdmin();
+      allow write, delete: if false;
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSignalDeskPlatformAdmin() {
+      return isAuthenticated()
+        && request.auth.token.platformRole == 'PLATFORM';
+    }
+
+    function isSignedInSignalDeskMember() {
+      return isAuthenticated()
+        && firestore.exists(/databases/(default)/documents/signaldeskTeamMembers/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/signaldeskTeamMembers/$(request.auth.uid)).data.active == true;
+    }
+
+    function canReadSignalDesk() {
+      return isSignalDeskPlatformAdmin() || isSignedInSignalDeskMember();
+    }
+  }
+}

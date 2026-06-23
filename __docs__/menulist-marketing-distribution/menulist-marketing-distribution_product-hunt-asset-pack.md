@@ -4,7 +4,7 @@
 **Created:** June 22, 2026  
 **Owner:** Codex drafts, founder approves before public use  
 **Related actions:** MLD-A002, MLD-A011  
-**Inputs:** `menulist-marketing-distribution_demo-universe.md`, `menulist-marketing-distribution_demo-source-lists.md`, `menulist-marketing-distribution_screenshot-capture-plan.md`
+**Inputs:** `menulist-marketing-distribution_demo-universe.md`, `menulist-marketing-distribution_demo-source-lists.md`, `menulist-marketing-distribution_screenshot-capture-plan.md`, `menulist-marketing-distribution_demo-placeholder-assets.md`
 
 ---
 
@@ -14,6 +14,8 @@ This document turns the demo universe into Product Hunt-ready asset copy.
 
 It does not schedule a Product Hunt launch, create final image files, upload a YouTube video, or make a Product Hunt draft. Those remain separate launch tasks.
 
+Temporary SVG placeholders now exist for service-list, salon/spa, local-service, and video-poster proof. They are useful for route layout and internal review only. Product Hunt gallery assets still require approved routed screenshots or approved fictional/demo visuals before launch.
+
 ---
 
 ## Launch Position
@@ -21,6 +23,10 @@ It does not schedule a Product Hunt launch, create final image files, upload a Y
 Product Hunt should present MenuList as:
 
 > One official customer link for menus, service lists, packages, catalogs, and price lists.
+
+Campaign shorthand:
+
+> Forward any SMB list into one official customer link.
 
 Do not present MenuList as:
 
@@ -58,6 +64,10 @@ Do not use:
 
 Recommended:
 
+> Forward any SMB list into one official customer link.
+
+Website/product-language option:
+
 > Turn any current menu, service list, or price list into one official customer link.
 
 Shorter:
@@ -68,7 +78,9 @@ Product Hunt tighter option:
 
 > Menus, service lists, packages, and prices in one official customer link.
 
-Avoid taglines that mention ranking, traffic, revenue, AI visibility, automatic Google updates, or booking/POS replacement.
+Avoid taglines that mention ranking, traffic, revenue, AI visibility, automatic Google updates, official WhatsApp/Meta partnership, WhatsApp catalog sync, or booking/POS replacement.
+
+Use `official customer link` in MenuList-owned copy. Use `official public link` only when a platform's context needs plainer category language.
 
 ---
 
@@ -233,6 +245,8 @@ Use these for common Product Hunt questions. Keep responses factual and bounded.
 | Launch-day response plan | Recommended | Drafted in `menulist-marketing-distribution_launch-day-response-plan.md` |
 | Follow-up board | Recommended | Drafted in `menulist-marketing-distribution_post-launch-follow-up-board.md` |
 | YouTube walkthrough | Optional but useful | Script planned in `menulist-marketing-distribution_launch-video-scripts.md` |
+| Launch URL | Yes | Not created; `/launch/product-hunt` needs route-specific docs/content approval first |
+| Launch date | No | Tuesday, August 11, 2026 is a conditional target only |
 
 ---
 
@@ -246,4 +260,6 @@ Still needed:
 - actual gallery images;
 - final video decision and optional YouTube upload;
 - founder-edited maker comment;
-- live route/funnel confidence for upload -> preview -> approval -> publish.
+- live route/funnel confidence for upload -> preview -> approval -> publish;
+- production WhatsApp destination, response ownership, consent copy, and tracking;
+- launch URL and offer decision.

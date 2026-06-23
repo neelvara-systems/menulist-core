@@ -1,7 +1,7 @@
 # Public Truth Indexing Policy
 
 **Status:** Implemented  
-**Last Updated:** June 2, 2026  
+**Last Updated:** June 23, 2026
 **Owner:** Discovery infrastructure / customer-facing public surfaces  
 
 ---
@@ -28,6 +28,7 @@ This policy is used by:
 
 - `src/app/client/[[...slug]]/page.tsx`
   - applies `index/follow` or `noindex/follow` metadata for public tenant pages
+  - treats stale or deleted project/menu slug paths and stale item/category detail paths as `noindex, follow`
 - `src/app/client/sitemap.ts`
   - keeps weak/incomplete public truth pages out of per-tenant sitemap output
 - `src/app/client/obp/OBPResolvedSurface.tsx`
@@ -77,6 +78,10 @@ A menu page is indexable only when:
 - the store passes base public eligibility, and
 - the menu/project is active, not deleted, not a special-menu draft, and has real public menu content.
 
+When a requested project/menu slug no longer resolves, the customer page may still show the fallback ladder for old QR links or PWA entry points. That URL is not a new public truth page: metadata uses `noindex, follow`, and the canonical falls back to the tenant or outlet root instead of self-canonicalizing the stale path.
+
+When a menu exists but a requested item/category detail path no longer resolves, the detail URL also uses `noindex, follow` and canonicalizes back to the current menu page. The menu remains indexable when it passes the public truth gate.
+
 For sitemap generation, the policy uses project summary data already being read. It does not add full project reads just to decide sitemap inclusion.
 
 ---
@@ -104,6 +109,8 @@ Public tenant metadata now uses the same gate:
 | --- | --- |
 | Useful public truth page | `index, follow` |
 | Expired starter or weak record | `noindex, follow` |
+| Stale or missing project/menu slug with customer fallback ladder | `noindex, follow` |
+| Stale or missing item/category detail URL under a real menu | `noindex, follow` |
 | Missing store | `noindex, nofollow` |
 
 The page can still render when routing allows it. The discovery signal is conservative.

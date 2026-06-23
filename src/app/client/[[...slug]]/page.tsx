@@ -797,13 +797,23 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             : getPublicLanguageOptions(metadataStore))
         : getPublicLanguageOptions(metadataStore);
     const languageAlternates = buildPublicLanguageAlternates(currentUrl, metadataLanguageOptions);
-    const isOBPMetadata = FEATURE_FLAGS.ENABLE_OBP && !metadataProject;
-    const publicTruthIndexDecision = evaluatePublicTruthIndexability(metadataStore, {
-        surface: isOBPMetadata ? 'obp' : 'menu',
-        hasPublishedMenu: Boolean(metadataStore?.lastPublishedAt || metadataStore?.primaryProjectId || metadataProject),
-        projectData: metadataProject,
-        projectSummary: metadataProjectRecord,
-    });
+    const missingProjectPath = shouldLoadProjectMetadata
+        && Boolean(projectSlugForLookup)
+        && !metadataProjectResult;
+    const isOBPMetadata = FEATURE_FLAGS.ENABLE_OBP && !metadataProject && !missingProjectPath;
+    const publicTruthIndexDecision = missingProjectPath
+        ? {
+            index: false,
+            follow: true,
+            includeInSitemap: false,
+            reason: 'missing_menu_content' as const,
+        }
+        : evaluatePublicTruthIndexability(metadataStore, {
+            surface: isOBPMetadata ? 'obp' : 'menu',
+            hasPublishedMenu: Boolean(metadataStore?.lastPublishedAt || metadataStore?.primaryProjectId || metadataProject),
+            projectData: metadataProject,
+            projectSummary: metadataProjectRecord,
+        });
     const publicTruthRobots = buildPublicTruthRobots(publicTruthIndexDecision);
     const projectCanonicalUrl = metadataProject
         ? (metadataProjectRecord?.isDefault && !projectSlugForLookup && !metadataOutletSlug && !FEATURE_FLAGS.ENABLE_OBP
@@ -819,12 +829,23 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
     if (metadataProjectResult?.isMenuAliasFallback && projectCanonicalUrl) {
         menuAliasCanonical = projectCanonicalUrl;
     }
+    const missingProjectFallbackCanonical = metadataOutletSlug
+        ? `${canonicalBase}/${metadataOutletSlug}`
+        : canonicalBase;
     const canonicalWithoutLanguage = isOBPMetadata
         ? resolveSafeStoreCanonicalUrl(metadataStore.canonicalUrl, currentUrl, canonicalBase)
-        : menuAliasCanonical || projectCanonicalUrl || canonicalBase;
+        : missingProjectPath
+            ? missingProjectFallbackCanonical
+            : menuAliasCanonical || projectCanonicalUrl || canonicalBase;
     const canonicalWithLanguage = isOBPMetadata && requestedLanguage && metadataLanguageOptions.length > 1
         ? appendPublicLanguageParam(canonicalWithoutLanguage, metadataLanguage)
         : canonicalWithoutLanguage;
+
+    if (missingProjectPath) {
+        title = `Menu not available | ${resolvedStoreName}`;
+        description = `This menu link is no longer available. Use ${resolvedStoreName}'s current public page for the latest information.`;
+    }
+    let resolvedPublicTruthRobots = publicTruthRobots;
 
     if (metadataProject) {
         const projectTitle = getLocalizedText(
@@ -899,7 +920,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                     description,
                     images: contextMetadata.twitter?.images,
                 },
-                robots: publicTruthRobots,
+                robots: resolvedPublicTruthRobots,
                 ...(appleTouchIconUrl
                     ? {
                         appleWebApp: {
@@ -916,6 +937,15 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
                     }
                     : {}),
             };
+        }
+
+        if (contextSegments.length >= 2) {
+            title = `Menu detail not available | ${resolvedStoreName}`;
+            description = `This menu detail link is no longer available. Use ${resolvedStoreName}'s current menu page for the latest information.`;
+            resolvedPublicTruthRobots = buildPublicTruthRobots({
+                index: false,
+                follow: true,
+            });
         }
     }
 
@@ -950,7 +980,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
             description,
             images: resolvedImageUrl ? [resolvedImageUrl] : undefined,
         },
-        robots: publicTruthRobots,
+        robots: resolvedPublicTruthRobots,
         // Per-tenant PWA metadata — overrides defaults from client/layout.tsx
         ...(appleTouchIconUrl
             ? {

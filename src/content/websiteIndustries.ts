@@ -4,6 +4,13 @@ export type WebsiteIndustryPage = {
     ctaLabel: string;
     ctaPath: string;
     description: string;
+    demo?: {
+        caption: string;
+        imageAlt: string;
+        imageSrc: string;
+        label: string;
+        title: string;
+    };
     eyebrow: string;
     faq: Array<{
         answer: string;
@@ -199,6 +206,162 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
             {
                 question: 'Does MenuList enforce franchise compliance automatically?',
                 answer: 'No. MenuList supports source control and branch consistency, but it does not claim automatic franchise compliance enforcement.',
+            },
+        ],
+    },
+    {
+        slug: 'salons-spas',
+        canonicalPath: '/industries/salons-spas',
+        metaTitle: 'Digital Service List for Salons and Spas | MenuList',
+        metaDescription: 'Turn salon, barber, beauty, and spa service lists into one official customer link for WhatsApp, Instagram, Google, QR, and front-desk sharing.',
+        eyebrow: 'For salons and spas',
+        title: 'One official service list for beauty, grooming, and spa customers.',
+        highlight: 'official service list',
+        description: 'Salon and spa prices drift when Instagram highlights, WhatsApp images, posters, booking links, and staff replies show different services or packages. MenuList gives customers one current approved service list before they call, book, or visit.',
+        audience: 'Salons, barber shops, beauty studios, spas, grooming studios, nail studios, and bridal-prep teams.',
+        ctaLabel: 'Upload your service list',
+        ctaPath: '/create-menu',
+        secondaryCtaLabel: 'See WhatsApp intake',
+        secondaryCtaPath: '/whatsapp',
+        proof: [
+            'Current service list',
+            'WhatsApp-ready link',
+            'Instagram bio destination',
+            'Front-desk QR',
+            'Official Business Page',
+            'Packages and durations',
+            'Owner review before publishing',
+        ],
+        fit: [
+            'Keep service names, prices, durations, package notes, and public actions aligned.',
+            'Use one link across WhatsApp replies, Instagram bio, Google profile links, QR cards, and reception counters.',
+            'Show services and prices without claiming MenuList replaces booking, POS, staff scheduling, or salon management systems.',
+            'Give search and AI systems clearer visible service-list information to read when they choose to crawl it.',
+        ],
+        resourceLinks: [
+            { label: 'WhatsApp onboarding', href: '/whatsapp' },
+            { label: 'Official customer link', href: '/resources/official-menu-url-checklist' },
+            { label: 'Public discovery', href: '/features/public-discovery' },
+        ],
+        demo: {
+            label: 'Placeholder proof asset',
+            title: 'Glow & Blade Studio service-list demo',
+            caption: 'Sample business. Demo data only. Replace this placeholder with approved MenuList screenshots before broad campaign use.',
+            imageSrc: '/images/website/demo-placeholders/glow-blade-service-list-placeholder.svg',
+            imageAlt: 'Placeholder sample showing a salon service list becoming one official customer link.',
+        },
+        faq: [
+            {
+                question: 'Is MenuList a booking system for salons?',
+                answer: 'No. MenuList provides the current public service-list and official customer link. Booking, staff scheduling, and payments stay with the tools the salon already uses.',
+            },
+            {
+                question: 'Can a salon use prices, durations, and packages?',
+                answer: 'Yes. Service names, visible prices, durations, packages, notes, and contact actions can be part of the approved public service list when the owner publishes them.',
+            },
+        ],
+    },
+    {
+        slug: 'service-list-businesses',
+        canonicalPath: '/industries/service-list-businesses',
+        metaTitle: 'Official Service List Link for SMBs | MenuList',
+        metaDescription: 'Create one customer-facing service-list link for SMB price lists, packages, rate cards, QR codes, WhatsApp replies, social links, and business pages.',
+        eyebrow: 'For service-list businesses',
+        title: 'Turn a service list or price list into one customer link.',
+        highlight: 'one customer link',
+        description: 'Many SMBs do not need a restaurant menu. They need a clear public list of services, packages, prices, durations, care notes, add-ons, and inquiry actions that stays current across chats, social profiles, QR cards, and website buttons.',
+        audience: 'Pet groomers, repair shops, studios, classes, local clinics, laundry services, florists, decorators, photographers, and other list-driven SMBs.',
+        ctaLabel: 'Create your service link',
+        ctaPath: '/create-menu',
+        secondaryCtaLabel: 'Read the setup flow',
+        secondaryCtaPath: '/how-it-works',
+        proof: [
+            'Service names and prices',
+            'Package lists',
+            'Rate cards',
+            'Add-ons and notes',
+            'WhatsApp inquiry action',
+            'QR and social links',
+            'Structured public page',
+        ],
+        fit: [
+            'Replace repeated price-list screenshots with one approved public link customers can reopen.',
+            'Group services, packages, add-ons, and visible prices without forcing a restaurant-only menu format.',
+            'Keep the same approved list behind WhatsApp replies, Instagram links, QR cards, website buttons, and customer shortcuts.',
+            'Use structured public information without promising search rankings, AI citations, or automatic external-platform updates.',
+        ],
+        resourceLinks: [
+            { label: 'Official customer link checklist', href: '/resources/official-menu-url-checklist' },
+            { label: 'WhatsApp onboarding', href: '/whatsapp' },
+            { label: 'AI search discovery', href: '/resources/ai-search-menu-discovery' },
+        ],
+        demo: {
+            label: 'Placeholder proof asset',
+            title: 'Multi-category service-list demo',
+            caption: 'Sample businesses. Demo data only. Replace this placeholder with approved screenshots or a walkthrough video before final launch use.',
+            imageSrc: '/images/website/demo-placeholders/service-list-proof-grid-placeholder.svg',
+            imageAlt: 'Placeholder sample showing service lists, packages, rate cards, catalogs, and customer links.',
+        },
+        faq: [
+            {
+                question: 'Does MenuList only work for food menus?',
+                answer: 'No. Food menus are one strong use case, but MenuList also supports customer-facing service lists, price lists, package lists, rate cards, and catalog-style lists.',
+            },
+            {
+                question: 'Does MenuList replace a website?',
+                answer: 'No. MenuList can give a business a stable official customer link. A full website can still exist and can point customers to that current list.',
+            },
+        ],
+    },
+    {
+        slug: 'local-service-businesses',
+        canonicalPath: '/industries/local-service-businesses',
+        metaTitle: 'Package and Rate Card Links for Local Services | MenuList',
+        metaDescription: 'Publish one current package or rate-card link for local service businesses using WhatsApp, QR, Instagram, website buttons, and customer inquiry flows.',
+        eyebrow: 'For local service businesses',
+        title: 'One current package list before customers ask for rates.',
+        highlight: 'current package list',
+        description: 'Local service businesses often answer the same price and package questions in WhatsApp, phone calls, posters, and social DMs. MenuList turns the current approved rate card into a public customer link that can be shared before the inquiry.',
+        audience: 'Auto detailing, cleaning, laundry, repair, grooming, event, photography, decor, coaching, and other local service teams.',
+        ctaLabel: 'Upload your rate card',
+        ctaPath: '/create-menu',
+        secondaryCtaLabel: 'Use the WhatsApp flow',
+        secondaryCtaPath: '/whatsapp',
+        proof: [
+            'Package and rate cards',
+            'Add-on services',
+            'Starting prices',
+            'WhatsApp inquiry link',
+            'Counter or workshop QR',
+            'Service notes',
+            'Owner-approved updates',
+        ],
+        fit: [
+            'Publish clear package groups, add-ons, and starting prices before a customer messages for rates.',
+            'Keep old posters, PDFs, and forwarded images from becoming the trusted price source.',
+            'Use one list link across WhatsApp, Instagram, Google profile links, counter QR, and website actions.',
+            'Keep inquiry handoff separate from booking, invoicing, payments, dispatch, or field-service operations.',
+        ],
+        resourceLinks: [
+            { label: 'WhatsApp onboarding', href: '/whatsapp' },
+            { label: 'Menu source audit', href: '/resources/menu-source-audit' },
+            { label: 'QR placement checklist', href: '/resources/qr-code-placement-checklist' },
+        ],
+        demo: {
+            label: 'Placeholder proof asset',
+            title: 'Spark Auto Detailing rate-card demo',
+            caption: 'Sample business. Demo data only. Replace this placeholder with routed product screenshots before campaign use.',
+            imageSrc: '/images/website/demo-placeholders/spark-detailing-rate-card-placeholder.svg',
+            imageAlt: 'Placeholder sample showing a local service package rate card becoming an official customer link.',
+        },
+        faq: [
+            {
+                question: 'Can the page show starting prices instead of fixed prices?',
+                answer: 'Yes, when the owner publishes them that way. The page should show only what the business has approved for customers to see.',
+            },
+            {
+                question: 'Does MenuList manage service jobs or dispatch?',
+                answer: 'No. MenuList keeps the public service-list or package-list source current. Job management, dispatch, invoicing, and payments stay outside MenuList.',
             },
         ],
     },

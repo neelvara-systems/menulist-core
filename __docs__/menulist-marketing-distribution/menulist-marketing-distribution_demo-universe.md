@@ -208,7 +208,7 @@ Each core demo should produce at least four proof surfaces.
 | 10-15 second vertical clip 3 | Package/rate card -> customer inquiry | Spark Auto Detailing | Not started |
 | Partner one-page brief | Repeatable client setup | Cafe, salon, florist, auto detailing | Not started |
 | Website screenshot proof | Route/page assets | Cafe, salon, auto detailing, Urban Glow Group | Not started |
-| SEO page proof pack | Screenshots and copy examples | Salon, service-list, rate-card demos | Not started |
+| SEO page proof pack | Screenshots and copy examples | Salon, service-list, rate-card demos | Placeholder assets created |
 
 ---
 
@@ -239,12 +239,14 @@ Screenshot rules:
 
 ## SEO Page Gate
 
-Do not add `/industries/salons-spas`, `/resources/service-list-cleanup-checklist`, `/resources/service-price-list-checklist`, or broad local-service pages until this gate is met:
+Do not add final broad campaign assets, service-list resource pages, service price-list resource pages, or unlabelled local-service proof pages until this gate is met.
+
+Founder-approved exception on June 23, 2026: placeholder-backed industry pages may exist for code-side review when the visuals are clearly labelled as sample/demo placeholders and the docs keep final screenshots/videos pending.
 
 | Gate | Requirement |
 | --- | --- |
-| Demo business exists | At least one service-list demo has complete source data and public-output proof |
-| Product screenshot exists | At least one real MenuList route screenshot supports the page |
+| Demo business exists | At least one service-list demo has complete source data and public-output proof; placeholders can bridge code review only |
+| Product screenshot exists | At least one real MenuList route screenshot supports final campaign use; labelled placeholders can support temporary route layout |
 | Workflow depth exists | Page can explain source -> review -> public link -> surfaces without generic filler |
 | Claim boundary checked | No booking replacement, revenue lift, ranking, Google refresh, AI citation, or unsupported automation claims |
 | CTA path is ready | Page has a clear path to `/create-menu` or a controlled setup flow |
@@ -274,8 +276,8 @@ Founder should review these before public asset production:
 | MLD-A009 | Produce demo source lists | Codex + founder | Fictional PDF/photo/list source copy for the six core demos |
 | MLD-A010 | Build screenshot capture plan | Codex | Route list, viewport list, required states, and redaction notes |
 | MLD-A011 | Draft launch video scripts from this universe | Codex | 10-15s clips and 60-90s walkthrough |
-| MLD-A012 | Draft Product Hunt gallery copy | Codex | Thumbnail text, gallery captions, and maker-comment proof references |
-| MLD-A013 | Decide first service-list SEO page | Founder + Codex | Choose salon/spa, service-list cleanup, or service price-list checklist after proof exists |
+| MLD-A012 | Placeholder demo asset pack | Codex | Temporary service-list, salon/spa, local-service, and video-poster placeholders |
+| MLD-A013 | Decide first service-list resource page | Founder + Codex | Choose service-list cleanup or service price-list checklist after routed proof exists |
 
 ---
 
