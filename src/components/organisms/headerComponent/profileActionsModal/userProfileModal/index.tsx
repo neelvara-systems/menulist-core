@@ -1,61 +1,174 @@
 'use client'
-import { useAppDispatch } from '@hook/useAppDispatch';
-import { showErrorToast, showSuccessToast } from '@reduxSlices/toast';
-import { Button, Divider, Form, Input, Modal, Space, Tag, theme, Typography } from 'antd';
-import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
-import { LuLock, LuMail, LuPhone, LuSave, LuShield, LuUser } from 'react-icons/lu';
 
-const { Text } = Typography;
+import PhoneNumberInput from '@atoms/phoneNumberInput';
+import { getStoreContextName } from '@lib/businessIdentity/names';
+import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import { useAppDispatch } from '@hook/useAppDispatch';
+import { showErrorToast, showSuccessToast, showWarningToast } from '@reduxSlices/toast';
+import { Alert, Avatar, Button, Divider, Empty, Flex, Form, Input, Modal, Space, Tag, Typography, theme } from 'antd';
+import { useSession } from 'next-auth/react';
+import { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { LuBuilding2, LuKeyRound, LuLock, LuMail, LuPen, LuPhoneCall, LuSave, LuShieldCheck, LuStore, LuUser, LuUserCheck, LuUserX, LuX } from 'react-icons/lu';
+import styles from './userProfileModal.module.scss';
+
+const { Text, Title } = Typography;
 
 type UserProfileModalProps = {
     open: boolean;
     onClose: () => void;
 };
 
+type ProfileSection = 'overview' | 'edit' | 'security' | 'access';
+
+type PhoneValue = {
+    countryCode: string;
+    dialCode: string;
+    phoneNumber: string;
+};
+
+const ROLE_LABELS: Record<string, string> = {
+    manager: 'Manager',
+    owner: 'Owner',
+    staff: 'Staff',
+};
+
+const formatRoleLabel = (role?: string) => {
+    if (!role) return 'No role set';
+    return ROLE_LABELS[role] || role.replace(/[_-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const formatPermissionLabel = (permission: string) => {
+    const withoutPrefix = permission.replace(/^can/, '');
+    const withSpaces = withoutPrefix.replace(/([A-Z])/g, ' $1').trim();
+    return withSpaces || permission;
+};
+
+const getInitial = (name?: string, fallback?: string) => {
+    const source = name || fallback || 'U';
+    return source.charAt(0).toUpperCase();
+};
+
+const buildPhoneLabel = (data: any) => {
+    const phoneNumber = data?.phoneNumber || data?.phone || '';
+    if (!phoneNumber) return '';
+    return `${data?.dialCode || ''} ${phoneNumber}`.trim();
+};
+
 function UserProfileModal({ open, onClose }: UserProfileModalProps) {
     const { data: session, update: updateSession } = useSession();
+    const { tenantDetails, storeDetails, userPermissions } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
     const [profileForm] = Form.useForm();
     const [passwordForm] = Form.useForm();
     const [profileLoading, setProfileLoading] = useState(false);
     const [passwordLoading, setPasswordLoading] = useState(false);
-    const [activeSection, setActiveSection] = useState<'profile' | 'password'>('profile');
+    const [activeSection, setActiveSection] = useState<ProfileSection>('overview');
+    const [phoneValue, setPhoneValue] = useState<PhoneValue>({
+        countryCode: '',
+        dialCode: '',
+        phoneNumber: '',
+    });
+    const [localProfilePatch, setLocalProfilePatch] = useState<Record<string, any>>({});
 
-    const userData = session?.user as any;
-    const userLoginLabel = userData?.staffAuthMode === 'owner_passcode'
+    const sessionUser = session?.user as any;
+    const userData = useMemo(() => ({
+        ...(sessionUser || {}),
+        ...localProfilePatch,
+    }), [sessionUser, localProfilePatch]);
+
+    const stores = Array.isArray(userData?.stores) ? userData.stores : [];
+    const currentStoreMapping = stores.find((store: any) => Number(store?.storeId) === Number(userData?.storeId)) || stores[0];
+    const currentRole = currentStoreMapping?.role || userData?.role;
+    const isOwnerLikeAccess = currentRole === 'owner' || userData?.platformRole === 'OWNER' || userData?.platformRole === 'PLATFORM';
+    const isPasscodeLogin = userData?.staffAuthMode === 'owner_passcode' || Boolean(userData?.staffLoginId || userData?.loginUsername);
+    const isOAuthProfile = Boolean(userData?.image) && !isPasscodeLogin;
+    const currentPasswordLabel = isPasscodeLogin ? 'Current Password or Passcode' : 'Current Password';
+    const newPasswordLabel = isPasscodeLogin ? 'New Password or Passcode' : 'New Password';
+    const confirmPasswordLabel = isPasscodeLogin ? 'Confirm New Password or Passcode' : 'Confirm New Password';
+    const changePasswordLabel = isPasscodeLogin ? 'Change Password or Passcode' : 'Change Password';
+    const userLoginLabel = isPasscodeLogin
         ? `Staff ID: ${userData?.staffLoginId || userData?.loginUsername || ''}`
-        : userData?.displayEmail || userData?.phone || userData?.phoneUsername || userData?.email;
+        : userData?.displayEmail || userData?.phone || userData?.phoneUsername || userData?.email || '';
+    const profilePhoneLabel = buildPhoneLabel(userData);
+    const activeTag = userData?.active !== false
+        ? <Tag color="green" icon={<LuUserCheck />}>Active</Tag>
+        : <Tag color="error" icon={<LuUserX />}>Deactivated</Tag>;
+    const platformRoleTag = userData?.platformRole
+        ? <Tag color={userData.platformRole === 'PLATFORM' ? 'purple' : userData.platformRole === 'OWNER' ? 'blue' : 'default'}>{userData.platformRole}</Tag>
+        : null;
 
     useEffect(() => {
-        if (open && userData) {
-            profileForm.setFieldsValue({
-                name: userData.name || '',
-                phone: userData.phone || userData.phoneNumber || '',
-            });
-            passwordForm.resetFields();
-            setActiveSection('profile');
-        }
-    }, [open, userData, profileForm, passwordForm]);
+        if (!open) return;
+
+        setLocalProfilePatch({});
+        setActiveSection('overview');
+        profileForm.setFieldsValue({
+            name: sessionUser?.name || '',
+        });
+        setPhoneValue({
+            countryCode: sessionUser?.countryCode || '',
+            dialCode: sessionUser?.dialCode || '',
+            phoneNumber: sessionUser?.phoneNumber || sessionUser?.phone || '',
+        });
+        passwordForm.resetFields();
+    }, [open, sessionUser?.id, profileForm, passwordForm]);
+
+    const getStoreRecord = (storeId: number) => {
+        const tenantStore = tenantDetails?.storesList?.find((store: any) => Number(store?.storeId) === Number(storeId));
+        return tenantStore?.storeDetails || tenantStore || (Number(storeDetails?.storeId) === Number(storeId) ? storeDetails : null);
+    };
+
+    const resolveStoreName = (store: any) => {
+        const storeRecord = getStoreRecord(Number(store?.storeId));
+        return getStoreContextName(storeRecord || store, `Store ${store?.storeId ?? ''}`);
+    };
+
+    const resolveRoleName = (store: any) => {
+        const storeRecord = getStoreRecord(Number(store?.storeId));
+        const roleId = store?.role;
+        const roleName = (storeRecord as any)?.roles?.find((role: any) => role.id === roleId)?.name;
+        return roleName || formatRoleLabel(roleId);
+    };
+
+    const enabledPermissions = useMemo(() => (
+        Object.entries(userPermissions || {})
+            .filter(([, value]) => value === true)
+            .map(([key]) => key)
+            .slice(0, 10)
+    ), [userPermissions]);
 
     const handleProfileUpdate = async (values: any) => {
+        const name = String(values?.name || '').trim();
+        if (!name) {
+            dispatch(showWarningToast('Display name is required'));
+            return;
+        }
+
         setProfileLoading(true);
         try {
             const res = await fetch('/api/auth/update-profile', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    name: values.name,
-                    phone: values.phone,
+                    countryCode: phoneValue.countryCode,
+                    dialCode: phoneValue.dialCode,
+                    name,
+                    phoneNumber: phoneValue.phoneNumber,
                 }),
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
             });
             const data = await res.json();
 
             if (res.ok && data.success) {
+                const nextProfilePatch = {
+                    ...(data.updates || {}),
+                    name,
+                };
+                setLocalProfilePatch(nextProfilePatch);
+                profileForm.setFieldsValue({ name });
                 dispatch(showSuccessToast('Profile updated'));
-                // Trigger NextAuth session refresh
                 await updateSession();
+                setActiveSection('overview');
             } else {
                 dispatch(showErrorToast(data.error || 'Failed to update profile'));
             }
@@ -70,19 +183,19 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
         setPasswordLoading(true);
         try {
             const res = await fetch('/api/auth/change-password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     currentPassword: values.currentPassword,
                     newPassword: values.newPassword,
                 }),
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
             });
             const data = await res.json();
 
             if (res.ok && data.success) {
                 dispatch(showSuccessToast('Password changed successfully'));
                 passwordForm.resetFields();
-                setActiveSection('profile');
+                setActiveSection('overview');
             } else {
                 dispatch(showErrorToast(data.error || 'Failed to change password'));
             }
@@ -93,179 +206,301 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
         }
     };
 
-    const isOAuthUser = !!(userData?.image); // OAuth users typically have a profile image from Google
-    const userRole = userData?.platformRole || 'USER';
+    const renderInfoRow = (icon: ReactNode, label: string, value?: ReactNode, action?: ReactNode) => (
+        <div className={styles.infoRow}>
+            <span className={styles.infoIcon}>{icon}</span>
+            <div className={styles.infoContent}>
+                <Text type="secondary">{label}</Text>
+                <Text className={styles.infoValue}>{value || '-'}</Text>
+            </div>
+            {action ? <div className={styles.infoAction}>{action}</div> : null}
+        </div>
+    );
+
+    const renderOverview = () => (
+        <div className={styles.sectionPanel}>
+            <div className={styles.sectionHeader}>
+                <div>
+                    <Text strong>Account details</Text>
+                    <Text type="secondary">Your personal identity and login details.</Text>
+                </div>
+                <Button icon={<LuPen />} onClick={() => setActiveSection('edit')} type="primary">
+                    Edit Profile
+                </Button>
+            </div>
+            <div className={styles.infoGrid}>
+                {renderInfoRow(<LuUser />, 'Display name', userData?.name || 'User')}
+                {renderInfoRow(<LuMail />, isPasscodeLogin ? 'Login' : 'Email', userLoginLabel || userData?.email)}
+                {isPasscodeLogin ? renderInfoRow(<LuKeyRound />, 'Staff ID', userData?.staffLoginId || userData?.loginUsername) : null}
+                {renderInfoRow(<LuPhoneCall />, 'Phone', profilePhoneLabel)}
+                {renderInfoRow(<LuShieldCheck />, 'Current role', formatRoleLabel(currentRole))}
+                {renderInfoRow(<LuStore />, 'Default store', currentStoreMapping ? resolveStoreName(currentStoreMapping) : '-')}
+            </div>
+        </div>
+    );
+
+    const renderEditProfile = () => (
+        <div className={styles.sectionPanel}>
+            <div className={styles.sectionHeader}>
+                <div>
+                    <Text strong>Edit profile</Text>
+                    <Text type="secondary">Update your name and phone number. Login email, role, and store access stay managed from Users.</Text>
+                </div>
+            </div>
+            <Form
+                form={profileForm}
+                layout="vertical"
+                onFinish={handleProfileUpdate}
+                requiredMark={false}
+            >
+                <Form.Item
+                    label="Display Name"
+                    name="name"
+                    rules={[
+                        { required: true, message: 'Name is required' },
+                        { max: 100, message: 'Name is too long' },
+                    ]}
+                >
+                    <Input autoComplete="name" prefix={<LuUser />} placeholder="Your name" size="large" />
+                </Form.Item>
+                <Form.Item label="Phone Number">
+                    <PhoneNumberInput
+                        countryCode={phoneValue.countryCode}
+                        dialCode={phoneValue.dialCode}
+                        phoneNumber={phoneValue.phoneNumber}
+                        onChange={setPhoneValue}
+                    />
+                </Form.Item>
+                <div className={styles.formActions}>
+                    <Button onClick={() => setActiveSection('overview')}>Cancel</Button>
+                    <Button
+                        htmlType="submit"
+                        icon={<LuSave size={14} />}
+                        loading={profileLoading}
+                        type="primary"
+                    >
+                        Save Changes
+                    </Button>
+                </div>
+            </Form>
+        </div>
+    );
+
+    const renderSecurity = () => (
+        <div className={styles.sectionPanel}>
+            <div className={styles.sectionHeader}>
+                <div>
+                    <Text strong>Security</Text>
+                    <Text type="secondary">Manage sign-in details supported by your account type.</Text>
+                </div>
+            </div>
+
+            {isPasscodeLogin ? (
+                <Alert
+                    message="Staff ID sign-in uses a passcode"
+                    description="You can change your current passcode here. If you cannot sign in, an owner can create a new temporary passcode from Users."
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    type="info"
+                />
+            ) : null}
+            {isOAuthProfile ? (
+                <Alert
+                    message="Google passwords are managed by Google"
+                    description="Use this form only if this account also has an email password in MenuList."
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    type="info"
+                />
+            ) : null}
+            <Form
+                form={passwordForm}
+                layout="vertical"
+                onFinish={handlePasswordChange}
+                requiredMark={false}
+            >
+                <Form.Item
+                    label={currentPasswordLabel}
+                    name="currentPassword"
+                    rules={[{ required: true, message: 'Current password or passcode is required' }]}
+                >
+                    <Input.Password autoComplete="current-password" prefix={<LuLock />} placeholder={currentPasswordLabel} size="large" />
+                </Form.Item>
+                <Form.Item
+                    label={newPasswordLabel}
+                    name="newPassword"
+                    rules={[
+                        { required: true, message: 'New password or passcode is required' },
+                        { min: 6, message: 'Password or passcode must be at least 6 characters' },
+                    ]}
+                >
+                    <Input.Password autoComplete="new-password" prefix={<LuLock />} placeholder={newPasswordLabel} size="large" />
+                </Form.Item>
+                <Form.Item
+                    dependencies={['newPassword']}
+                    label={confirmPasswordLabel}
+                    name="confirmNewPassword"
+                    rules={[
+                        { required: true, message: 'Please confirm your new password or passcode' },
+                        ({ getFieldValue }) => ({
+                            validator(_, value) {
+                                if (!value || getFieldValue('newPassword') === value) return Promise.resolve();
+                                return Promise.reject(new Error('Passwords do not match'));
+                            },
+                        }),
+                    ]}
+                >
+                    <Input.Password autoComplete="new-password" prefix={<LuLock />} placeholder={confirmPasswordLabel} size="large" />
+                </Form.Item>
+                <div className={styles.formActions}>
+                    <Button onClick={() => setActiveSection('overview')}>Cancel</Button>
+                    <Button
+                        htmlType="submit"
+                        icon={<LuLock size={14} />}
+                        loading={passwordLoading}
+                        type="primary"
+                    >
+                        {changePasswordLabel}
+                    </Button>
+                </div>
+            </Form>
+        </div>
+    );
+
+    const renderAccess = () => (
+        <div className={styles.sectionPanel}>
+            <div className={styles.sectionHeader}>
+                <div>
+                    <Text strong>Access</Text>
+                    <Text type="secondary">Store access, roles, and permissions are shown here for reference.</Text>
+                </div>
+            </div>
+            <Alert
+                message={isOwnerLikeAccess ? 'Access stays read-only in My Profile' : 'Ask an owner or manager for access changes'}
+                description={isOwnerLikeAccess
+                    ? 'Use the Users screen for team management. Your own role and store access are not editable here to avoid accidental lockout.'
+                    : 'This modal is for your own profile details. Role, store, activation, and reset controls remain in the Users screen for authorized managers.'}
+                showIcon
+                style={{ marginBottom: 16 }}
+                type="info"
+            />
+            {stores.length ? (
+                <Flex vertical gap={10}>
+                    {stores.map((store: any) => (
+                        <div className={styles.storeAccessRow} key={`${store.storeId}-${store.role || 'role'}`}>
+                            <Flex align="center" gap={10}>
+                                <span className={styles.storeIcon}><LuStore /></span>
+                                <Flex vertical gap={2}>
+                                    <Text>{resolveStoreName(store)}</Text>
+                                    <Text type="secondary">Store ID {store.storeId}</Text>
+                                </Flex>
+                            </Flex>
+                            <Flex gap={6} justify="flex-end" wrap="wrap">
+                                {Number(store.storeId) === Number(userData?.storeId)
+                                    ? <Tag color="blue" icon={<LuBuilding2 />}>Default</Tag>
+                                    : null}
+                                <Tag icon={<LuShieldCheck />}>{resolveRoleName(store)}</Tag>
+                            </Flex>
+                        </div>
+                    ))}
+                </Flex>
+            ) : (
+                <Empty description="No store access assigned" style={{ padding: '12px 0' }} />
+            )}
+            <Divider />
+            <Flex vertical gap={8}>
+                <Text strong>Permissions</Text>
+                {enabledPermissions.length ? (
+                    <Flex gap={6} wrap="wrap">
+                        {enabledPermissions.map((permission) => (
+                            <Tag key={permission}>{formatPermissionLabel(permission)}</Tag>
+                        ))}
+                    </Flex>
+                ) : (
+                    <Text type="secondary">No permissions are available for this store context.</Text>
+                )}
+            </Flex>
+        </div>
+    );
+
+    const sectionContent: Record<ProfileSection, ReactNode> = {
+        access: renderAccess(),
+        edit: renderEditProfile(),
+        overview: renderOverview(),
+        security: renderSecurity(),
+    };
+
+    const navItems: Array<{ key: ProfileSection; label: string; icon: ReactNode }> = [
+        { key: 'overview', label: 'Overview', icon: <LuUser /> },
+        { key: 'edit', label: 'Edit profile', icon: <LuPen /> },
+        { key: 'security', label: 'Security', icon: <LuLock /> },
+        { key: 'access', label: 'Access', icon: <LuShieldCheck /> },
+    ];
 
     return (
         <Modal
-            title="My Profile"
-            open={open}
-            onCancel={onClose}
-            footer={null}
-            width={480}
+            centered
+            className={styles.userProfileModal}
+            closable={false}
             destroyOnHidden
+            footer={null}
+            onCancel={onClose}
+            open={open}
+            width={760}
         >
-            {/* Account Info Header */}
-            <div style={{
-                padding: '16px',
-                background: token.colorBgLayout,
-                borderRadius: token.borderRadiusLG,
-                marginBottom: 16,
-            }}>
-                <Space size={12} align="start">
-                    <div style={{
-                        width: 48, height: 48, borderRadius: '50%',
-                        background: token.colorPrimary,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#fff', fontSize: 20, fontWeight: 600,
-                    }}>
-                        {userData?.name?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
-                    <Space direction="vertical" size={0}>
-                        <Text strong style={{ fontSize: 16 }}>{userData?.name || 'User'}</Text>
-                        <Space size={4}>
-                            <LuMail size={12} style={{ color: token.colorTextSecondary }} />
-                            <Text type="secondary" style={{ fontSize: 13 }}>{userLoginLabel}</Text>
+            <div className={styles.modalHeader}>
+                <div>
+                    <Title level={4} style={{ margin: 0 }}>My Profile</Title>
+                    <Text type="secondary">View and manage your account profile.</Text>
+                </div>
+                <Button aria-label="Close profile" icon={<LuX />} onClick={onClose} shape="circle" type="text" />
+            </div>
+
+            <div className={styles.identityPanel} style={{ background: token.colorBgLayout, borderColor: token.colorBorderSecondary }}>
+                <Space align="start" size={14}>
+                    <Avatar
+                        size={56}
+                        src={userData?.image || userData?.profileImage || undefined}
+                        style={{ background: token.colorPrimary, flexShrink: 0 }}
+                    >
+                        {getInitial(userData?.name, userData?.email)}
+                    </Avatar>
+                    <Space direction="vertical" size={4}>
+                        <Text strong style={{ fontSize: 17 }}>{userData?.name || 'User'}</Text>
+                        <Space size={6} wrap>
+                            <LuMail size={13} style={{ color: token.colorTextSecondary }} />
+                            <Text type="secondary">{userLoginLabel}</Text>
                         </Space>
-                        <Space size={4} style={{ marginTop: 4 }}>
-                            <Tag color={userRole === 'OWNER' ? 'blue' : userRole === 'PLATFORM' ? 'purple' : 'default'}>
-                                {userRole}
-                            </Tag>
-                        </Space>
+                        <Flex gap={6} wrap="wrap">
+                            {activeTag}
+                            {platformRoleTag}
+                            {currentRole ? <Tag>{formatRoleLabel(currentRole)}</Tag> : null}
+                            <Tag color={isPasscodeLogin ? 'blue' : 'default'}>{isPasscodeLogin ? 'Staff ID login' : 'Email login'}</Tag>
+                        </Flex>
                     </Space>
                 </Space>
             </div>
 
-            {/* Section Tabs */}
-            <Space style={{ marginBottom: 16 }}>
-                <Button
-                    type={activeSection === 'profile' ? 'primary' : 'default'}
-                    ghost={activeSection === 'profile'}
-                    icon={<LuUser size={14} />}
-                    onClick={() => setActiveSection('profile')}
-                    size="small"
-                >
-                    Edit Profile
-                </Button>
-                <Button
-                    type={activeSection === 'password' ? 'primary' : 'default'}
-                    ghost={activeSection === 'password'}
-                    icon={<LuLock size={14} />}
-                    onClick={() => setActiveSection('password')}
-                    size="small"
-                >
-                    Change Password
-                </Button>
-            </Space>
-
-            <Divider style={{ margin: '0 0 16px 0' }} />
-
-            {/* Profile Edit Section */}
-            {activeSection === 'profile' && (
-                <Form
-                    form={profileForm}
-                    layout="vertical"
-                    onFinish={handleProfileUpdate}
-                    requiredMark={false}
-                >
-                    <Form.Item
-                        name="name"
-                        label="Display Name"
-                        rules={[{ required: true, message: 'Name is required' }, { max: 100 }]}
-                    >
-                        <Input prefix={<LuUser />} placeholder="Your name" size="large" />
-                    </Form.Item>
-                    <Form.Item
-                        name="phone"
-                        label="Phone Number"
-                        rules={[{ max: 20 }]}
-                    >
-                        <Input prefix={<LuPhone />} placeholder="Phone number" size="large" />
-                    </Form.Item>
-                    <Form.Item>
+            <div className={styles.contentLayout}>
+                <div className={styles.sectionNav}>
+                    {navItems.map((item) => (
                         <Button
-                            type="primary"
-                            htmlType="submit"
-                            loading={profileLoading}
-                            icon={<LuSave size={14} />}
+                            block
+                            className={styles.navButton}
+                            ghost={activeSection === item.key}
+                            icon={item.icon}
+                            key={item.key}
+                            onClick={() => setActiveSection(item.key)}
+                            type={activeSection === item.key ? 'primary' : 'text'}
                         >
-                            Save Changes
+                            {item.label}
                         </Button>
-                    </Form.Item>
-                </Form>
-            )}
-
-            {/* Change Password Section */}
-            {activeSection === 'password' && (
-                <>
-                    {isOAuthUser && (
-                        <div style={{
-                            padding: '12px 16px',
-                            background: token.colorInfoBg,
-                            border: `1px solid ${token.colorInfoBorder}`,
-                            borderRadius: token.borderRadiusLG,
-                            marginBottom: 16,
-                        }}>
-                            <Space size={8}>
-                                <LuShield size={16} style={{ color: token.colorInfo }} />
-                                <Text style={{ fontSize: 13 }}>
-                                    If you signed in with Google, you may not have a password set. Use this form only if you have a password or passcode login.
-                                </Text>
-                            </Space>
-                        </div>
-                    )}
-                    <Form
-                        form={passwordForm}
-                        layout="vertical"
-                        onFinish={handlePasswordChange}
-                        requiredMark={false}
-                    >
-                        <Form.Item
-                            name="currentPassword"
-                            label="Current Password"
-                            rules={[{ required: true, message: 'Current password is required' }]}
-                        >
-                            <Input.Password prefix={<LuLock />} placeholder="Current password" size="large" />
-                        </Form.Item>
-                        <Form.Item
-                            name="newPassword"
-                            label="New Password"
-                            rules={[
-                                { required: true, message: 'New password is required' },
-                                { min: 6, message: 'Password must be at least 6 characters' },
-                            ]}
-                        >
-                            <Input.Password prefix={<LuLock />} placeholder="New password" size="large" />
-                        </Form.Item>
-                        <Form.Item
-                            name="confirmNewPassword"
-                            label="Confirm New Password"
-                            dependencies={['newPassword']}
-                            rules={[
-                                { required: true, message: 'Please confirm your new password' },
-                                ({ getFieldValue }) => ({
-                                    validator(_, value) {
-                                        if (!value || getFieldValue('newPassword') === value) return Promise.resolve();
-                                        return Promise.reject(new Error('Passwords do not match'));
-                                    },
-                                }),
-                            ]}
-                        >
-                            <Input.Password prefix={<LuLock />} placeholder="Confirm new password" size="large" />
-                        </Form.Item>
-                        <Form.Item>
-                            <Button
-                                type="primary"
-                                htmlType="submit"
-                                loading={passwordLoading}
-                                icon={<LuLock size={14} />}
-                            >
-                                Change Password
-                            </Button>
-                        </Form.Item>
-                    </Form>
-                </>
-            )}
+                    ))}
+                </div>
+                <div className={styles.sectionContent}>
+                    {sectionContent[activeSection]}
+                </div>
+            </div>
         </Modal>
     );
 }

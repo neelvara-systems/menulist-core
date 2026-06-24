@@ -20,8 +20,8 @@ Founder selected the name MenuList SignalDesk and asked to start the doc set pre
 6. Start from the corrected private-tool build spine, not the transcript order.
 7. Keep the 38 ChatGPT specs as source inventory and map them into module doc sets.
 8. Build first around target registry, source provenance, AI scoring, evidence packets, safe drafts, human approval, email/export, inbox, attribution, demand signals, and control room.
-9. Keep WhatsApp API automation, Instagram/Messenger automation, Meta paid intent, campaign optimizer, and cluster planner as later modules.
-10. Prefer a separate private runtime repo/project later; no runtime code created in this pass.
+9. Keep WhatsApp API automation, Instagram/Messenger automation, Meta paid intent, campaign optimizer, and cluster planner as owner-gated modules.
+10. Prefer a separate private runtime repo/project only if operations demand it; no runtime code created in this pass.
 11. Create `signaldesk-foundation` as the first per-feature doc set because access, roles, audit, and kill switches must exist before source import or sending.
 
 ### Source Evidence
@@ -92,6 +92,37 @@ After the initial project docs and `signaldesk-foundation` folder were created, 
 ### Boundaries
 
 No code, Firebase config, provider setup, outreach, public route, deploy, external account action, website doc, or public help doc was created.
+
+## June 24, 2026 - Trust Partner Rail Planning Added
+
+### Context
+
+Founder shared an X article about scaling Cal AI through influencer distribution and asked whether it was useful for SignalDesk. The article was treated as an external playbook input, not a direct implementation instruction.
+
+### Decisions
+
+1. Adopt the system lessons: trust-channel testing, speed, 3-5 niche tests, lean briefs, flat-fee deals, deliverable tracking, and renewal/cut decisions.
+2. Reject direct consumer-app influencer copying for MenuList.
+3. Name the MenuList-fit module `SignalDesk Trust Partner Rail`.
+4. Focus on restaurant-owner trust channels such as restaurant consultants, menu photographers, local food/business creators with operator audiences, agencies, POS/payment partners, and local business communities.
+5. Keep broad UGC, celebrity creators, follower-count buying, per-view default pricing, automated contracts, automated payments, public partner portals, provider send, paid campaign automation, and deploys out of scope.
+6. Add the feature flag as disabled: `ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL: false`.
+7. Require disclosure, approved claims, banned-claim review, budget approval, and outcome attribution before any paid or incentivized partner workflow.
+
+### Files Added Or Updated
+
+- `signaldesk-trust-partner-rail/`
+- `menulist-signaldesk_feature-map.md`
+- `menulist-signaldesk_action-register.md`
+- `menulist-signaldesk_impl.md`
+- `menulist-signaldesk_firebase.md`
+- `menulist-signaldesk_validation.md`
+- `README.md`
+- `src/config/features.ts`
+
+### Boundaries
+
+No runtime route, API action, Firestore collection, provider call, partner outreach, contract, payment, public page, Firebase deploy, Vercel deploy, paid campaign automation, or provider send was added.
 
 ## June 23, 2026 - Pre-Implementation Architecture Decision
 
@@ -330,7 +361,7 @@ The founder clarified that SignalDesk is the main system he will depend on as a 
 5. Add Hunter/ZeroBounce-style verification as a controlled email finding/validation layer before export/send.
 6. Add Firecrawl/Tavily/Exa-style web research and crawl providers behind source policy, budget, retention, and provider-evaluation gates.
 7. Keep Google Places as local candidate discovery, not durable prospect truth.
-8. Replace the single-provider AI assumption with a future AI model router.
+8. Replace the single-provider AI assumption with a gated AI model router.
 9. Use cheap models for high-volume extraction/classification/reply triage and stronger models only for weekly strategist, high-value approval packets, low-confidence adjudication, and provider audits.
 10. Add provider account registry, budget governor, vendor run ledger, normalized enrichment results, model route policy, model evals, approval packets, market pods, weekly strategy memos, and provider evaluation harness before serious paid-provider scale.
 11. Continue to keep provider send, paid campaign automation, and Firebase deploy gated until explicitly approved.
@@ -379,3 +410,93 @@ The founder asked to cross-check the SignalDesk plan against how people are curr
 ### Boundaries
 
 No paid provider account was purchased, connected, or configured. No sequencer account was connected. No provider send was enabled. No scraping workflow was run. No paid campaign automation was implemented. No Firebase deploy was run.
+
+## June 24, 2026 - Remaining Internal Runtime Rails Implemented
+
+### Context
+
+The founder approved implementing the remaining SignalDesk rails except external enrichment/provider adapters. The product posture remains solo-founder/internal: the system prepares, tracks, recommends, and gates work so the founder can observe, monitor, approve, pause, or redirect.
+
+### Decisions
+
+1. Keep Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, and similar paid adapters skipped for this slice.
+2. Implement WhatsApp/Instagram/Messenger channel-window state as internal eligibility records before assisted handoff or provider send.
+3. Implement provider-source retention and Google Places refresh metadata without storing raw provider payloads.
+4. Implement market pod recommendation and weekly strategist memo logic as rules-based internal decision support, not paid campaign automation.
+5. Implement provider evaluation as an internal evidence harness over existing vendor/source/enrichment records, not as a live adapter call.
+6. Enable Trust Partner Rail for internal testing: partner profiles, niche tests, flat-fee budget-checked deals, lean briefs, deliverables, compact metrics, renewal decisions, partner pause scope, and `/signaldesk/partners`.
+7. Keep real partner outreach, contracts, payments, paid campaigns, external sequencer sends, provider send, Firebase deploy, Vercel deploy, and production build out of this slice.
+
+### Verification
+
+- `npm run verify:signaldesk` passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed.
+- `git diff --check` passed.
+- `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` passed.
+
+### Boundaries
+
+No external paid adapter was implemented. No provider send was enabled. No automated partner outreach, contract, or payment workflow was added. No paid campaign automation was implemented. No Firebase deploy, Vercel deploy, or production build was run.
+
+## June 24, 2026 - Content Distribution Rail Implemented
+
+### Context
+
+The founder asked to review Distribution.ai and implement the useful parts inside SignalDesk. The adopted lesson is source-to-channel content repurposing and scheduling discipline, not a public social tool or autonomous publisher.
+
+### Decisions
+
+1. Add SignalDesk Content Distribution Rail as an internal MenuList proof distribution workflow.
+2. Store content sources, canonical assets, channel drafts, calendar items, and performance summaries in SignalDesk-local collections.
+3. Generate deterministic channel drafts from approved content assets and CTAs.
+4. Require owner approval before scheduling a draft.
+5. Keep scheduling as an internal queue only; no auto-publish adapter is added.
+6. Capture manual performance and bridge owner-quality signals into demand summaries.
+7. Add a `content-distribution` kill switch and verifier coverage.
+
+### Files Updated
+
+- `src/app/(signaldesk)/signaldesk/content/page.tsx`
+- `src/components/signaldesk/SignalDeskWorkspace.tsx`
+- `src/app/api/signaldesk/actions/route.ts`
+- `src/lib/signaldesk/workflowServer.ts`
+- `src/types/signaldesk/index.ts`
+- `src/constants/signaldesk/database.ts`
+- `firestore-signaldesk.rules`
+- `firestore-signaldesk.indexes.json`
+- `scripts/verification/verify-signaldesk-runtime.js`
+- `__docs__/menulist-signaldesk/signaldesk-content-distribution-rail/`
+
+### Boundaries
+
+No auto-publish, social scheduler adapter, paid campaign automation, provider send, Firebase deploy, Vercel deploy, or production build was run.
+
+## June 24, 2026 - Growth Playbook Review Adopted
+
+### Context
+
+The founder shared a consolidated review of how fast-growing AI products and solo-founder distribution systems create growth loops. The review was evaluated against SignalDesk's private internal boundary and MenuList's current-list activation doctrine.
+
+### Decisions
+
+1. Adopt the artifact loop from Lovable/Bolt/Gamma-style growth, not generic viral launch tactics.
+2. Define the MenuList loop as current-menu problem found -> MenuList preview -> owner approval -> live on two customer surfaces -> proof asset -> next target, partner, or content draft.
+3. Keep the north star as activated businesses with current lists live on at least two customer surfaces within seven days.
+4. Record a recommended first pod hypothesis pending founder approval: Bengaluru, Indiranagar + Koramangala, cafes/dessert shops/QSR/cloud-kitchen-facing storefronts, founder email/manual export first.
+5. Record the first CTA hypothesis pending founder approval: one current official menu link for QR, WhatsApp, Google/Profile, Instagram, and repeat customers, reviewed before publishing.
+6. Treat Activation Concierge as MenuList-side work. SignalDesk may route and observe outcomes, but it must not own upload, parse, preview, approval, publish, or public MenuList truth.
+7. Keep demand listening source-policy-gated and manual-review only; do not add Reddit/X/LinkedIn auto-replies, cold WhatsApp, cold Meta DMs, provider send, auto-publish, or paid campaign automation.
+
+### Files Updated
+
+- `menulist-signaldesk_growth-playbook-review-2026-06-24.md`
+- `menulist-signaldesk_action-register.md`
+- `menulist-signaldesk_feature-map.md`
+- `menulist-signaldesk_validation.md`
+- `README.md`
+- `../menulist-marketing-distribution/menulist-marketing-distribution_strategy.md`
+- `../menulist-marketing-distribution/menulist-marketing-distribution_action-register.md`
+
+### Boundaries
+
+No runtime feature was added from this review. No provider send, paid campaign automation, auto-publish, cold social automation, public SignalDesk page, Firebase deploy, Vercel deploy, or MenuList truth write was introduced.

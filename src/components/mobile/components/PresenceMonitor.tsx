@@ -16,6 +16,7 @@ import { type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import {
     STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
+    buildStarterActivationSummary,
     shouldRecordStarterActivationSignal,
 } from '@lib/onboarding/starterActivation';
 import { StoreDataType } from '@type/platform/store';
@@ -139,6 +140,9 @@ export default function MobilePresenceMonitor({
     const totalSurfaces = MANUAL_SURFACES.length + autoSurfaces.length;
     const allDone = totalActive === totalSurfaces;
     const nextSurface = MANUAL_SURFACES.find((surface) => !isActive(surface.id));
+    const activationSummary = buildStarterActivationSummary(storeDetails);
+    const showActivationSummary = activationSummary.appliesToStarterActivation
+        || activationSummary.recordedSignals.length > 0;
     const selectedSurface = selectedSurfaceId
         ? MANUAL_SURFACES.find((surface) => surface.id === selectedSurfaceId) || null
         : null;
@@ -221,6 +225,41 @@ export default function MobilePresenceMonitor({
 
                 <Text type="secondary">{t('trackingNote')}</Text>
 
+                {showActivationSummary ? (
+                    <Flex
+                        gap={8}
+                        style={{
+                            backgroundColor: token.colorInfoBg,
+                            border: `1px solid ${token.colorInfoBorder}`,
+                            borderRadius: 12,
+                            padding: 12,
+                        }}
+                        vertical
+                    >
+                        <Flex align="center" justify="space-between">
+                            <Text strong>{t('activationTitle')}</Text>
+                            <Tag color={activationSummary.activated ? 'success' : 'processing'}>
+                                {activationSummary.activated
+                                    ? t('activationDone', { target: activationSummary.target })
+                                    : t('activationProgress', {
+                                        count: Math.min(activationSummary.signalCount, activationSummary.target),
+                                        target: activationSummary.target,
+                                    })
+                                }
+                            </Tag>
+                        </Flex>
+                        <Text type="secondary">
+                            {activationSummary.signalCount > 0
+                                ? t('activationHowKnown', {
+                                    ownerCount: activationSummary.ownerConfirmedCount,
+                                    systemCount: activationSummary.systemRecordedCount,
+                                })
+                                : t('activationPending')
+                            }
+                        </Text>
+                    </Flex>
+                ) : null}
+
                 <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
                     <Flex gap={4} vertical>
                         <Text strong>{t('onlineDiscovery')}</Text>
@@ -243,6 +282,9 @@ export default function MobilePresenceMonitor({
                                             <Text type="secondary">
                                                 {active ? t('menuLinkAdded') : t(surface.explanationKey)}
                                             </Text>
+                                            {active ? (
+                                                <Tag color="warning">{t('ownerConfirmed')}</Tag>
+                                            ) : null}
                                             {isNext ? <Tag color="processing">{manualActiveCount === 0 ? t('startHere') : t('next')}</Tag> : null}
                                         </Flex>
                                     </Flex>
@@ -296,7 +338,7 @@ export default function MobilePresenceMonitor({
                         <List.Item
                             key={surface.id}
                             description={<Text type="secondary">{surface.desc}</Text>}
-                            extra={surface.active ? <Tag color="processing">{t('auto')}</Tag> : null}
+                            extra={surface.active ? <Tag color="processing">{t('menuListRecorded')}</Tag> : null}
                             prefix={
                                 <Flex align="center" gap={8}>
                                     {surface.icon}

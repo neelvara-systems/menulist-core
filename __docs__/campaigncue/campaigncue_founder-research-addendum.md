@@ -61,6 +61,51 @@ This refresh was added after reviewing the Growth Kits, KitStamp, and CampaignCu
 
 Cost impact: no Firebase cost change. This refresh changes documentation only and does not add reads, writes, Storage, Cloud Functions, provider calls, schedulers, rules, indexes, or routes.
 
+## June 24, 2026 Creator Distribution Playbook Review
+
+This review came from an external consumer-app influencer distribution article and a follow-up ChatGPT analysis. The useful insight is not "build influencer marketing software." The reusable CampaignCue primitive is a local creator/audience-fit brief inside the existing campaign pack workflow.
+
+| Accepted idea | CampaignCue translation |
+| --- | --- |
+| Hire the audience, not the influencer. | Check baseline views, comment quality, local audience fit, customer intent, and format fit before recommending a local creator handoff. |
+| Lightweight briefs perform better than scripted decks. | Generate a short creator brief from source-backed business facts, CTA, prohibited claims, disclosure, and one campaign angle. |
+| Test niches 3-5 times before scaling. | Use a small 3-test plan for creators, hooks, or local audiences, then record useful/not-useful outcome in compact result memory. |
+| Flat fees preserve upside. | Provide advisory flat-fee boundary plus repeat/adjust/kill guidance through the 3-test result prompt; do not broker, price-guarantee, contract, or pay creators. |
+| Speed matters in distribution. | Apply speed to campaign pack preparation and result learning, not to bypassing trust checks, consent, owner approval, or source facts. |
+
+Rejected scope:
+
+- creator marketplace or roster management;
+- influencer CRM, contract workflow, payment workflow, or deliverable-chasing operations;
+- follower-count-led creator scoring;
+- fake testimonials, synthetic personal experiences, undisclosed endorsements, or guaranteed reach/revenue claims;
+- narrowing CampaignCue to restaurants or making it a MenuList marketing feature.
+
+Cost impact: the active runtime uses existing output-picker, campaign-create, UGC handoff fields, Campaign Pack ZIP, and result-memory paths. No new Firestore collection, read path, write path, Storage object, Cloud Function, provider call, rule, index, scheduler, or billing surface is introduced by this research decision.
+
+## June 24, 2026 Distribution.ai Review
+
+Distribution.ai was reviewed as a live content-distribution competitor. Its public site frames the product around turning one content source into many channel-ready assets, scheduling/approval, analytics, brand voice, and industry pages such as restaurants. The useful CampaignCue insight is not "build an AI social media manager." The useful proof is that buyers understand the workflow shape: one source, many channel-native outputs, review, distribution, and learning.
+
+| Distribution.ai pattern | CampaignCue translation |
+| --- | --- |
+| One blog, podcast, video, or draft becomes many platform-ready assets. | The current source-backed business cue can become a checked Campaign Pack with WhatsApp, Google/local, social/print, calendar/manual-task, and result-memory outputs. The active code translation is the `source_to_channel_pack` output intent; video/UGC brief, staff, and ad handoff remain separate output intents or channel handoff paths. |
+| Brand voice, writing style, channel selection, and approvals are visible in the workflow. | Keep Brand Playbook, protected facts, output intent, review checklist, and owner/agency approval visible beside every pack. |
+| Restaurant page makes "menu, promotions, events, customer reviews" easy to understand. | Use local-business examples such as menu item, offer, event, service slot, staff prompt, and Google/local update without becoming restaurant-only. |
+| Pricing is packaged by source type and channel volume. | Treat packaging as market signal only; do not change CampaignCue pricing or billing until billing runtime and cost ledgers are active. |
+
+Rejected scope:
+
+- autopilot publishing from connected blogs, podcasts, YouTube channels, or social accounts;
+- generic blog/podcast/video repurposing as the primary product;
+- optimized posting-time automation without provider metrics and consented accounts;
+- real-time cross-channel analytics claims without imported/observed metric contracts;
+- restaurant "AI social media manager" positioning that promises more diners, reach, engagement, traffic, reservations, or ROI;
+- broad email/newsletter generation without consent, unsubscribe, suppression, and cost controls;
+- public copy that says CampaignCue "distributes" content automatically.
+
+Cost impact: existing output-picker and campaign-create runtime only. No feature flag, route, API, provider adapter, Firestore read/write beyond the normal guarded campaign-create path, Storage object, Cloud Function, scheduler, billing surface, Firebase deploy, Vercel deploy, or production build is introduced by this review.
+
 ## Required Product Principles
 
 1. **Export-first is not a weakness.** Manual download/export/share is a core product path because local channels and APIs are inconsistent.

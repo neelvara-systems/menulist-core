@@ -47,7 +47,7 @@ export const NAVIGARIONS_ROUTINGS = {
     USERS_LIST: `/users/list`,
     USERS_ROLES: `/users/permissions`,
     SIGNIN: `/signin`,
-    FORGOT_PASSWORD: 'forgot-password',
+    FORGOT_PASSWORD: `/forgot-password`,
     PLATFORM_ENTITY_BLOCKS: `/platform/entity-blocks`,
     PLATFORM_ASSET_TEMPLATES: `/platform/asset-templates`,
     PLATFORM_OWNER_BUSINESS_ASSISTANT: `/platform/owner-business-assistant`,

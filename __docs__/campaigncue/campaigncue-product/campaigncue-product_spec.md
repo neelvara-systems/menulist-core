@@ -8,7 +8,7 @@ The product exists because SMB owners usually do not know what to post, what to 
 
 ## Current Runtime Boundary
 
-The implemented runtime is export/download-first. It creates source-backed campaign packs, first-class pack reviews, Campaign Proof Deck briefs, structured manual delivery cards, trust reports, local visibility cues, schedule/manual-task records, approval requests, asset metadata, location records, read-only future provider posture, compact result memory, and dashboard summaries. Social account connection, direct provider publishing, WhatsApp direct send, paid generation, rendered video, billing checkout, provider metric import, and MenuList write-back remain disabled until a separate future provider layer is explicitly built.
+The implemented runtime is export/download-first. It creates source-backed campaign packs, first-class pack reviews, Campaign Proof Deck briefs, structured manual delivery cards, local creator test briefs, trust reports, local visibility cues, schedule/manual-task records, approval requests, asset metadata, location records, read-only future provider posture, compact result memory, and dashboard summaries. Social account connection, direct provider publishing, WhatsApp direct send, paid generation, rendered video, creator marketplace/CRM, creator contracts/payments, billing checkout, provider metric import, and MenuList write-back remain disabled until a separate future provider layer is explicitly built.
 
 ## Scope
 
@@ -17,7 +17,7 @@ The implemented runtime is export/download-first. It creates source-backed campa
 | Business profile, brand kit, and Brand Playbook | Generic blank-canvas design tool |
 | Restaurant, salon, retail, service, fitness, clinic, and generic local-business recipes | MenuList menu editing |
 | Campaign cues and packs | Answerlattice support answers |
-| Static creative briefs, proof decks, scripts, and video/UGC briefs | Fake testimonials or fake review cards |
+| Static creative briefs, proof decks, scripts, local creator test briefs, and video/UGC briefs | Fake testimonials, fake review cards, or creator marketplace operations |
 | WhatsApp, Google, ads, calendar outputs | Ranking, sales, ROI guarantees |
 | Agency and multi-location workflows | Cross-client or cross-outlet data access |
 | Credits, jobs, trust checks, export fallback | Hidden generation cost |
@@ -59,10 +59,12 @@ The implemented runtime is export/download-first. It creates source-backed campa
 | Local visibility | CampaignCue can prepare a Google/local visibility pack and checklist without connecting or posting to Google. |
 | Result learning | CampaignCue stores compact useful/not-useful signals on the campaign so repeat/adjust recommendations do not require raw event scans. |
 | Deterministic decision engine | Recommendation cards store an auditable decision object with recipe, confidence, score, facts used, missing inputs, explanations, recommended outputs, and trust preflight. AI can assist copy/editing later but does not decide the campaign. |
+| Source-to-channel packs | CampaignCue can turn the current source-backed local-business cue into a bounded WhatsApp, Google/local, creative, print, manual-task, and result-memory pack without becoming a generic content repurposer or autopilot distribution tool. It does not force-select one individual source update. |
+| Local creator tests | CampaignCue can prepare a lightweight creator/audience-fit brief and 3-test plan from source-backed facts, but it does not recruit creators, broker contracts, process payments, or guarantee reach/revenue. |
 
 ## Competitive Validation
 
-Generic creative tools already cover broad social creation. Canva, Adobe Express, Buffer, Hootsuite, Later, Meta Business Suite, Predis, and Creatify all cover parts of social creation, scheduling, captioning, ad generation, video, or UGC-style creative.
+Generic creative tools already cover broad social creation. Canva, Adobe Express, Buffer, Hootsuite, Later, Meta Business Suite, Distribution.ai, Predis, and Creatify all cover parts of social creation, scheduling, captioning, content repurposing, ad generation, video, or UGC-style creative.
 
 CampaignCue should not compete on raw generation volume or generic scheduling. It competes on local-business source truth, campaign cues, source snapshots, trust checks, WhatsApp/Google/local channel fit, owner approval, agency/multi-location boundaries, cost visibility, export/download delivery, and outcome learning.
 
@@ -70,6 +72,7 @@ CampaignCue should not compete on raw generation volume or generic scheduling. I
 | --- | --- | --- |
 | Canva/Adobe Express | Broad design, templates, captions, scheduling, image/video tools. | Campaigns start from source-backed local-business facts, Daily Campaign Desk recommendations, trust checks, and manual delivery/result memory. |
 | Buffer/Hootsuite/Later/Meta Business Suite | Scheduling, captions, planning, inbox/reporting, platform-native publishing. | Calendar is campaign-state aware with manual tasks, approvals, trust, and source context. |
+| Distribution.ai/content repurposing platforms | Turn one blog, podcast, video, or draft into platform-ready posts, email/newsletter assets, scheduling, approvals, and analytics. | Turn the current source-backed local-business cue into a checked campaign pack; reject autopilot distribution, generic repurposing, posting-time automation, and reach/ROI claims in the active runtime. |
 | Predis/Creatify/ad generators | Ad variants, video ads, URL-to-video, UGC-style creative, batch generation. | Practical local campaign packs with source, consent, rights, and channel guardrails. |
 | Google/WhatsApp/Meta direct tools | Native account actions and platform-owned insights. | Multi-channel campaign pack, export/download delivery, and cross-channel learning. |
 | Agencies/manual service | Human context and local judgment. | Repeatable source-backed workflow, approval logs, reports, and client/location isolation. |
@@ -85,7 +88,7 @@ See [campaigncue_founder-research-addendum.md](../campaigncue_founder-research-a
 | WhatsApp is consent-led. | Message generation, download/share, template/direct-send, opt-out, and pricing posture must be separate. |
 | Google Local is useful but constrained. | Prepare manual Google-ready posts/offers/events/media; connected publish belongs in a separate future provider layer. |
 | Ads need policy preflight before platform mutation. | Ads Studio must focus on safe handoff, spend approval, and destination checks. |
-| UGC risk is high. | Scripts and creator briefs are safer than fake customer videos or synthetic testimonials. |
+| UGC risk is high. | Scripts, local creator fit checks, lightweight briefs, disclosure notes, and 3-test result prompts are safer than fake customer videos, synthetic testimonials, or creator marketplace scope. |
 | Analytics must be confidence-labeled. | Reports distinguish observed, imported, manual, and estimated metrics. |
 | Contact marketing needs dedicated compliance. | Email/SMS blasts are not default CampaignCue channels without separate consent and opt-out architecture. |
 

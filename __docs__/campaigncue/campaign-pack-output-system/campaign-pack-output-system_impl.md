@@ -48,6 +48,10 @@ The output pack includes text, briefs, instructions, and references. It does not
 
 The Campaign Proof Deck is a markdown/PDF brief inside `CampaignCueOutputPack.proofDeck`. It summarizes Brand Playbook direction, campaign/social creative set, product/service focus, UGC dialogue/action beats, reel shot-plan references, trust checklist, and source trace for owner, agency, or client review. It stays a review artifact until a real renderer/export path creates a final PDF.
 
+The source-to-channel pack is emitted through existing output intent handling. It lets an owner turn the current source-backed campaign cue into the standard WhatsApp, Google/local, creative/print, calendar/manual-task, and result-memory pack. It does not force-select one individual source update, and it does not add blog, podcast, or video repurposing; autopilot distribution; direct posting; posting-time optimization; provider analytics; Storage objects; or new Firestore reads/writes.
+
+The local creator test brief is emitted through existing UGC/video manual delivery fields and output intent handling. It adds creator-fit questions, a lightweight creator brief, a 3-test plan, flat-fee boundary guidance, disclosure/consent notes, and result-memory prompts. It does not add a creator table, marketplace listing, contract workflow, payment workflow, provider call, Storage object, or new Firestore read/write.
+
 The language handoff is deterministic and cost-free. It records the saved business locale and warns owners/staff/agencies to keep protected facts unchanged during manual translation. It does not generate translated variants or invoke a translation/model provider.
 
 The mini-page/QR object is a brief and content contract only. Hosted public mini-page publishing needs a later explicit route, approval, tracking, and cache/security contract before activation.

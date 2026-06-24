@@ -15,7 +15,7 @@ You do not need to choose a technical category. CampaignCue uses your saved busi
 1. Open CampaignCue.
 2. Go to the Daily Campaign Desk or Campaign Pack screen.
 3. Choose the suggested pack or open templates.
-4. If needed, choose what the pack should help with: WhatsApp, Google, Instagram, print, staff sharing, ad handoff, old poster reuse, or custom size.
+4. If needed, choose what the pack should help with: source-to-channel pack, WhatsApp, Google, Instagram, print, staff sharing, ad handoff, old poster reuse, or custom size.
 5. Pick a template that matches your goal, event, or channel.
 6. Add any missing details CampaignCue asks for.
 7. Review the checks.
@@ -28,6 +28,7 @@ Screenshot slot: Template cards on the Campaign Pack screen.
 CampaignCue does not ask you to browse a long list of design formats. It shows business-use choices:
 
 - WhatsApp sales pack,
+- source-to-channel pack,
 - booking push pack,
 - Google local update,
 - Instagram post and story,

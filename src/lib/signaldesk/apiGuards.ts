@@ -16,6 +16,20 @@ export const requireSignalDeskRuntime = () => {
     return null;
 };
 
+export const isSignalDeskMobileRequest = (request: NextRequest) => {
+    const clientMode = request.headers.get("x-signaldesk-client-mode") || "";
+    const userAgent = request.headers.get("user-agent") || "";
+    const secChMobile = request.headers.get("sec-ch-ua-mobile") || "";
+    return clientMode === "mobile-readonly"
+        || secChMobile === "?1"
+        || /\b(Android|iPhone|iPad|iPod|Mobile|Windows Phone)\b/i.test(userAgent);
+};
+
+export const blockSignalDeskMobileMutation = (request: NextRequest, message = "SignalDesk mobile is read-only") => {
+    if (!isSignalDeskMobileRequest(request)) return null;
+    return NextResponse.json({ error: message }, { status: 403 });
+};
+
 export function logSignalDeskValidationFailure(params: {
     action?: string;
     details: unknown;

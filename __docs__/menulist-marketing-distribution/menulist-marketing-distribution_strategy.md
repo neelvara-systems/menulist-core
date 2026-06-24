@@ -14,6 +14,26 @@ It should be launched like a visible public-truth deployment system for SMBs:
 
 The marketing job is to make that transformation obvious, believable, and repeatable.
 
+## AI Startup Playbook Correction
+
+The June 24 SignalDesk growth-playbook review confirms that MenuList should copy the artifact and activation loop from fast-growing AI products, not their hype mechanics.
+
+Do not optimize for viral curiosity, broad launch noise, or automated outbound volume. Optimize for the MenuList equivalent of first-use magic:
+
+```text
+current menu/source found
+-> MenuList preview prepared
+-> owner reviews
+-> official customer link published
+-> QR, WhatsApp, Google/profile, Instagram, or staff-share surface activated
+-> proof asset created
+-> next local target, partner, or content draft selected
+```
+
+The recommended first pod hypothesis is Bengaluru, Indiranagar + Koramangala, focused on cafes, dessert shops, quick-service restaurants, and cloud-kitchen-facing storefronts. This remains pending founder approval, but it is the default operating hypothesis until changed.
+
+See `../menulist-signaldesk/menulist-signaldesk_growth-playbook-review-2026-06-24.md`.
+
 ## WhatsApp-First Moat Update
 
 The priority India wedge is now:
@@ -248,6 +268,14 @@ Creative pattern:
 2. show prepared MenuList version
 3. show public link on QR/WhatsApp/Google/Instagram
 4. close with "Send your current list"
+
+Creator and local-influencer tests are allowed only as proof/content experiments:
+
+- use local food, salon, service, retail, or SMB creators only when their audience has likely owner/customer relevance;
+- judge fit by baseline views, real comments, local intent, and natural category fit, not follower count;
+- test three small creator/angle/audience combinations before repeating spend;
+- track current-list uploads, previews approved, public links published, and two-surface activations instead of vanity views;
+- do not build influencer workflow into MenuList or position MenuList as creator campaign software.
 
 ### X
 

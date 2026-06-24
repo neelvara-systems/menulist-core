@@ -1,6 +1,6 @@
 # MenuList SignalDesk - Implementation Validation
 
-**Status:** Gated runtime expansion, connector settings, Apify source broker, and owned email sequencer queue validated locally; deep flow cross-check complete
+**Status:** Gated runtime expansion, connector settings, Apify source broker, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation shell, channel-window/source-retention runtime, Content Distribution Rail runtime, Trust Partner Rail runtime, solo-founder Operating Layer runtime, source-policy expiry enforcement, hard mobile read-only enforcement, local E2E workflow, and Firestore/Storage semantic rules tests implemented for local validation.
 **Created:** June 23, 2026
 **Scope:** Product identity, protected app shell, summary API, kill switch API, workspace read API, action API, internal workflow, gated source/AI/channel/webhook runtime, dedicated Firebase config/rules/indexes/storage rules, and functions skeleton.
 
@@ -8,9 +8,86 @@
 
 The SignalDesk internal workflow plus gated runtime expansion is implemented and locally validated.
 
-The implemented flow covers source policy, manual import, dedupe/provenance, rules-based scoring, Google Places source-provider import, Apify Source Broker import, Gemini AI assist with model route/budget gating, evidence packets, evidence-bound drafts, approval packets, connector settings, export-only email rail, owned email sequencer queue, assisted WhatsApp/Instagram/Messenger handoff, sender-domain risk state, blocked/ready external sequencer handoff records, signed provider webhooks, manual inbox replies, outcomes, demand signals, audience segments, market pods, enrichment waterfalls, vendor run ledgers, normalized enrichment results, provider registry, budget policies, model evals, run timelines, self-service CTAs, control-room summaries, workspace reads, and audit.
+The implemented flow covers source policy, manual import, dedupe/provenance, rules-based scoring, Google Places source-provider import, Apify Source Broker import, Gemini AI assist with model route/budget gating, evidence packets, evidence-bound drafts, approval packets, connector settings, export-only email rail, owned email sequencer queue, assisted WhatsApp/Instagram/Messenger handoff, channel-window state, sender-domain risk state, blocked/ready external sequencer handoff records, signed provider webhooks, manual inbox replies, outcomes, demand signals, audience segments, market pod recommendations, weekly strategist memos, provider-source retention refresh records, provider evaluation records, Content Distribution Rail sources/assets/drafts/approvals/calendar/performance, Trust Partner Rail partner profiles/niche tests/deals/briefs/deliverables/metrics/renewals, Daily Growth Mission records, experiment cards, offer CTAs, reply playbooks, source quality snapshots, enrichment waterfalls, vendor run ledgers, normalized enrichment results, provider registry, budget policies, model evals, run timelines, self-service CTAs, control-room summaries, workspace reads, and audit.
 
-Provider send is wired but disabled by `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND: false`. It must remain disabled until sender identity, physical address, unsubscribe, bounce/complaint/suppression handling, approved source lists, provider credentials, and project access are ready. Paid campaign automation, real external paid-provider adapters except the gated Apify source broker, real external sequencer API calls, and Firebase deploy were explicitly skipped for this slice.
+Provider send is wired but disabled by `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND: false`. It must remain disabled until sender identity, physical address, unsubscribe, bounce/complaint/suppression handling, approved source lists, provider credentials, and project access are ready. Paid campaign automation, real external paid-provider adapters except the gated Apify source broker, real external sequencer API calls, content auto-publish, and Firebase deploy were explicitly skipped for this slice.
+
+## Dashboard UI Alignment - June 24, 2026
+
+SignalDesk now follows the same private dashboard chrome pattern used by the MenuList/Answerlattice-style internal apps:
+
+| Area | Current result |
+| --- | --- |
+| Theme | The protected SignalDesk layout is wrapped with `AntdThemeProvider`, so dashboard controls inherit the same Ant Design theme/dark-mode state. |
+| Shell | `SignalDeskWorkspace` uses `DashboardSidebarShell` for the left navigation and `DashboardHeaderShell` for the fixed top header. |
+| Navigation | SignalDesk sections remain private/internal and are routed through the left sidebar. `/sd` and `/sd/app` aliases preserve the `/sd` base path without adding public MenuList navigation. |
+| Controls | Workspace buttons, inputs, number inputs, selects, checkboxes, and textareas are rendered through SignalDesk-local wrappers backed by Ant Design components. The runtime verifier now fails if raw form controls return to the workspace. |
+| Local proof | `npm run verify:signaldesk`, `npx tsc --noEmit --incremental false --pretty false`, `node scripts/verification/smoke-signaldesk-routes.js`, and `git diff --check` passed after the UI alignment. |
+
+## Audit Blocker Follow-Up - June 24, 2026
+
+The 2026-06-24 Codex audit blockers were closed for local validation only. SignalDesk remains private/internal, provider send remains disabled, no Firebase deploy was run, and no real paid provider API was called.
+
+| Blocker | Resolution | Local Proof |
+| --- | --- | --- |
+| Full authenticated local E2E workflow was not executed. | Added `scripts/verification/e2e-signaldesk-local.js`, a deterministic Firestore-emulator E2E with a seeded SignalDesk founder-admin access context. It runs import, dedupe/provenance, score, evidence, draft, approval, export-only handoff, reply classification, outcome, summaries, no MenuList truth writes, duplicate webhook dedupe, DNC suppression, unsupported-claim rejection, suppressed export rejection, provider-send disabled rejection, and mobile blocked-action audit fixtures. | `npm run test:signaldesk:e2e:local` passes with local emulator data only. |
+| Source-policy expiry was not modeled or enforced. | `SignalDeskSourcePolicy` now carries `approvedAt`, explicit/computed expiry, provider identity, expanded allowed-use fields, and UI policy state. `assertSourcePolicyUsable()` enforces status, source type, provider, allowed use, retention, expiry/review-required state, and active block state across import, provider run, evidence, draft, approval, export/handoff, sequence/send, AI assist, enrichment, and retention refresh paths. | E2E negatives cover missing policy, expired policy, legacy no-expiry-basis review, missing retention, provider-run expired, evidence expired, draft expired, and export expired. |
+| Mobile read-only policy was not a hard runtime gate. | `/api/signaldesk/actions` now detects mobile contexts from `x-signaldesk-client-mode`, `sec-ch-ua-mobile`, and mobile user-agent, classifies actions, blocks all mutation/action classes on mobile, returns `MOBILE_READ_ONLY_ACTION_BLOCKED`, and writes audit events. `/api/signaldesk/kill-switches` allows mobile emergency pause only with `MOBILE_EMERGENCY_PAUSE` confirmation. UI disables high-risk controls on mobile. | E2E verifies mobile detection, route contract, blocked-action audit events, and server-side block code is covered by `npm run verify:signaldesk`. |
+| Firestore/Storage semantic rules-unit tests were missing. | Added Firebase-11-compatible `@firebase/rules-unit-testing@4.0.1` and expanded `scripts/verification/verify-signaldesk-security-rules.js` with unauthenticated, MenuList-owner, inactive-member, active-member, and platform-admin Firestore/Storage contexts. | `npm run test:signaldesk:rules` passes. |
+
+Additional fix found by E2E: the SignalDesk-local Firestore sanitizer now preserves Firestore transform sentinels such as `FieldValue.increment(...)`, so dashboard and cost counters update as numeric summary fields instead of empty objects.
+
+## Solo-Founder Operating Layer Runtime - June 24, 2026
+
+The ChatGPT feedback review was adopted as an internal operating-layer slice: SignalDesk should choose and compress the next best founder decisions, not become another dashboard to babysit.
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Route | `/signaldesk/mission` renders the Daily Growth Mission workspace and is included in the protected workspace API section allowlist. |
+| Actions | `create-daily-growth-mission`, `review-growth-mission`, `create-experiment-card`, `review-experiment-card`, `upsert-offer-cta`, `upsert-reply-playbook`, and `create-source-quality-snapshot` are protected, validated, permissioned actions. |
+| Runtime | `ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER` is true. Server actions write growth missions, experiment cards, offer CTAs, reply playbooks, source quality snapshots, audit events, run timelines, and daily cost summaries. |
+| UI | Mission screen includes a daily action queue, owner approve/hold/redirect/complete decisions, experiment cards, offer CTA library, reply playbooks, source quality snapshots, and a 7-day operating trial checklist. |
+| Firebase | Operating-layer collections are product-local, internally readable, client-write denied, and indexed for owner-decision/status/recommendation review flows. |
+| Boundary | No provider send, no paid campaign automation, no public SignalDesk page, no social auto-publish, no external paid adapter, and no MenuList store/menu/project/billing write was added. |
+
+## Content Distribution Rail Runtime - June 24, 2026
+
+The Distribution.ai review was adopted as a content repurposing pattern, not as a public social manager or auto-publish system. SignalDesk now has an internal rail for owned proof and channel-ready drafts.
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Route | `/signaldesk/content` renders the Content Distribution workspace. |
+| Actions | `upsert-content-source`, `create-content-asset`, `generate-content-distribution-drafts`, `review-content-distribution-draft`, `schedule-content-distribution-draft`, and `record-content-performance` are protected, validated, permissioned actions. |
+| Runtime | `ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL` is true. Server actions write sources, assets, drafts, calendar items, performance summaries, audit events, run timelines, queue summaries, and cost summaries. |
+| Firebase | Content collections are product-local, internally readable, client-write denied, and indexed for future filtered views. |
+| Boundary | No auto-publish, no social scheduler adapter, no paid campaign automation, no provider send, no public page, and no deploy was added. |
+
+## Market Pod Planner And Weekly Memo - June 24, 2026
+
+This implementation slice completed the internal decision layer for a solo founder using SignalDesk as the MenuList distribution operating system.
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Market pod planner | `recommend-market-pod-plan` writes `signaldeskMarketPods` confidence, recommendation, recommendation reason, recommended owner actions, audit, daily cost estimate, and run timeline from existing targets, demand signals, outcomes, source runs, and CTAs. |
+| Weekly strategist memo | `create-weekly-strategist-memo` writes `signaldeskStrategistMemos` with summary, cost posture, provider quality, risk notes, recommended market pod, and next owner decisions. It is rules-based and does not call a strong model. |
+| Channel windows | `upsert-channel-window-state` records WhatsApp/Instagram/Messenger window state and channel health with audit and timeline writes. |
+| Source retention | `refresh-provider-source-retention` updates refresh/expiry state for provider-source records without storing raw payloads. |
+| Provider evaluation shell | `create-provider-evaluation` compares existing vendor/enrichment records and writes a provider recommendation without calling Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, or another paid adapter. |
+| Partners route | `/signaldesk/partners` is accepted by the workspace API and renders Trust Partner Rail controls plus read-only trust-partner summaries. Runtime actions are enabled by `ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL: true`, while real spend still requires active budget policy and founder approval. |
+| Firestore rules | New SignalDesk collections are readable only to authenticated SignalDesk readers and remain client-write denied. |
+| Verifier | `npm run verify:signaldesk` now checks the new section, actions, workflow exports, workspace arrays, UI controls, collection constants, and read rules. |
+
+## Trust Partner Rail Runtime - June 24, 2026
+
+The X article on Cal AI's influencer operating system was adopted only as a SignalDesk input. The useful parts were translated into a B2B/local-business trust-channel rail for MenuList: restaurant consultants, menu photographers, local business operators, agencies, and partner audiences with restaurant-owner reach.
+
+| Area | Decision |
+| --- | --- |
+| Adopted | 20-second trust test, 3-5 niche test rule, flat-fee economics, lean briefs, deliverable tracking, result capture, and renew/hold/cut recommendations. |
+| Rejected | Broad consumer influencer scale, follower-count buying, per-view default pricing, celebrity creator deals, public partner portal, automated contracts, automated payments, and paid campaign automation. |
+| Docs | `__docs__/menulist-signaldesk/signaldesk-trust-partner-rail/` now contains the internal feature doc set and runtime status. |
+| Runtime | `ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL` is true. The route, workspace reads, action schemas, server actions, Firestore rules, indexes, verifier checks, and UI controls exist for internal testing. No automated outreach, contract, payment, deploy, provider send, or paid campaign automation was added. |
+| Compliance | Paid or incentivized partner content must include disclosure checks, approved claims, banned-claim review, and owner approval before any deal moves forward. |
 
 ## From-Scratch Docs/Code Parity Cross-Check - June 23, 2026
 
@@ -19,7 +96,7 @@ The fresh cross-check rebuilt the SignalDesk docs inventory, code inventory, sec
 | Finding | Classification | Fix |
 | --- | --- | --- |
 | `/signaldesk/settings` existed in routes, UI nav, and the `SignalDeskSection` union, but `src/app/api/signaldesk/workspace/route.ts` did not accept `settings` in its section allowlist. | Code mismatch | Added `settings` to the protected workspace API section allowlist so authenticated Settings requests load the Settings workspace instead of falling back to dashboard. |
-| `menulist-signaldesk_feature-map.md` still described source-provider runs and assisted channel routing as excluded/later even though the gated Google Places/Apify source providers and assisted channel plumbing are implemented. | Stale docs | Updated the feature map to mark implemented runtime slices, keep cold sends/provider sends/paid campaigns skipped, and reflect monorepo product-isolated runtime status. |
+| `menulist-signaldesk_feature-map.md` still described source-provider runs and assisted channel routing as excluded/deferred even though the gated Google Places/Apify source providers and assisted channel plumbing are implemented. | Stale docs | Updated the feature map to mark implemented runtime slices, keep cold sends/provider sends/paid campaigns skipped, and reflect monorepo product-isolated runtime status. |
 | `menulist-signaldesk_action-register.md` reused `SD-I034` for two different implementation rows. | Documentation integrity | Renumbered the prior-contact/prior-outcome spend guard row to `SD-I041` and added this parity pass plus the Settings API alignment as tracked actions. |
 
 Final verdict after fixes: PASS for the implemented and intentionally skipped scope. The remaining blockers are still owner/access/policy blockers, not code/docs parity failures.
@@ -204,7 +281,7 @@ The latest end-to-end flow audit checked action schemas, permissions, workflow g
 
 | Area | Finding | Fix Evidence |
 | --- | --- | --- |
-| Provider credential gate | Approved/evaluation provider accounts with missing credentials could pass the budget gate before failing later in the provider adapter. | `src/lib/signaldesk/workflowServer.ts:379` through `src/lib/signaldesk/workflowServer.ts:413` now blocks missing credentials inside the provider budget guard; `src/app/api/signaldesk/actions/route.ts:301` through `src/app/api/signaldesk/actions/route.ts:340` returns that workflow hold as a safe action error. |
+| Provider credential gate | Approved/evaluation provider accounts with missing credentials could pass the budget gate before failing in the provider adapter. | `src/lib/signaldesk/workflowServer.ts:379` through `src/lib/signaldesk/workflowServer.ts:413` now blocks missing credentials inside the provider budget guard; `src/app/api/signaldesk/actions/route.ts:301` through `src/app/api/signaldesk/actions/route.ts:340` returns that workflow hold as a safe action error. |
 | Spend counter preservation | Default seed and provider/budget config upserts reset daily/monthly spend counters to zero. | `src/lib/signaldesk/workflowServer.ts:850` through `src/lib/signaldesk/workflowServer.ts:940` preserves existing provider and budget spend during default seeding; `src/lib/signaldesk/workflowServer.ts:1087` through `src/lib/signaldesk/workflowServer.ts:1145` preserves spend during provider account and budget policy upserts. |
 | Latest evidence reads | Draft, packet, and AI paths read an arbitrary evidence packet for a target when multiple packets existed. | `src/lib/signaldesk/workflowServer.ts:271` through `src/lib/signaldesk/workflowServer.ts:273` orders target evidence by `updatedAt` descending; `firestore-signaldesk.indexes.json:36` through `firestore-signaldesk.indexes.json:42` adds the matching composite index. |
 | Waterfall vendor ledger | Waterfall runs pre-wrote synthetic skipped rows for every provider before budget checks. | `src/lib/signaldesk/workflowServer.ts:1358` through `src/lib/signaldesk/workflowServer.ts:1429` now writes one accurate vendor run summary for reused source data, ready-held provider state, or blocked provider reasons, and lowers the write estimate accordingly. |
@@ -280,6 +357,9 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | `npx tsc --noEmit --incremental false --pretty false` after Apify Source Broker implementation | Passed. |
 | `npx tsc --noEmit --incremental false --pretty false` after final Apify Source Broker cross-check | Passed. |
 | `npx tsc --noEmit --incremental false --pretty false` after from-scratch docs/code parity cross-check | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after solo-owner from-start audit | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after Trust Partner Rail planning flag/docs | Passed. |
+| `npx tsc --noEmit --incremental false --pretty false` after Operating Layer runtime implementation | Passed. |
 | `npm install` in `functions-signaldesk/` | Passed; local shell is Node 18 while the functions package declares Node 22, so npm printed an engine warning. |
 | `npm run build` in `functions-signaldesk/` | Passed. |
 | `npm run build` in `functions-signaldesk/` after from-scratch docs/code parity cross-check | Passed. |
@@ -292,6 +372,7 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` after Apify Source Broker implementation | Passed; Firestore emulator parsed SignalDesk rules and indexes. |
 | `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` after final Apify Source Broker cross-check | Passed; Firestore emulator parsed SignalDesk rules and indexes. |
 | `firebase emulators:exec --only firestore,storage --project demo-signaldesk --config firebase-signaldesk.json "true"` after from-scratch docs/code parity cross-check | Passed; Firestore and Storage rules parsed. |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` after Operating Layer rules/index update | Passed; Firestore emulator parsed SignalDesk rules and indexes. |
 | Local route smoke on `npx next dev -p 3003` for all 13 SignalDesk pages | Passed; `/signaldesk`, `/targets`, `/imports`, `/approvals`, `/templates`, `/inbox`, `/attribution`, `/policies`, `/sources`, `/ai`, `/channels`, `/control-room`, and `/audit` compiled and returned HTTP 200 locally. |
 | Local route smoke on `npx next dev -p 3004` after owned email sequencer implementation | Passed; all 13 SignalDesk pages compiled and returned HTTP 200 locally. |
 | Local route smoke on `npx next dev -p 3005` after connector settings implementation | Passed; all 14 SignalDesk pages including `/signaldesk/settings` compiled and returned HTTP 200 locally. |
@@ -300,6 +381,8 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | Local route smoke on `npx next dev -p 3008` after from-scratch docs/code parity cross-check | Passed; all 14 SignalDesk pages compiled and returned HTTP 200 locally. |
 | Local route/routing smoke on `npx next dev -p 3000` after URL routing alignment | Passed; `/signaldesk/settings` returned HTTP 200 with `X-Robots-Tag: noindex, nofollow`; `Host: signaldesk.menulist.ai` plus `/targets` returned HTTP 200 with `x-middleware-rewrite: /signaldesk/targets` and SignalDesk product headers. |
 | Local MyCodex-host alias smoke on `npx next dev -p 3000` after `/sd` routing | Passed; `Host: menulist.digital` plus `/sd`, `/sd/targets`, and `/sd/settings` returned HTTP 200 with `x-product-base-path: /sd`, SignalDesk product headers, noindex, and rewrites to `/signaldesk*`; `/sd/signin?callbackUrl=/sd` rewrote to `/signin`; `Host: menulist.ai` plus `/sd` returned HTTP 404. |
+| `curl -I -sS http://localhost:3000/signaldesk/mission` on existing local dev server | Passed; `/signaldesk/mission` returned HTTP 200 with `X-Robots-Tag: noindex, nofollow`. |
+| `curl -I -sS -H 'Host: menulist.digital' http://localhost:3000/sd/mission` on existing local dev server | Passed; `/sd/mission` returned HTTP 200 with `x-product-base-path: /sd`, SignalDesk product headers, noindex, and `x-middleware-rewrite: /signaldesk/mission`. |
 | Browser alias sign-in smoke with Chrome host resolver for `menulist.digital -> 127.0.0.1` | Passed; unauthenticated `http://menulist.digital:3000/sd` landed at `/sd/signin?callbackUrl=%2Fsd`, preserving the SignalDesk testing alias. |
 | Local unauthenticated API smoke on `npx next dev -p 3003` | Passed; overview, workspace, actions, and kill-switch APIs returned HTTP 401 with security logging. |
 | Local unauthenticated API smoke on `npx next dev -p 3004` after owned email sequencer implementation | Passed; overview, channels workspace, `send-owned-sequence-step`, and kill-switch APIs returned HTTP 401 with security logging. |
@@ -329,6 +412,9 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | `git diff --check` after Apify Source Broker implementation | Passed. |
 | `git diff --check` after final Apify Source Broker cross-check | Passed. |
 | `git diff --check` after from-scratch docs/code parity cross-check | Passed. |
+| `git diff --check` after solo-owner from-start audit | Passed. |
+| `git diff --check` after Trust Partner Rail planning flag/docs | Passed. |
+| `git diff --check` after Operating Layer runtime implementation | Passed. |
 | `rg -n "[ \t]+$" src/lib/signaldesk/workflowServer.ts src/app/api/signaldesk/actions/route.ts firestore-signaldesk.indexes.json firestore-signaldesk.rules __docs__/menulist-signaldesk/menulist-signaldesk_validation.md __docs__/menulist-signaldesk/menulist-signaldesk_firebase.md` | Passed; no trailing whitespace found in touched SignalDesk files. |
 | `rg -n "[ \t]+$" ...owned sequencer touched files` | Passed; no trailing whitespace found in touched code, rules, indexes, or docs. |
 | `rg -n "[ \t]+$" ...connector settings touched files` | Passed; no trailing whitespace found in touched code, rules, indexes, or docs. |
@@ -336,6 +422,9 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | `rg -n "[[:blank:]]$" ...final Apify Source Broker cross-check files` | Passed; no trailing whitespace found in touched code or docs. |
 | `rg -n "[[:blank:]]$" ...from-scratch docs/code parity touched files` | Passed; no trailing whitespace found in touched code or docs. |
 | `rg -n "[[:blank:]]$" ...touched SignalDesk docs` | Passed for action register, implementation plan, Firebase plan, validation, solo-founder investment plan, and market-practice cross-check; no trailing whitespace found. |
+| `npm run verify:signaldesk` after solo-owner from-start audit | Passed; verifier checks product code, private routes, `/sd` alias support, fourteen sections, all action contracts, API guards, provider-send disabled state, connector/settings coverage, provider/budget/waterfall/packet/sequencer controls, Firebase isolation, no public website exposure, and docs truth. |
+| `npm run verify:signaldesk` after Trust Partner Rail planning flag/docs | Passed; current runtime contract remains unchanged and provider-send stays disabled. |
+| `npm run verify:signaldesk` after Operating Layer runtime implementation | Passed; verifier checks the Mission section, operating-layer actions, server exports, workspace arrays, UI controls, collection constants, rules/indexes, internal-only boundaries, and docs truth. |
 
 ## Confirmed Boundaries
 
@@ -345,6 +434,7 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 - Dedicated SignalDesk hostnames rewrite to the private `/signaldesk` app and are reserved away from MenuList tenant/custom-domain routing.
 - MyCodex-host `/sd` is an internal testing/operation alias for SignalDesk only; it does not change canonical product domains or expose a public SignalDesk website.
 - No MenuList `stores`, `projects`, menu publish, billing, or customer output path was changed for SignalDesk.
+- Operating Layer records compress founder decisions only; they do not mutate MenuList activation truth.
 - No external provider account was configured; internal provider registry records and held defaults were implemented.
 - No raw connector secrets are stored in Firestore; connector settings store metadata and env-derived secret states only.
 - No raw Apify dataset payload is stored in Firestore; Apify source rows normalize into target imports and webhook events store payload hashes only.
@@ -365,8 +455,8 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | Blocker | Why it matters |
 | --- | --- |
 | Firebase project creation/access | Required before deploying `firebase-signaldesk.json`, rules, indexes, storage rules, or functions to `menulist-signaldesk-qa` / `menulist-signaldesk`. |
-| Local SignalDesk Firebase mode/env | Current `.env` points the default Firebase project at `ecomsai` and has no `MENULIST_SIGNALDESK_FIREBASE_MODE` / SignalDesk project override; authenticated local data-flow smoke needs shared mode, separate SignalDesk credentials, or `FIRESTORE_EMULATOR_HOST`. |
-| First market pod | Required before using the import/scoring workflow with real prospects. |
+| Local SignalDesk Firebase mode/env | Current `.env` points the default Firebase project at `ecomsai` and has no `MENULIST_SIGNALDESK_FIREBASE_MODE` / SignalDesk project override. Local emulator data-flow smoke now runs through `scripts/verification/smoke-signaldesk-workflow.js` with `FIRESTORE_EMULATOR_HOST`; browser-auth and role-negative coverage still require a seeded SignalDesk session/Auth emulator. |
+| First market pod | Required before using the import/scoring workflow with real prospects. Recommended default pending founder approval: Bengaluru, Indiranagar + Koramangala, cafes/dessert shops/QSR/cloud-kitchen-facing storefronts, founder email/manual export first. |
 | First approved source list | Required before using import, evidence, scoring, and draft workflow with real prospects. |
 | Sender identity and physical address policy | Required before email/export readiness. |
 | Suppression/unsubscribe/bounce/complaint policy | Required before any provider send or export path can leave draft mode. |
@@ -376,18 +466,34 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | External provider adapters | Required before Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, Postmark, Resend, Smartlead, Instantly, or lemlist can run against real systems. |
 | First sender domain policy | Required before any provider send, real sequencer handoff, domain warmup, or domain rotation decision; sender-domain risk records now exist. |
 | Strong-model adapter approval | Required before OpenAI/Anthropic routes move from held policy records into executable model routes. |
-| Authenticated workflow smoke data | Required to verify seed -> import -> score -> evidence -> draft -> packet -> approval -> export/handoff with real session access and emulator or QA Firebase. |
+| Browser-auth workflow smoke data | Required to verify route/API permissions, role-negative cases, malformed payloads, suppressed contact, missing sender readiness, provider-send disabled, and unsupported-claim rejection with real session access and emulator or QA Firebase. |
+| Operating-layer smoke data | Required to verify seed -> mission -> offer CTA -> experiment card -> reply playbook -> source snapshot -> mission review with a real authenticated SignalDesk session. |
 | Team-member seed policy | Required for non-platform growth team members to access SignalDesk. |
+| MenuList-side Activation Concierge runtime foundation | Existing MenuList upload/parse/preview/claim/publish/share/presence paths now have a shared activation-proof summary over `starterActivationSignals` and `menuPresence`; SignalDesk still observes outcomes only and does not write MenuList truth. |
 | Paid campaign automation | Explicitly skipped for this slice and still out of scope. |
 | Firebase deploy | Explicitly skipped for this slice and still out of scope. |
 
 ## Next Implementation Slice
 
-The next safe non-skipped slice is authenticated workflow proof and first provider-eval preparation, not paid campaigns, provider send, or Firebase deploy. Build order:
+The next safe non-skipped slice is operating proof for one narrow pod, not paid campaigns, provider send, public SignalDesk pages, or Firebase deploy. The June 24 growth-playbook review adds a recommended default pod and reinforces that the next product build should be MenuList-side activation, not more SignalDesk automation.
+
+Recommended default pending founder approval:
+
+| Decision | Default |
+| --- | --- |
+| Market pod | Bengaluru, Indiranagar + Koramangala, cafes/dessert shops/QSR/cloud-kitchen-facing storefronts |
+| CTA | One current official menu link for QR, WhatsApp, Google/Profile, Instagram, and repeat customers, reviewed before publishing |
+| Channel | Founder email/manual export first |
+| Proof asset | Before/after current-menu-link proof with activated surfaces |
+| Trust partner niche | Menu photographers and restaurant consultants |
+
+Build order:
 
 1. run an authenticated seed/import/score/evidence/draft/packet/approval/export smoke in emulator or QA after owner/session access is available;
-2. choose first market pod, approved source list, monthly provider cap, sender-domain policy, and first proof CTA;
-3. choose one narrow provider eval set, likely Google Places/manual plus one research/enrichment pair before Apollo-scale contact reveal;
-4. implement only the selected external provider adapter behind existing source policy, budget policy, waterfall, prior-contact, audit, and timeline gates;
-5. keep provider send disabled until sender/compliance gates are complete;
-6. keep paid campaign automation and Firebase deploy deferred until the owner explicitly asks for them.
+2. run an authenticated Operating Layer smoke: prepare mission, save offer CTA, create experiment card, save reply playbook, create source quality snapshot, and review the mission;
+3. choose one market pod, one approved source list, one offer CTA, one proof asset, one sender identity, and one manual/export path;
+4. run 25-50 targets through the full owner-approved loop and record upload, preview, publish, and two-surface activation outcomes;
+5. create the MenuList-side Activation Concierge doc set before runtime work: upload, parse, preview, owner approval, publish, QR, WhatsApp copy, Google/Profile checklist, Instagram/staff-share checklist, and two-surface tracking;
+6. build the MenuList-side Activation Concierge only after the SignalDesk route-to-outcome bridge has a clean smoke and the owner approves the feature boundary;
+7. choose a narrow provider eval set only after one pod exposes a real source/contact-quality bottleneck;
+8. keep provider send, paid campaign automation, auto-publish, public SignalDesk pages, cold WhatsApp, cold Meta DMs, Reddit/X auto-replies, LinkedIn automation, and Firebase deploy deferred until the owner explicitly asks for them and the related policy gates are satisfied.

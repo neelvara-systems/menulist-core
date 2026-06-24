@@ -2,39 +2,66 @@ export const dynamic = "force-dynamic";
 
 import {
     applySignalDeskRateLimit,
+    isSignalDeskMobileRequest,
     logSignalDeskValidationFailure,
     parseSignalDeskJsonBody,
     requireSignalDeskAccess,
     requireSignalDeskRuntime,
 } from "@lib/signaldesk/apiGuards";
+import { recordSignalDeskMobileActionBlockedServer } from "@lib/signaldesk/server";
 import {
     captureSignalDeskDemandSignalServer,
     captureSignalDeskReplyServer,
     createSignalDeskApprovalPacketServer,
+    createSignalDeskContentAssetServer,
+    createSignalDeskDailyGrowthMissionServer,
+    createSignalDeskExperimentCardServer,
     prepareSignalDeskChannelHandoffServer,
+    createSignalDeskProviderEvaluationServer,
     createSignalDeskDraftServer,
     createSignalDeskEvidenceServer,
+    createSignalDeskSourceQualitySnapshotServer,
+    generateSignalDeskContentDistributionDraftsServer,
     createSignalDeskSequencerHandoffServer,
+    createSignalDeskTrustPartnerBriefServer,
+    createSignalDeskTrustPartnerNicheTestServer,
+    createSignalDeskWeeklyStrategistMemoServer,
     createSignalDeskSourcePolicyServer,
     exportSignalDeskMessageServer,
     importSignalDeskTargetsServer,
+    recommendSignalDeskMarketPodPlanServer,
+    recordSignalDeskTrustPartnerDeliverableServer,
+    recordSignalDeskTrustPartnerMetricsServer,
+    recordSignalDeskContentPerformanceServer,
+    refreshSignalDeskProviderSourceRetentionServer,
     recordSignalDeskOutcomeServer,
     runSignalDeskEnrichmentWaterfallServer,
+    reviewSignalDeskExperimentCardServer,
+    reviewSignalDeskGrowthMissionServer,
     reviewSignalDeskApprovalServer,
+    reviewSignalDeskTrustPartnerDealServer,
+    reviewSignalDeskTrustPartnerRenewalServer,
     runSignalDeskAiAssistServer,
     runSignalDeskSourceProviderServer,
     scoreSignalDeskTargetServer,
     seedSignalDeskDefaultsServer,
     sendSignalDeskOwnedSequenceStepServer,
     sendSignalDeskApprovedMessageServer,
+    reviewSignalDeskContentDistributionDraftServer,
     upsertSignalDeskAudienceSegmentServer,
     upsertSignalDeskBudgetPolicyServer,
+    upsertSignalDeskChannelWindowStateServer,
     upsertSignalDeskConnectorSettingServer,
+    scheduleSignalDeskContentDistributionDraftServer,
     upsertSignalDeskEnrichmentWaterfallServer,
     upsertSignalDeskModelRouteServer,
     upsertSignalDeskProviderAccountServer,
+    upsertSignalDeskOfferCtaServer,
+    upsertSignalDeskReplyPlaybookServer,
     upsertSignalDeskSelfServiceCtaServer,
     upsertSignalDeskSenderDomainServer,
+    upsertSignalDeskContentSourceServer,
+    upsertSignalDeskTrustPartnerProfileServer,
 } from "@lib/signaldesk/workflowServer";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
@@ -60,6 +87,7 @@ const ActionEnvelopeSchema = z.object({
         "run-source-provider",
         "run-ai-assist",
         "prepare-channel-handoff",
+        "upsert-channel-window-state",
         "send-approved-message",
         "upsert-provider-account",
         "upsert-budget-policy",
@@ -67,12 +95,36 @@ const ActionEnvelopeSchema = z.object({
         "upsert-model-route",
         "upsert-enrichment-waterfall",
         "upsert-audience-segment",
+        "recommend-market-pod-plan",
         "upsert-sender-domain",
         "upsert-self-service-cta",
+        "create-daily-growth-mission",
+        "review-growth-mission",
+        "create-experiment-card",
+        "review-experiment-card",
+        "upsert-offer-cta",
+        "upsert-reply-playbook",
+        "create-source-quality-snapshot",
+        "refresh-provider-source-retention",
+        "create-weekly-strategist-memo",
+        "create-provider-evaluation",
         "run-enrichment-waterfall",
         "create-approval-packet",
         "create-sequencer-handoff",
         "send-owned-sequence-step",
+        "upsert-content-source",
+        "create-content-asset",
+        "generate-content-distribution-drafts",
+        "review-content-distribution-draft",
+        "schedule-content-distribution-draft",
+        "record-content-performance",
+        "upsert-trust-partner-profile",
+        "create-trust-partner-niche-test",
+        "create-trust-partner-brief",
+        "review-trust-partner-deal",
+        "record-trust-partner-deliverable",
+        "record-trust-partner-metrics",
+        "review-trust-partner-renewal",
     ]),
     payload: z.unknown().default({}),
 });
@@ -81,8 +133,30 @@ const SourcePolicySchema = z.object({
     allowContact: z.boolean(),
     allowEvidence: z.boolean(),
     allowPersonalization: z.boolean(),
+    expiresAt: z.string().trim().max(80).optional(),
     name: z.string().trim().min(2).max(120),
     notes: z.string().trim().max(500).optional(),
+    provider: z.enum([
+        "manual",
+        "google-places",
+        "foursquare",
+        "apify",
+        "apollo",
+        "hunter",
+        "zerobounce",
+        "firecrawl",
+        "tavily",
+        "exa",
+        "postmark",
+        "resend",
+        "owned-email",
+        "smartlead",
+        "instantly",
+        "lemlist",
+        "gemini",
+        "openai",
+        "anthropic",
+    ]).optional(),
     retentionDays: z.number().int().min(1).max(365),
     sourceType: z.enum(["manual-csv", "manual-research", "owned-demand", "provider", "other"]),
 });
@@ -163,6 +237,15 @@ const ChannelActionSchema = z.object({
     channel: z.enum(["email", "whatsapp", "instagram", "messenger"]),
 });
 
+const ChannelWindowStateSchema = z.object({
+    channel: z.enum(["whatsapp", "instagram", "messenger"]),
+    expiresAt: z.string().trim().max(80).optional(),
+    reason: z.string().trim().max(500).optional(),
+    source: z.enum(["inbound", "opt-in", "ad-click", "template", "manual"]),
+    status: z.enum(["open", "closed", "expired", "blocked", "needs-template"]),
+    targetId: z.string().trim().min(3).max(160).optional(),
+});
+
 const ProviderIdSchema = z.enum([
     "google-places",
     "foursquare",
@@ -203,7 +286,7 @@ const BudgetPolicySchema = z.object({
     name: z.string().trim().min(2).max(120),
     perRunBudgetUsd: z.number().min(0).max(1000),
     provider: ProviderIdSchema.optional(),
-    scope: z.enum(["global", "provider", "market-pod", "model-route", "sequencer"]),
+    scope: z.enum(["global", "provider", "market-pod", "model-route", "sequencer", "trust-partner"]),
     scopeId: z.string().trim().max(160).optional(),
     status: z.enum(["active", "inactive", "hold", "blocked"]),
 });
@@ -241,6 +324,25 @@ const AudienceSegmentSchema = z.object({
     triggerType: z.enum(["demand-signal", "source-run", "outcome", "manual", "website-evidence"]),
 });
 
+const MarketPodRecommendationSchema = z.object({
+    marketPodId: z.string().trim().min(3).max(160).optional(),
+});
+
+const ProviderSourceRetentionRefreshSchema = z.object({
+    notes: z.string().trim().max(500).optional(),
+    providerSourceRetentionId: z.string().trim().min(3).max(180),
+    status: z.enum(["refreshed", "refresh-due", "expired", "blocked"]),
+});
+
+const WeeklyStrategistMemoSchema = z.object({
+    weekStart: z.string().trim().max(20).optional(),
+});
+
+const ProviderEvaluationSchema = z.object({
+    provider: ProviderIdSchema,
+    use: z.enum(["discovery", "enrichment", "verification", "research", "sender", "sequencer", "ai"]),
+});
+
 const SenderDomainSchema = z.object({
     authenticationState: z.enum(["missing", "partial", "ready"]),
     bounceRate: z.number().min(0).max(1),
@@ -276,6 +378,68 @@ const SelfServiceCtaSchema = z.object({
     status: z.enum(["active", "inactive", "hold", "blocked"]),
 });
 
+const DailyGrowthMissionSchema = z.object({
+    day: z.string().trim().max(20).optional(),
+    marketPodId: z.string().trim().max(160).optional(),
+});
+
+const GrowthMissionReviewSchema = z.object({
+    growthMissionId: z.string().trim().min(3).max(180),
+    ownerDecision: z.enum(["pending", "approved", "hold", "redirected", "completed"]),
+    ownerDecisionNote: z.string().trim().max(800).optional(),
+    status: z.enum(["draft", "ready", "approved", "held", "completed"]).optional(),
+});
+
+const ExperimentCardSchema = z.object({
+    channel: z.enum(["email", "manual", "content", "partner", "referral", "other"]),
+    contentAssetId: z.string().trim().max(180).optional(),
+    ctaId: z.string().trim().max(180).optional(),
+    expectedOutcome: z.string().trim().min(2).max(240),
+    hypothesis: z.string().trim().min(5).max(500),
+    marketPodId: z.string().trim().max(160).optional(),
+    proofAssetSummary: z.string().trim().max(500).optional(),
+    sourcePolicyId: z.string().trim().max(180).optional(),
+    status: z.enum(["planned", "active", "paused", "completed", "stopped"]).optional(),
+    stopRule: z.string().trim().min(5).max(500),
+    targetCount: z.number().int().min(1).max(500),
+});
+
+const ExperimentReviewSchema = z.object({
+    experimentCardId: z.string().trim().min(3).max(180),
+    ownerDecision: z.enum(["pending", "repeat", "narrow", "stop", "hold", "complete"]),
+    resultSummary: z.string().trim().max(1000).optional(),
+    status: z.enum(["planned", "active", "paused", "completed", "stopped"]).optional(),
+});
+
+const OfferCtaSchema = z.object({
+    activationSurface: z.enum(["claim", "upload", "preview", "qr", "whatsapp", "google-profile", "manual"]),
+    approvedAsk: z.string().trim().min(5).max(500),
+    blockedClaims: z.array(z.string().trim().min(2).max(180)).max(10).default([]),
+    ctaId: z.string().trim().max(180).optional(),
+    marketPodId: z.string().trim().max(160).optional(),
+    offerCtaId: z.string().trim().max(180).optional(),
+    proofMatchRule: z.string().trim().min(5).max(500),
+    segment: z.enum(["restaurant-owner", "agency-partner", "trust-partner", "local-operator", "general"]),
+    status: z.enum(["active", "inactive", "hold", "blocked"]),
+    title: z.string().trim().min(2).max(160),
+});
+
+const ReplyPlaybookSchema = z.object({
+    approvedReply: z.string().trim().min(5).max(1000),
+    escalationRequired: z.boolean(),
+    intent: z.enum(["send-details", "pricing", "who-are-you", "not-now", "wrong-person", "stop", "call-me", "interested", "other"]),
+    nextRoute: z.enum(["self-serve-preview", "manual-reply", "suppress", "schedule-follow-up", "founder-review"]),
+    playbookId: z.string().trim().max(180).optional(),
+    status: z.enum(["active", "inactive", "hold", "blocked"]),
+    suppressionRequired: z.boolean(),
+    title: z.string().trim().min(2).max(160),
+});
+
+const SourceQualitySnapshotSchema = z.object({
+    sourcePolicyId: z.string().trim().max(180).optional(),
+    sourceRunId: z.string().trim().max(180).optional(),
+});
+
 const RunWaterfallSchema = z.object({
     targetId: z.string().trim().min(3).max(160),
     waterfallId: z.string().trim().min(3).max(160),
@@ -296,6 +460,140 @@ const OwnedSequenceStepSchema = z.object({
     sequencerHandoffId: z.string().trim().min(3).max(180),
 });
 
+const ContentAudienceSchema = z.enum(["restaurant-owner", "agency-partner", "trust-partner", "local-operator", "general"]);
+
+const ContentSourceTypeSchema = z.enum(["manual", "blog", "changelog", "proof-page", "demo", "case-note", "customer-story", "youtube", "podcast", "other"]);
+
+const ContentChannelSchema = z.enum(["linkedin", "x", "email", "newsletter", "partner-brief", "blog", "short-video", "other"]);
+
+const ContentSourceSchema = z.object({
+    contentSourceId: z.string().trim().max(180).optional(),
+    defaultAudience: ContentAudienceSchema,
+    defaultMarketPodId: z.string().trim().max(160).optional(),
+    sourceType: ContentSourceTypeSchema,
+    sourceUrl: z.string().trim().max(500).optional(),
+    status: z.enum(["active", "inactive", "hold", "blocked"]),
+    title: z.string().trim().min(2).max(160),
+});
+
+const ContentAssetSchema = z.object({
+    canonicalMessage: z.string().trim().min(10).max(2000),
+    contentAssetId: z.string().trim().max(180).optional(),
+    ctaId: z.string().trim().max(160).optional(),
+    marketPodId: z.string().trim().max(160).optional(),
+    primaryAudience: ContentAudienceSchema,
+    proofLevel: z.enum(["owned", "customer-proof", "market-research", "internal-note"]),
+    riskNotes: z.array(z.string().trim().max(240)).max(6).default([]),
+    sourceId: z.string().trim().max(180).optional(),
+    sourceNotes: z.string().trim().max(800).optional(),
+    sourceType: ContentSourceTypeSchema,
+    sourceUrl: z.string().trim().max(500).optional(),
+    status: z.enum(["draft", "ready", "distributed", "hold", "archived"]).optional(),
+    title: z.string().trim().min(2).max(180),
+});
+
+const ContentDistributionDraftSchema = z.object({
+    channels: z.array(ContentChannelSchema).min(1).max(8),
+    contentAssetId: z.string().trim().min(3).max(180),
+});
+
+const ContentDraftReviewSchema = z.object({
+    approvalStatus: z.enum(["approved", "rejected", "hold"]),
+    contentDraftId: z.string().trim().min(3).max(180),
+    reviewReason: z.string().trim().max(500).optional(),
+});
+
+const ContentDraftScheduleSchema = z.object({
+    contentDraftId: z.string().trim().min(3).max(180),
+    scheduledFor: z.string().trim().max(80).optional(),
+    status: z.enum(["queued", "approved", "hold"]).optional(),
+});
+
+const ContentPerformanceSchema = z.object({
+    activations: z.number().int().min(0).max(100000),
+    channel: ContentChannelSchema,
+    clicks: z.number().int().min(0).max(100000000),
+    contentAssetId: z.string().trim().min(3).max(180),
+    contentDraftId: z.string().trim().max(180).optional(),
+    currentListSubmissions: z.number().int().min(0).max(100000),
+    engagementQuality: z.enum(["high", "medium", "low"]),
+    ownerLeads: z.number().int().min(0).max(100000),
+    views: z.number().int().min(0).max(100000000),
+});
+
+const TrustPartnerProfileSchema = z.object({
+    audienceFitScore: z.number().int().min(0).max(100),
+    baselineReachScore: z.number().int().min(0).max(100),
+    believableUsageScore: z.number().int().min(0).max(100),
+    channel: z.enum(["instagram", "youtube", "tiktok", "linkedin", "newsletter", "community", "offline", "other"]),
+    commentQualityScore: z.number().int().min(0).max(100),
+    displayName: z.string().trim().min(2).max(160),
+    geography: z.string().trim().max(160).optional(),
+    partnerType: z.enum(["restaurant-consultant", "menu-photographer", "local-business-creator", "agency-freelancer", "pos-payment-partner", "operator-advocate", "generic-creator"]),
+    sourceNotes: z.string().trim().min(2).max(800),
+    status: z.enum(["candidate", "approved", "hold", "rejected", "active"]).optional(),
+    trustFeelScore: z.number().int().min(0).max(100),
+});
+
+const TrustPartnerNicheTestSchema = z.object({
+    angle: z.string().trim().min(2).max(240),
+    intendedAttempts: z.number().int().min(1).max(5),
+    marketPodId: z.string().trim().max(160).optional(),
+    nicheName: z.string().trim().min(2).max(160),
+    partnerIds: z.array(z.string().trim().min(3).max(180)).max(5).default([]),
+});
+
+const TrustPartnerBriefSchema = z.object({
+    approvedClaims: z.array(z.string().trim().min(2).max(240)).min(1).max(8),
+    bannedClaims: z.array(z.string().trim().min(2).max(240)).min(1).max(8),
+    ctaId: z.string().trim().max(160).optional(),
+    dealId: z.string().trim().max(180).optional(),
+    disclosureText: z.string().trim().min(5).max(500),
+    onePageBrief: z.string().trim().min(20).max(2000),
+    partnerId: z.string().trim().min(3).max(180),
+});
+
+const TrustPartnerDealSchema = z.object({
+    approvalStatus: z.enum(["approved", "rejected", "blocked"]),
+    budgetPolicyId: z.string().trim().max(180).optional(),
+    deliverableCount: z.number().int().min(1).max(10),
+    dueDate: z.string().trim().max(80).optional(),
+    flatFeeUsd: z.number().min(0).max(100000),
+    founderApproved: z.boolean(),
+    nicheTestId: z.string().trim().max(180).optional(),
+    partnerId: z.string().trim().min(3).max(180),
+    pricingModel: z.enum(["flat-fee", "per-view", "barter"]),
+});
+
+const TrustPartnerDeliverableSchema = z.object({
+    dealId: z.string().trim().max(180).optional(),
+    disclosurePresent: z.boolean(),
+    dueDate: z.string().trim().max(80).optional(),
+    partnerId: z.string().trim().min(3).max(180),
+    postUrl: z.string().trim().max(500).optional(),
+    reviewState: z.enum(["pending", "approved", "risk", "rejected"]),
+    status: z.enum(["scheduled", "submitted", "live", "missed", "paused"]),
+});
+
+const TrustPartnerMetricsSchema = z.object({
+    activations: z.number().int().min(0).max(100000),
+    commentQuality: z.enum(["high", "medium", "low"]),
+    comments: z.number().int().min(0).max(100000000),
+    currentListSubmissions: z.number().int().min(0).max(100000),
+    deliverableId: z.string().trim().max(180).optional(),
+    ownerLeads: z.number().int().min(0).max(100000),
+    partnerId: z.string().trim().min(3).max(180),
+    views: z.number().int().min(0).max(100000000),
+});
+
+const TrustPartnerRenewalSchema = z.object({
+    evidenceSummary: z.string().trim().min(5).max(1000),
+    nicheTestId: z.string().trim().max(180).optional(),
+    ownerDecision: z.enum(["approved", "rejected", "pending"]).optional(),
+    partnerId: z.string().trim().min(3).max(180),
+    recommendation: z.enum(["renew", "hold", "cut", "retest"]),
+});
+
 const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["action"]): SignalDeskPermission => {
     if (action === "seed-defaults") return "signaldesk.configure";
     if (action === "create-source-policy") return "source.configure";
@@ -310,6 +608,7 @@ const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["actio
     if (action === "run-source-provider") return "source.configure";
     if (action === "run-ai-assist") return "target.review";
     if (action === "prepare-channel-handoff") return "message.export";
+    if (action === "upsert-channel-window-state") return "channel.configure";
     if (action === "send-approved-message") return "message.send";
     if (action === "upsert-provider-account") return "signaldesk.configure";
     if (action === "upsert-budget-policy") return "policy.approve";
@@ -317,13 +616,105 @@ const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["actio
     if (action === "upsert-model-route") return "signaldesk.configure";
     if (action === "upsert-enrichment-waterfall") return "source.configure";
     if (action === "upsert-audience-segment") return "source.configure";
+    if (action === "recommend-market-pod-plan") return "source.configure";
     if (action === "upsert-sender-domain") return "channel.configure";
     if (action === "upsert-self-service-cta") return "signaldesk.configure";
+    if (action === "create-daily-growth-mission") return "target.review";
+    if (action === "review-growth-mission") return "target.review";
+    if (action === "create-experiment-card") return "target.review";
+    if (action === "review-experiment-card") return "target.review";
+    if (action === "upsert-offer-cta") return "signaldesk.configure";
+    if (action === "upsert-reply-playbook") return "draft.create";
+    if (action === "create-source-quality-snapshot") return "source.configure";
+    if (action === "refresh-provider-source-retention") return "source.configure";
+    if (action === "create-weekly-strategist-memo") return "target.review";
+    if (action === "create-provider-evaluation") return "signaldesk.configure";
     if (action === "run-enrichment-waterfall") return "target.review";
     if (action === "create-approval-packet") return "target.review";
     if (action === "create-sequencer-handoff") return "message.export";
     if (action === "send-owned-sequence-step") return "message.send";
+    if (action === "upsert-content-source") return "source.configure";
+    if (action === "create-content-asset") return "draft.create";
+    if (action === "generate-content-distribution-drafts") return "draft.create";
+    if (action === "review-content-distribution-draft") return "draft.approve";
+    if (action === "schedule-content-distribution-draft") return "draft.approve";
+    if (action === "record-content-performance") return "target.review";
+    if (action === "upsert-trust-partner-profile") return "source.configure";
+    if (action === "create-trust-partner-niche-test") return "policy.approve";
+    if (action === "create-trust-partner-brief") return "draft.create";
+    if (action === "review-trust-partner-deal") return "policy.approve";
+    if (action === "record-trust-partner-deliverable") return "source.configure";
+    if (action === "record-trust-partner-metrics") return "source.configure";
+    if (action === "review-trust-partner-renewal") return "policy.approve";
     return "target.review";
+};
+
+type SignalDeskMobileActionClass =
+    | "approve"
+    | "configure"
+    | "emergency_pause"
+    | "export"
+    | "mutate_policy"
+    | "provider_run"
+    | "read"
+    | "reveal_pii"
+    | "schedule"
+    | "send"
+    | "spend";
+
+const SIGNALDESK_MOBILE_ACTION_CLASS: Record<z.infer<typeof ActionEnvelopeSchema>["action"], SignalDeskMobileActionClass> = {
+    "capture-demand-signal": "configure",
+    "capture-reply": "configure",
+    "create-approval-packet": "approve",
+    "create-content-asset": "configure",
+    "create-daily-growth-mission": "configure",
+    "create-draft": "approve",
+    "create-evidence": "configure",
+    "create-experiment-card": "configure",
+    "create-provider-evaluation": "provider_run",
+    "create-sequencer-handoff": "export",
+    "create-source-policy": "mutate_policy",
+    "create-source-quality-snapshot": "configure",
+    "create-trust-partner-brief": "configure",
+    "create-trust-partner-niche-test": "configure",
+    "create-weekly-strategist-memo": "provider_run",
+    "export-message": "export",
+    "generate-content-distribution-drafts": "configure",
+    "import-targets": "configure",
+    "prepare-channel-handoff": "export",
+    "recommend-market-pod-plan": "configure",
+    "record-content-performance": "configure",
+    "record-outcome": "configure",
+    "record-trust-partner-deliverable": "configure",
+    "record-trust-partner-metrics": "configure",
+    "refresh-provider-source-retention": "provider_run",
+    "review-approval": "approve",
+    "review-content-distribution-draft": "approve",
+    "review-experiment-card": "approve",
+    "review-growth-mission": "approve",
+    "review-trust-partner-deal": "spend",
+    "review-trust-partner-renewal": "spend",
+    "run-ai-assist": "provider_run",
+    "run-enrichment-waterfall": "provider_run",
+    "run-source-provider": "provider_run",
+    "schedule-content-distribution-draft": "schedule",
+    "score-target": "configure",
+    "seed-defaults": "configure",
+    "send-approved-message": "send",
+    "send-owned-sequence-step": "send",
+    "upsert-audience-segment": "configure",
+    "upsert-budget-policy": "spend",
+    "upsert-channel-window-state": "configure",
+    "upsert-connector-setting": "configure",
+    "upsert-content-source": "configure",
+    "upsert-enrichment-waterfall": "provider_run",
+    "upsert-model-route": "provider_run",
+    "upsert-offer-cta": "configure",
+    "upsert-provider-account": "configure",
+    "upsert-reply-playbook": "configure",
+    "upsert-self-service-cta": "configure",
+    "upsert-sender-domain": "configure",
+    "upsert-trust-partner-profile": "configure",
 };
 
 const SAFE_ACTION_ERRORS = new Set([
@@ -336,11 +727,20 @@ const SAFE_ACTION_ERRORS = new Set([
     "Draft is required before export",
     "Draft must be approved before export",
     "Draft personalization is not approved for this target",
+    "Draft has unsupported claims",
     "Evidence packet is required before draft",
     "Evidence use is not approved for this source policy",
     "Evidence use is not approved for this target",
     "Channel provider is not configured",
     "Channel recipient is not configured",
+    "Channel window is not ready",
+    "Content asset is not ready",
+    "Content asset not found",
+    "Content distribution is paused",
+    "Content draft must be approved before scheduling",
+    "Content draft not found",
+    "Content Distribution Rail is disabled",
+    "Content source not found",
     "Email provider is not configured",
     "Enrichment waterfall is not active",
     "Enrichment waterfall not found",
@@ -349,6 +749,7 @@ const SAFE_ACTION_ERRORS = new Set([
     "Foursquare provider is blocked pending source approval",
     "Google Places provider is not configured",
     "Meta provider is not configured",
+    "MOBILE_READ_ONLY_ACTION_BLOCKED",
     "No valid target rows supplied",
     "No provider results returned",
     "Owned email sequencer is disabled",
@@ -365,6 +766,7 @@ const SAFE_ACTION_ERRORS = new Set([
     "Provider daily budget exceeded",
     "Provider monthly budget exceeded",
     "Provider budget policy is not active",
+    "Provider source retention record not found",
     "Sender domain is not ready",
     "SignalDesk campaign rail is paused",
     "SignalDesk AI provider calls are disabled",
@@ -374,15 +776,31 @@ const SAFE_ACTION_ERRORS = new Set([
     "SignalDesk AI workers are paused",
     "SignalDesk assisted channels are disabled",
     "SignalDesk Firebase is not configured",
+    "SignalDesk Operating Layer is disabled",
     "SignalDesk provider send is disabled",
     "SignalDesk source providers are disabled",
     "SignalDesk source providers are paused",
+    "SOURCE_POLICY_EXPIRED",
+    "SOURCE_POLICY_RETENTION_MISSING",
+    "SOURCE_POLICY_REVIEW_REQUIRED",
+    "SOURCE_POLICY_USE_NOT_ALLOWED",
+    "Source policy is expired",
     "Target contact is not export-ready",
     "Target has prior contact or outcome",
     "Target is not draft-ready",
     "Target is suppressed",
     "Target not found",
     "Template is inactive",
+    "Experiment card not found",
+    "Growth mission not found",
+    "Offer CTA is blocked",
+    "Trust Partner Rail is disabled",
+    "Trust partner not found",
+    "Trust partner budget is not approved",
+    "Trust partner deal not found",
+    "Trust partner disclosure is required",
+    "Trust partner renewal requires outcome evidence",
+    "Trust partner per-view pricing is blocked",
 ]);
 
 const getSafeActionErrorMessage = (error: unknown) => {
@@ -430,6 +848,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     const accessResult = await requireSignalDeskAccess(request, session, permissionForAction(envelope.data.action));
     if ("response" in accessResult) return accessResult.response;
+
+    if (isSignalDeskMobileRequest(request)) {
+        const actionClass = SIGNALDESK_MOBILE_ACTION_CLASS[envelope.data.action] || "configure";
+        await recordSignalDeskMobileActionBlockedServer({
+            access: accessResult.access,
+            action: envelope.data.action,
+            actionClass,
+        });
+        return NextResponse.json({ actionClass, error: "MOBILE_READ_ONLY_ACTION_BLOCKED" }, { status: 403 });
+    }
 
     const rateLimit = await applySignalDeskRateLimit({
         feature: envelope.data.action === "score-target" || envelope.data.action === "run-ai-assist" ? "AI_OPERATION" : "DATA_WRITE",
@@ -551,6 +979,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await prepareSignalDeskChannelHandoffServer(accessResult.access, payload.data as any) });
         }
+        if (envelope.data.action === "upsert-channel-window-state") {
+            const payload = validatePayload(ChannelWindowStateSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await upsertSignalDeskChannelWindowStateServer(accessResult.access, payload.data as any) });
+        }
         if (envelope.data.action === "send-approved-message") {
             const payload = validatePayload(ChannelActionSchema, envelope.data.payload, {
                 action: envelope.data.action,
@@ -614,6 +1051,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await upsertSignalDeskAudienceSegmentServer(accessResult.access, payload.data as any) });
         }
+        if (envelope.data.action === "recommend-market-pod-plan") {
+            const payload = validatePayload(MarketPodRecommendationSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await recommendSignalDeskMarketPodPlanServer(accessResult.access, payload.data as any) });
+        }
         if (envelope.data.action === "upsert-sender-domain") {
             const payload = validatePayload(SenderDomainSchema, envelope.data.payload, {
                 action: envelope.data.action,
@@ -631,6 +1077,96 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await upsertSignalDeskSelfServiceCtaServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "create-daily-growth-mission") {
+            const payload = validatePayload(DailyGrowthMissionSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await createSignalDeskDailyGrowthMissionServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "review-growth-mission") {
+            const payload = validatePayload(GrowthMissionReviewSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await reviewSignalDeskGrowthMissionServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "create-experiment-card") {
+            const payload = validatePayload(ExperimentCardSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await createSignalDeskExperimentCardServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "review-experiment-card") {
+            const payload = validatePayload(ExperimentReviewSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await reviewSignalDeskExperimentCardServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "upsert-offer-cta") {
+            const payload = validatePayload(OfferCtaSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await upsertSignalDeskOfferCtaServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "upsert-reply-playbook") {
+            const payload = validatePayload(ReplyPlaybookSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await upsertSignalDeskReplyPlaybookServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "create-source-quality-snapshot") {
+            const payload = validatePayload(SourceQualitySnapshotSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await createSignalDeskSourceQualitySnapshotServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "refresh-provider-source-retention") {
+            const payload = validatePayload(ProviderSourceRetentionRefreshSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await refreshSignalDeskProviderSourceRetentionServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "create-weekly-strategist-memo") {
+            const payload = validatePayload(WeeklyStrategistMemoSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await createSignalDeskWeeklyStrategistMemoServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "create-provider-evaluation") {
+            const payload = validatePayload(ProviderEvaluationSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await createSignalDeskProviderEvaluationServer(accessResult.access, payload.data as any) });
         }
         if (envelope.data.action === "run-enrichment-waterfall") {
             const payload = validatePayload(RunWaterfallSchema, envelope.data.payload, {
@@ -667,6 +1203,123 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await sendSignalDeskOwnedSequenceStepServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "upsert-content-source") {
+            const payload = validatePayload(ContentSourceSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await upsertSignalDeskContentSourceServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "create-content-asset") {
+            const payload = validatePayload(ContentAssetSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await createSignalDeskContentAssetServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "generate-content-distribution-drafts") {
+            const payload = validatePayload(ContentDistributionDraftSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await generateSignalDeskContentDistributionDraftsServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "review-content-distribution-draft") {
+            const payload = validatePayload(ContentDraftReviewSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await reviewSignalDeskContentDistributionDraftServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "schedule-content-distribution-draft") {
+            const payload = validatePayload(ContentDraftScheduleSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await scheduleSignalDeskContentDistributionDraftServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "record-content-performance") {
+            const payload = validatePayload(ContentPerformanceSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await recordSignalDeskContentPerformanceServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "upsert-trust-partner-profile") {
+            const payload = validatePayload(TrustPartnerProfileSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await upsertSignalDeskTrustPartnerProfileServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "create-trust-partner-niche-test") {
+            const payload = validatePayload(TrustPartnerNicheTestSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await createSignalDeskTrustPartnerNicheTestServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "create-trust-partner-brief") {
+            const payload = validatePayload(TrustPartnerBriefSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await createSignalDeskTrustPartnerBriefServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "review-trust-partner-deal") {
+            const payload = validatePayload(TrustPartnerDealSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await reviewSignalDeskTrustPartnerDealServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "record-trust-partner-deliverable") {
+            const payload = validatePayload(TrustPartnerDeliverableSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await recordSignalDeskTrustPartnerDeliverableServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "record-trust-partner-metrics") {
+            const payload = validatePayload(TrustPartnerMetricsSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await recordSignalDeskTrustPartnerMetricsServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "review-trust-partner-renewal") {
+            const payload = validatePayload(TrustPartnerRenewalSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await reviewSignalDeskTrustPartnerRenewalServer(accessResult.access, payload.data as any) });
         }
 
         const payload = validatePayload(CaptureDemandSignalSchema, envelope.data.payload, {

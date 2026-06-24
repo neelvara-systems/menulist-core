@@ -8,14 +8,16 @@ UGC Script Studio is a script and brief workflow, not a creator marketplace. It 
 
 1. Load campaign cue and approved business facts.
 2. Select creator role and channel.
-3. Generate script pack with persona, phone-camera plan, product-placement note, dialogue/action beats, disclosure, and prohibited-claim notes.
+3. Generate script pack with creator-fit checklist, persona, lightweight brief, phone-camera plan, product-placement note, dialogue/action beats, 3-test plan, disclosure, flat-fee boundary, and prohibited-claim notes.
 4. Run claim and source checks.
 5. Store draft version.
 6. Let owner approve, regenerate, export, or send to agency workspace.
 
 ## Active Export Runtime
 
-The current CampaignCue runtime emits UGC brief structure through existing `CampaignCueOutput.fields.handoffFields` and the Campaign Pack Output ZIP. It does not create a new UGC provider call, avatar render, voiceover render, creator marketplace record, or video file. The generated handoff fields are deterministic: persona, camera plan, product placement, dialogue/action beats, brand direction, disclosure, consent, and CTA.
+The current CampaignCue runtime emits UGC brief structure through existing `CampaignCueOutput.fields.handoffFields` and the Campaign Pack Output ZIP. It does not create a new UGC provider call, avatar render, voiceover render, creator marketplace record, creator contract, payment record, or video file. The generated handoff fields are deterministic: creator fit check, lightweight creator brief, persona, camera plan, product placement, dialogue/action beats, 3-test plan, flat-fee boundary, brand direction, disclosure, consent, and CTA.
+
+The local creator test brief uses the output picker intent `local_creator_test_brief`. Selecting it creates a normal guarded campaign pack with `ugc`, `video`, and `creative` channels. The existing server decision gate, trust report, manual delivery fields, ZIP export, and result-memory prompt remain the runtime path.
 
 ## Data Objects
 
@@ -26,11 +28,15 @@ The current CampaignCue runtime emits UGC brief structure through existing `Camp
 | `ugcTrustReports` | Claim, disclosure, and source checks. |
 | `ugcExports` | Download, export, or agency handoff history. |
 
+The active export/download runtime does not create these future UGC-specific collections. It derives the creator test brief inside the campaign output and Campaign Pack ZIP.
+
 ## Trust Rules
 
 - Customer-style scripts cannot claim a real experience unless a source-approved testimonial exists.
 - Result claims require explicit evidence.
 - Sponsorship or creator disclosure text must be included where relevant.
+- Creator fit notes must stay evaluative and cannot imply guaranteed reach, visits, ranking, sales, or revenue.
+- Flat-fee guidance is advisory only; CampaignCue does not broker or pay creators.
 - First-person usage or recommendation wording such as long-term use, personal results, or "I recommend this" requires source proof, consent, and disclosure before handoff.
 - Owner edits must trigger a new trust check before external handoff.
 

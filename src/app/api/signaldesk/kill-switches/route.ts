@@ -2,12 +2,13 @@ export const dynamic = "force-dynamic";
 
 import {
     applySignalDeskRateLimit,
+    isSignalDeskMobileRequest,
     logSignalDeskValidationFailure,
     parseSignalDeskJsonBody,
     requireSignalDeskAccess,
     requireSignalDeskRuntime,
 } from "@lib/signaldesk/apiGuards";
-import { setSignalDeskKillSwitchServer } from "@lib/signaldesk/server";
+import { recordSignalDeskMobileActionBlockedServer, setSignalDeskKillSwitchServer } from "@lib/signaldesk/server";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { secureError } from "@lib/security/secureLogger";
 import type { SignalDeskPermission } from "@type/signaldesk";
@@ -17,6 +18,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const KillSwitchSchema = z.object({
+    mobileConfirmation: z.literal("MOBILE_EMERGENCY_PAUSE").optional(),
     reason: z.string().trim().min(6).max(500),
     scope: z.enum([
         "global-outbound",
@@ -27,6 +29,8 @@ const KillSwitchSchema = z.object({
         "source-provider",
         "ai-worker",
         "campaign",
+        "content-distribution",
+        "trust-partner",
         "menu-list-bridge",
     ]),
     status: z.enum(["active", "inactive"]),
@@ -56,6 +60,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         : "kill-switch.deactivate";
     const accessResult = await requireSignalDeskAccess(request, session, permission);
     if ("response" in accessResult) return accessResult.response;
+
+    if (isSignalDeskMobileRequest(request) && (validatedInput.status !== "active" || validatedInput.mobileConfirmation !== "MOBILE_EMERGENCY_PAUSE")) {
+        await recordSignalDeskMobileActionBlockedServer({
+            access: accessResult.access,
+            action: "kill-switch",
+            actionClass: validatedInput.status === "active" ? "emergency_pause" : "configure",
+        });
+        return NextResponse.json({ error: "MOBILE_READ_ONLY_ACTION_BLOCKED" }, { status: 403 });
+    }
 
     const rateLimit = await applySignalDeskRateLimit({
         feature: "DATA_WRITE",

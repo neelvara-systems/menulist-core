@@ -115,7 +115,7 @@ Full end-to-end audit of user authentication and registration flows covering:
 **Changes:**
 - Created `src/app/api/auth/update-profile/route.ts` — Profile field updates (name, phone)
 - Created `src/app/api/auth/change-password/route.ts` — Password change with current password verification
-- Created `src/components/organisms/headerComponent/profileActionsModal/userProfileModal/index.tsx` — Full profile modal with Edit Profile and Change Password sections
+- Created `src/components/organisms/headerComponent/profileActionsModal/userProfileModal/index.tsx` — Full profile modal with Overview, Edit profile, Security, and Access sections
 - Updated `src/components/organisms/headerComponent/profileActionsModal/index.tsx` — Wired "My Profile" to open the profile modal
 
 **Security:**
@@ -123,6 +123,7 @@ Full end-to-end audit of user authentication and registration flows covering:
 - Email changes are NOT allowed through this API (requires separate re-verification flow)
 - Password change verifies current password via Firebase Auth REST API before updating
 - OAuth-only users see an info message explaining they don't have a password to change
+- Store access, role, activation, owner-created passcode reset, and forced sign-out controls remain in Users; My Profile shows those as read-only account context.
 
 ---
 

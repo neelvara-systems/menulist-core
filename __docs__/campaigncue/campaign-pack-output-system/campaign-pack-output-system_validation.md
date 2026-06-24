@@ -13,6 +13,8 @@
 | Machine-readable contract added | Pass | `campaign-pack.json` is written into the ZIP. |
 | Mini-page stays brief-only | Pass | `miniPage.manualNote` states hosted publishing is off. |
 | Language handoff added | Pass | `instructions/language-handoff.txt` is written through the output-pack instruction channel with preferred locale and protected-fact guidance. |
+| Source-to-channel pack stays bounded | Pass | `source_to_channel_pack` uses existing output-intent handling and guarded campaign creation; no content repurposing provider, autopilot publishing, Storage object, or new Firestore path is added. |
+| Local creator test brief stays bounded | Pass | `local_creator_test_brief` uses existing output-intent handling, UGC/video manual delivery fields, and result-memory prompts; no creator marketplace, contract, payment, provider, Storage, or new Firestore path is added. |
 | Manual boundary preserved | Pass | Output pack instruction says CampaignCue does not directly post, send, connect accounts, or start ad spend. |
 
 ## Verification
@@ -20,7 +22,7 @@
 | Command | Result |
 | --- | --- |
 | `npx tsc --noEmit --incremental false --pretty false` | Passed |
-| `node scripts/verification/verify-campaigncue-runtime.js` | Passed with 766 checks |
+| `npm run verify:campaigncue` | Passed; runtime verifier reported 1544 checks and pack template registry verifier passed |
 | `npm run lint` | Passed with no ESLint warnings or errors |
 | `git diff --check` | Passed |
 | Browser smoke | `http://127.0.0.1:3114/__campaigncue/app` rendered the private signed-out CampaignCue state at desktop and `390x844` widths with no console errors and no horizontal overflow. `http://127.0.0.1:3114/__campaigncue/app/editor-test` rendered the shared editor canvas and Design Cue deterministic patch flow. |

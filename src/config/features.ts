@@ -44,6 +44,9 @@ export const FEATURE_FLAGS = {
     ENABLE_MENULIST_SIGNALDESK_PROVIDER_WEBHOOKS: true,
     ENABLE_MENULIST_SIGNALDESK_ASSISTED_CHANNELS: true,
     ENABLE_MENULIST_SIGNALDESK_OWNED_EMAIL_SEQUENCER: true,
+    ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL: true,
+    ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL: true,
+    ENABLE_MENULIST_SIGNALDESK_OPERATING_LAYER: true,
     ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND: false,
 
     /**
@@ -1719,7 +1722,7 @@ export const FEATURE_FLAGS = {
     /**
      * User Profile Management
      *
-     * true: "My Profile" in header opens profile modal (edit name, phone, change password)
+     * true: "My Profile" in header opens the account modal (overview, edit profile, security, access)
      * false: "My Profile" click does nothing
      *
      * APIs: /api/auth/update-profile, /api/auth/change-password

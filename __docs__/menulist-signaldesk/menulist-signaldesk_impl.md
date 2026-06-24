@@ -1,8 +1,8 @@
 # MenuList SignalDesk - Implementation Plan
 
-**Status:** First-build internal workflow, investment-control runtime, Apify source broker, and owned email sequencer queue implemented; paid campaigns, external paid-provider adapters, provider send, and deploy skipped
+**Status:** First-build internal workflow, investment-control runtime, Apify source broker, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation harness, channel-window/source-retention runtime, Content Distribution Rail runtime, and Trust Partner Rail runtime implemented; paid campaigns, external paid-provider adapters, provider send, auto-publish, and deploy skipped
 **Created:** June 23, 2026
-**Runtime:** Product-isolated app shell, API guard, overview API, workspace API, action API, kill-switch API, first-build workflow service, provider registry, budget governor, model routes, model evals, enrichment waterfalls, vendor run ledger, Apify source broker, approval packets, sender-domain risk, owned email sequencer queue, optional external sequencer handoff records, run timelines, Firebase config, rules/indexes/storage rules, and functions skeleton created.
+**Runtime:** Product-isolated app shell, API guard, overview API, workspace API, action API, kill-switch API, first-build workflow service, provider registry, budget governor, model routes, model evals, enrichment waterfalls, vendor run ledger, Apify source broker, approval packets, sender-domain risk, owned email sequencer queue, content distribution rail, optional external sequencer handoff records, run timelines, Firebase config, rules/indexes/storage rules, and functions skeleton created.
 **Implementation posture:** Product-isolated internal module inside this monorepo first; extraction-ready boundaries.
 
 ## Owner Control Posture
@@ -38,6 +38,12 @@ The June 23 investment-control implementation added the internal controls needed
 | Apify source broker | `apify` can run one env-controlled source Actor after source policy, provider approval, env readiness, and provider budget checks; rows are normalized into target imports without storing raw dataset payloads. |
 | Enrichment result | `signaldeskEnrichmentResults` stores normalized field-level result status, confidence, source policy, expiry, and masked value preview when approved source data already has the field. |
 | Approval packet | `signaldeskApprovalPackets` compress target, evidence, draft, suppression, source policy, sender readiness, CTA, risk summary, and recommended action into one owner decision record. |
+| Market pod planner | `signaldeskMarketPods` now stores rules-based confidence, recommendation, recommendation reason, and next actions from current targets, demand signals, outcomes, source runs, and CTAs. |
+| Weekly strategist memo | `signaldeskStrategistMemos` stores the weekly founder decision memo: targets, approvals, replies, demand, outcomes, source runs, spend, provider quality, risks, and next owner decisions. |
+| Provider evaluation shell | `signaldeskProviderEvaluations` compares existing vendor/enrichment records by blocked rate, verified contact rate, useful result rate, cost, suppression risk, and recommendation without calling paid adapters. |
+| Channel window and source retention | `signaldeskChannelWindowStates` and `signaldeskProviderSourceRetention` record channel eligibility and source refresh state through protected server actions, with client reads only. |
+| Content Distribution Rail | `signaldeskContentSources`, `signaldeskContentAssets`, `signaldeskContentDistributionDrafts`, `signaldeskContentCalendarItems`, and `signaldeskContentPerformanceSummaries` support owned-proof repurposing, approval-gated channel drafts, queued calendar items, and compact performance capture without auto-publish. |
+| Trust Partner Rail | `signaldeskTrustPartnerProfiles`, `signaldeskTrustPartnerNicheTests`, `signaldeskTrustPartnerDeals`, `signaldeskTrustPartnerBriefs`, `signaldeskTrustPartnerDeliverables`, `signaldeskTrustPartnerMetrics`, and `signaldeskTrustPartnerRenewalDecisions` support internal partner testing with flat-fee gates, disclosure checks, compact metrics, renewal logic, audit, cost, and timelines. |
 | Prior-contact guard | Draft, enrichment, export, handoff, and sequencer paths block suppressed/contacted/replied/converted targets, non-new conversations, and targets with existing outcomes. |
 | Sender-domain risk | `signaldeskSenderDomains` tracks authentication, ramp, bounce, complaint, unsubscribe, provider, and brand risk; email handoff/send requires an active ready sender domain. |
 | Owned email sequencer | `signaldeskSequencerHandoffs` and `signaldeskSequencerSteps` queue one approved email step through the internal `owned-email` rail after approval, sender-domain, suppression, source-policy, prior-contact, pause, and email-readiness gates. |
@@ -70,13 +76,13 @@ firestore-signaldesk.indexes.json
 storage-signaldesk.rules
 ```
 
-The separate-repo shape remains a later extraction option only if operations demand it. Do not begin by creating a separate repo unless the founder explicitly chooses that path.
+The separate-repo shape remains a reserved extraction option only if operations demand it. Do not begin by creating a separate repo unless the founder explicitly chooses that path.
 
 ## Product Separation Decision
 
 | Item | Decision |
 | --- | --- |
-| Product code | Add `PRODUCT_IDS.SIGNALDESK = "SD"` before database-backed implementation. |
+| Product code | `PRODUCT_IDS.SIGNALDESK = "SD"` is implemented. |
 | Product slug | `signaldesk` |
 | Route group | `src/app/(signaldesk)/signaldesk/` |
 | API namespace | `src/app/api/signaldesk/` |
@@ -141,6 +147,7 @@ ENABLE_MENULIST_SIGNALDESK_AI_PROVIDER_CALLS
 ENABLE_MENULIST_SIGNALDESK_PROVIDER_WEBHOOKS
 ENABLE_MENULIST_SIGNALDESK_ASSISTED_CHANNELS
 ENABLE_MENULIST_SIGNALDESK_OWNED_EMAIL_SEQUENCER
+ENABLE_MENULIST_SIGNALDESK_CONTENT_DISTRIBUTION_RAIL
 ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND
 ```
 
@@ -173,9 +180,11 @@ Provider send stays false until sender identity, physical address, unsubscribe, 
 | 11 | Demand signals | Compact signal capture from MenuList public surfaces. |
 | 12 | Control room | Channel health, cost summaries, incidents, queue counts. |
 | 13 | Investment controls | Provider registry, budget policies, model routes/evals, waterfalls, vendor ledger, sender domains, approval packets, run timelines. |
+| 14 | Content distribution | Source assets, canonical messages, platform drafts, approval, calendar queue, and performance records without auto-publish. |
 | 14 | Owned email sequencer | Internal queued email step for approved drafts; actual SMTP send remains behind provider-send and email readiness gates. |
 | 15 | Execution-rail evaluation | Blocked/ready external sequencer handoff records only; no external sequencer send. |
 | 16 | Apify source broker | Env-controlled Actor execution for capped discovery/evidence imports; no arbitrary browser Actor ID, raw dataset storage, or direct-send path. |
+| 17 | Trust partner rail | Partner/creator profiles, 3-5 niche tests, lean briefs, flat-fee deals, deliverables, disclosure gates, outcome attribution, and renewal decisions. Route/read model and disabled action stubs exist, but executable runtime remains behind the false feature flag. |
 
 ## Founder-Facing UX Contract
 
@@ -243,7 +252,7 @@ type SignalDeskSuppressionEvent = {
 
 ## Internal Routes
 
-Initial route inventory for future implementation:
+Initial route inventory for implementation:
 
 | Route | Purpose | First build |
 | --- | --- | --- |
@@ -257,9 +266,9 @@ Initial route inventory for future implementation:
 | `/signaldesk/attribution` | Outcome summaries | Yes |
 | `/signaldesk/policies` | Source/channel/suppression policies | Yes |
 | `/signaldesk/control-room` | Kill switches, channel health, cost state | Yes |
-| `/signaldesk/meta-paid` | Meta paid intent | Later |
-| `/signaldesk/whatsapp` | Assisted WhatsApp governance | Later |
-| `/signaldesk/clusters` | Local cluster expansion | Later |
+| `/signaldesk/meta-paid` | Meta paid intent | Gated |
+| `/signaldesk/whatsapp` | Assisted WhatsApp governance | Gated |
+| `/signaldesk/clusters` | Local cluster expansion | Reserved |
 
 No public routes.
 
@@ -335,7 +344,7 @@ AI may not:
 
 ### Build Slice 1
 
-1. Add `PRODUCT_IDS.SIGNALDESK = "SD"` and product-local constants.
+1. Keep `PRODUCT_IDS.SIGNALDESK = "SD"` and product-local constants in sync with the runtime.
 2. Add SignalDesk feature flags.
 3. Add product-isolated route/API/DAL/lib/component folders.
 4. Add dedicated Firebase config/client/admin files.
@@ -356,12 +365,13 @@ AI may not:
 19. Add MenuList outcome bridge.
 20. Add summaries and control room.
 
-### Later / Skipped Slices
+### Gated / Skipped Slices
 
 - assisted WhatsApp: implemented as gated handoff/provider-send plumbing
 - Instagram/Messenger inbound routing: implemented as gated webhook/handoff plumbing
 - live source-provider import: implemented for Google Places Text Search and Apify Source Broker with provider source policy, max-result cap, provider budget, and no raw provider payload storage
 - real AI provider assist: implemented through the existing Gemini gateway
+- trust partner rail: implemented for internal testing; real partner outreach/spend still requires active budget policy, founder approval, disclosure review, and manual partner execution
 - Meta paid intent: skipped in this session
 - Firebase deploy: skipped in this session
 - experiments, cluster planner, and optimizer: not part of this implementation slice
@@ -430,10 +440,11 @@ The second implementation slice adds the remaining non-paid, non-deploy runtime 
 
 Before real-project usage, provider send, and external integrations:
 
-- Firebase deploy is skipped in this session; create or grant access to `menulist-signaldesk-qa` and `menulist-signaldesk` before any later deploy;
+- Firebase deploy is skipped in this session; create or grant access to `menulist-signaldesk-qa` and `menulist-signaldesk` before any deploy;
 - seed founder/admin team membership or confirm platform admin claims in the active auth environment;
 - confirm first market pod;
 - confirm first approved source list and retention policy;
+- confirm first trust partner niche, flat-fee cap, disclosure wording, and tracking CTA before Trust Partner Rail runtime;
 - confirm sender identity and physical address policy;
 - confirm unsubscribe, bounce, complaint, DNC, and suppression handling;
 - keep `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND` false until the send/export gate passes.

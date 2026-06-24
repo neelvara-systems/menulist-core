@@ -112,6 +112,35 @@ The first screen should answer only four questions:
 
 If a screen does not help observe, monitor, approve, pause, or learn, it should be demoted behind detail views.
 
+## Daily Growth Mission
+
+The June 24, 2026 ChatGPT feedback review adds one operating-layer rule: the dashboard should compress into a daily mission before it expands into more screens.
+
+Daily Growth Mission should show at most five ranked actions:
+
+- approve;
+- hold;
+- pause;
+- redirect;
+- manual publish or manual send.
+
+Each action should include the reason, linked source/evidence/proof, risk state, expected MenuList outcome, and stop rule. If more than five actions appear, the system has failed the solo-founder posture and should group lower-priority work behind exception summaries.
+
+## Operating Proof Gate
+
+Before widening automation, SignalDesk must prove one narrow acquisition loop:
+
+```txt
+one market pod
+one approved source list
+one CTA
+one sender identity
+one export-only rail
+one outcome report
+```
+
+This gate is operational, not architectural. The runtime may contain broader primitives, but the system should not enable provider send, paid campaigns, social auto-publish, or new paid-provider adapters until one pod proves that SignalDesk can reduce founder workload and move real businesses toward MenuList activation.
+
 ## Approval Packet Shape
 
 Every approval packet should show:

@@ -7,6 +7,17 @@ import type {
     SignalDeskWorkspaceResponse,
 } from "@type/signaldesk";
 
+const getSignalDeskClientModeHeaders = () => {
+    if (typeof window === "undefined") return {};
+    const mobileUserAgent = /\b(Android|iPhone|iPad|iPod|Mobile|Windows Phone)\b/i.test(window.navigator.userAgent || "");
+    const mobileViewport = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches;
+    return mobileUserAgent || mobileViewport
+        ? { "x-signaldesk-client-mode": "mobile-readonly" }
+        : {};
+};
+
+const isSignalDeskMobileClient = () => Object.keys(getSignalDeskClientModeHeaders()).length > 0;
+
 export type SignalDeskAction =
     | "seed-defaults"
     | "create-source-policy"
@@ -22,6 +33,7 @@ export type SignalDeskAction =
     | "run-source-provider"
     | "run-ai-assist"
     | "prepare-channel-handoff"
+    | "upsert-channel-window-state"
     | "send-approved-message"
     | "upsert-provider-account"
     | "upsert-budget-policy"
@@ -29,12 +41,36 @@ export type SignalDeskAction =
     | "upsert-model-route"
     | "upsert-enrichment-waterfall"
     | "upsert-audience-segment"
+    | "recommend-market-pod-plan"
     | "upsert-sender-domain"
     | "upsert-self-service-cta"
+    | "create-daily-growth-mission"
+    | "review-growth-mission"
+    | "create-experiment-card"
+    | "review-experiment-card"
+    | "upsert-offer-cta"
+    | "upsert-reply-playbook"
+    | "create-source-quality-snapshot"
+    | "refresh-provider-source-retention"
+    | "create-weekly-strategist-memo"
+    | "create-provider-evaluation"
     | "run-enrichment-waterfall"
     | "create-approval-packet"
     | "create-sequencer-handoff"
-    | "send-owned-sequence-step";
+    | "send-owned-sequence-step"
+    | "upsert-content-source"
+    | "create-content-asset"
+    | "generate-content-distribution-drafts"
+    | "review-content-distribution-draft"
+    | "schedule-content-distribution-draft"
+    | "record-content-performance"
+    | "upsert-trust-partner-profile"
+    | "create-trust-partner-niche-test"
+    | "create-trust-partner-brief"
+    | "review-trust-partner-deal"
+    | "record-trust-partner-deliverable"
+    | "record-trust-partner-metrics"
+    | "review-trust-partner-renewal";
 
 export async function getSignalDeskOverview(): Promise<SignalDeskOverview> {
     const response = await fetch(SIGNALDESK_API_ROUTES.OVERVIEW, {
@@ -67,6 +103,7 @@ export async function runSignalDeskAction<T = unknown>(action: SignalDeskAction,
         body: JSON.stringify({ action, payload }),
         headers: {
             "Content-Type": "application/json",
+            ...getSignalDeskClientModeHeaders(),
         },
         method: "POST",
     });
@@ -84,10 +121,14 @@ export async function setSignalDeskKillSwitch(input: {
     scope: SignalDeskKillSwitchScope;
     status: SignalDeskKillSwitchStatus;
 }) {
+    const mobileEmergencyPause = isSignalDeskMobileClient() && input.status === "active"
+        ? { mobileConfirmation: "MOBILE_EMERGENCY_PAUSE" }
+        : {};
     const response = await fetch(SIGNALDESK_API_ROUTES.KILL_SWITCHES, {
-        body: JSON.stringify(input),
+        body: JSON.stringify({ ...input, ...mobileEmergencyPause }),
         headers: {
             "Content-Type": "application/json",
+            ...getSignalDeskClientModeHeaders(),
         },
         method: "POST",
     });

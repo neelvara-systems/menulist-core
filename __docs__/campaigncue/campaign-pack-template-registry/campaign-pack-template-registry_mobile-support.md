@@ -18,7 +18,7 @@ Owners should be able to choose a recommended pack template, fill missing facts,
 ## Mobile-Safe Actions
 
 - View the category-relevant recommended template.
-- Choose a business-use output intent such as WhatsApp, Google, Instagram, print, staff, ad handoff, reuse old asset, or custom size.
+- Choose a business-use output intent such as source-to-channel pack, WhatsApp, Google, Instagram, print, staff, ad handoff, reuse old asset, or custom size.
 - Search/filter already-loaded templates.
 - Select an event tag such as Diwali, Christmas, New Year, birthday, or anniversary.
 - Confirm missing facts.

@@ -1,0 +1,24 @@
+# SignalDesk Content Distribution Rail - Compliance
+
+**Status:** Implemented for internal testing
+**Date:** June 24, 2026
+
+## Rules
+
+- Use only approved internal proof, owned sources, or clearly labeled research notes.
+- Keep unsupported claims out of the canonical message.
+- Treat `internal-note` proof level as hold-worthy until stronger proof exists.
+- Partner briefs must not remove disclosure requirements from Trust Partner Rail.
+- Draft approval is required before scheduling.
+- Scheduling does not publish externally.
+
+## Banned Defaults
+
+- No revenue, ranking, delivery-platform, Meta, Google, POS, or sales-lift guarantee unless explicit proof and approval exist.
+- No claim that MenuList is connected to a restaurant, platform, or public authority without evidence.
+- No auto-posting to owned or third-party social accounts.
+- No raw external content payload storage.
+
+## Manual Publishing Boundary
+
+The content calendar is an internal queue. Publishing remains a manual or later explicitly approved adapter step.

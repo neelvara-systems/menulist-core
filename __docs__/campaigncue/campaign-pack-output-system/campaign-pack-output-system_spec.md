@@ -15,6 +15,7 @@ The owner should leave the pack knowing:
 - what can be reused later
 - what brand/playbook direction the pack follows
 - what agency/client proof deck should be reviewed
+- what creator/audience-fit checklist applies when a local creator handoff is useful
 - which preferred language/locale applies and which protected facts must stay unchanged if copy is translated manually
 - what result to record
 
@@ -54,6 +55,7 @@ It contains:
 
 | Channel | Active output |
 | --- | --- |
+| Source-to-channel pack | current source-backed campaign cue, WhatsApp copy, Google/local draft, social/print creative guidance, manual task, review checklist, and result prompt. |
 | WhatsApp | image brief, short message, status text, customer reply text, catalog/menu link reminder. |
 | Google Business Profile | post type, title, description, date reminder, photo reminder, CTA link, terms. |
 | Instagram / creative | caption, square/story/print guidance, CTA, editor source when available. |
@@ -61,6 +63,7 @@ It contains:
 | Email / SMS | subject, preview, body, SMS text. |
 | Ads / agency | headline, ad copy, destination, budget approval note, UTM when available. |
 | Staff | staff share message, counter script, owner instruction. |
+| UGC / local creator test | creator-fit checklist, lightweight creator brief, 3-test plan, flat-fee boundary note, disclosure, consent, CTA, and result prompt. |
 | Mini-page / QR | title, details, CTA, destination, terms, and hosted-page-disabled note. |
 | Campaign Proof Deck | brand system, campaign/social creative set, product/service focus, UGC/reel dialogue-action reference, shot-plan reference, review checklist, and source trace as a review brief. |
 | Language handoff | preferred locale, local-language boundary, and protected fact list for manual translation. |
@@ -75,6 +78,7 @@ It contains:
 - No fake PNG/PDF output if the renderer has not produced a binary file.
 - No claim that the proof deck is a final rendered PDF, website, social post, or generated video.
 - No fake AI-avatar or fictional-customer UGC experience treated as a real testimonial.
+- No creator recruiting, contract management, payment processing, marketplace listing, or guaranteed reach/revenue claim.
 - No model-owned campaign decision.
 - No automatic translation claim in the active export/download runtime.
 - No invented price, date, phone, location, claim, or offer.

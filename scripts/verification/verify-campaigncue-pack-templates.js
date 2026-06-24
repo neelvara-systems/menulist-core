@@ -60,6 +60,11 @@ assertIncludes("src/constants/campaigncue/outputPicker.ts", "CAMPAIGNCUE_OUTPUT_
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaignCueOutputItemMatchesTemplate");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaign_proof_deck");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaign_proof_deck_pdf");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "source_to_channel_pack");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "Source-to-channel pack");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "local_creator_test_brief");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "creator_script");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "flat_fee");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "custom_size");
 assertIncludes("src/constants/campaigncue/index.ts", "outputPicker");
 assertIncludes("src/constants/campaigncue/database.ts", "PLATFORM_PACK_TEMPLATES");
@@ -84,6 +89,10 @@ assertIncludes("src/lib/campaigncue/pack-templates/category.ts", "resolveBusines
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadPlatformTemplates");
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadWorkspaceTemplates");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "MAX_WORKSPACE_TEMPLATES");
+assertIncludes("src/lib/campaigncue/server.ts", "Creator fit check");
+assertIncludes("src/lib/campaigncue/server.ts", "3-test plan");
+assertIncludes("src/lib/campaigncue/server.ts", "CampaignCue does not broker creator deals");
+assertIncludes("src/lib/campaigncue/server.ts", "Disclose paid, gifted, agency, employee, or incentivized participation");
 assertIncludes("firestore-campaigncue.rules", "campaigncuePlatformPackTemplates");
 assertIncludes("firestore-campaigncue.rules", "packTemplateIndexes");
 assertIncludes("storage-campaigncue.rules", "campaigncue/templates/platform");

@@ -197,6 +197,26 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /signaldeskChannelWindowStates/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskProviderSourceRetention/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskStrategistMemos/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskProviderEvaluations/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
     match /signaldeskSequencerHandoffs/{docId} {
       allow read: if canReadSignalDesk();
       allow write: if false;
@@ -218,6 +238,91 @@ service cloud.firestore {
     }
 
     match /signaldeskSelfServiceCtas/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskGrowthMissions/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskExperimentCards/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskOfferCtas/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskReplyPlaybooks/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskSourceQualitySnapshots/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskContentSources/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskContentAssets/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskContentDistributionDrafts/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskContentCalendarItems/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskContentPerformanceSummaries/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskTrustPartnerProfiles/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskTrustPartnerNicheTests/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskTrustPartnerDeals/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskTrustPartnerBriefs/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskTrustPartnerDeliverables/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskTrustPartnerMetrics/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskTrustPartnerRenewalDecisions/{docId} {
       allow read: if canReadSignalDesk();
       allow write: if false;
     }

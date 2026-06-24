@@ -66,6 +66,8 @@
 | MLD-F007 | Run real demo upload -> preview -> claim -> publish smoke | Founder + Codex | Blocked | Needs approved demo tenant/source and safe Firebase/runtime access; do not use real customer data without permission |
 | MLD-F008 | Ship `/whatsapp` campaign page | Codex | Done | Added website route, localized copy, CSS, discovery policy, sitemap, LLM files, and main website docs; primary/final CTA now use the supplied test WhatsApp number |
 | MLD-F009 | Wire supplied test WhatsApp CTA | Codex | Done | `/whatsapp` primary/final CTA opens `https://wa.me/15556571424` with a localized prefilled current-list onboarding message |
+| MLD-F010 | Create MenuList Activation Concierge doc set | Codex | Done | Created `../menulist-activation-concierge/` docs for upload, preview, claim/publish, two-surface activation, proof eligibility, mobile support, Firebase cost, and SignalDesk observer boundary |
+| MLD-F011 | Implement MenuList Activation Concierge runtime foundation | Codex | Done | Founder decision resolved: extend existing `/create-menu/success`, starter workspace, Use MenuList, mobile Share, and Search & Discovery / Presence Monitor first. Added shared action-done summary, desktop/mobile activation proof UI, docs parity, and verifier; no new route, collection, SignalDesk truth write, provider send, or external platform verification |
 
 ## Asset Actions
 
@@ -96,6 +98,9 @@
 | MLD-R006 | Broad SMB category proof matrix | Codex | Done | Covered in `menulist-marketing-distribution_demo-universe.md` through demo pack, required proof surfaces, SEO page gate, and asset matrix |
 | MLD-R007 | Launch-platform and international-acquisition source check | Codex | Done | Product Hunt, Show HN, WhatsApp Business policy, Google Business Profile, Apple Business Connect, LINE, and Kakao checks recorded in `menulist-marketing-distribution_launch-distribution-review.md` |
 | MLD-R008 | End-to-end growth research and private Growth Engine alignment | Codex | Done | Created `menulist-marketing-distribution_end-to-end-growth-research-2026-06-23.md`; confirms Search Console host gate, WhatsApp consent gate, source-provider restrictions, proof-led SEO, controlled outbound, and private internal Growth Engine build order |
+| MLD-R009 | Creator distribution article fit review | Codex | Done | Accepted local creator tests only as proof/content experiments for MenuList; CampaignCue owns the creator-fit brief primitive. No MenuList influencer workflow or creator product scope added |
+| MLD-R010 | AI-startup growth playbook fit review | Codex | Done | Captured in `../menulist-signaldesk/menulist-signaldesk_growth-playbook-review-2026-06-24.md`; adopt activation-proof loop and recommended Bengaluru pod hypothesis, reject generic viral/outbound automation copy |
+| MLD-R011 | Founder distribution and automation research | Codex | Done | Captured in `../menulist-signaldesk/menulist-signaldesk_founder-distribution-research-2026-06-24.md`; startup/founder/community research confirms Activation Concierge, proof assets, demand listening, and objection learning before more outbound automation |
 
 ## Launch Actions
 
@@ -118,7 +123,7 @@
 | --- | --- | --- | --- | --- |
 | MLD-I001 | Create international market-pod plan | Codex | Done | Initial pod model recorded in `menulist-marketing-distribution_launch-distribution-review.md` |
 | MLD-I002 | Build market-pod lead board fields | Codex | Done | Created `menulist-marketing-distribution_market-pod-lead-board.md` with fields, scoring, states, CSV header, and first-sprint template |
-| MLD-I003 | Draft first market-pod lead list | Founder + Codex | Blocked | Needs founder to choose first city, first vertical, allowed contact path, outreach sender identity, and whether Codex should collect real public leads |
+| MLD-I003 | Draft first market-pod lead list | Founder + Codex | Blocked | Recommended default pending founder approval: Bengaluru, Indiranagar + Koramangala, cafes/dessert shops/QSR/cloud-kitchen-facing storefronts, founder email/manual export first; needs allowed source policy and sender identity before real leads |
 | MLD-I004 | Country/market landing page briefs | Codex | Deferred | `/global`, `/in`, `/ae`, and `/us` need proof assets, route-specific copy, and intake-path decisions before code |
 | MLD-I005 | LINE/Kakao intake research | Codex | Deferred | Later-market research only; no product, route, or integration claim until local partner/compliance path is clear |
 

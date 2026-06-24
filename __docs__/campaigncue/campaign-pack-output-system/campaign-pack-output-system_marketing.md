@@ -12,6 +12,8 @@ Know what to promote. Get the pack. Check the facts. Use it manually. Record wha
 
 Most creative tools output content. CampaignCue outputs a verified local campaign packet with delivery instructions and result memory.
 
+Content repurposing tools prove the "one source to many channel assets" mental model, but CampaignCue must translate that into "one checked local-business cue to a usable campaign pack." Do not position CampaignCue as autopilot distribution, a blog/podcast repurposer, or a social scheduler.
+
 ## Do Not Claim
 
 - direct social publishing

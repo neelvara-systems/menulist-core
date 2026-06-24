@@ -19,6 +19,7 @@ The value is not template volume. The value is:
 CampaignCue can offer output choices, but they must be framed as business-use choices:
 
 - WhatsApp sales pack,
+- source-to-channel pack,
 - booking push pack,
 - Google local update,
 - Instagram post and story,

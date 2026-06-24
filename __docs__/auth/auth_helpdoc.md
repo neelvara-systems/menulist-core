@@ -1,6 +1,6 @@
 # Authentication — Help Documentation
 
-**Last Updated:** June 3, 2026
+**Last Updated:** June 24, 2026
 
 ## Quick Summary
 
@@ -67,18 +67,20 @@ If the passcode is lost, the owner can create a new one from **Users**.
 
 1. Click your profile icon (top right)
 2. Click **My Profile**
-3. Edit your name or phone number
-4. Click **Save Changes**
+3. Click **Edit profile**
+4. Edit your name or phone number
+5. Click **Save Changes**
 
-### How to change your password
+### How to change your password or passcode
 
 Desktop:
 
 1. Click your profile icon (top right)
 2. Click **My Profile**
-3. Click **Change Password**
-4. Enter your current password and new password
-5. Click **Change Password**
+3. Click **Security**
+4. Enter your current password or passcode
+5. Enter and confirm the new password or passcode
+6. Click **Change Password** or **Change Password or Passcode**
 
 Mobile:
 

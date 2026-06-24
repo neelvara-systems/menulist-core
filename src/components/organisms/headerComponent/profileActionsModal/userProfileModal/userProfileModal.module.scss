@@ -1,0 +1,155 @@
+.userProfileModal {
+  :global(.ant-modal-content) {
+    padding: 0;
+    overflow: hidden;
+  }
+}
+
+.modalHeader {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  display: flex;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+}
+
+.identityPanel {
+  border-bottom: 1px solid;
+  padding: 16px 20px;
+}
+
+.contentLayout {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  min-height: 420px;
+}
+
+.sectionNav {
+  border-right: 1px solid var(--ant-color-border-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 12px;
+}
+
+.navButton {
+  justify-content: flex-start;
+  min-height: 40px;
+}
+
+.sectionContent {
+  min-width: 0;
+  padding: 18px 20px 20px;
+}
+
+.sectionPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionHeader {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+.infoGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.infoRow {
+  align-items: flex-start;
+  background: var(--ant-color-fill-quaternary);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  min-height: 76px;
+  padding: 12px;
+}
+
+.infoIcon,
+.storeIcon {
+  align-items: center;
+  color: var(--ant-color-text-secondary);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 18px;
+  justify-content: center;
+  line-height: 1;
+  width: 22px;
+}
+
+.infoContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.infoValue {
+  overflow-wrap: anywhere;
+}
+
+.infoAction {
+  flex-shrink: 0;
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.storeAccessRow {
+  align-items: center;
+  background: var(--ant-color-fill-quaternary);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+@media (max-width: 720px) {
+  .contentLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionNav {
+    border-bottom: 1px solid var(--ant-color-border-secondary);
+    border-right: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionHeader,
+  .storeAccessRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .formActions {
+    flex-direction: column-reverse;
+  }
+
+  .formActions :global(.ant-btn) {
+    width: 100%;
+  }
+}

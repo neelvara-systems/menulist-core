@@ -1,41 +1,101 @@
 'use client'
-import { UserOutlined } from '@ant-design/icons';
+
+import BrandWordmark from '@/components/website/shared/BrandWordmark';
 import { EMPTY_ERROR } from "@constant/common";
 import { HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { useAppSelector } from "@hook/useAppSelector";
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
 import { getDarkModeState, toggleDarkMode } from "@reduxSlices/clientThemeConfig";
-import { Button, Form, Input, Space, theme } from "antd";
+import { Button, Form, Input } from "antd";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { useSession } from "next-auth/react";
-import { redirect, useRouter } from 'next/navigation';
-import { useEffect, useState } from "react";
-import { LuArrowLeft, LuSun } from "react-icons/lu";
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { LuArrowLeft, LuMail, LuMoon, LuSun } from "react-icons/lu";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
 import styles from '../loginPage/loginPage.module.scss';
 
-const LOGIN_ERRORS = {
-    "INVALID_EMAIL": "auth/invalid-email",
-    "UNREGISTRED": "email-not-registred",
+const RESET_ERRORS = {
+    INVALID_EMAIL: "auth/invalid-email",
 }
+const JOURNEY_MOTION_MEDIA = '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)';
 
 function ForgotPasswordPage() {
-
     const session = useSession();
     const dispatch = useAppDispatch();
     const [error, setError] = useState({ id: '', message: '' });
     const [successMessage, setSuccessMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
-    const { token } = theme.useToken();
     const isDarkMode = useAppSelector(getDarkModeState)
     const router = useRouter();
+    const loginPageRef = useRef<HTMLDivElement | null>(null);
+    const journeyArtRef = useRef<HTMLSpanElement | null>(null);
+    const journeyMotionEnabledRef = useRef(false);
+    const journeyMotionFrame = useRef<number | null>(null);
+
+    const resetJourneyMotion = useCallback(() => {
+        if (typeof window !== 'undefined' && journeyMotionFrame.current !== null) {
+            window.cancelAnimationFrame(journeyMotionFrame.current);
+            journeyMotionFrame.current = null;
+        }
+
+        const journeyArt = journeyArtRef.current;
+        if (!journeyArt) return;
+
+        journeyArt.style.setProperty('--auth-journey-shift-x', '0px');
+        journeyArt.style.setProperty('--auth-journey-shift-y', '0px');
+        journeyArt.style.setProperty('--auth-journey-tilt-x', '0deg');
+        journeyArt.style.setProperty('--auth-journey-tilt-y', '0deg');
+        journeyArt.style.setProperty('--auth-journey-rotate', '0deg');
+    }, []);
+
+    const handleJourneyPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+        if (event.pointerType !== 'mouse' || typeof window === 'undefined') return;
+        if (!journeyMotionEnabledRef.current) return;
+
+        const x = ((event.clientX / window.innerWidth) - 0.5) * 2;
+        const y = ((event.clientY / window.innerHeight) - 0.5) * 2;
+
+        if (journeyMotionFrame.current !== null) {
+            window.cancelAnimationFrame(journeyMotionFrame.current);
+        }
+
+        journeyMotionFrame.current = window.requestAnimationFrame(() => {
+            const journeyArt = journeyArtRef.current;
+            if (!journeyArt) return;
+
+            journeyArt.style.setProperty('--auth-journey-shift-x', `${(x * 18).toFixed(2)}px`);
+            journeyArt.style.setProperty('--auth-journey-shift-y', `${(y * 10).toFixed(2)}px`);
+            journeyArt.style.setProperty('--auth-journey-tilt-x', `${(-y * 1.2).toFixed(2)}deg`);
+            journeyArt.style.setProperty('--auth-journey-tilt-y', `${(x * 1.8).toFixed(2)}deg`);
+            journeyArt.style.setProperty('--auth-journey-rotate', `${(x * 0.35).toFixed(2)}deg`);
+            journeyMotionFrame.current = null;
+        });
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return resetJourneyMotion;
+
+        const media = window.matchMedia(JOURNEY_MOTION_MEDIA);
+        const syncJourneyMotionPreference = () => {
+            journeyMotionEnabledRef.current = media.matches;
+            if (!media.matches) resetJourneyMotion();
+        };
+
+        syncJourneyMotionPreference();
+        media.addEventListener('change', syncJourneyMotionPreference);
+
+        return () => {
+            media.removeEventListener('change', syncJourneyMotionPreference);
+            resetJourneyMotion();
+        };
+    }, [resetJourneyMotion]);
 
     useEffect(() => {
         if (Boolean(session?.data?.user)) {
-            console.log("user found")
-            redirect(HOME_ROUTING)
+            router.replace(HOME_ROUTING)
         }
-    }, [])
+    }, [router, session?.data?.user])
 
     const forgotPassword = async ({ email }: { email: string }) => {
         setIsSending(true);
@@ -44,14 +104,12 @@ function ForgotPasswordPage() {
 
         try {
             await sendPasswordResetEmail(firebaseAuth, email);
-            setSuccessMessage("Password reset email sent. Check your inbox and follow the link to choose a new password.");
+            setSuccessMessage("If this email is connected to MenuList, a reset link has been sent.");
         } catch (error: any) {
-            if (error.code?.includes(LOGIN_ERRORS.INVALID_EMAIL)) {
-                setError({ id: LOGIN_ERRORS.INVALID_EMAIL, message: "Invalid email" });
-            } else if (error.code?.includes(LOGIN_ERRORS.UNREGISTRED)) {
-                setError({ id: LOGIN_ERRORS.UNREGISTRED, message: "Email not registered" });
+            if (error.code?.includes(RESET_ERRORS.INVALID_EMAIL)) {
+                setError({ id: RESET_ERRORS.INVALID_EMAIL, message: "Enter a valid email address." });
             } else {
-                setError({ id: 'RESET_FAILED', message: "Something went wrong, please try again." });
+                setError({ id: 'RESET_FAILED', message: "We could not send the reset email. Check the email and try again." });
             }
         } finally {
             setIsSending(false);
@@ -67,38 +125,70 @@ function ForgotPasswordPage() {
         required: "'${name}' is required!",
     };
 
-    return <div className={styles.loginPageWrap}
-        style={{
-            background: token.colorBgBase,
-            backgroundImage: `radial-gradient(circle at 10px 10px, ${token.colorTextDisabled} 1px, transparent 0)`,
-        }}>
-        <Space className={styles.headerWrap} align="center">
-            <div className={styles.itemWrap}>
-                <img src={'/icons/icon-192x192.png'} />
+    return <div
+        ref={loginPageRef}
+        className={`${styles.loginPageWrap} ${isDarkMode ? styles.loginPageDark : styles.loginPageLight}`}
+        onPointerCancel={resetJourneyMotion}
+        onPointerLeave={resetJourneyMotion}
+        onPointerMove={handleJourneyPointerMove}
+    >
+        <div className={styles.staticBackdrop} aria-hidden="true">
+            <span ref={journeyArtRef} className={styles.journeyArt} />
+        </div>
+        <header className={styles.topBar}>
+            <div className={styles.headerWrap}>
+                <Button
+                    aria-label={isDarkMode ? 'Use light theme' : 'Use dark theme'}
+                    icon={isDarkMode ? <LuSun /> : <LuMoon />}
+                    size="large"
+                    title={isDarkMode ? 'Use light theme' : 'Use dark theme'}
+                    onClick={() => dispatch(toggleDarkMode(!isDarkMode))}
+                />
             </div>
-            <Button icon={<LuSun />} size="large" onClick={() => dispatch(toggleDarkMode(!isDarkMode))} />
-        </Space>
-        <div className={styles.bodyWrap} style={{
-            // background: "url(assets/images/loginPage/login_screen_bg.png)"
-        }}>
-            <div className={styles.bgWrap}></div>
+        </header>
+        <div className={styles.bodyWrap}>
             <div className={styles.bodyContent}>
-                <div className={styles.leftContent}>
-                    <img src="assets/images/loginPage/login_screen_bg.png" />
-                </div>
+                <section className={styles.heroPanel}>
+                    <button
+                        aria-label="Go to MenuList home"
+                        className={styles.heroBrand}
+                        type="button"
+                        onClick={() => router.push(HOME_ROUTING)}
+                    >
+                        <BrandWordmark
+                            className={styles.heroBrandMark}
+                            iconHeight={118}
+                            logoClassName={styles.heroBrandLogo}
+                            textClassName={styles.heroBrandText}
+                        />
+                    </button>
+                    <p>Take your business beyond the four walls.</p>
+                </section>
                 <div className={styles.rightContent}>
-                    <div className={styles.formWrap}
-                        style={{
-                            borderColor: token.colorBorder,
-                            background: `linear-gradient(0deg,rgba(186,207,247,.04),rgba(186,207,247,.04)), ${token.colorBgBase}`,
-                            boxShadow: `inset 0 1px 1px 0 rgba(216,236,248,.2), inset 0 24px 48px 0 rgba(168,216,245,.06), 0 16px 32px rgba(0,0,0,.3)`,
-                        }}>
-                        <h3 className={`${styles.heading}`} style={{ color: token.colorTextLabel }}>Forgot your password?</h3>
-                        {/* <h1 className={`heading ${styles.heading} ${styles.title}`}>EcomsAi</h1> */}
-                        <div className={styles.subHeading} style={{ color: token.colorTextHeading }}>Enter the email address on your account. We will email you a link to reset your password.</div>
-                        <div style={{ color: token.colorTextSecondary, fontSize: 13, margin: '0 auto 16px', maxWidth: 360, textAlign: 'center' }}>
-                            If you use a Staff ID or phone passcode and do not have an email, ask the owner to create a new temporary passcode from Staff.
+                    <div className={`${styles.formWrap} ${isDarkMode ? styles.formWrapDark : styles.formWrapLight}`}>
+                        <div className={styles.normalBrandIntro}>
+                            <span className={styles.cardLogoShell}>
+                                <BrandWordmark
+                                    showText={false}
+                                    iconHeight={44}
+                                    className={styles.cardLogoMark}
+                                />
+                            </span>
+                            <h3 className={styles.heading}>Welcome to</h3>
+                            <h1 className={`heading ${styles.heading} ${styles.title}`}>
+                                <BrandWordmark
+                                    showLogo={false}
+                                    textClassName={styles.brandTitleText}
+                                />
+                            </h1>
                         </div>
+                        <div className={styles.desktopAuthHeader}>
+                            <h2>Reset access</h2>
+                            <p>Enter the email connected to your MenuList account.</p>
+                        </div>
+                        <p className={styles.authCardNote}>
+                            Staff ID or phone passcode users should ask the owner for a new temporary passcode.
+                        </p>
                         <Form
                             name="forgot-password"
                             className={`${styles.form} login-form`}
@@ -107,30 +197,36 @@ function ForgotPasswordPage() {
                             onValuesChange={onValuesChange}
                             validateMessages={validateMessages}
                         >
+                            <label className={styles.fieldLabel} htmlFor="forgot-password-email">Account email</label>
                             <Form.Item
                                 className={styles.formItem}
                                 name="email"
-                                rules={[{ required: true, message: 'Please enter your email!' }]}
+                                rules={[
+                                    { required: true, message: 'Enter your account email.' },
+                                    { type: 'email', message: 'Enter a valid email address.' },
+                                ]}
+                                validateTrigger={['onBlur', 'onChange']}
                             >
-                                <Input className={styles.inputElement} size="large" prefix={<UserOutlined className="site-form-item-icon" />} allowClear placeholder="your-email@domain.com" />
+                                <Input
+                                    id="forgot-password-email"
+                                    className={styles.inputElement}
+                                    size="large"
+                                    prefix={<LuMail className="site-form-item-icon" />}
+                                    allowClear
+                                    placeholder="name@example.com"
+                                />
                             </Form.Item>
-                            {/* <Form.Item
-                                    className={styles.formItem}
-                                    name="password"
-                                    rules={[{ required: true, message: 'Please input your Password!' }]}
-                                >
-                                    <Input.Password className={styles.inputElement} size="large" prefix={<LockOutlined className="site-form-item-icon" />} allowClear placeholder="Password"
-                                    />
-                                </Form.Item> */}
-                            {error.message && <div className={styles.error}>{error.message}</div>}
-                            {successMessage && <div style={{ color: token.colorSuccess, textAlign: 'center' }}>{successMessage}</div>}
-                            <Space direction="vertical" align="center" style={{ width: "100%" }} >
-                                <Button loading={isSending} type="primary" size="large" htmlType="submit" style={{ width: 275 }} className="login-form-button">Send Forgot Password Email</Button>
-                            </Space>
-
-                            <Space direction="vertical" align="center" style={{ width: "100%", marginTop: 20 }} onClick={() => router.push(NAVIGARIONS_ROUTINGS.SIGNIN)}>
-                                <Button type="dashed" className="login-form-button" icon={<LuArrowLeft />} style={{ color: token.colorTextLabel }}>Return to sign in</Button>
-                            </Space>
+                            {error.message ? <div className={styles.authError}>{error.message}</div> : null}
+                            {successMessage ? <div className={styles.authSuccess}>{successMessage}</div> : null}
+                            <Button loading={isSending} type="primary" size="large" htmlType="submit" style={{ width: '100%' }} className="login-form-button">Send reset link</Button>
+                            <Button
+                                type="text"
+                                className={styles.secondaryAuthButton}
+                                icon={<LuArrowLeft />}
+                                onClick={() => router.push(NAVIGARIONS_ROUTINGS.SIGNIN)}
+                            >
+                                Return to sign in
+                            </Button>
                         </Form>
                     </div>
                 </div>

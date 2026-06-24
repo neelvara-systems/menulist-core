@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.85 (Placeholder-Backed Service Industry Pages)
+**Version:** 3.6.86 (Feature Dropdown Dedicated-Page Parity)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 23, 2026
+**Last Updated:** June 24, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,11 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.85** | **Placeholder-Backed Service Industry Pages** | **Salon/spa, service-list, and local-service industry pages now exist with clearly labelled placeholder demo assets while final screenshots/videos remain pending.** | **ACTIVE** |
+| **3.6.86** | **Feature Dropdown Dedicated-Page Parity** | **Every dedicated MenuList feature-detail page is now represented in the shared desktop hover and mobile hamburger feature dropdown source.** | **ACTIVE** |
+
+Version 3.6.86 closes the dedicated feature-page dropdown parity gap. `/features/analytics` and `/features/menu-quality-validation` now live in `websiteFeatureNavGroups`, the same shared source used by the desktop hover dropdown and mobile hamburger feature accordion. AI Menu Manager remains inside the Operate group and is not duplicated as a separate mobile top-level row. This is static website navigation, locale, and documentation work only; feature routes, discovery files, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, production build, Vercel deploy, and DNS were not changed.
+
+Version 3.6.85 remains Placeholder-Backed Service Industry Pages and is preserved below as the previous website version note.
 
 Version 3.6.85 adds placeholder-backed broad-SMB industry pages for `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses`. The pages reuse the existing industry landing-page shell, metadata pattern, `WebsitePageStructuredData`, `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The placeholder SVG assets live under `public/images/website/demo-placeholders/` and are visibly labelled as sample/demo placeholders. They unblock code-side service-list SEO review, but final routed screenshots/videos or permissioned proof must replace them before Product Hunt gallery use, paid traffic, broad partner outreach, or final public campaign visuals. This is public website route/discovery/docs work only; upload/extraction, demo tenant creation, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, Search Console setup, sitemap submission, production build, Vercel deploy, and DNS were not changed.
 

@@ -15,6 +15,7 @@ import { type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import {
     STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
+    buildStarterActivationSummary,
     shouldRecordStarterActivationSignal,
 } from '@lib/onboarding/starterActivation';
 import { StoreDataType } from '@type/platform/store';
@@ -27,6 +28,7 @@ import {
     LuExternalLink,
     LuGlobe,
     LuInstagram,
+    LuInfo,
     LuMessageCircle,
     LuMonitor,
     LuQrCode,
@@ -153,6 +155,9 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
     const totalActive = manualActiveCount + autoActiveCount;
     const totalSurfaces = MANUAL_SURFACES.length + autoSurfaces.length;
     const allActive = totalActive === totalSurfaces;
+    const activationSummary = buildStarterActivationSummary(storeDetails);
+    const showActivationSummary = activationSummary.appliesToStarterActivation
+        || activationSummary.recordedSignals.length > 0;
     const primaryTagStyle = {
         backgroundColor: token.colorPrimaryBg,
         borderColor: token.colorPrimaryBorder,
@@ -233,14 +238,59 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                     <Tag style={{ ...(allActive ? successTagStyle : {}), margin: 0 }}>
                         {allActive
                             ? 'All set'
-                            : `Visible in ${totalActive} place${totalActive !== 1 ? 's' : ''}`
+                            : `${totalActive} ready/confirmed`
                         }
                     </Tag>
                 </Flex>
 
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    This checklist is only for your tracking. MenuList does not verify these external platforms automatically.
+                    Some steps are recorded by MenuList. External platforms are owner-confirmed.
                 </Text>
+
+                {showActivationSummary && (
+                    <Flex
+                        vertical
+                        gap={8}
+                        style={{
+                            background: token.colorInfoBg,
+                            border: `1px solid ${token.colorInfoBorder}`,
+                            borderRadius: 6,
+                            padding: '10px 12px',
+                        }}
+                    >
+                        <Flex align="center" gap={8} justify="space-between" wrap="wrap">
+                            <Flex align="center" gap={6}>
+                                <LuInfo size={14} style={{ color: token.colorInfo }} />
+                                <Text strong style={{ fontSize: 12 }}>Activation proof</Text>
+                            </Flex>
+                            <Tag style={{ margin: 0 }} color={activationSummary.activated ? 'success' : 'processing'}>
+                                {activationSummary.activated
+                                    ? `${activationSummary.target} steps done`
+                                    : `${Math.min(activationSummary.signalCount, activationSummary.target)} of ${activationSummary.target} done`
+                                }
+                            </Tag>
+                        </Flex>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            {activationSummary.signalCount > 0
+                                ? `How we know: MenuList recorded ${activationSummary.systemRecordedCount}, owner confirmed ${activationSummary.ownerConfirmedCount}.`
+                                : 'No activation action recorded yet. Start with QR, WhatsApp, or one discovery placement.'
+                            }
+                        </Text>
+                        {activationSummary.recordedSignals.length > 0 && (
+                            <Flex gap={6} wrap="wrap">
+                                {activationSummary.recordedSignals.slice(0, 4).map((signal) => (
+                                    <Tag
+                                        key={signal.signal}
+                                        style={{ margin: 0 }}
+                                        color={signal.evidenceType === 'menulist_recorded' ? 'blue' : 'gold'}
+                                    >
+                                        {signal.label}
+                                    </Tag>
+                                ))}
+                            </Flex>
+                        )}
+                    </Flex>
+                )}
 
                 {/* All-complete celebration */}
                 {allActive && (
@@ -301,6 +351,11 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                                     <Text type="secondary" style={{ fontSize: 11 }}>
                                         {active ? 'Official link added' : surface.explanation}
                                     </Text>
+                                    {active && (
+                                        <Text type="secondary" style={{ fontSize: 10 }}>
+                                            Owner confirmed this external placement.
+                                        </Text>
+                                    )}
                                     {!active && surface.socialProof && (
                                         <Text type="secondary" style={{ fontSize: 10, fontStyle: 'italic' }}>
                                             {surface.socialProof}
@@ -406,7 +461,7 @@ export default function PresenceMonitor({ data, storeDetails, onCopyLink }: Pres
                             <Text type="secondary" style={{ fontSize: 11 }}>{surface.description}</Text>
                         </Flex>
                         {surface.active && (
-                            <Tag style={{ ...primaryTagStyle, fontSize: 10, margin: 0 }}>Auto</Tag>
+                            <Tag style={{ ...primaryTagStyle, fontSize: 10, margin: 0 }}>MenuList</Tag>
                         )}
                     </Flex>
                 ))}

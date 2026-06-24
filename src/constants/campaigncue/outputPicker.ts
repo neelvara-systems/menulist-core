@@ -16,6 +16,7 @@ export type CampaignCueOutputPickerGroupId =
 
 export type CampaignCueOutputPickerItemId =
     | "recommended_pack"
+    | "source_to_channel_pack"
     | "whatsapp_sales_pack"
     | "booking_push_pack"
     | "google_local_update"
@@ -23,6 +24,7 @@ export type CampaignCueOutputPickerItemId =
     | "print_in_store"
     | "staff_share_pack"
     | "ad_handoff_pack"
+    | "local_creator_test_brief"
     | "campaign_proof_deck"
     | "reuse_old_asset"
     | "custom_size";
@@ -48,7 +50,7 @@ export interface CampaignCueOutputPickerItem {
 
 export const CAMPAIGNCUE_OUTPUT_PICKER_GROUPS: CampaignCueOutputPickerGroup[] = [
     {
-        description: "Start from the campaign already recommended in the Daily Desk.",
+        description: "Start from the current Daily Desk cue or source-backed campaign context.",
         id: "recommended",
         title: "Recommended",
     },
@@ -101,6 +103,18 @@ export const CAMPAIGNCUE_OUTPUT_PICKER_ITEMS: CampaignCueOutputPickerItem[] = [
         searchTokens: ["recommended", "daily_desk", "campaign_pack"],
         templateKinds: ["campaign_pack", "editor_layout", "handoff_pack", "reuse_asset"],
         title: "Recommended pack",
+    },
+    {
+        actionLabel: "Prepare source pack",
+        channels: ["whatsapp", "google_local", "creative", "calendar"],
+        description: "Turn the current source-backed campaign cue into WhatsApp, Google/local, social, print, manual task, and result prompt.",
+        groupId: "recommended",
+        id: "source_to_channel_pack",
+        outputTypes: ["whatsapp_message", "google_update", "instagram_square", "poster_pdf", "staff_share_text", "manual_task"],
+        requiredFactTypes: ["business_name", "location_detail", "menu_item", "service", "product", "price", "availability", "booking_link", "whatsapp_number"],
+        searchTokens: ["source", "distribution", "multi_channel", "channel_ready", "whatsapp", "google", "social", "print", "result"],
+        templateKinds: ["campaign_pack", "handoff_pack", "editor_layout"],
+        title: "Source-to-channel pack",
     },
     {
         actionLabel: "Prepare WhatsApp pack",
@@ -185,6 +199,18 @@ export const CAMPAIGNCUE_OUTPUT_PICKER_ITEMS: CampaignCueOutputPickerItem[] = [
         searchTokens: ["ads", "handoff", "headline", "destination", "agency"],
         templateKinds: ["campaign_pack", "handoff_pack"],
         title: "Ad handoff pack",
+    },
+    {
+        actionLabel: "Prepare creator brief",
+        channels: ["ugc", "video", "creative"],
+        description: "Local creator fit checklist, lightweight brief, 3-test plan, disclosure, and result prompt.",
+        groupId: "handoff",
+        id: "local_creator_test_brief",
+        outputTypes: ["creator_script", "reel_brief", "manual_task"],
+        requiredFactTypes: ["business_name", "location_detail", "menu_item", "service", "offer", "asset_rights", "destination_url"],
+        searchTokens: ["creator", "ugc", "influencer", "local", "audience", "fit", "brief", "test", "flat_fee"],
+        templateKinds: ["campaign_pack", "handoff_pack"],
+        title: "Local creator test brief",
     },
     {
         actionLabel: "Prepare proof deck",

@@ -1,11 +1,11 @@
 import { AntdRegistry } from '@ant-design/nextjs-registry'
-import AntdLayoutWrapper from '@antdComponent/layoutWrapper'
 import { authOptions } from '@lib/auth'
 import { APP_THEME_COLOR } from '@constant/common'
 import LocalisationProvider from '@providers/localisationProvider'
 import NoSSRProvider from '@providers/noSSRProvider'
 import { ReduxStoreProvider } from '@providers/reduxProvider'
 import SessionProvider from '@providers/sessionProvider'
+import AntdThemeProvider from '@providers/antdThemeProvider'
 import '@styles/app.scss'
 import type { Metadata, Viewport } from 'next'
 import { getServerSession } from 'next-auth'
@@ -49,11 +49,11 @@ export default async function AuthLayout({
                 <ReduxStoreProvider>
                     <SessionProvider session={session}>
                         <NoSSRProvider>
-                            <AntdLayoutWrapper>
-                                <Suspense fallback={<ServerSidePageLoader page="Main Layout" />}>
+                            <AntdThemeProvider>
+                                <Suspense fallback={<ServerSidePageLoader page="Authentication" />}>
                                     {children}
                                 </Suspense>
-                            </AntdLayoutWrapper>
+                            </AntdThemeProvider>
                         </NoSSRProvider>
                     </SessionProvider>
                 </ReduxStoreProvider>

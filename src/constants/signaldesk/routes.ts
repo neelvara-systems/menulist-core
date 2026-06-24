@@ -4,6 +4,7 @@ export const SIGNALDESK_API_BASE_PATH = "/api/signaldesk";
 
 export const SIGNALDESK_ROUTES = {
     DASHBOARD: SIGNALDESK_BASE_PATH,
+    MISSION: `${SIGNALDESK_BASE_PATH}/mission`,
     TARGETS: `${SIGNALDESK_BASE_PATH}/targets`,
     IMPORTS: `${SIGNALDESK_BASE_PATH}/imports`,
     APPROVALS: `${SIGNALDESK_BASE_PATH}/approvals`,
@@ -14,6 +15,8 @@ export const SIGNALDESK_ROUTES = {
     SOURCES: `${SIGNALDESK_BASE_PATH}/sources`,
     AI: `${SIGNALDESK_BASE_PATH}/ai`,
     CHANNELS: `${SIGNALDESK_BASE_PATH}/channels`,
+    CONTENT: `${SIGNALDESK_BASE_PATH}/content`,
+    PARTNERS: `${SIGNALDESK_BASE_PATH}/partners`,
     SETTINGS: `${SIGNALDESK_BASE_PATH}/settings`,
     CONTROL_ROOM: `${SIGNALDESK_BASE_PATH}/control-room`,
     AUDIT: `${SIGNALDESK_BASE_PATH}/audit`,

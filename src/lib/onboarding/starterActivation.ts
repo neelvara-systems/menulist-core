@@ -39,6 +39,60 @@ export const STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE = {
     whatsappProfile: STARTER_ACTIVATION_SIGNALS.WHATSAPP_PROFILE_MARKED,
 } as const;
 
+export type StarterActivationEvidenceType = 'menulist_recorded' | 'owner_confirmed_external';
+
+export const STARTER_ACTIVATION_SIGNAL_DETAILS: Record<
+    StarterActivationSignal,
+    {
+        evidenceType: StarterActivationEvidenceType;
+        howKnown: string;
+        label: string;
+    }
+> = {
+    [STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED]: {
+        evidenceType: 'menulist_recorded',
+        howKnown: 'MenuList recorded the owner copying the official link.',
+        label: 'Link copied',
+    },
+    [STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED]: {
+        evidenceType: 'menulist_recorded',
+        howKnown: 'MenuList recorded a QR download.',
+        label: 'QR downloaded',
+    },
+    [STARTER_ACTIVATION_SIGNALS.MENU_KIT_DOWNLOADED]: {
+        evidenceType: 'menulist_recorded',
+        howKnown: 'MenuList recorded a Menu Kit download.',
+        label: 'Menu Kit downloaded',
+    },
+    [STARTER_ACTIVATION_SIGNALS.NATIVE_SHARE_COMPLETED]: {
+        evidenceType: 'menulist_recorded',
+        howKnown: 'MenuList recorded a completed device share.',
+        label: 'Phone share completed',
+    },
+    [STARTER_ACTIVATION_SIGNALS.WHATSAPP_SHARE_STARTED]: {
+        evidenceType: 'menulist_recorded',
+        howKnown: 'MenuList recorded the owner opening WhatsApp share.',
+        label: 'WhatsApp share started',
+    },
+    [STARTER_ACTIVATION_SIGNALS.GOOGLE_BUSINESS_MARKED]: {
+        evidenceType: 'owner_confirmed_external',
+        howKnown: 'The owner marked Google Business as added.',
+        label: 'Google Business marked',
+    },
+    [STARTER_ACTIVATION_SIGNALS.INSTAGRAM_BIO_MARKED]: {
+        evidenceType: 'owner_confirmed_external',
+        howKnown: 'The owner marked Instagram Bio as added.',
+        label: 'Instagram Bio marked',
+    },
+    [STARTER_ACTIVATION_SIGNALS.WHATSAPP_PROFILE_MARKED]: {
+        evidenceType: 'owner_confirmed_external',
+        howKnown: 'The owner marked WhatsApp Profile as added.',
+        label: 'WhatsApp Profile marked',
+    },
+};
+
+const STARTER_ACTIVATION_SIGNAL_ORDER = Object.values(STARTER_ACTIVATION_SIGNALS);
+
 const STARTER_ACTIVATION_SOURCES = new Set<string>([
     'PUBLIC_MENU_ENTRY',
     'MESSAGING_ONBOARDING',
@@ -117,6 +171,11 @@ function timestampLikeToMillis(value: unknown): number | null {
     }
 
     return null;
+}
+
+function timestampLikeToIso(value: unknown): string | undefined {
+    const millis = timestampLikeToMillis(value);
+    return millis ? new Date(millis).toISOString() : undefined;
 }
 
 function normalizePath(pathname: string) {
@@ -235,4 +294,69 @@ export function hasStarterDistributionActivation(
     storeDetails?: Pick<StoreDataType, 'menuPresence' | 'starterActivationSignals'> | null,
 ) {
     return getStarterActivationSignalCount(storeDetails) >= STARTER_DISTRIBUTION_ACTIVATION_TARGET;
+}
+
+export interface StarterActivationRecordedSignal {
+    signal: StarterActivationSignal;
+    label: string;
+    howKnown: string;
+    evidenceType: StarterActivationEvidenceType;
+    recordedAt?: string;
+}
+
+export interface StarterActivationSummary {
+    appliesToStarterActivation: boolean;
+    activated: boolean;
+    ownerConfirmedCount: number;
+    remainingCount: number;
+    recordedSignals: StarterActivationRecordedSignal[];
+    signalCount: number;
+    systemRecordedCount: number;
+    target: number;
+}
+
+export function buildStarterActivationSummary(
+    storeDetails?: Pick<
+        StoreDataType,
+        'activePlanType' | 'activationDeadline' | 'menuPresence' | 'onboardingSource' | 'starterActivationSignals' | 'starterActivationStatus'
+    > | null,
+): StarterActivationSummary {
+    const signalTimestamps = new Map<StarterActivationSignal, string | undefined>();
+    const actions = storeDetails?.starterActivationSignals?.actions || {};
+
+    Object.entries(actions).forEach(([signal, recordedAt]) => {
+        if (isStarterActivationSignal(signal)) {
+            signalTimestamps.set(signal, timestampLikeToIso(recordedAt) || String(recordedAt || ''));
+        }
+    });
+
+    Object.entries(STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE).forEach(([surface, signal]) => {
+        const presenceRecordedAt = storeDetails?.menuPresence?.[surface as keyof NonNullable<StoreDataType['menuPresence']>];
+        if (presenceRecordedAt) {
+            signalTimestamps.set(signal, timestampLikeToIso(presenceRecordedAt) || String(presenceRecordedAt));
+        }
+    });
+
+    const recordedSignals = STARTER_ACTIVATION_SIGNAL_ORDER
+        .filter((signal) => signalTimestamps.has(signal))
+        .map((signal) => ({
+            signal,
+            ...STARTER_ACTIVATION_SIGNAL_DETAILS[signal],
+            recordedAt: signalTimestamps.get(signal),
+        }));
+
+    const signalCount = recordedSignals.length;
+    const systemRecordedCount = recordedSignals.filter((signal) => signal.evidenceType === 'menulist_recorded').length;
+    const ownerConfirmedCount = recordedSignals.filter((signal) => signal.evidenceType === 'owner_confirmed_external').length;
+
+    return {
+        appliesToStarterActivation: isStarterActivationStore(storeDetails),
+        activated: signalCount >= STARTER_DISTRIBUTION_ACTIVATION_TARGET,
+        ownerConfirmedCount,
+        remainingCount: Math.max(0, STARTER_DISTRIBUTION_ACTIVATION_TARGET - signalCount),
+        recordedSignals,
+        signalCount,
+        systemRecordedCount,
+        target: STARTER_DISTRIBUTION_ACTIVATION_TARGET,
+    };
 }

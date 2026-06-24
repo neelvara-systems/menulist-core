@@ -17,6 +17,7 @@
 | Shared Diwali template applies to food and retail | Metadata summary exists in both category docs; payload path may be shared. |
 | Search for `diwali` | Filters loaded in-memory summaries; no extra Firestore read. |
 | Search by channel `whatsapp` | Filters loaded category data; no server query. |
+| Owner chooses `Source-to-channel pack` output | Filters loaded category/workspace summaries in memory and can create a bounded WhatsApp/Google/local/creative/manual-task campaign pack from the current cue. |
 | Owner chooses `WhatsApp sales pack` output | Filters loaded category/workspace summaries in memory by output type, channel, kind, required fact, and tags. |
 | Owner switches from WhatsApp to Google to print | No additional platform catalog, workspace index, Storage, provider, or Cloud Function call. |
 | Owner chooses output intent with no matching template | Owner can still create a bounded channel pack from the current cue. |

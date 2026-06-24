@@ -81,6 +81,8 @@ const KILL_SWITCH_SCOPES = new Set<SignalDeskKillSwitchScope>([
     "source-provider",
     "ai-worker",
     "campaign",
+    "content-distribution",
+    "trust-partner",
     "menu-list-bridge",
 ]);
 
@@ -97,6 +99,7 @@ const sanitizeForFirestore = (value: any): any => {
     if (value === null) return null;
     if (typeof value !== "object") return value;
     if (value instanceof Date) return admin.firestore.Timestamp.fromDate(value);
+    if (typeof value?.isEqual === "function" && /Transform$/.test(value?.constructor?.name || "")) return value;
     if (typeof value?.toDate === "function" && typeof value?.seconds === "number") return value;
     if (Array.isArray(value)) return value.map(sanitizeForFirestore);
     return Object.fromEntries(
@@ -316,4 +319,27 @@ export async function setSignalDeskKillSwitchServer(params: {
         }), { merge: true });
 
     return normalizeKillSwitch(killSwitchId, killSwitchData);
+}
+
+export async function recordSignalDeskMobileActionBlockedServer(params: {
+    access: SignalDeskAccessContext;
+    action: string;
+    actionClass: string;
+}) {
+    const db = getSignalDeskDb();
+    if (!db) return;
+    const now = admin.firestore.Timestamp.now();
+    const auditRef = db.collection(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS).doc();
+    await auditRef.set(sanitizeForFirestore({
+        auditEventId: auditRef.id,
+        pId: SIGNALDESK_PRODUCT_CODE,
+        actorId: params.access.userId,
+        actorRole: params.access.role,
+        action: "mobile_action_blocked",
+        actionClass: params.actionClass,
+        entityType: "signaldeskAction",
+        entityId: params.action,
+        reason: "MOBILE_READ_ONLY_ACTION_BLOCKED",
+        createdAt: now,
+    }));
 }

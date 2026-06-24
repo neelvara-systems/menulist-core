@@ -12,6 +12,7 @@ import NetworkStatusProvider from "@providers/NetworkStatusProvider";
 import NoSSRProvider from "@providers/noSSRProvider";
 import { ReduxStoreProvider } from "@providers/reduxProvider";
 import SessionProvider from "@providers/sessionProvider";
+import AntdThemeProvider from "@providers/antdThemeProvider";
 import type { Metadata, Viewport } from "next";
 import { getServerSession } from "next-auth";
 import { getLocale } from "next-intl/server";
@@ -89,11 +90,13 @@ export default async function SignalDeskLayout({ children }: { children: ReactNo
                     <SessionProvider session={session}>
                         <SessionExpiryMonitor />
                         <NoSSRProvider>
-                            <NetworkStatusProvider>
-                                <SignalDeskPathProvider basePath={basePath}>
-                                    {children}
-                                </SignalDeskPathProvider>
-                            </NetworkStatusProvider>
+                            <AntdThemeProvider>
+                                <NetworkStatusProvider>
+                                    <SignalDeskPathProvider basePath={basePath}>
+                                        {children}
+                                    </SignalDeskPathProvider>
+                                </NetworkStatusProvider>
+                            </AntdThemeProvider>
                         </NoSSRProvider>
                     </SessionProvider>
                 </ReduxStoreProvider>

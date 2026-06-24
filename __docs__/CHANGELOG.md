@@ -6,6 +6,119 @@
 
 ---
 
+## June 24, 2026 - MenuList Activation Proof Runtime
+
+### Added
+
+- **Activation proof summary added** - Added a shared starter activation summary that counts two-surface progress and separates MenuList-recorded owner actions from owner-confirmed external placements.
+- **Discovery setup proof UI added** - Existing desktop and mobile discovery/presence screens now show how activation progress is known without adding a new route or duplicate truth source.
+- **Activation verifier added** - Added `npm run verify:menulist-activation-concierge` to check the action-done model, existing-screen route decision, and SignalDesk observer-only boundary.
+
+### Boundaries
+
+- **No new truth source** - No Firestore collection, API route, provider send, SignalDesk write to MenuList truth, external platform verification, Firebase deploy, Vercel deploy, or production build was added.
+
+---
+
+## June 24, 2026 - MenuList Activation Concierge Docs
+
+### Added
+
+- **Activation Concierge doc set added** - Added the MenuList-side docs for turning a current list into a reviewed customer link, guiding two customer-surface activations, and making proof eligible only after confirmed activation and owner permission.
+- **SignalDesk boundary preserved** - Documented that SignalDesk may route and observe outcomes, but MenuList owns upload, extraction, preview, claim, publish, QR/share/presence, and public truth.
+
+### Boundaries
+
+- **Docs only** - No runtime code, public route, provider send, external API, paid campaign, SignalDesk public page, Firebase deploy, Vercel deploy, or production build was added.
+
+---
+
+## June 24, 2026 - MenuList SignalDesk Operating-Layer Review
+
+### Added
+
+- **ChatGPT feedback review added** - Added a SignalDesk feedback review that validates the external response and adopts Daily Growth Mission, Offer/CTA OS, self-serve activation bridge, reply-to-conversion assistant, objection intelligence, experiment cards, source quality learning, and activation concierge as planning backlog.
+- **Owner runbook updated** - Added the Daily Growth Mission and first 7-day operating trial so SignalDesk proves one narrow market pod before wider automation.
+
+### Boundaries
+
+- **Docs only** - No provider send, paid campaign automation, social auto-publish, public SignalDesk pages, new source adapters, Firebase deploy, Vercel deploy, or production build was added.
+
+---
+
+## June 24, 2026 - MenuList SignalDesk Content Distribution Rail
+
+### Added
+
+- **Content Distribution Rail added** - `/signaldesk/content` now supports internal content sources, canonical proof assets, channel draft generation, owner approval, queued calendar items, and compact performance records.
+- **Content pause scope added** - SignalDesk now includes a `content-distribution` kill switch for the content rail.
+- **Docs and verifier added** - Added the `signaldesk-content-distribution-rail` doc set plus `verify:signaldesk` checks for the route, actions, collections, rules, indexes, and docs.
+
+### Boundaries
+
+- **No auto-publish** - The calendar is an internal queue only. No social scheduler adapter, provider send, paid campaign automation, Firebase deploy, Vercel deploy, or production build was run.
+
+---
+
+## June 24, 2026 - CampaignCue Distribution.ai Review
+
+### Changed
+
+- **Source-to-channel pack added** - Added `source_to_channel_pack` to the CampaignCue output picker so one checked business update can become a bounded WhatsApp, Google/local, social/print, manual-task, and result-memory pack through the existing guarded campaign path.
+- **Competitor review recorded** - Added Distribution.ai as a CampaignCue competitor proof point for the "one source to channel-ready outputs" mental model.
+- **Boundary clarified** - CampaignCue keeps the useful pattern as one source-backed local-business cue to one checked campaign pack, not autopilot publishing, generic blog/podcast/video repurposing, scheduling automation, or reach/ROI claims.
+
+### Boundaries
+
+- **No provider or persistence expansion** - No feature flag, route, API, provider adapter, Firestore rule/index, Storage rule, Cloud Function, Firebase deploy, Vercel deploy, production build, pricing change, or public distribution claim was added.
+
+---
+
+## June 24, 2026 - MenuList SignalDesk Planner, Memo, And Trust Partner Runtime
+
+### Added
+
+- **Market pod planner added** - SignalDesk can now write rules-based market pod recommendations with confidence, reason, and next owner actions from existing targets, demand signals, outcomes, source runs, and CTAs.
+- **Weekly strategist memo added** - SignalDesk can now create an internal weekly memo summarizing targets, approvals, replies, demand, outcomes, provider quality, cost posture, risks, and next owner decisions without strong-model spend.
+- **Provider evaluation shell added** - SignalDesk can now evaluate existing provider/vendor evidence records without calling Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, or other paid adapters.
+- **Channel/source state added** - SignalDesk now has server actions and read rules for assisted-channel window state and provider-source retention refresh state.
+- **Trust Partner Rail runtime added** - `/signaldesk/partners` now supports internal partner profiles, 3-5 niche tests, flat-fee budget-checked deals, lean briefs, deliverables, compact metrics, renewal decisions, and partner pause scope.
+
+### Boundaries
+
+- **Paid adapters still skipped** - No Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, paid campaign automation, external sequencer send, automated partner outreach, contract/payment automation, or provider-send enablement was added.
+- **No deploy run** - Firestore rules were updated locally, but no Firebase deploy, Vercel deploy, production build, paid outreach, or external provider run was executed.
+
+---
+
+## June 24, 2026 - MenuList SignalDesk Trust Partner Rail Planning
+
+### Added
+
+- **Trust Partner Rail planning added** - SignalDesk now has internal docs for testing restaurant-owner trust channels through partner/creator profiles, 3-5 niche tests, lean briefs, flat-fee deal tracking, deliverables, disclosure gates, outcome attribution, and renewal decisions.
+- **Runtime gate added** - Added a disabled `ENABLE_MENULIST_SIGNALDESK_TRUST_PARTNER_RAIL` flag so the workflow has a clear product gate before implementation.
+
+### Boundaries
+
+- **Docs and disabled flag only** - No partner outreach, public page, route, Firestore collection, API action, contract, payment, provider send, paid campaign automation, Firebase deploy, Vercel deploy, or production build was run.
+
+---
+
+## June 24, 2026 - CampaignCue Local Creator Test Brief
+
+### Changed
+
+- **Creator test intent added** - CampaignCue output picker now includes `Local creator test brief` as a handoff output for UGC/video/creative packs.
+- **UGC handoff strengthened** - UGC campaign outputs now include creator-fit checks, lightweight creator brief guidance, a 3-test plan, flat-fee boundary text, disclosure/consent notes, and result-tracking guidance.
+- **Research docs aligned** - CampaignCue docs now record the external influencer-playbook review as a bounded creator-fit brief primitive, while MenuList marketing docs keep creator content as a proof/content experiment only.
+
+### Boundaries
+
+- **No marketplace or payment scope** - No creator recruiting, creator CRM, contract flow, payment flow, provider integration, guaranteed reach/revenue claim, or influencer workflow was added.
+- **No infrastructure deploy needed** - No Firestore rules, indexes, Storage rules, Cloud Functions, Firebase deploy, Vercel deploy, production build, outreach, paid ad, or real creator deal was run.
+
+---
+
 ## June 23, 2026 - MenuList SignalDesk Apify Source Broker
 
 ### Added

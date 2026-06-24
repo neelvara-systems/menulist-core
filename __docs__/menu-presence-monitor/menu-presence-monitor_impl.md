@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Implementation Plan
 
-> **Version:** 2.2 (published-menu truth + link attribution)
-> **Last Updated:** June 1, 2026
+> **Version:** 2.3 (activation-proof summary)
+> **Last Updated:** June 24, 2026
 > **Audience:** Developers
 
 ---
@@ -13,6 +13,7 @@ Menu Presence Monitor is a **pure UI component** embedded in the Use MenuList pa
 - **Auto-detected statuses** from existing data (screen token, Menu Kit download, feedback setting)
 - **Manual confirmations** stored as a lightweight field on the store document
 - **Starter activation telemetry** piggybacked on the same store document for unpaid public starter workspaces
+- **Activation-proof summary** from `buildStarterActivationSummary()` so owners and SignalDesk can tell whether an action was MenuList-recorded or owner-confirmed
 
 Zero new collections. Zero new API routes. Client-side DAL only.
 
@@ -40,7 +41,35 @@ starterActivationSignals?: {
 
 `starterActivationSignals` is only written for stores in starter activation state. The signal contract lives in `src/lib/onboarding/starterActivation.ts`.
 
-### 2.2 Auto-Detected Surfaces
+### 2.2 Activation Proof Helper
+
+`src/lib/onboarding/starterActivation.ts` exports `buildStarterActivationSummary()`:
+
+```typescript
+{
+  target: 2,
+  signalCount: number,
+  activated: boolean,
+  systemRecordedCount: number,
+  ownerConfirmedCount: number,
+  recordedSignals: Array<{
+    signal: StarterActivationSignal;
+    label: string;
+    evidenceType: "menulist_recorded" | "owner_confirmed_external";
+    howKnown: string;
+    recordedAt?: string;
+  }>
+}
+```
+
+This is the practical "how do we know it is done" contract:
+
+| Evidence type | Meaning |
+| --- | --- |
+| `menulist_recorded` | MenuList observed the owner copying, sharing, downloading QR/Menu Kit, or using native share. |
+| `owner_confirmed_external` | The owner confirmed the external platform placement in Presence Monitor. MenuList does not claim API-level verification. |
+
+### 2.3 Auto-Detected Surfaces
 
 | Surface         | Source                    | Detection Logic                                                     |
 | --------------- | ------------------------- | ------------------------------------------------------------------- |
@@ -48,7 +77,7 @@ starterActivationSignals?: {
 | Digital Screens | `data.hasScreen`          | Screen token exists in campaigns collection                         |
 | Feedback QR     | `data.hasFeedbackEnabled` | Store `feedbackEnabled !== false`                                   |
 
-### 2.3 Surface Status Type
+### 2.4 Surface Status Type
 
 ```typescript
 // src/components/templates/main-app/useMenuList/presenceTypes.ts
@@ -80,7 +109,7 @@ src/components/mobile/components/
 
 src/types/platform/store.ts      # Modified — add menuPresence field
 src/database/stores/index.ts     # Modified — add updateMenuPresence() + recordStarterActivationSignal()
-src/lib/onboarding/starterActivation.ts # Modified — shared starter signal contract and 2-action target
+src/lib/onboarding/starterActivation.ts # Modified — shared starter signal contract, 2-action target, and evidence summary
 src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 ```
 
@@ -135,7 +164,8 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
    - Renders compact Card with rows: icon + label + status + action button
    - "I added it" button → calls `updateMenuPresence(surface, true)`
    - "✕" button on confirmed rows → calls `updateMenuPresence(surface, false)`
-   - Progress indicator: "X of 6 surfaces active"
+   - Progress indicator: "X ready/confirmed"
+   - Activation proof panel: "X of 2 done" plus MenuList-recorded vs owner-confirmed counts
 3. Embed in `useMenuList/index.tsx` between Quick Actions and Share section
 4. Gate behind `FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR`
 5. Copy actions append `entry_source=copy_link` through `withAnalyticsSource()` before writing to clipboard.
@@ -145,11 +175,13 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 1. Create mobile `PresenceMonitor.tsx` using antd-mobile components
 2. Same data/logic as desktop, different UI (List component, SwipeAction for remove)
 3. Embed in `MobileShareScreen.tsx`
+4. Show the same activation-proof summary using mobile translation keys
 
 ### Phase 4: Type Check + Polish (~15 min)
 
 1. Run `npx tsc --noEmit` — zero errors
 2. Verify feature flag gates work (OFF = component not rendered)
+3. Run `npm run verify:menulist-activation-concierge`
 
 ---
 
@@ -171,6 +203,7 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 5. Click ✕ on Google Business → status reverts to ⚠
 6. Refresh page → confirmation persists
 7. Set flag to `false` → card disappears
+8. Confirm Activation proof distinguishes MenuList-recorded actions from owner-confirmed external placements
 
 ---
 

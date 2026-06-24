@@ -26,6 +26,9 @@
     "verify:website-resource-locales": "node scripts/verification/verify-website-resource-locales.js",
     "verify:env-targets": "node scripts/verification/verify-agent-readiness.js --env-targets-only",
     "verify:campaigncue": "node scripts/verification/verify-campaigncue-runtime.js && node scripts/verification/verify-campaigncue-pack-templates.js",
+    "verify:signaldesk": "node scripts/verification/verify-signaldesk-runtime.js",
+    "test:signaldesk:e2e:local": "firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json \"node scripts/verification/e2e-signaldesk-local.js\"",
+    "test:signaldesk:rules": "firebase emulators:exec --only firestore,storage --project demo-signaldesk --config firebase-signaldesk.json \"node scripts/verification/verify-signaldesk-security-rules.js\"",
     "verify:campaigncue-pack-templates": "node scripts/verification/verify-campaigncue-pack-templates.js",
     "verify:printable-asset-templates": "node scripts/verification/verify-printable-asset-templates.js",
     "verify:creative-editor-smoke": "node scripts/verification/verify-creative-editor-smoke.js",
@@ -37,6 +40,7 @@
     "verify:menu-export": "node scripts/verification/verify-menu-export.js",
     "verify:menu-extraction-pipeline": "node scripts/verification/verify-menu-extraction-pipeline.js",
     "verify:menu-extraction-pipeline:dry-run": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/verification/verify-menu-extraction-pipeline-dry-run.ts",
+    "verify:menulist-activation-concierge": "node scripts/verification/verify-menulist-activation-concierge.js",
     "verify:ai-accounting": "node scripts/verification/verify-ai-accounting-hardening.js",
     "verify:menu-card-export": "node scripts/verification/verify-menu-card-export.js",
     "verify:public-business-truth": "node scripts/verification/verify-public-business-truth.js",
@@ -157,6 +161,7 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@next/bundle-analyzer": "^16.2.1",
     "@types/fabric": "5.3.11",
     "@types/node": "^20",

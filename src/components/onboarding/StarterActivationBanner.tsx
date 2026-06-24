@@ -6,8 +6,7 @@ import { Alert, Button, Space, Typography } from 'antd';
 import { useRouter } from 'next/navigation';
 import { useContext, useMemo } from 'react';
 import {
-    STARTER_DISTRIBUTION_ACTIVATION_TARGET,
-    getStarterActivationSignalCount,
+    buildStarterActivationSummary,
     getStarterActivationRemainingDays,
     hasStarterWorkspaceAccess,
 } from '@lib/onboarding/starterActivation';
@@ -23,9 +22,16 @@ export default function StarterActivationBanner() {
         () => getStarterActivationRemainingDays(storeDetails),
         [storeDetails?.activationDeadline],
     );
-    const activationSignalCount = useMemo(
-        () => getStarterActivationSignalCount(storeDetails),
-        [storeDetails?.menuPresence, storeDetails?.starterActivationSignals?.lastSignalAt],
+    const activationSummary = useMemo(
+        () => buildStarterActivationSummary(storeDetails),
+        [
+            storeDetails?.activePlanType,
+            storeDetails?.activationDeadline,
+            storeDetails?.menuPresence,
+            storeDetails?.onboardingSource,
+            storeDetails?.starterActivationSignals?.lastSignalAt,
+            storeDetails?.starterActivationStatus,
+        ],
     );
 
     if (!hasStarterAccess) return null;
@@ -35,9 +41,12 @@ export default function StarterActivationBanner() {
         : remainingDays <= 1
             ? 'Starter setup ends today.'
             : `${remainingDays} days left in starter setup.`;
-    const activationCopy = activationSignalCount >= STARTER_DISTRIBUTION_ACTIVATION_TARGET
+    const activationCopy = activationSummary.activated
         ? 'Sharing steps are set.'
-        : `${Math.min(activationSignalCount, STARTER_DISTRIBUTION_ACTIVATION_TARGET)} of ${STARTER_DISTRIBUTION_ACTIVATION_TARGET} sharing steps recorded.`;
+        : `${Math.min(activationSummary.signalCount, activationSummary.target)} of ${activationSummary.target} sharing steps recorded.`;
+    const evidenceCopy = activationSummary.signalCount > 0
+        ? `How we know: MenuList recorded ${activationSummary.systemRecordedCount}, owner confirmed ${activationSummary.ownerConfirmedCount}.`
+        : 'Copy, share, download QR, or mark an external placement to complete setup.';
 
     return (
         <Alert
@@ -52,6 +61,7 @@ export default function StarterActivationBanner() {
                     <Text>Your public menu and QR are active.</Text>
                     <Text type="secondary">{remainingCopy}</Text>
                     <Text type="secondary">{activationCopy}</Text>
+                    <Text type="secondary">{evidenceCopy}</Text>
                 </Space>
             )}
             message="Starter setup active"

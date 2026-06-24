@@ -52,11 +52,15 @@ The default owner load reads one category doc. Shared festival/event templates d
 | Firestore and Storage rules | Implemented in `firestore-campaigncue.rules` and `storage-campaigncue.rules`; this output-picker pass does not add a Firebase rules diff. |
 | Category resolver and catalog DAL | Implemented under `src/lib/campaigncue/pack-templates/`. |
 | Owner picker | Implemented on the Daily Campaign Desk with CampaignCue output intents and local filtering. |
+| Source-to-channel output intent | Implemented as `source_to_channel_pack`; it filters locally by existing output types/channels/tags and creates a normal guarded campaign pack without adding content repurposing, autopilot distribution, provider publishing, or new persistence paths. |
+| Local creator output intent | Implemented as `local_creator_test_brief`; it filters locally by existing output types/channels/tags and creates a guarded campaign pack without adding creator marketplace, roster, contract, payment, provider, or new persistence paths. |
 | Seed/admin tooling | Implemented as a dry-run-first seed script with curated starter seeds. |
 | Verifier | Implemented as `scripts/verification/verify-campaigncue-pack-templates.js`. |
 
 ## Review Validation Notes
 
-- `npm run verify:campaigncue` passed in the review pass.
-- `npx tsc --noEmit --incremental false` passed in the review pass.
+- `npm run verify:campaigncue` passed in the June 24, 2026 creator-brief cross-check; runtime verifier reported 1544 checks and pack template registry verifier passed.
+- `npx tsc --noEmit --incremental false --pretty false` passed in the June 24, 2026 creator-brief cross-check.
+- `npm run lint` passed with no ESLint warnings or errors in the June 24, 2026 creator-brief cross-check.
+- `git diff --check` passed in the June 24, 2026 creator-brief cross-check.
 - Browser route smoke can load `/campaigncue/app`; authenticated visual picker QA remains blocked until the local `campaigncue-qa` Firebase permission issue is resolved.

@@ -12,7 +12,7 @@
 | In progress | Work has started |
 | Blocked | Needs founder input, access, policy review, or architecture decision |
 | Done | Complete for current planning stage |
-| Deferred | Intentionally later |
+| Deferred | Intentionally owner-gated or skipped in this scope |
 | Rejected | Decided not to do |
 
 ## Documentation Actions
@@ -36,6 +36,13 @@
 | SD-D015 | Add solo-founder investment plan | Codex | Done | Web-researched plan for paid AI/provider strategy, Apollo/Hunter/verification/search/crawl/sender providers, model routing, and budget tiers |
 | SD-D016 | Add market-practice cross-check | Codex | Done | Cross-checked Clay/Apollo/waterfall/no-code/sequencer/deliverability market patterns and updated the plan accordingly |
 | SD-D017 | Run from-scratch docs/code parity cross-check | Codex | Done | Rebuilt docs/code inventory, fixed stale feature-map status, removed duplicate action ID, and logged fresh verification evidence |
+| SD-D018 | Add Trust Partner Rail doc set from X article review | Codex | Done | Created `signaldesk-trust-partner-rail` internal docs for trust-channel partners, creator tests, lean briefs, flat-fee deals, disclosure gates, and renewal decisions |
+| SD-D019 | Add Content Distribution Rail doc set from Distribution.ai review | Codex | Done | Created `signaldesk-content-distribution-rail` internal docs for owned proof assets, channel drafts, approval, calendar queue, and performance capture without auto-publish |
+| SD-D020 | Add ChatGPT share brief | Codex | Done | Created one paste-ready SignalDesk context document for external AI review with internal-only boundaries, current runtime truth, skipped items, and recommended review prompt |
+| SD-D021 | Review ChatGPT feedback and adopt operating-layer backlog | Codex | Done | Created `menulist-signaldesk_chatgpt-feedback-review-2026-06-24.md` and captured Daily Growth Mission, Offer/CTA OS, self-serve bridge, reply assistant, objection intelligence, experiment cards, source quality learning, and activation concierge as planning backlog |
+| SD-D022 | Add Operating Layer doc set | Codex | Done | Created `signaldesk-operating-layer/` docs for Daily Growth Mission, experiment cards, offer CTAs, reply playbooks, source quality snapshots, compliance, Firebase, mobile, and tests |
+| SD-D023 | Add growth playbook review and first-pod defaults | Codex | Done | Created `menulist-signaldesk_growth-playbook-review-2026-06-24.md`; adopted the activation-proof loop, recommended a Bengaluru restaurant pod hypothesis, kept unsafe automations rejected, and kept Activation Concierge as MenuList-side work |
+| SD-D024 | Add founder distribution deep research | Codex | Done | Created `menulist-signaldesk_founder-distribution-research-2026-06-24.md`; cross-checked founder/community workflows, fast-growth startup cases, restaurant/SMB signals, and platform policies; confirmed Activation Concierge, proof assets, demand listening, and objection learning as the next automation priorities |
 
 ## Implementation Actions
 
@@ -61,17 +68,17 @@
 | SD-I018 | Deploy SignalDesk Firebase infrastructure | Founder/Codex | Deferred | Explicitly skipped by founder in this session |
 | SD-I019 | Reframe dashboard and docs around owner-control operating model | Codex | Done | Docs and first-screen UI now emphasize observe, monitor, approve, pause, and redirect instead of manual CRM operation |
 | SD-I020 | Add sender-health readiness object before provider send can be enabled | Codex | Done | `signaldeskSenderDomains` now tracks domain/auth/ramp/bounce/complaint/unsubscribe/brand risk; email handoff/send is blocked when sender domain is not ready |
-| SD-I021 | Add channel-window state to assisted channel handoffs | Codex | Not started | WhatsApp/Instagram/Messenger handoffs need inbound/opt-in/ad-click/template/window state before assisted send |
-| SD-I022 | Add provider-source retention and Place ID refresh state | Codex | Not started | Places-like providers must store provider IDs/source policy, avoid raw payload storage, keep non-exempt content short-lived, and refresh Google Place IDs after 12 months |
+| SD-I021 | Add channel-window state to assisted channel handoffs | Codex | Done | WhatsApp/Instagram/Messenger window state records are API-writable, workspace-readable, timeline/audit tracked, and channel health aware |
+| SD-I022 | Add provider-source retention and Place ID refresh state | Codex | Done | Provider-source retention records are typed, collection-backed, read-only to clients, and refreshable through a protected server action without raw payload storage |
 | SD-I023 | Add owner approval-packet summary model | Codex | Done | Drafts now create approval packets; owners can regenerate packets from approvals or targets |
 | SD-I024 | Add AI quality monitoring summary | Codex | Done | Model route runs now write `signaldeskModelEvals` with confidence/pass/rejected-fact summary state |
 | SD-I025 | Add provider account registry and budget governor | Codex | Done | Provider accounts, provider budget policies, per-run/daily/monthly checks, and spend increments are implemented |
 | SD-I026 | Add AI model router | Codex | Done | AI assist resolves `signaldeskModelRoutes`, blocks inactive/non-Gemini routes, checks AI provider budget, and writes model timelines/evals |
 | SD-I027 | Add vendor run ledger and normalized enrichment result model | Codex | Done | Source-provider and waterfall paths write `signaldeskVendorRuns` and `signaldeskEnrichmentResults` summaries without durable raw payloads |
 | SD-I028 | Add enrichment broker adapters | Codex | Not started | Apollo, Hunter, ZeroBounce, Firecrawl, Tavily/Exa, and Places adapters must run only through source policy, budget policy, and audit |
-| SD-I029 | Add market pod planner | Codex | In progress | Default market pod summary is seeded and visible; planner/recommender logic is not implemented |
-| SD-I030 | Add weekly strategist memo | Codex | Not started | Strong-model weekly review of outcomes, cost, complaints, provider quality, and next approval decisions |
-| SD-I031 | Add provider evaluation harness | Codex | Not started | Compare providers by verified contact rate, evidence quality, reply/outcome quality, suppression risk, cost, and founder edit rate |
+| SD-I029 | Add market pod planner | Codex | Done | Rules-based market pod recommender writes confidence, recommendation, reason, owner-safe next actions, audit, cost, and run timeline without paid adapters |
+| SD-I030 | Add weekly strategist memo | Codex | Done | Weekly memo action summarizes targets, approvals, replies, demand, outcomes, source runs, provider quality, spend, risks, and next owner decisions without strong-model spend |
+| SD-I031 | Add provider evaluation harness | Codex | Done | Provider evaluation records compare existing vendor/enrichment evidence by blocked rate, verified-contact rate, useful results, cost, risk, and recommendation; no live adapter call |
 | SD-I032 | Add enrichment waterfall policies | Codex | Done | Waterfalls define provider order, requested field, max credits, stop condition, verification, source policy, retention, and active/hold state |
 | SD-I033 | Add audience/signal segment model | Codex | Done | Audience segments are typed, seeded, writable by API, readable in attribution/control room, and visible in the workspace |
 | SD-I034 | Add Apify Source Broker | Codex | Done | Apify connector readiness, env-controlled Actor run, provider/budget approval, normalized target imports, webhook status event logging, and no-raw-payload storage implemented |
@@ -83,6 +90,14 @@
 | SD-I040 | Wire investment-control actions into workspace UI | Codex | Done | Policies, Sources, AI, Approvals, Channels, Attribution, and Control Room now expose the new control records and actions |
 | SD-I041 | Add prior-contact/prior-outcome spend guard | Codex | Done | Draft, enrichment, export, handoff, and sequencer flows check suppression, contacted/replied/converted state, outcomes, and non-new conversations |
 | SD-I042 | Align settings workspace API section | Codex | Done | `settings` is now accepted by the protected workspace API section allowlist, matching the route, UI nav, and typed section union |
+| SD-I043 | Add Trust Partner Rail runtime | Codex | Done | Partner profiles, niche tests, flat-fee budget-checked deals, lean briefs, deliverables, compact metrics, renewal decisions, partner pause scope, UI, rules, indexes, audit, cost, timeline, and verifier coverage implemented; real partner spend still needs active budget approval |
+| SD-I044 | Add Content Distribution Rail runtime | Codex | Done | Content route, source registry, content assets, platform draft generation, approval/reject/schedule flow, calendar queue, performance capture, content pause scope, rules, indexes, audit, cost, timeline, docs, and verifier coverage implemented; no auto-publish or social adapter added |
+| SD-I045 | Add solo-founder Operating Layer runtime | Codex | Done | `/signaldesk/mission`, Daily Growth Mission records, experiment cards, offer CTAs, reply playbooks, source quality snapshots, seed defaults, rules/indexes, action API, workspace UI, cost/audit/timeline writes, and verifier coverage implemented; no provider send, paid campaign, public SignalDesk page, auto-publish, or MenuList truth write added |
+| SD-I046 | Add source-policy expiry enforcement | Codex | Done | Source policies now carry `expiresAt`/retention expiry and stale policies are blocked across import, provider run, enrichment, evidence, draft, approval, handoff/export, and source-quality paths |
+| SD-I047 | Add mobile read-only runtime gate | Codex | Done | Mobile requests are marked with `x-signaldesk-client-mode`, action mutations are blocked server-side, and mobile kill-switch use is pause-only |
+| SD-I048 | Add local workflow and security-rules smoke harnesses | Codex | Done | Added emulator workflow smoke and Firestore/Storage rules verifier; local checks cover expired source policy, first-build workflow state, public denial, storage denial, and no MenuList truth writes |
+| SD-I049 | Harden email export sender readiness | Codex | Done | Export-only email records now require a ready sender domain in addition to approval, source policy, evidence, suppression, and contactability checks |
+| SD-I050 | Run first activation-proof operating trial | Founder + Codex | Blocked | Use one founder-approved pod, source policy, CTA, proof asset, sender identity, and manual/export path; no provider send, paid campaign, or public SignalDesk surface |
 
 ## Feature Doc Backlog
 
@@ -100,6 +115,16 @@
 | SD-F010 | `signaldesk-outcome-bridge` doc set | Done | Created initial internal doc set for MenuList route tokens, outcomes, attribution, and boundary rules |
 | SD-F011 | `signaldesk-demand-signals` doc set | Done | Created initial internal doc set for QR/link/share/claim/referral demand signal capture |
 | SD-F012 | `signaldesk-control-room` doc set | Done | Created initial internal doc set for channel health, cost, incidents, summaries, and kill switches |
+| SD-F013 | `signaldesk-trust-partner-rail` doc set | Done | Created internal doc set for B2B trust-channel partner tests, lean briefs, deliverables, disclosure gates, and renewal decisions |
+| SD-F014 | `signaldesk-content-distribution-rail` doc set | Done | Created internal doc set for source assets, canonical messages, approval-gated channel drafts, calendar queue, performance capture, compliance, Firebase, mobile, and tests |
+| SD-F015 | `signaldesk-operating-layer` doc set | Done | Consolidated doc set created for Daily Growth Mission, experiment cards, offer CTA OS, reply playbooks, source quality learning, Firebase, compliance, mobile, and tests |
+| SD-F016 | `signaldesk-offer-cta-os` doc coverage | Done | Covered in consolidated Operating Layer docs and runtime through `signaldeskOfferCtas`; no public claim library exposed |
+| SD-F017 | `signaldesk-self-serve-proof-funnel-bridge` doc set | Deferred | MenuList-side claim/upload/preview/approval/publish route remains separate work; SignalDesk only stores offer CTA and outcome-watcher context |
+| SD-F018 | `signaldesk-reply-to-conversion-assistant` doc coverage | Done | Covered in consolidated Operating Layer docs and runtime through approved reply playbooks; replies remain approval/manual-route controlled |
+| SD-F019 | `signaldesk-objection-pricing-intelligence` doc set | Deferred | Reply playbooks exist; aggregate objection frequency and pricing analytics remain future learning work after real replies exist |
+| SD-F020 | `signaldesk-experiment-cards` doc coverage | Done | Covered in consolidated Operating Layer docs and runtime through `signaldeskExperimentCards` and review decisions |
+| SD-F021 | `signaldesk-source-quality-learning` doc coverage | Done | Covered in consolidated Operating Layer docs and runtime through `signaldeskSourceQualitySnapshots` |
+| SD-F022 | `menulist-activation-concierge` doc/runtime foundation | Done | Created separate MenuList-side docs and existing-surface runtime foundation in `../menulist-activation-concierge/`; MenuList owns activation truth and SignalDesk observes outcomes only |
 
 ## Founder Decisions Needed
 
@@ -107,7 +132,7 @@
 | --- | --- | --- | --- |
 | SD-Q001 | Runtime repo location | Done | Implement as product-isolated module inside this monorepo first; keep extraction-ready boundaries |
 | SD-Q002 | Firebase project IDs | Blocked | `menulist-signaldesk-qa` and `menulist-signaldesk` |
-| SD-Q003 | First market pod | Blocked | One India city + one vertical + one contact path |
+| SD-Q003 | First market pod | Blocked | Recommended default pending founder approval: Bengaluru, Indiranagar + Koramangala, cafes/dessert shops/QSR/cloud-kitchen-facing storefronts, founder email/manual export first |
 | SD-Q004 | First sender identity | Blocked | Founder identity, low-volume email/export first |
 | SD-Q005 | Physical address policy | Blocked | Needed before commercial email |
 | SD-Q006 | First approved source list | Blocked | Manual curated list before source providers |
@@ -117,7 +142,9 @@
 | SD-Q010 | First strong-model budget | Blocked | Choose weekly strategist/adjudication cap before GPT-5.4/5.5 or Claude Opus style calls are enabled |
 | SD-Q011 | Sequencer rail evaluation | Blocked | Decide whether Smartlead, Instantly, lemlist, or no sequencer should be evaluated after sender health is ready |
 | SD-Q012 | Sender-domain risk policy | Blocked | Decide whether cold outreach uses primary domain, subdomain, separate domain, or no automated sender; no domain-rotation default |
-| SD-Q013 | First self-service proof CTA | Blocked | Choose first default CTA: preview, route draft, menu health snapshot, QR/public menu, claim/start, or two-surface activation proof |
+| SD-Q013 | First self-service proof CTA | Blocked | Recommended default pending founder approval: one current official menu link for QR, WhatsApp, Google/Profile, Instagram, and repeat customers, reviewed by the owner before publishing |
+| SD-Q014 | First trust partner niche and budget | Blocked | Recommended default pending founder approval: menu photographers and restaurant consultants first; founder must still set flat-fee cap, disclosure wording, and tracking CTA |
+| SD-Q015 | First content proof asset and channel mix | Blocked | Recommended default pending founder approval: before/after current-menu-link proof; draft for founder LinkedIn/X, local operator group/manual post, and partner proof block; no auto-publish |
 
 ## Boundaries
 
@@ -129,3 +156,4 @@
 - No AI model provider beyond the existing gated Gemini assist path was implemented; model routes for stronger providers remain held until adapter/account approval.
 - No public page created.
 - No MenuList owner/customer surface changed.
+- No content auto-publish adapter added.

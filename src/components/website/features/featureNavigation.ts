@@ -1,9 +1,11 @@
 import type { IconType } from 'react-icons';
 import {
   LuActivity,
+  LuBarChart3,
   LuBot,
   LuBuilding2,
   LuCamera,
+  LuClipboardCheck,
   LuFileText,
   LuMessageSquare,
   LuPrinter,
@@ -28,11 +30,13 @@ export const websiteFeatureNavLinks: WebsiteFeatureNavLink[] = [
   { href: '/ai-menu-manager', key: 'featureAiMenuManager', icon: LuBot },
   { href: '/features/menu-import', key: 'featureMenuImport', icon: LuCamera },
   { href: '/features/menu-content-prep', key: 'featureMenuContentPrep', icon: LuFileText },
+  { href: '/features/menu-quality-validation', key: 'featureMenuQualityValidation', icon: LuClipboardCheck },
   { href: '/features/featured-choices', key: 'featureFeaturedChoices', icon: LuSparkles },
   { href: '/features/official-business-page', key: 'featureOfficialBusinessPage', icon: LuBuilding2 },
   { href: '/features/qr-menu-links', key: 'featureQrMenuLinks', icon: LuQrCode },
   { href: '/features/print-ready-kit', key: 'featurePrintReadyKit', icon: LuPrinter },
   { href: '/features/owner-phone-dashboard', key: 'featureOwnerPhoneDashboard', icon: LuSmartphone },
+  { href: '/features/analytics', key: 'featureAnalytics', icon: LuBarChart3 },
   { href: '/features/business-health', key: 'featureBusinessHealth', icon: LuActivity },
   { href: '/features/customer-feedback-loop', key: 'featureCustomerFeedbackLoop', icon: LuMessageSquare },
   { href: '/features/public-discovery', key: 'featurePublicDiscovery', icon: LuSearch },
@@ -55,6 +59,7 @@ export const websiteFeatureNavGroups: WebsiteFeatureNavGroup[] = [
     links: [
       getFeatureLink('/features/menu-import'),
       getFeatureLink('/features/menu-content-prep'),
+      getFeatureLink('/features/menu-quality-validation'),
       getFeatureLink('/features/featured-choices'),
     ],
   },
@@ -71,6 +76,7 @@ export const websiteFeatureNavGroups: WebsiteFeatureNavGroup[] = [
     links: [
       getFeatureLink('/ai-menu-manager'),
       getFeatureLink('/features/owner-phone-dashboard'),
+      getFeatureLink('/features/analytics'),
       getFeatureLink('/features/business-health'),
       getFeatureLink('/features/customer-feedback-loop'),
       getFeatureLink('/features/public-discovery'),

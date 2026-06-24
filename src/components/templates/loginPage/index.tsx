@@ -1,5 +1,4 @@
 'use client'
-import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { FEATURE_FLAGS } from '@config/features';
 import { EMPTY_ERROR } from "@constant/common";
 import { PRODUCT_IDS } from '@constant/product';
@@ -16,12 +15,11 @@ import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
 import { Button, Divider, Flex, Form, Input, Space, theme, Typography } from "antd";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import Image from 'next/image';
 import { getSession, signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { FcGoogle } from "react-icons/fc";
-import { LuMoon, LuSun } from "react-icons/lu";
+import { LuLock, LuMoon, LuSun, LuUser } from "react-icons/lu";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
 import styles from './loginPage.module.scss';
 
@@ -76,49 +74,7 @@ const LOGIN_ERRORS = {
   "UNREGISTRED": "email-not-registred",
 }
 const { Text } = Typography;
-
-const publicSurfaceSlides = [
-  {
-    alt: 'MenuList public surfaces overview',
-    eyebrow: 'Public surfaces',
-    height: 1000,
-    src: '/images/website/menulist-public-surfaces-matrix.webp',
-    title: 'One menu source, many outputs',
-    width: 1600,
-  },
-  {
-    alt: 'MenuList public menu on a mobile screen',
-    eyebrow: 'Customer menu',
-    height: 1400,
-    src: '/images/website/menulist-public-menu-mobile.webp',
-    title: 'Fast menu browsing on phones',
-    width: 900,
-  },
-  {
-    alt: 'MenuList official business page in a browser',
-    eyebrow: 'Official page',
-    height: 900,
-    src: '/images/website/menulist-obp-browser.webp',
-    title: 'Business details stay consistent',
-    width: 1400,
-  },
-  {
-    alt: 'MenuList QR and share kit',
-    eyebrow: 'QR and sharing',
-    height: 690,
-    src: '/images/website/features/qr-menu-links/share-kit.webp',
-    title: 'Links and QR assets ready to use',
-    width: 1045,
-  },
-  {
-    alt: 'MenuList customer feedback form',
-    eyebrow: 'Feedback',
-    height: 710,
-    src: '/images/website/features/customer-feedback-loop/public-feedback-form.webp',
-    title: 'Customer input returns to the owner',
-    width: 745,
-  },
-];
+const JOURNEY_MOTION_MEDIA = '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)';
 
 function LoginPage() {
   const router = useRouter();
@@ -129,6 +85,10 @@ function LoginPage() {
   const { token } = theme.useToken();
   const isDarkMode = useAppSelector(getDarkModeState)
   const [loginForm] = Form.useForm();
+  const loginPageRef = useRef<HTMLDivElement | null>(null);
+  const journeyArtRef = useRef<HTMLSpanElement | null>(null);
+  const journeyMotionEnabledRef = useRef(false);
+  const journeyMotionFrame = useRef<number | null>(null);
   const loginIdentifier = Form.useWatch('email', loginForm) || '';
   const [credentialMode, setCredentialMode] = useState<CredentialMode>('default');
   const [otpPanelKey, setOtpPanelKey] = useState(0);
@@ -182,6 +142,64 @@ function LoginPage() {
     ...payload,
     ...(shouldRequestAnswerlatticeClaims() ? { productId: PRODUCT_IDS.ANSWERLATTICE } : {}),
   });
+
+  const resetJourneyMotion = useCallback(() => {
+    if (typeof window !== 'undefined' && journeyMotionFrame.current !== null) {
+      window.cancelAnimationFrame(journeyMotionFrame.current);
+      journeyMotionFrame.current = null;
+    }
+
+    const journeyArt = journeyArtRef.current;
+    if (!journeyArt) return;
+
+    journeyArt.style.setProperty('--auth-journey-shift-x', '0px');
+    journeyArt.style.setProperty('--auth-journey-shift-y', '0px');
+    journeyArt.style.setProperty('--auth-journey-tilt-x', '0deg');
+    journeyArt.style.setProperty('--auth-journey-tilt-y', '0deg');
+    journeyArt.style.setProperty('--auth-journey-rotate', '0deg');
+  }, []);
+
+  const handleJourneyPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'mouse' || typeof window === 'undefined') return;
+    if (!journeyMotionEnabledRef.current) return;
+
+    const x = ((event.clientX / window.innerWidth) - 0.5) * 2;
+    const y = ((event.clientY / window.innerHeight) - 0.5) * 2;
+
+    if (journeyMotionFrame.current !== null) {
+      window.cancelAnimationFrame(journeyMotionFrame.current);
+    }
+
+    journeyMotionFrame.current = window.requestAnimationFrame(() => {
+      const journeyArt = journeyArtRef.current;
+      if (!journeyArt) return;
+
+      journeyArt.style.setProperty('--auth-journey-shift-x', `${(x * 18).toFixed(2)}px`);
+      journeyArt.style.setProperty('--auth-journey-shift-y', `${(y * 10).toFixed(2)}px`);
+      journeyArt.style.setProperty('--auth-journey-tilt-x', `${(-y * 1.2).toFixed(2)}deg`);
+      journeyArt.style.setProperty('--auth-journey-tilt-y', `${(x * 1.8).toFixed(2)}deg`);
+      journeyArt.style.setProperty('--auth-journey-rotate', `${(x * 0.35).toFixed(2)}deg`);
+      journeyMotionFrame.current = null;
+    });
+  }, [resetJourneyMotion]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return resetJourneyMotion;
+
+    const media = window.matchMedia(JOURNEY_MOTION_MEDIA);
+    const syncJourneyMotionPreference = () => {
+      journeyMotionEnabledRef.current = media.matches;
+      if (!media.matches) resetJourneyMotion();
+    };
+
+    syncJourneyMotionPreference();
+    media.addEventListener('change', syncJourneyMotionPreference);
+
+    return () => {
+      media.removeEventListener('change', syncJourneyMotionPreference);
+      resetJourneyMotion();
+    };
+  }, [resetJourneyMotion]);
 
   const getSafePostLoginRedirect = () => {
     const target = getPostLoginRedirect();
@@ -525,11 +543,13 @@ function LoginPage() {
     subHeadingColor: string,
   ) => (
     <>
-      <BrandWordmark
-        showText={false}
-        iconHeight={44}
-        className={styles.cardLogoMark}
-      />
+      <span className={styles.cardLogoShell}>
+        <BrandWordmark
+          showText={false}
+          iconHeight={44}
+          className={styles.cardLogoMark}
+        />
+      </span>
       <h3 className={`${styles.heading}`} style={{ color: statusColor }}>{statusText}</h3>
       <h1 onClick={() => router.push(HOME_ROUTING)} className={`heading ${styles.heading} ${styles.title}`}>
         <BrandWordmark
@@ -541,39 +561,51 @@ function LoginPage() {
     </>
   );
 
-  return <div className={`${styles.loginPageWrap} ${isDarkMode ? styles.loginPageDark : styles.loginPageLight}`}>
-    <div className={styles.staticBackdrop} aria-hidden="true" />
-    <Space className={styles.headerWrap} align="center">
-      <Button
-        aria-label={isDarkMode ? 'Use light theme' : 'Use dark theme'}
-        icon={isDarkMode ? <LuSun /> : <LuMoon />}
-        size="large"
-        title={isDarkMode ? 'Use light theme' : 'Use dark theme'}
-        onClick={() => {
-          console.log("Toggling dark mode from", isDarkMode, "to", !isDarkMode);
-          dispatch(toggleDarkMode(!isDarkMode));
-        }}
-      />
-    </Space>
-    <div className={styles.bodyWrap} style={{
-      // background: "url(assets/images/loginPage/login_screen_bg.png)"
-    }}>
+  return <div
+    ref={loginPageRef}
+    className={`${styles.loginPageWrap} ${isDarkMode ? styles.loginPageDark : styles.loginPageLight}`}
+    onPointerCancel={resetJourneyMotion}
+    onPointerLeave={resetJourneyMotion}
+    onPointerMove={handleJourneyPointerMove}
+  >
+    <div className={styles.staticBackdrop} aria-hidden="true">
+      <span ref={journeyArtRef} className={styles.journeyArt} />
+    </div>
+    <header className={styles.topBar}>
+      <Space className={styles.headerWrap} align="center">
+        <Button
+          aria-label={isDarkMode ? 'Use light theme' : 'Use dark theme'}
+          icon={isDarkMode ? <LuSun /> : <LuMoon />}
+          size="large"
+          title={isDarkMode ? 'Use light theme' : 'Use dark theme'}
+          onClick={() => {
+            console.log("Toggling dark mode from", isDarkMode, "to", !isDarkMode);
+            dispatch(toggleDarkMode(!isDarkMode));
+          }}
+        />
+      </Space>
+    </header>
+    <div className={styles.bodyWrap}>
       <div className={styles.bodyContent}>
+        <section className={styles.heroPanel}>
+          <button
+            aria-label="Go to MenuList home"
+            className={styles.heroBrand}
+            type="button"
+            onClick={() => router.push(HOME_ROUTING)}
+          >
+            <BrandWordmark
+              className={styles.heroBrandMark}
+              iconHeight={118}
+              logoClassName={styles.heroBrandLogo}
+              textClassName={styles.heroBrandText}
+            />
+          </button>
+          <p>Take your business beyond the four walls.</p>
+        </section>
         <div className={styles.rightContent}>
           <div className={`${styles.formWrap} ${isDarkMode ? styles.formWrapDark : styles.formWrapLight}`}
-            style={{
-              // background: token.colorBgBase,
-              // backgroundImage: `radial-gradient(circle at 10px 10px, ${token.colorTextDisabled} 1px, transparent 0)`,
-              borderColor: isDarkMode ? 'rgba(92, 230, 218, 0.2)' : 'rgba(60, 126, 150, 0.22)',
-              background: isDarkMode
-                ? 'linear-gradient(180deg, rgba(11, 17, 26, 0.96) 0%, rgba(5, 9, 16, 0.94) 100%)'
-                : 'linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(247, 252, 255, 0.9) 100%)',
-              boxShadow: isDarkMode
-                ? 'inset 0 1px 0 rgba(172, 246, 239, 0.12), inset 0 24px 60px rgba(40, 190, 180, 0.04), 0 24px 70px rgba(0, 0, 0, 0.5)'
-                : 'inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 24px 60px rgba(80, 170, 200, 0.05), 0 24px 70px rgba(21, 79, 110, 0.18)',
-              backdropFilter: 'blur(18px) saturate(1.08)',
-              WebkitBackdropFilter: 'blur(18px) saturate(1.08)',
-            }}>
+          >
             {claimInfo && !claimSetupSuccess ? (
               renderBrandIntro(
                 `Welcome, ${claimInfo.businessName}!`,
@@ -589,12 +621,14 @@ function LoginPage() {
                 token.colorTextHeading,
               )
             ) : (
-              renderBrandIntro(
-                'Welcome to',
-                token.colorTextLabel,
-                'Take your business beyond the four walls',
-                token.colorTextHeading,
-              )
+              <div className={styles.normalBrandIntro}>
+                {renderBrandIntro(
+                  'Welcome to',
+                  token.colorTextLabel,
+                  'Take your business beyond the four walls',
+                  token.colorTextHeading,
+                )}
+              </div>
             )}
             {/* ━━━ CLAIM FLOW: Email/Password Setup Form ━━━ */}
             {claimInfo && showClaimEmailSetup && !claimSetupSuccess ? (
@@ -624,14 +658,14 @@ function LoginPage() {
                     ]}
                     validateTrigger={['onBlur', 'onChange']}
                   >
-                    <Input className={styles.inputElement} size="large" prefix={<UserOutlined className="site-form-item-icon" />} allowClear placeholder="Your email" />
+                    <Input className={styles.inputElement} size="large" prefix={<LuUser className="site-form-item-icon" />} allowClear placeholder="Your email" />
                   </Form.Item>
                   <Form.Item
                     className={styles.formItem}
                     name="password"
                     rules={[{ required: true, message: 'Please choose a password!' }, { min: 6, message: 'Password must be at least 6 characters' }]}
                   >
-                    <Input.Password className={styles.inputElement} size="large" prefix={<LockOutlined className="site-form-item-icon" />} allowClear placeholder="Choose a password" />
+                    <Input.Password className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Choose a password" />
                   </Form.Item>
                   <Form.Item
                     className={styles.formItem}
@@ -647,7 +681,7 @@ function LoginPage() {
                       }),
                     ]}
                   >
-                    <Input.Password className={styles.inputElement} size="large" prefix={<LockOutlined className="site-form-item-icon" />} allowClear placeholder="Confirm password" />
+                    <Input.Password className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Confirm password" />
                   </Form.Item>
                   <Space direction="vertical" align="center" style={{ width: '100%' }}>
                     <Button type="primary" size="large" htmlType="submit" style={{ width: 200 }}>Create Account</Button>
@@ -670,7 +704,7 @@ function LoginPage() {
                     name="password"
                     rules={[{ required: true, message: 'Please choose a passcode!' }, { min: 6, message: 'Passcode must be at least 6 characters' }]}
                   >
-                    <Input.Password className={styles.inputElement} size="large" prefix={<LockOutlined className="site-form-item-icon" />} allowClear placeholder="Choose passcode" />
+                    <Input.Password className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Choose passcode" />
                   </Form.Item>
                   <Form.Item
                     className={styles.formItem}
@@ -686,7 +720,7 @@ function LoginPage() {
                       }),
                     ]}
                   >
-                    <Input.Password className={styles.inputElement} size="large" prefix={<LockOutlined className="site-form-item-icon" />} allowClear placeholder="Confirm passcode" />
+                    <Input.Password className={styles.inputElement} size="large" prefix={<LuLock className="site-form-item-icon" />} allowClear placeholder="Confirm passcode" />
                   </Form.Item>
                   <Space direction="vertical" align="center" style={{ width: '100%' }}>
                     <Button type="primary" size="large" htmlType="submit" style={{ width: 220 }}>Use WhatsApp Number</Button>
@@ -722,6 +756,10 @@ function LoginPage() {
             ) : (
               /* ━━━ NORMAL LOGIN FLOW ━━━ */
               <>
+                <div className={styles.desktopAuthHeader}>
+                  <h2>Welcome back</h2>
+                  <p>Log in to manage your menus.</p>
+                </div>
                 <div className={styles.googleLoginWrap}>
                   <Button type="default"
                     size="large"
@@ -731,9 +769,9 @@ function LoginPage() {
                       signIn('google', { callbackUrl: `${location.origin}${NAVIGARIONS_ROUTINGS.SIGNIN}` });
                     }}
                   >
-                    Sign in with Google</Button>
+                    Continue with Google</Button>
                 </div>
-                <Divider className={styles.saperator}>Or</Divider>
+                <Divider className={styles.saperator}>Or use email</Divider>
                 <Form
                   form={loginForm}
                   name="normal_login"
@@ -746,6 +784,9 @@ function LoginPage() {
                   onValuesChange={onValuesChange}
                   validateMessages={validateMessages}
                 >
+                  {!shouldOfferPhoneOtp ? (
+                    <label className={styles.fieldLabel} htmlFor="login-identifier">Email, phone, or staff ID</label>
+                  ) : null}
                   <Form.Item
                     className={`${styles.formItem} ${shouldOfferPhoneOtp ? styles.hiddenFormItem : ''}`}
                     name="email"
@@ -765,11 +806,12 @@ function LoginPage() {
                     validateTrigger={['onBlur', 'onChange']}
                   >
                     <Input
+                      id="login-identifier"
                       className={styles.inputElement}
                       size="large"
-                      prefix={<UserOutlined className="site-form-item-icon" />}
+                      prefix={<LuUser className="site-form-item-icon" />}
                       allowClear
-                      placeholder="Email, phone, or staff ID"
+                      placeholder="Enter your credentials"
                     />
                   </Form.Item>
                   {shouldOfferPhoneOtp ? (
@@ -813,6 +855,16 @@ function LoginPage() {
                           Send WhatsApp code instead
                         </Button>
                       ) : null}
+                      <div className={styles.fieldLabelRow}>
+                        <label className={styles.fieldLabel} htmlFor="login-secret">{secretLabel}</label>
+                        <Button
+                          type="link"
+                          className={styles.inlineHelpButton}
+                          onClick={() => router.push(NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD)}
+                        >
+                          Forgot?
+                        </Button>
+                      </div>
                       <Form.Item
                         className={styles.formItem}
                         name="password"
@@ -823,9 +875,10 @@ function LoginPage() {
                         ]}
                       >
                         <Input.Password
+                          id="login-secret"
                           className={styles.inputElement}
                           size="large"
-                          prefix={<LockOutlined className="site-form-item-icon" />}
+                          prefix={<LuLock className="site-form-item-icon" />}
                           allowClear
                           placeholder={secretPlaceholder}
                         />
@@ -835,10 +888,12 @@ function LoginPage() {
                   {error.message && <div className={styles.error}>
                     {error.message}
                   </div>}
+                  {!shouldShowSecretInput && !shouldOfferPhoneOtp ? (
+                    <Button type="primary" size="large" htmlType="submit" style={{ width: '100%' }} className="login-form-button">Continue with email</Button>
+                  ) : null}
                   {shouldShowSecretInput ? (
                     <Space direction="vertical" align="center" style={{ width: "100%" }} >
-                      <Button type="link" className="login-form-button" onClick={() => router.push(`/${NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD}`)}>Forgot password</Button>
-                      <Button type="primary" size="large" htmlType="submit" style={{ width: 200 }} className="login-form-button">Log in</Button>
+                      <Button type="primary" size="large" htmlType="submit" style={{ width: '100%' }} className="login-form-button">Log in</Button>
                     </Space>
                   ) : null}
                   <Divider />
@@ -852,36 +907,6 @@ function LoginPage() {
                 </Form>
               </>
             )}
-          </div>
-        </div>
-        <div className={styles.proofPanel} aria-hidden="true">
-          <div className={styles.carouselChrome}>
-            <span />
-            <span />
-            <span />
-          </div>
-          <div className={styles.surfaceCarousel}>
-            {publicSurfaceSlides.map((slide) => (
-              <div className={styles.surfaceSlide} key={slide.src}>
-                <Image
-                  alt={slide.alt}
-                  className={styles.surfaceImage}
-                  height={slide.height}
-                  priority={slide.src === publicSurfaceSlides[0].src}
-                  sizes="(min-width: 1120px) 470px, 0px"
-                  src={slide.src}
-                  width={slide.width}
-                />
-                <div className={styles.surfaceCaption}>
-                  <span>{slide.eyebrow}</span>
-                  <strong>{slide.title}</strong>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className={styles.carouselSummary}>
-            <span>Owner source</span>
-            <strong>Public menu, QR links, official page, feedback, and assets.</strong>
           </div>
         </div>
       </div>

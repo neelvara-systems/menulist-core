@@ -6,11 +6,12 @@ Explain that CampaignCue can prepare creator-ready scripts and briefs while keep
 
 ## Approved Public Copy
 
-> Prepare creator briefs with hooks, talking points, shot lists, calls to action, and claim checks before the brief leaves your workspace.
+> Prepare creator briefs with fit checks, hooks, talking points, shot lists, calls to action, and claim checks before the brief leaves your workspace.
 
 ## Supporting Points
 
 - Useful for owners, staff, agencies, and local creators.
+- Includes a small test-plan prompt before repeating creator spend.
 - Keeps the selected offer, service, location, and CTA visible.
 - Adds disclosure and prohibited-claim notes where relevant.
 - Supports download and export workflows.
@@ -18,5 +19,6 @@ Explain that CampaignCue can prepare creator-ready scripts and briefs while keep
 ## Do Not Say
 
 - Do not promise creator sourcing or influencer management.
+- Do not promise creator deal management, payment handling, or performance.
 - Do not claim legal approval.
 - Do not normalize fake testimonials or fake customer experiences.

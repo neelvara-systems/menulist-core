@@ -87,7 +87,7 @@ If saved templates are visible in the same panel:
 0 Storage downloads until open
 ```
 
-Changing the selected output intent after the templates are loaded, including Campaign Proof Deck:
+Changing the selected output intent after the templates are loaded, including Source-to-channel pack and Campaign Proof Deck:
 
 ```text
 0 additional Firestore reads
@@ -139,7 +139,7 @@ Not allowed:
 - Cap active templates per category.
 - Move retired templates out of active docs.
 - Keep `default` category docs focused on active curated templates only.
-- Keep WhatsApp, Google, Instagram, print, staff, ads, reuse, and custom-size output choices as local filters over loaded summaries.
+- Keep source-to-channel, WhatsApp, Google, Instagram, print, staff, ads, reuse, and custom-size output choices as local filters over loaded summaries.
 
 ## Rules Expectations
 

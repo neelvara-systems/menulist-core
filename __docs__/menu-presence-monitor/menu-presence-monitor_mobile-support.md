@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Mobile Support Assessment
 
-> **Version:** 1.0
-> **Last Updated:** March 15, 2026
+> **Version:** 1.1
+> **Last Updated:** June 24, 2026
 
 ---
 
@@ -25,10 +25,21 @@
 - **UI Library:** antd-mobile `List` + `Switch` or `CheckList`
 - **Data Source:** Same `UseMenuListData` + store `menuPresence` field
 - **Actions:** Tap to confirm, swipe to remove confirmation
+- **Activation proof:** Mobile shows the same `buildStarterActivationSummary()` result as desktop: two-action progress, MenuList-recorded count, and owner-confirmed count.
 
 ## Localization
 
 Inherits from desktop — same `next-intl`, RTL support, timezone, date format.
+
+Required mobile copy keys live under `MobilePresenceMonitor` in the MenuList locale files:
+
+- `activationTitle`
+- `activationProgress`
+- `activationDone`
+- `activationHowKnown`
+- `activationPending`
+- `menuListRecorded`
+- `ownerConfirmed`
 
 ## Auth
 

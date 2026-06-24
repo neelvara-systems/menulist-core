@@ -1,7 +1,15 @@
 "use client";
 
+import DashboardHeaderShell from "@/components/shared/dashboardShell/DashboardHeaderShell";
+import DashboardSidebarShell, {
+    DASHBOARD_SIDEBAR_COLLAPSED_WIDTH,
+    type DashboardSidebarShellItem,
+} from "@/components/shared/dashboardShell/DashboardSidebarShell";
 import { SIGNALDESK_ROUTES } from "@constant/signaldesk/routes";
+import { useAppDispatch } from "@hook/useAppDispatch";
+import { useAppSelector } from "@hook/useAppSelector";
 import { useSignalDeskOverview } from "@hook/signaldesk/useSignalDeskOverview";
+import { getDarkModeState, getSidebarState, toggleDarkMode, toggleSidbar } from "@reduxSlices/clientThemeConfig";
 import type {
     SignalDeskApprovalItem,
     SignalDeskKillSwitchScope,
@@ -9,9 +17,19 @@ import type {
     SignalDeskTargetSummary,
     SignalDeskWorkspaceResponse,
 } from "@type/signaldesk";
-import Link from "next/link";
-import type { ComponentType, FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { Alert, Button, Checkbox, Drawer, Flex, Input, InputNumber, Layout, Select, Spin, theme, Tooltip, Typography } from "antd";
+import { useRouter } from "next/navigation";
+import type {
+    ButtonHTMLAttributes,
+    ChangeEvent,
+    ComponentType,
+    FormEvent,
+    InputHTMLAttributes,
+    ReactNode,
+    SelectHTMLAttributes,
+    TextareaHTMLAttributes,
+} from "react";
+import { Children, isValidElement, useEffect, useMemo, useState } from "react";
 import {
     LuAlertTriangle,
     LuArchive,
@@ -22,6 +40,12 @@ import {
     LuFileText,
     LuGlobe2,
     LuInbox,
+    LuListChecks,
+    LuMegaphone,
+    LuMenu,
+    LuMoon,
+    LuPanelLeftClose,
+    LuPanelLeftOpen,
     LuPauseCircle,
     LuRefreshCw,
     LuRouter,
@@ -29,16 +53,165 @@ import {
     LuSettings,
     LuShield,
     LuSparkles,
+    LuSun,
     LuTarget,
 } from "react-icons/lu";
-import { useSignalDeskPath } from "./SignalDeskPathProvider";
+import { useSignalDeskBasePath, withSignalDeskBasePath } from "./SignalDeskPathProvider";
 import styles from "./SignalDeskWorkspace.module.scss";
+
+const { Content } = Layout;
+const { Text } = Typography;
+const SIGNALDESK_SIDEBAR_EXPANDED_WIDTH = 220;
+
+type WorkspaceButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
+type WorkspaceInputProps = InputHTMLAttributes<HTMLInputElement>;
+type WorkspaceSelectProps = SelectHTMLAttributes<HTMLSelectElement>;
+type WorkspaceTextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement>;
+type SelectOptionLikeProps = {
+    children?: ReactNode;
+    value?: string | number;
+};
+
+function WorkspaceButton({
+    children,
+    className = "",
+    type: htmlType = "button",
+    ...props
+}: WorkspaceButtonProps) {
+    const isPrimary = className.includes(styles.button);
+    const isDanger = className.includes(styles.dangerButton);
+
+    return (
+        <Button
+            {...(props as any)}
+            className={className}
+            danger={isDanger}
+            htmlType={htmlType === "submit" ? "submit" : "button"}
+            type={isPrimary ? "primary" : "default"}
+        >
+            {children}
+        </Button>
+    );
+}
+
+function WorkspaceInput({
+    children,
+    className = "",
+    max,
+    min,
+    onChange,
+    type = "text",
+    value,
+    checked,
+    ...props
+}: WorkspaceInputProps) {
+    if (type === "checkbox") {
+        return (
+            <Checkbox
+                checked={Boolean(checked)}
+                className={className}
+                disabled={props.disabled}
+                onChange={(event) => onChange?.(event as unknown as ChangeEvent<HTMLInputElement>)}
+            >
+                {children}
+            </Checkbox>
+        );
+    }
+
+    if (type === "number") {
+        const numberValue = value === undefined || value === null || value === "" ? undefined : Number(value);
+        const numberMin = min === undefined ? undefined : Number(min);
+        const numberMax = max === undefined ? undefined : Number(max);
+
+        return (
+            <InputNumber
+                {...(props as any)}
+                className={className}
+                max={numberMax}
+                min={numberMin}
+                onChange={(nextValue) => {
+                    onChange?.({
+                        target: {
+                            value: nextValue === null || nextValue === undefined ? "" : String(nextValue),
+                        },
+                    } as ChangeEvent<HTMLInputElement>);
+                }}
+                value={numberValue}
+            />
+        );
+    }
+
+    return (
+        <Input
+            {...(props as any)}
+            className={className}
+            onChange={onChange as any}
+            value={value as any}
+        />
+    );
+}
+
+function WorkspaceSelect({
+    children,
+    className = "",
+    onChange,
+    value,
+    ...props
+}: WorkspaceSelectProps) {
+    const options = Children.toArray(children).flatMap((child) => {
+        if (!isValidElement<SelectOptionLikeProps>(child)) return [];
+        const optionValue = child.props.value;
+        return [{
+            label: child.props.children,
+            value: String(optionValue ?? ""),
+        }];
+    });
+
+    return (
+        <Select
+            {...(props as any)}
+            className={className}
+            onChange={(nextValue) => {
+                onChange?.({
+                    target: {
+                        value: String(nextValue),
+                    },
+                } as ChangeEvent<HTMLSelectElement>);
+            }}
+            options={options}
+            popupMatchSelectWidth={false}
+            value={value === undefined || value === null ? undefined : String(value)}
+        />
+    );
+}
+
+function WorkspaceTextarea({
+    className = "",
+    onChange,
+    value,
+    ...props
+}: WorkspaceTextareaProps) {
+    return (
+        <Input.TextArea
+            {...(props as any)}
+            autoSize={className.includes(styles.textareaSmall) ? { minRows: 3 } : { minRows: 4 }}
+            className={className}
+            onChange={onChange as any}
+            value={value as any}
+        />
+    );
+}
 
 const SECTION_META: Record<SignalDeskSection, { description: string; label: string; title: string }> = {
     dashboard: {
         description: "Observe system movement, monitor risk, and approve only the work that needs human control.",
         label: "Dashboard",
         title: "SignalDesk Dashboard",
+    },
+    mission: {
+        description: "Daily founder mission, experiment cards, approved offers, reply playbooks, and source-learning decisions.",
+        label: "Mission",
+        title: "Daily Growth Mission",
     },
     targets: {
         description: "System-prepared targets with source, dedupe, score, evidence, and next-action state.",
@@ -90,6 +263,16 @@ const SECTION_META: Record<SignalDeskSection, { description: string; label: stri
         label: "Channels",
         title: "Channels",
     },
+    content: {
+        description: "Owned proof assets, platform-ready drafts, approval, calendar queue, and manual performance capture.",
+        label: "Content",
+        title: "Content Distribution",
+    },
+    partners: {
+        description: "Trust-channel partner tests, lean briefs, flat-fee deals, deliverables, metrics, and renewal decisions.",
+        label: "Partners",
+        title: "Trust Partners",
+    },
     settings: {
         description: "Connector records, sender identity, and channel readiness.",
         label: "Settings",
@@ -115,6 +298,7 @@ type SignalDeskNavItem = {
 
 const NAV_ITEMS: SignalDeskNavItem[] = [
     { href: SIGNALDESK_ROUTES.DASHBOARD, icon: LuBarChart3, section: "dashboard" },
+    { href: SIGNALDESK_ROUTES.MISSION, icon: LuListChecks, section: "mission" },
     { href: SIGNALDESK_ROUTES.TARGETS, icon: LuTarget, section: "targets" },
     { href: SIGNALDESK_ROUTES.IMPORTS, icon: LuDatabase, section: "imports" },
     { href: SIGNALDESK_ROUTES.APPROVALS, icon: LuClipboardCheck, section: "approvals" },
@@ -125,34 +309,12 @@ const NAV_ITEMS: SignalDeskNavItem[] = [
     { href: SIGNALDESK_ROUTES.SOURCES, icon: LuGlobe2, section: "sources" },
     { href: SIGNALDESK_ROUTES.AI, icon: LuSparkles, section: "ai" },
     { href: SIGNALDESK_ROUTES.CHANNELS, icon: LuSend, section: "channels" },
+    { href: SIGNALDESK_ROUTES.CONTENT, icon: LuMegaphone, section: "content" },
+    { href: SIGNALDESK_ROUTES.PARTNERS, icon: LuTarget, section: "partners" },
     { href: SIGNALDESK_ROUTES.SETTINGS, icon: LuSettings, section: "settings" },
     { href: SIGNALDESK_ROUTES.CONTROL_ROOM, icon: LuAlertTriangle, section: "control-room" },
     { href: SIGNALDESK_ROUTES.AUDIT, icon: LuArchive, section: "audit" },
 ];
-
-function SignalDeskNavLink({
-    activeSection,
-    item,
-}: {
-    activeSection: SignalDeskSection;
-    item: SignalDeskNavItem;
-}) {
-    const href = useSignalDeskPath(item.href);
-    const Icon = item.icon;
-    const itemMeta = SECTION_META[item.section];
-    const active = item.section === activeSection;
-
-    return (
-        <Link
-            aria-current={active ? "page" : undefined}
-            className={`${styles.navItem} ${active ? styles.navItemActive : ""}`}
-            href={href}
-        >
-            <Icon size={16} />
-            {itemMeta.label}
-        </Link>
-    );
-}
 
 const PAUSE_SCOPES: SignalDeskKillSwitchScope[] = [
     "email",
@@ -162,6 +324,8 @@ const PAUSE_SCOPES: SignalDeskKillSwitchScope[] = [
     "source-provider",
     "ai-worker",
     "campaign",
+    "content-distribution",
+    "trust-partner",
     "menu-list-bridge",
 ];
 
@@ -205,6 +369,23 @@ const firstProviderPolicyId = (data: SignalDeskWorkspaceResponse | null) => (
     data?.workspace.policies.find((policy) => policy.sourceType === "provider")?.sourcePolicyId || ""
 );
 const firstWaterfallId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.enrichmentWaterfalls[0]?.waterfallId || "";
+const firstMarketPodId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.marketPods[0]?.marketPodId || "";
+const firstPartnerId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.trustPartnerProfiles[0]?.partnerId || "";
+const firstNicheTestId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.trustPartnerNicheTests[0]?.nicheTestId || "";
+const firstTrustDealId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.trustPartnerDeals[0]?.dealId || "";
+const firstTrustDeliverableId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.trustPartnerDeliverables[0]?.deliverableId || "";
+const firstTrustBudgetId = (data: SignalDeskWorkspaceResponse | null) => (
+    data?.workspace.budgetPolicies.find((budget) => budget.scope === "trust-partner")?.budgetPolicyId || ""
+);
+const firstCtaId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.selfServiceCtas[0]?.ctaId || "";
+const firstGrowthMissionId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.growthMissions[0]?.growthMissionId || "";
+const firstExperimentCardId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.experimentCards[0]?.experimentCardId || "";
+const firstOfferCtaId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.offerCtas[0]?.offerCtaId || "";
+const firstReplyPlaybookId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.replyPlaybooks[0]?.playbookId || "";
+const firstSourceRunId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.imports[0]?.sourceRunId || "";
+const firstContentSourceId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.contentSources[0]?.contentSourceId || "";
+const firstContentAssetId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.contentAssets[0]?.contentAssetId || "";
+const firstContentDraftId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.contentDistributionDrafts[0]?.contentDraftId || "";
 const firstReadySenderDomainId = (data: SignalDeskWorkspaceResponse | null) => (
     data?.workspace.senderDomains.find((sender) => (
         sender.status === "active" &&
@@ -215,7 +396,12 @@ const firstReadySenderDomainId = (data: SignalDeskWorkspaceResponse | null) => (
 );
 
 function LoadingState() {
-    return <div className={styles.empty}>Loading SignalDesk...</div>;
+    return (
+        <div className={styles.empty}>
+            <Spin />
+            <span>Loading SignalDesk...</span>
+        </div>
+    );
 }
 
 function SetupAlert({ data }: { data: SignalDeskWorkspaceResponse }) {
@@ -241,11 +427,11 @@ function TargetSelect({
     value: string;
 }) {
     return (
-        <select className={styles.input} onChange={(event) => onChange(event.target.value)} value={value || firstTargetId(data)}>
+        <WorkspaceSelect className={styles.input} onChange={(event) => onChange(event.target.value)} value={value || firstTargetId(data)}>
             {data.workspace.targets.map((target) => (
                 <option key={target.targetId} value={target.targetId}>{target.displayName}</option>
             ))}
-        </select>
+        </WorkspaceSelect>
     );
 }
 
@@ -340,12 +526,14 @@ function OperatingPanels({ data }: { data: SignalDeskWorkspaceResponse }) {
 
 function TargetList({
     data,
+    mobileReadOnly,
     onDraft,
     onEvidence,
     onScore,
     saving,
 }: {
     data: SignalDeskWorkspaceResponse;
+    mobileReadOnly: boolean;
     onDraft: (targetId: string) => void;
     onEvidence: (targetId: string) => void;
     onScore: (targetId: string) => void;
@@ -364,9 +552,9 @@ function TargetList({
                     <span className={tagClass(target.nextAction)}>{target.nextAction}</span>
                     <span>{target.segment.toUpperCase()}</span>
                     <div className={styles.rowActions}>
-                        <button className={styles.ghostButton} disabled={saving} onClick={() => onScore(target.targetId)} type="button">Score</button>
-                        <button className={styles.ghostButton} disabled={saving} onClick={() => onEvidence(target.targetId)} type="button">Evidence</button>
-                        <button className={styles.ghostButton} disabled={saving} onClick={() => onDraft(target.targetId)} type="button">Draft</button>
+                        <WorkspaceButton className={styles.ghostButton} disabled={saving || mobileReadOnly} onClick={() => onScore(target.targetId)} type="button">Score</WorkspaceButton>
+                        <WorkspaceButton className={styles.ghostButton} disabled={saving || mobileReadOnly} onClick={() => onEvidence(target.targetId)} type="button">Evidence</WorkspaceButton>
+                        <WorkspaceButton className={styles.ghostButton} disabled={saving || mobileReadOnly} onClick={() => onDraft(target.targetId)} type="button">Draft</WorkspaceButton>
                     </div>
                 </div>
             ))}
@@ -386,6 +574,15 @@ function DashboardSection({ data }: { data: SignalDeskWorkspaceResponse }) {
 
 export default function SignalDeskWorkspace({ activeSection }: { activeSection: SignalDeskSection }) {
     const { data, error, loading, refresh, runAction, saving, updateKillSwitch } = useSignalDeskOverview(activeSection);
+    const dispatch = useAppDispatch();
+    const router = useRouter();
+    const basePath = useSignalDeskBasePath();
+    const { token } = theme.useToken();
+    const isCollapsed = useAppSelector(getSidebarState);
+    const isDarkMode = useAppSelector(getDarkModeState);
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
+    const [sidebarShellExpanded, setSidebarShellExpanded] = useState(false);
+    const [mobileReadOnly, setMobileReadOnly] = useState(false);
     const [policyName, setPolicyName] = useState("Manual research");
     const [policySourceType, setPolicySourceType] = useState("manual-research");
     const [policyAllowContact, setPolicyAllowContact] = useState(true);
@@ -408,7 +605,11 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [aiTask, setAiTask] = useState("evidence");
     const [aiInstruction, setAiInstruction] = useState("");
     const [channel, setChannel] = useState("whatsapp");
+    const [channelWindowSource, setChannelWindowSource] = useState("inbound");
+    const [channelWindowStatus, setChannelWindowStatus] = useState("open");
     const [selectedWaterfallId, setSelectedWaterfallId] = useState("");
+    const [providerEvaluationProvider, setProviderEvaluationProvider] = useState("google-places");
+    const [providerEvaluationUse, setProviderEvaluationUse] = useState("discovery");
     const [pauseScope, setPauseScope] = useState<SignalDeskKillSwitchScope>("source-provider");
     const [sequencerProvider, setSequencerProvider] = useState("owned-email");
     const [senderDomain, setSenderDomain] = useState("pending");
@@ -425,7 +626,93 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [connectorMessengerPageId, setConnectorMessengerPageId] = useState("");
     const [connectorAppId, setConnectorAppId] = useState("");
     const [connectorNotes, setConnectorNotes] = useState("");
+    const [partnerName, setPartnerName] = useState("Menu photographer partner");
+    const [partnerType, setPartnerType] = useState("menu-photographer");
+    const [partnerChannel, setPartnerChannel] = useState("instagram");
+    const [partnerGeography, setPartnerGeography] = useState("Mumbai");
+    const [partnerSourceNotes, setPartnerSourceNotes] = useState("Audience includes restaurant owners and operators.");
+    const [partnerScore, setPartnerScore] = useState(75);
+    const [nicheName, setNicheName] = useState("Menu photographers");
+    const [nicheAngle, setNicheAngle] = useState("Current-list proof through menu refresh partners.");
+    const [nicheAttempts, setNicheAttempts] = useState(3);
+    const [dealFeeUsd, setDealFeeUsd] = useState(75);
+    const [dealDeliverables, setDealDeliverables] = useState(1);
+    const [briefText, setBriefText] = useState("Show how a restaurant can keep a clean current menu online and invite owners to request a private MenuList preview.");
+    const [deliverablePostUrl, setDeliverablePostUrl] = useState("");
+    const [metricViews, setMetricViews] = useState(0);
+    const [metricOwnerLeads, setMetricOwnerLeads] = useState(0);
+    const [contentSourceTitle, setContentSourceTitle] = useState("MenuList owned proof");
+    const [contentSourceType, setContentSourceType] = useState("proof-page");
+    const [contentSourceUrl, setContentSourceUrl] = useState("https://menulist.ai");
+    const [contentSourceAudience, setContentSourceAudience] = useState("restaurant-owner");
+    const [selectedContentSourceId, setSelectedContentSourceId] = useState("");
+    const [contentAssetTitle, setContentAssetTitle] = useState("Current-list proof angle");
+    const [contentAssetMessage, setContentAssetMessage] = useState("Restaurant owners need one clean current list customers can trust before they order, call, or visit.");
+    const [contentAssetUrl, setContentAssetUrl] = useState("");
+    const [contentAssetSourceType, setContentAssetSourceType] = useState("proof-page");
+    const [contentAssetAudience, setContentAssetAudience] = useState("restaurant-owner");
+    const [contentAssetProofLevel, setContentAssetProofLevel] = useState("owned");
+    const [selectedContentAssetId, setSelectedContentAssetId] = useState("");
+    const [selectedContentDraftId, setSelectedContentDraftId] = useState("");
+    const [contentDraftChannels, setContentDraftChannels] = useState<string[]>(["linkedin", "email", "partner-brief"]);
+    const [contentScheduleAt, setContentScheduleAt] = useState("");
+    const [contentPerformanceViews, setContentPerformanceViews] = useState(0);
+    const [contentPerformanceClicks, setContentPerformanceClicks] = useState(0);
+    const [contentPerformanceOwnerLeads, setContentPerformanceOwnerLeads] = useState(0);
+    const [contentPerformanceSubmissions, setContentPerformanceSubmissions] = useState(0);
+    const [contentPerformanceActivations, setContentPerformanceActivations] = useState(0);
+    const [selectedGrowthMissionId, setSelectedGrowthMissionId] = useState("");
+    const [missionDecisionNote, setMissionDecisionNote] = useState("");
+    const [selectedExperimentCardId, setSelectedExperimentCardId] = useState("");
+    const [experimentHypothesis, setExperimentHypothesis] = useState("One narrow local restaurant pod will convert better when the ask is a private current-list preview.");
+    const [experimentChannel, setExperimentChannel] = useState("email");
+    const [experimentTargetCount, setExperimentTargetCount] = useState(25);
+    const [experimentStopRule, setExperimentStopRule] = useState("Stop if 3 to 5 approved attempts produce no interested reply or upload-start signal.");
+    const [experimentExpectedOutcome, setExperimentExpectedOutcome] = useState("At least one current-list upload, private preview, or interested owner reply.");
+    const [experimentResultSummary, setExperimentResultSummary] = useState("");
+    const [offerTitle, setOfferTitle] = useState("Current list upload");
+    const [offerAsk, setOfferAsk] = useState("Upload the current menu or service list so MenuList can prepare a private preview for review before publishing.");
+    const [offerSurface, setOfferSurface] = useState("upload");
+    const [offerSegment, setOfferSegment] = useState("restaurant-owner");
+    const [offerProofRule, setOfferProofRule] = useState("Use only when target evidence or owned proof shows a current-list gap.");
+    const [offerBlockedClaims, setOfferBlockedClaims] = useState("Guaranteed sales,Guaranteed Google ranking,Fully automatic publishing");
+    const [replyPlaybookTitle, setReplyPlaybookTitle] = useState("Send details");
+    const [replyPlaybookIntent, setReplyPlaybookIntent] = useState("send-details");
+    const [replyPlaybookReply, setReplyPlaybookReply] = useState("Thanks. The useful next step is a private MenuList preview. You can upload the current list and review it before anything goes live.");
+    const [replyPlaybookNextRoute, setReplyPlaybookNextRoute] = useState("self-serve-preview");
+    const [replyPlaybookEscalation, setReplyPlaybookEscalation] = useState(false);
+    const [replyPlaybookSuppression, setReplyPlaybookSuppression] = useState(false);
+    const [selectedSourceRunId, setSelectedSourceRunId] = useState("");
+
+    useEffect(() => {
+        const evaluate = () => {
+            const mobileUserAgent = /\b(Android|iPhone|iPad|iPod|Mobile|Windows Phone)\b/i.test(window.navigator.userAgent || "");
+            const mobileViewport = typeof window.matchMedia === "function" && window.matchMedia("(max-width: 767px)").matches;
+            setMobileReadOnly(mobileUserAgent || mobileViewport);
+        };
+        evaluate();
+        window.addEventListener("resize", evaluate);
+        return () => window.removeEventListener("resize", evaluate);
+    }, []);
+
     const meta = SECTION_META[activeSection];
+    const sidebarOffset = isCollapsed && !sidebarShellExpanded
+        ? DASHBOARD_SIDEBAR_COLLAPSED_WIDTH
+        : SIGNALDESK_SIDEBAR_EXPANDED_WIDTH;
+    const navItems = useMemo<DashboardSidebarShellItem[]>(() => NAV_ITEMS.map((item) => {
+        const Icon = item.icon;
+        const href = withSignalDeskBasePath(item.href, basePath);
+        return {
+            active: item.section === activeSection,
+            icon: <Icon size={18} />,
+            key: item.section,
+            label: SECTION_META[item.section].label,
+            onClick: () => {
+                setMobileNavOpen(false);
+                router.push(href);
+            },
+        };
+    }), [activeSection, basePath, router]);
     const resolvedTargetId = data ? (selectedTargetId || firstTargetId(data)) : "";
     const resolvedPolicyId = data ? (sourcePolicyId || firstPolicyId(data)) : "";
     const providerPolicies = data?.workspace.policies.filter((policy) => policy.sourceType === "provider") || [];
@@ -433,11 +720,27 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         ? (providerPolicies.some((policy) => policy.sourcePolicyId === sourcePolicyId) ? sourcePolicyId : firstProviderPolicyId(data))
         : "";
     const resolvedWaterfallId = data ? (selectedWaterfallId || firstWaterfallId(data)) : "";
+    const resolvedMarketPodId = data ? firstMarketPodId(data) : "";
+    const resolvedPartnerId = data ? firstPartnerId(data) : "";
+    const resolvedNicheTestId = data ? firstNicheTestId(data) : "";
+    const resolvedTrustDealId = data ? firstTrustDealId(data) : "";
+    const resolvedTrustDeliverableId = data ? firstTrustDeliverableId(data) : "";
+    const resolvedTrustBudgetId = data ? firstTrustBudgetId(data) : "";
+    const resolvedCtaId = data ? firstCtaId(data) : "";
+    const resolvedGrowthMissionId = data ? (selectedGrowthMissionId || firstGrowthMissionId(data)) : "";
+    const resolvedExperimentCardId = data ? (selectedExperimentCardId || firstExperimentCardId(data)) : "";
+    const resolvedOfferCtaId = data ? firstOfferCtaId(data) : "";
+    const resolvedReplyPlaybookId = data ? firstReplyPlaybookId(data) : "";
+    const resolvedSourceRunId = data ? (selectedSourceRunId || firstSourceRunId(data)) : "";
+    const resolvedContentSourceId = data ? (selectedContentSourceId || firstContentSourceId(data)) : "";
+    const resolvedContentAssetId = data ? (selectedContentAssetId || firstContentAssetId(data)) : "";
+    const resolvedContentDraftId = data ? (selectedContentDraftId || firstContentDraftId(data)) : "";
     const resolvedSenderDomainId = data ? firstReadySenderDomainId(data) : "";
     const globalPauseActive = Boolean(data?.activeKillSwitches.some((item) => item.scope === "global-outbound" && item.status === "active"));
     const scopedPauseActive = Boolean(data?.activeKillSwitches.some((item) => item.scope === pauseScope && item.status === "active"));
     const canPause = Boolean(data?.access.permissions.includes("kill-switch.activate"));
     const canResume = Boolean(data?.access.permissions.includes("kill-switch.deactivate"));
+    const actionDisabled = saving || mobileReadOnly;
 
     const pendingApproval = useMemo(
         () => data?.workspace.approvals.find((item) => item.status === "pending") || null,
@@ -553,6 +856,14 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
+    const recommendMarketPodPlan = (marketPodId?: string) => {
+        void runAction("recommend-market-pod-plan", { marketPodId });
+    };
+
+    const createWeeklyStrategistMemo = () => {
+        void runAction("create-weekly-strategist-memo");
+    };
+
     const runSourceProvider = (event: FormEvent) => {
         event.preventDefault();
         void runAction("run-source-provider", {
@@ -652,6 +963,18 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
+    const approveTrustPartnerTestBudget = () => {
+        void runAction("upsert-budget-policy", {
+            dailyBudgetUsd: 75,
+            monthlyBudgetUsd: 300,
+            name: "First trust partner test cap",
+            perRunBudgetUsd: 75,
+            scope: "trust-partner",
+            scopeId: "first_partner_test",
+            status: "active",
+        });
+    };
+
     const holdSenderDomain = (event: FormEvent) => {
         event.preventDefault();
         void runAction("upsert-sender-domain", {
@@ -710,6 +1033,196 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
+    const upsertChannelWindow = () => {
+        void runAction("upsert-channel-window-state", {
+            channel,
+            source: channelWindowSource,
+            status: channelWindowStatus,
+            targetId: resolvedTargetId || undefined,
+        });
+    };
+
+    const refreshProviderRetention = (providerSourceRetentionId: string) => {
+        void runAction("refresh-provider-source-retention", {
+            notes: "Manual refresh state update from SignalDesk.",
+            providerSourceRetentionId,
+            status: "refreshed",
+        });
+    };
+
+    const createProviderEvaluation = () => {
+        void runAction("create-provider-evaluation", {
+            provider: providerEvaluationProvider,
+            use: providerEvaluationUse,
+        });
+    };
+
+    const upsertTrustPartnerProfile = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("upsert-trust-partner-profile", {
+            audienceFitScore: partnerScore,
+            baselineReachScore: partnerScore,
+            believableUsageScore: partnerScore,
+            channel: partnerChannel,
+            commentQualityScore: partnerScore,
+            displayName: partnerName,
+            geography: partnerGeography || undefined,
+            partnerType,
+            sourceNotes: partnerSourceNotes,
+            trustFeelScore: partnerScore,
+        });
+    };
+
+    const createTrustPartnerNicheTest = () => {
+        void runAction("create-trust-partner-niche-test", {
+            angle: nicheAngle,
+            intendedAttempts: nicheAttempts,
+            marketPodId: resolvedMarketPodId || undefined,
+            nicheName,
+            partnerIds: resolvedPartnerId ? [resolvedPartnerId] : [],
+        });
+    };
+
+    const reviewTrustPartnerDeal = () => {
+        void runAction("review-trust-partner-deal", {
+            approvalStatus: "approved",
+            budgetPolicyId: resolvedTrustBudgetId || undefined,
+            deliverableCount: dealDeliverables,
+            flatFeeUsd: dealFeeUsd,
+            founderApproved: true,
+            nicheTestId: resolvedNicheTestId || undefined,
+            partnerId: resolvedPartnerId,
+            pricingModel: "flat-fee",
+        });
+    };
+
+    const createTrustPartnerBrief = () => {
+        void runAction("create-trust-partner-brief", {
+            approvedClaims: [
+                "MenuList helps restaurants keep a clean current list online.",
+                "Owners can request a private preview before changing anything public.",
+            ],
+            bannedClaims: [
+                "Do not claim Meta, Google, POS, or delivery-platform partnership.",
+                "Do not promise sales lift or guaranteed ranking.",
+            ],
+            ctaId: resolvedCtaId || undefined,
+            dealId: resolvedTrustDealId || undefined,
+            disclosureText: "Mention clearly if the post is paid, sponsored, or incentivized.",
+            onePageBrief: briefText,
+            partnerId: resolvedPartnerId,
+        });
+    };
+
+    const recordTrustPartnerDeliverable = () => {
+        void runAction("record-trust-partner-deliverable", {
+            dealId: resolvedTrustDealId || undefined,
+            disclosurePresent: true,
+            partnerId: resolvedPartnerId,
+            postUrl: deliverablePostUrl || undefined,
+            reviewState: deliverablePostUrl ? "approved" : "pending",
+            status: deliverablePostUrl ? "live" : "scheduled",
+        });
+    };
+
+    const recordTrustPartnerMetrics = () => {
+        void runAction("record-trust-partner-metrics", {
+            activations: 0,
+            commentQuality: metricOwnerLeads ? "medium" : "low",
+            comments: 0,
+            currentListSubmissions: 0,
+            deliverableId: resolvedTrustDeliverableId || undefined,
+            ownerLeads: metricOwnerLeads,
+            partnerId: resolvedPartnerId,
+            views: metricViews,
+        });
+    };
+
+    const reviewTrustPartnerRenewal = () => {
+        void runAction("review-trust-partner-renewal", {
+            evidenceSummary: metricOwnerLeads ? "Owner-quality lead signal recorded." : "No owner-quality outcome recorded yet.",
+            nicheTestId: resolvedNicheTestId || undefined,
+            ownerDecision: "pending",
+            partnerId: resolvedPartnerId,
+            recommendation: metricOwnerLeads ? "retest" : "hold",
+        });
+    };
+
+    const toggleContentDraftChannel = (channelValue: string) => {
+        setContentDraftChannels((current) => (
+            current.includes(channelValue)
+                ? current.filter((item) => item !== channelValue)
+                : [...current, channelValue]
+        ));
+    };
+
+    const upsertContentSource = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("upsert-content-source", {
+            defaultAudience: contentSourceAudience,
+            defaultMarketPodId: resolvedMarketPodId || undefined,
+            sourceType: contentSourceType,
+            sourceUrl: contentSourceUrl || undefined,
+            status: "active",
+            title: contentSourceTitle,
+        });
+    };
+
+    const createContentAsset = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("create-content-asset", {
+            canonicalMessage: contentAssetMessage,
+            ctaId: resolvedCtaId || undefined,
+            marketPodId: resolvedMarketPodId || undefined,
+            primaryAudience: contentAssetAudience,
+            proofLevel: contentAssetProofLevel,
+            riskNotes: contentAssetProofLevel === "internal-note" ? ["Internal note needs proof before broad distribution."] : [],
+            sourceId: resolvedContentSourceId || undefined,
+            sourceNotes: "Prepared from internal owner-approved MenuList proof.",
+            sourceType: contentAssetSourceType,
+            sourceUrl: contentAssetUrl || contentSourceUrl || undefined,
+            title: contentAssetTitle,
+        });
+    };
+
+    const generateContentDrafts = () => {
+        void runAction("generate-content-distribution-drafts", {
+            channels: contentDraftChannels,
+            contentAssetId: resolvedContentAssetId,
+        });
+    };
+
+    const reviewContentDraft = (contentDraftId: string, approvalStatus: "approved" | "rejected" | "hold") => {
+        void runAction("review-content-distribution-draft", {
+            approvalStatus,
+            contentDraftId,
+            reviewReason: approvalStatus === "approved" ? "Approved by owner for manual scheduling." : "Needs revision before scheduling.",
+        });
+    };
+
+    const scheduleContentDraft = (contentDraftId: string) => {
+        void runAction("schedule-content-distribution-draft", {
+            contentDraftId,
+            scheduledFor: contentScheduleAt || undefined,
+            status: "queued",
+        });
+    };
+
+    const recordContentPerformance = () => {
+        const draft = data?.workspace.contentDistributionDrafts.find((item) => item.contentDraftId === resolvedContentDraftId);
+        void runAction("record-content-performance", {
+            activations: contentPerformanceActivations,
+            channel: draft?.channel || "linkedin",
+            clicks: contentPerformanceClicks,
+            contentAssetId: resolvedContentAssetId,
+            contentDraftId: resolvedContentDraftId || undefined,
+            currentListSubmissions: contentPerformanceSubmissions,
+            engagementQuality: contentPerformanceOwnerLeads || contentPerformanceSubmissions || contentPerformanceActivations ? "medium" : "low",
+            ownerLeads: contentPerformanceOwnerLeads,
+            views: contentPerformanceViews,
+        });
+    };
+
     const prepareChannelHandoff = (approvalId: string) => {
         void runAction("prepare-channel-handoff", {
             approvalId,
@@ -724,30 +1237,294 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
+    const createDailyGrowthMission = () => {
+        void runAction("create-daily-growth-mission", {
+            marketPodId: resolvedMarketPodId || undefined,
+        });
+    };
+
+    const reviewGrowthMission = (ownerDecision: "approved" | "hold" | "redirected" | "completed") => {
+        void runAction("review-growth-mission", {
+            growthMissionId: resolvedGrowthMissionId,
+            ownerDecision,
+            ownerDecisionNote: missionDecisionNote || undefined,
+        });
+    };
+
+    const createExperimentCard = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("create-experiment-card", {
+            channel: experimentChannel,
+            contentAssetId: resolvedContentAssetId || undefined,
+            ctaId: resolvedOfferCtaId || undefined,
+            expectedOutcome: experimentExpectedOutcome,
+            hypothesis: experimentHypothesis,
+            marketPodId: resolvedMarketPodId || undefined,
+            proofAssetSummary: contentAssetTitle || undefined,
+            sourcePolicyId: resolvedPolicyId || undefined,
+            stopRule: experimentStopRule,
+            targetCount: experimentTargetCount,
+        });
+    };
+
+    const reviewExperimentCard = (ownerDecision: "repeat" | "narrow" | "stop" | "hold" | "complete") => {
+        void runAction("review-experiment-card", {
+            experimentCardId: resolvedExperimentCardId,
+            ownerDecision,
+            resultSummary: experimentResultSummary || undefined,
+        });
+    };
+
+    const upsertOfferCta = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("upsert-offer-cta", {
+            activationSurface: offerSurface,
+            approvedAsk: offerAsk,
+            blockedClaims: offerBlockedClaims.split(",").map((claim) => claim.trim()).filter(Boolean),
+            ctaId: resolvedCtaId || undefined,
+            marketPodId: resolvedMarketPodId || undefined,
+            proofMatchRule: offerProofRule,
+            segment: offerSegment,
+            status: "active",
+            title: offerTitle,
+        });
+    };
+
+    const upsertReplyPlaybook = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("upsert-reply-playbook", {
+            approvedReply: replyPlaybookReply,
+            escalationRequired: replyPlaybookEscalation,
+            intent: replyPlaybookIntent,
+            nextRoute: replyPlaybookNextRoute,
+            status: "active",
+            suppressionRequired: replyPlaybookSuppression,
+            title: replyPlaybookTitle,
+        });
+    };
+
+    const createSourceQualitySnapshot = () => {
+        void runAction("create-source-quality-snapshot", {
+            sourcePolicyId: resolvedPolicyId || undefined,
+            sourceRunId: resolvedSourceRunId || undefined,
+        });
+    };
+
     const renderSection = () => {
         if (!data) return null;
         if (activeSection === "dashboard") return <DashboardSection data={data} />;
+        if (activeSection === "mission") {
+            const activeMission = data.workspace.growthMissions.find((mission) => mission.growthMissionId === resolvedGrowthMissionId) || data.workspace.growthMissions[0];
+            const selectedExperiment = data.workspace.experimentCards.find((experiment) => experiment.experimentCardId === resolvedExperimentCardId) || data.workspace.experimentCards[0];
+            return (
+                <section className={styles.stack}>
+                    <div className={styles.contentGrid}>
+                        <div className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h2>Daily Mission</h2>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled} onClick={createDailyGrowthMission} type="button">Prepare Mission</WorkspaceButton>
+                            </div>
+                            {data.workspace.growthMissions.length ? (
+                                <>
+                                    <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedGrowthMissionId(event.target.value)} value={resolvedGrowthMissionId}>
+                                        {data.workspace.growthMissions.map((mission) => (
+                                            <option key={mission.growthMissionId} value={mission.growthMissionId}>{mission.title}</option>
+                                        ))}
+                                    </WorkspaceSelect>
+                                    {activeMission ? (
+                                        <div className={styles.list}>
+                                            <div className={styles.listItem}>
+                                                <strong>{activeMission.summary}</strong>
+                                                <span>{activeMission.expectedOutcome}</span>
+                                                <span className={tagClass(activeMission.ownerDecision)}>{activeMission.ownerDecision}</span>
+                                            </div>
+                                            {activeMission.missionActions.map((action) => (
+                                                <div className={styles.listItem} key={action.actionId}>
+                                                    <strong>{action.rank}. {action.label}</strong>
+                                                    <span>{action.reason}</span>
+                                                    <span>{action.expectedOutcome}</span>
+                                                    <span className={tagClass(action.riskLevel)}>{action.actionType} / {action.riskLevel}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : null}
+                                    <WorkspaceTextarea className={styles.textarea} onChange={(event) => setMissionDecisionNote(event.target.value)} placeholder="Decision note" value={missionDecisionNote} />
+                                    <div className={styles.rowActions}>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedGrowthMissionId} onClick={() => reviewGrowthMission("approved")} type="button">Approve</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedGrowthMissionId} onClick={() => reviewGrowthMission("hold")} type="button">Hold</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedGrowthMissionId} onClick={() => reviewGrowthMission("redirected")} type="button">Redirect</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedGrowthMissionId} onClick={() => reviewGrowthMission("completed")} type="button">Complete</WorkspaceButton>
+                                    </div>
+                                </>
+                            ) : <div className={styles.empty}>No mission prepared yet.</div>}
+                        </div>
+
+                        <form className={styles.panel} onSubmit={createExperimentCard}>
+                            <div className={styles.panelHeader}>
+                                <h2>Experiment Card</h2>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Create</WorkspaceButton>
+                            </div>
+                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setExperimentHypothesis(event.target.value)} value={experimentHypothesis} />
+                            <div className={styles.formGrid}>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setExperimentChannel(event.target.value)} value={experimentChannel}>
+                                    {["email", "manual", "content", "partner", "referral", "other"].map((item) => <option key={item} value={item}>{item}</option>)}
+                                </WorkspaceSelect>
+                                <WorkspaceInput className={styles.input} min={1} max={500} onChange={(event) => setExperimentTargetCount(Number(event.target.value))} type="number" value={experimentTargetCount} />
+                            </div>
+                            <WorkspaceInput className={styles.input} onChange={(event) => setExperimentExpectedOutcome(event.target.value)} value={experimentExpectedOutcome} />
+                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setExperimentStopRule(event.target.value)} value={experimentStopRule} />
+                            {data.workspace.experimentCards.length ? (
+                                <>
+                                    <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedExperimentCardId(event.target.value)} value={resolvedExperimentCardId}>
+                                        {data.workspace.experimentCards.map((experiment) => (
+                                            <option key={experiment.experimentCardId} value={experiment.experimentCardId}>{experiment.hypothesis.slice(0, 90)}</option>
+                                        ))}
+                                    </WorkspaceSelect>
+                                    <WorkspaceTextarea className={styles.textarea} onChange={(event) => setExperimentResultSummary(event.target.value)} placeholder="Result summary" value={experimentResultSummary} />
+                                    <div className={styles.rowActions}>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedExperimentCardId} onClick={() => reviewExperimentCard("repeat")} type="button">Repeat</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedExperimentCardId} onClick={() => reviewExperimentCard("narrow")} type="button">Narrow</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedExperimentCardId} onClick={() => reviewExperimentCard("hold")} type="button">Hold</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedExperimentCardId} onClick={() => reviewExperimentCard("stop")} type="button">Stop</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedExperimentCardId} onClick={() => reviewExperimentCard("complete")} type="button">Complete</WorkspaceButton>
+                                    </div>
+                                </>
+                            ) : null}
+                        </form>
+                    </div>
+
+                    <div className={styles.contentGrid}>
+                        <form className={styles.panel} onSubmit={upsertOfferCta}>
+                            <div className={styles.panelHeader}>
+                                <h2>Offer CTA</h2>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Save</WorkspaceButton>
+                            </div>
+                            <WorkspaceInput className={styles.input} onChange={(event) => setOfferTitle(event.target.value)} value={offerTitle} />
+                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setOfferAsk(event.target.value)} value={offerAsk} />
+                            <div className={styles.formGrid}>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setOfferSurface(event.target.value)} value={offerSurface}>
+                                    {["claim", "upload", "preview", "qr", "whatsapp", "google-profile", "manual"].map((item) => <option key={item} value={item}>{item}</option>)}
+                                </WorkspaceSelect>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setOfferSegment(event.target.value)} value={offerSegment}>
+                                    {["restaurant-owner", "agency-partner", "trust-partner", "local-operator", "general"].map((item) => <option key={item} value={item}>{item}</option>)}
+                                </WorkspaceSelect>
+                            </div>
+                            <WorkspaceInput className={styles.input} onChange={(event) => setOfferProofRule(event.target.value)} value={offerProofRule} />
+                            <WorkspaceInput className={styles.input} onChange={(event) => setOfferBlockedClaims(event.target.value)} value={offerBlockedClaims} />
+                            <div className={styles.list}>
+                                {data.workspace.offerCtas.map((offer) => (
+                                    <div className={styles.listItem} key={offer.offerCtaId}>
+                                        <strong>{offer.title}</strong>
+                                        <span>{offer.approvedAsk}</span>
+                                        <span className={tagClass(offer.status)}>{offer.activationSurface} / {offer.status}</span>
+                                    </div>
+                                ))}
+                                {!data.workspace.offerCtas.length ? <div className={styles.empty}>No offer CTAs.</div> : null}
+                            </div>
+                        </form>
+
+                        <form className={styles.panel} onSubmit={upsertReplyPlaybook}>
+                            <div className={styles.panelHeader}>
+                                <h2>Reply Playbook</h2>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Save</WorkspaceButton>
+                            </div>
+                            <WorkspaceInput className={styles.input} onChange={(event) => setReplyPlaybookTitle(event.target.value)} value={replyPlaybookTitle} />
+                            <div className={styles.formGrid}>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setReplyPlaybookIntent(event.target.value)} value={replyPlaybookIntent}>
+                                    {["send-details", "pricing", "who-are-you", "not-now", "wrong-person", "stop", "call-me", "interested", "other"].map((item) => <option key={item} value={item}>{item}</option>)}
+                                </WorkspaceSelect>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setReplyPlaybookNextRoute(event.target.value)} value={replyPlaybookNextRoute}>
+                                    {["self-serve-preview", "manual-reply", "suppress", "schedule-follow-up", "founder-review"].map((item) => <option key={item} value={item}>{item}</option>)}
+                                </WorkspaceSelect>
+                            </div>
+                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setReplyPlaybookReply(event.target.value)} value={replyPlaybookReply} />
+                            <WorkspaceInput className={styles.checkboxRow} checked={replyPlaybookEscalation} onChange={(event) => setReplyPlaybookEscalation(event.target.checked)} type="checkbox">
+                                Founder review
+                            </WorkspaceInput>
+                            <WorkspaceInput className={styles.checkboxRow} checked={replyPlaybookSuppression} onChange={(event) => setReplyPlaybookSuppression(event.target.checked)} type="checkbox">
+                                Suppression required
+                            </WorkspaceInput>
+                            <div className={styles.list}>
+                                {data.workspace.replyPlaybooks.map((playbook) => (
+                                    <div className={styles.listItem} key={playbook.playbookId}>
+                                        <strong>{playbook.title}</strong>
+                                        <span>{playbook.intent} {"->"} {playbook.nextRoute}</span>
+                                        <span className={tagClass(playbook.status)}>{playbook.status}</span>
+                                    </div>
+                                ))}
+                                {!data.workspace.replyPlaybooks.length ? <div className={styles.empty}>No reply playbooks.</div> : null}
+                            </div>
+                        </form>
+                    </div>
+
+                    <div className={styles.contentGrid}>
+                        <div className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h2>Source Quality</h2>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled} onClick={createSourceQualitySnapshot} type="button">Snapshot</WorkspaceButton>
+                            </div>
+                            <div className={styles.formGrid}>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setSourcePolicyId(event.target.value)} value={resolvedPolicyId}>
+                                    {data.workspace.policies.map((policy) => (
+                                        <option key={policy.sourcePolicyId} value={policy.sourcePolicyId}>{policy.name}</option>
+                                    ))}
+                                </WorkspaceSelect>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedSourceRunId(event.target.value)} value={resolvedSourceRunId}>
+                                    {data.workspace.imports.map((item) => (
+                                        <option key={item.sourceRunId} value={item.sourceRunId}>{item.sourceName}</option>
+                                    ))}
+                                </WorkspaceSelect>
+                            </div>
+                            <div className={styles.list}>
+                                {data.workspace.sourceQualitySnapshots.map((snapshot) => (
+                                    <div className={styles.listItem} key={snapshot.sourceQualitySnapshotId}>
+                                        <strong>{snapshot.sourceName}</strong>
+                                        <span>Usable {Math.round(snapshot.usableTargetRate * 100)}% / Duplicate {Math.round(snapshot.duplicateRate * 100)}% / Activation {Math.round(snapshot.activationRate * 100)}%</span>
+                                        <span className={tagClass(snapshot.recommendation === "continue" ? "good" : snapshot.recommendation === "stop" ? "danger" : "warning")}>{snapshot.recommendation}</span>
+                                    </div>
+                                ))}
+                                {!data.workspace.sourceQualitySnapshots.length ? <div className={styles.empty}>No source quality snapshots.</div> : null}
+                            </div>
+                        </div>
+
+                        <div className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h2>7-Day Trial</h2>
+                                <span className={tagClass(selectedExperiment?.status || "hold")}>{selectedExperiment?.status || "not started"}</span>
+                            </div>
+                            <div className={styles.statusList}>
+                                <div className={styles.statusRow}><span>One market pod</span><span className={tagClass(resolvedMarketPodId ? "ready" : "hold")}>{resolvedMarketPodId ? "selected" : "missing"}</span></div>
+                                <div className={styles.statusRow}><span>One offer CTA</span><span className={tagClass(resolvedOfferCtaId ? "ready" : "hold")}>{resolvedOfferCtaId || "missing"}</span></div>
+                                <div className={styles.statusRow}><span>One reply playbook</span><span className={tagClass(resolvedReplyPlaybookId ? "ready" : "hold")}>{resolvedReplyPlaybookId || "missing"}</span></div>
+                                <div className={styles.statusRow}><span>Sender identity</span><span className={tagClass(resolvedSenderDomainId ? "ready" : "hold")}>{resolvedSenderDomainId || "held"}</span></div>
+                                <div className={styles.statusRow}><span>Provider send</span><span className={tagClass(data.setup.providerSendEnabled ? "warning" : "good")}>{data.setup.providerSendEnabled ? "enabled" : "disabled"}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            );
+        }
         if (activeSection === "targets") {
             return (
                 <section className={styles.stack}>
                     <form className={styles.panel} onSubmit={handleImport}>
                         <div className={styles.panelHeader}>
                             <h2>Manual Import</h2>
-                            <button className={styles.button} disabled={saving || !resolvedPolicyId} type="submit">Import</button>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedPolicyId} type="submit">Import</WorkspaceButton>
                         </div>
                         <div className={styles.formGrid}>
-                            <input className={styles.input} onChange={(event) => setSourceName(event.target.value)} value={sourceName} />
-                            <select className={styles.input} onChange={(event) => setSourcePolicyId(event.target.value)} value={resolvedPolicyId}>
+                            <WorkspaceInput className={styles.input} onChange={(event) => setSourceName(event.target.value)} value={sourceName} />
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setSourcePolicyId(event.target.value)} value={resolvedPolicyId}>
                                 {data.workspace.policies.map((policy) => (
                                     <option key={policy.sourcePolicyId} value={policy.sourcePolicyId}>{policy.name}</option>
                                 ))}
-                            </select>
+                            </WorkspaceSelect>
                         </div>
-                        <textarea className={styles.textarea} onChange={(event) => setImportRows(event.target.value)} value={importRows} />
+                        <WorkspaceTextarea className={styles.textarea} onChange={(event) => setImportRows(event.target.value)} value={importRows} />
                     </form>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}><h2>Targets</h2><span className={styles.tag}>{data.workspace.targets.length}</span></div>
-                        <TargetList data={data} onDraft={createDraft} onEvidence={createEvidence} onScore={scoreTarget} saving={saving} />
+                        <TargetList data={data} mobileReadOnly={mobileReadOnly} onDraft={createDraft} onEvidence={createEvidence} onScore={scoreTarget} saving={saving} />
                     </div>
                 </section>
             );
@@ -775,34 +1552,31 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <form className={styles.panel} onSubmit={handlePolicyCreate}>
                         <div className={styles.panelHeader}>
                             <h2>Source Policy</h2>
-                            <button className={styles.button} disabled={saving} type="submit">Create</button>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Create</WorkspaceButton>
                         </div>
                         <div className={styles.formGrid}>
-                            <input className={styles.input} onChange={(event) => setPolicyName(event.target.value)} value={policyName} />
-                            <input className={styles.input} min={1} max={365} onChange={(event) => setRetentionDays(Number(event.target.value))} type="number" value={retentionDays} />
+                            <WorkspaceInput className={styles.input} onChange={(event) => setPolicyName(event.target.value)} value={policyName} />
+                            <WorkspaceInput className={styles.input} min={1} max={365} onChange={(event) => setRetentionDays(Number(event.target.value))} type="number" value={retentionDays} />
                         </div>
-                        <select className={styles.input} onChange={(event) => handlePolicySourceTypeChange(event.target.value)} value={policySourceType}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => handlePolicySourceTypeChange(event.target.value)} value={policySourceType}>
                             <option value="manual-research">manual-research</option>
                             <option value="manual-csv">manual-csv</option>
                             <option value="owned-demand">owned-demand</option>
                             <option value="provider">provider</option>
                             <option value="other">other</option>
-                        </select>
+                        </WorkspaceSelect>
                         <div className={styles.checkboxGrid}>
-                            <label className={styles.checkboxLabel}>
-                                <input checked={policyAllowContact} onChange={(event) => setPolicyAllowContact(event.target.checked)} type="checkbox" />
+                            <WorkspaceInput className={styles.checkboxLabel} checked={policyAllowContact} onChange={(event) => setPolicyAllowContact(event.target.checked)} type="checkbox">
                                 Contact use
-                            </label>
-                            <label className={styles.checkboxLabel}>
-                                <input checked={policyAllowEvidence} onChange={(event) => setPolicyAllowEvidence(event.target.checked)} type="checkbox" />
+                            </WorkspaceInput>
+                            <WorkspaceInput className={styles.checkboxLabel} checked={policyAllowEvidence} onChange={(event) => setPolicyAllowEvidence(event.target.checked)} type="checkbox">
                                 Evidence use
-                            </label>
-                            <label className={styles.checkboxLabel}>
-                                <input checked={policyAllowPersonalization} onChange={(event) => setPolicyAllowPersonalization(event.target.checked)} type="checkbox" />
+                            </WorkspaceInput>
+                            <WorkspaceInput className={styles.checkboxLabel} checked={policyAllowPersonalization} onChange={(event) => setPolicyAllowPersonalization(event.target.checked)} type="checkbox">
                                 Personalization
-                            </label>
+                            </WorkspaceInput>
                         </div>
-                        <button className={styles.ghostButton} disabled={saving} onClick={handleSeed} type="button">Seed Defaults</button>
+                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={handleSeed} type="button">Seed Defaults</WorkspaceButton>
                     </form>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}><h2>Policies</h2><span className={styles.tag}>{data.workspace.policies.length}</span></div>
@@ -810,7 +1584,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             {data.workspace.policies.map((policy) => (
                                 <div className={styles.listItem} key={policy.sourcePolicyId}>
                                     <strong>{policy.name}</strong>
-                                    <span>{policy.sourceType} / {policy.retentionDays} days / {policy.status}</span>
+                                    <span>{policy.sourceType} / {policy.retentionDays} days / {policy.policyState || policy.status}</span>
                                 </div>
                             ))}
                         </div>
@@ -819,10 +1593,10 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         <div className={styles.panelHeader}>
                             <h2>Provider Registry</h2>
                             <div className={styles.rowActions}>
-                                <button className={styles.ghostButton} disabled={saving} onClick={approveOwnedEmailSequencerProvider} type="button">Approve Owned Rail</button>
-                                <button className={styles.ghostButton} disabled={saving} onClick={approveGooglePlacesProvider} type="button">Approve Places</button>
-                                <button className={styles.ghostButton} disabled={saving} onClick={approveApifyProvider} type="button">Approve Apify</button>
-                                <button className={styles.ghostButton} disabled={saving} onClick={approveGeminiAiProvider} type="button">Approve Gemini</button>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveOwnedEmailSequencerProvider} type="button">Approve Owned Rail</WorkspaceButton>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveGooglePlacesProvider} type="button">Approve Places</WorkspaceButton>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveApifyProvider} type="button">Approve Apify</WorkspaceButton>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveGeminiAiProvider} type="button">Approve Gemini</WorkspaceButton>
                             </div>
                         </div>
                         <div className={styles.table}>
@@ -837,7 +1611,13 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         </div>
                     </div>
                     <div className={styles.panelWide}>
-                        <div className={styles.panelHeader}><h2>Budget Policies</h2><span className={styles.tag}>{data.workspace.budgetPolicies.length}</span></div>
+                        <div className={styles.panelHeader}>
+                            <h2>Budget Policies</h2>
+                            <div className={styles.rowActions}>
+                                <span className={styles.tag}>{data.workspace.budgetPolicies.length}</span>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveTrustPartnerTestBudget} type="button">Approve Trust Partner Test</WorkspaceButton>
+                            </div>
+                        </div>
                         <div className={styles.table}>
                             {data.workspace.budgetPolicies.map((budget) => (
                                 <div className={styles.tableRowCompact} key={budget.budgetPolicyId}>
@@ -858,12 +1638,12 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}>
                             <h2>Draft</h2>
-                            <button className={styles.button} disabled={saving || !resolvedTargetId} onClick={() => createDraft(resolvedTargetId)} type="button">Create Draft</button>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedTargetId} onClick={() => createDraft(resolvedTargetId)} type="button">Create Draft</WorkspaceButton>
                         </div>
                         <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
                     </div>
                     <div className={styles.panel}>
-                        <div className={styles.panelHeader}><h2>Templates</h2><button className={styles.ghostButton} disabled={saving} onClick={handleSeed} type="button">Seed</button></div>
+                        <div className={styles.panelHeader}><h2>Templates</h2><WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={handleSeed} type="button">Seed</WorkspaceButton></div>
                         <div className={styles.list}>
                             {data.workspace.templates.map((template) => (
                                 <div className={styles.listItem} key={template.templateId}>
@@ -899,10 +1679,10 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                     <span className={tagClass(approval.status)}>{approval.status}</span>
                                     <span>{approval.priority}</span>
                                     <div className={styles.rowActions}>
-                                        <button className={styles.ghostButton} disabled={saving} onClick={() => createApprovalPacket(approval)} type="button">Packet</button>
-                                        <button className={styles.ghostButton} disabled={saving || approval.status !== "pending"} onClick={() => reviewApproval(approval, "approved")} type="button">Approve</button>
-                                        <button className={styles.ghostButton} disabled={saving || approval.status !== "pending"} onClick={() => reviewApproval(approval, "rejected")} type="button">Reject</button>
-                                        <button className={styles.ghostButton} disabled={saving || approval.status !== "approved"} onClick={() => exportMessage(approval.approvalId)} type="button">Export</button>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => createApprovalPacket(approval)} type="button">Packet</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || approval.status !== "pending"} onClick={() => reviewApproval(approval, "approved")} type="button">Approve</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || approval.status !== "pending"} onClick={() => reviewApproval(approval, "rejected")} type="button">Reject</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || approval.status !== "approved"} onClick={() => exportMessage(approval.approvalId)} type="button">Export</WorkspaceButton>
                                     </div>
                                 </div>
                             ))}
@@ -935,17 +1715,17 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <form className={styles.panel} onSubmit={captureReply}>
                         <div className={styles.panelHeader}>
                             <h2>Reply</h2>
-                            <button className={styles.button} disabled={saving || !resolvedTargetId || !replyText.trim()} type="submit">Capture</button>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedTargetId || !replyText.trim()} type="submit">Capture</WorkspaceButton>
                         </div>
                         <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
-                        <select className={styles.input} onChange={(event) => setReplyChannel(event.target.value)} value={replyChannel}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setReplyChannel(event.target.value)} value={replyChannel}>
                             <option value="email">email</option>
                             <option value="manual">manual</option>
                             <option value="whatsapp">whatsapp</option>
                             <option value="instagram">instagram</option>
                             <option value="messenger">messenger</option>
-                        </select>
-                        <textarea className={styles.textareaSmall} onChange={(event) => setReplyText(event.target.value)} value={replyText} />
+                        </WorkspaceSelect>
+                        <WorkspaceTextarea className={styles.textareaSmall} onChange={(event) => setReplyText(event.target.value)} value={replyText} />
                     </form>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}><h2>Conversations</h2><span className={styles.tag}>{data.workspace.conversations.length}</span></div>
@@ -965,26 +1745,26 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             return (
                 <section className={styles.contentGrid}>
                     <form className={styles.panel} onSubmit={recordOutcome}>
-                        <div className={styles.panelHeader}><h2>Outcome</h2><button className={styles.button} disabled={saving} type="submit">Record</button></div>
+                        <div className={styles.panelHeader}><h2>Outcome</h2><WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Record</WorkspaceButton></div>
                         <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
-                        <select className={styles.input} onChange={(event) => setOutcomeType(event.target.value)} value={outcomeType}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setOutcomeType(event.target.value)} value={outcomeType}>
                             <option value="route_created">route_created</option>
                             <option value="upload_started">upload_started</option>
                             <option value="preview_prepared">preview_prepared</option>
                             <option value="published">published</option>
                             <option value="two_surface_activation">two_surface_activation</option>
-                        </select>
+                        </WorkspaceSelect>
                     </form>
                     <form className={styles.panel} onSubmit={captureDemand}>
-                        <div className={styles.panelHeader}><h2>Demand Signal</h2><button className={styles.button} disabled={saving} type="submit">Capture</button></div>
+                        <div className={styles.panelHeader}><h2>Demand Signal</h2><WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Capture</WorkspaceButton></div>
                         <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
-                        <select className={styles.input} onChange={(event) => setDemandSignalType(event.target.value)} value={demandSignalType}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setDemandSignalType(event.target.value)} value={demandSignalType}>
                             <option value="link_click">link_click</option>
                             <option value="qr_scan">qr_scan</option>
                             <option value="share">share</option>
                             <option value="claim_attempt">claim_attempt</option>
                             <option value="referral">referral</option>
-                        </select>
+                        </WorkspaceSelect>
                     </form>
                     <div className={styles.panelWide}>
                         <div className={styles.panelHeader}><h2>Outcomes</h2><span className={styles.tag}>{data.workspace.outcomes.length}</span></div>
@@ -1021,15 +1801,49 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         </div>
                     </div>
                     <div className={styles.panelWide}>
-                        <div className={styles.panelHeader}><h2>Market Pods</h2><span className={styles.tag}>{data.workspace.marketPods.length}</span></div>
+                        <div className={styles.panelHeader}>
+                            <h2>Market Pods</h2>
+                            <div className={styles.rowActions}>
+                                <span className={styles.tag}>{data.workspace.marketPods.length}</span>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => recommendMarketPodPlan()} type="button">Recommend</WorkspaceButton>
+                            </div>
+                        </div>
                         <div className={styles.list}>
                             {data.workspace.marketPods.map((pod) => (
                                 <div className={styles.listItem} key={pod.marketPodId}>
                                     <strong>{pod.name}</strong>
                                     <span>{[pod.category, pod.city, pod.country].filter(Boolean).join(" / ")} / ${pod.monthlyBudgetUsd} / {pod.successMetric}</span>
-                                    <span className={tagClass(pod.status)}>{pod.status}</span>
+                                    <span className={tagClass(pod.recommendation || pod.status)}>{pod.recommendation || pod.status}</span>
+                                    {pod.recommendationReason ? <span>{pod.recommendationReason}</span> : null}
+                                    {pod.recommendedActions?.length ? <span>{pod.recommendedActions.join(" | ")}</span> : null}
+                                    <div className={styles.rowActions}>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => recommendMarketPodPlan(pod.marketPodId)} type="button">Refresh Plan</WorkspaceButton>
+                                    </div>
                                 </div>
                             ))}
+                            {!data.workspace.marketPods.length ? <div className={styles.empty}>No market pod yet.</div> : null}
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}>
+                            <h2>Weekly Strategist Memos</h2>
+                            <div className={styles.rowActions}>
+                                <span className={styles.tag}>{data.workspace.strategistMemos.length}</span>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled} onClick={createWeeklyStrategistMemo} type="button">Create Memo</WorkspaceButton>
+                            </div>
+                        </div>
+                        <div className={styles.list}>
+                            {data.workspace.strategistMemos.map((memo) => (
+                                <div className={styles.listItem} key={memo.strategistMemoId}>
+                                    <strong>{memo.title}</strong>
+                                    <span>{memo.summary}</span>
+                                    <span>{memo.costSummary}</span>
+                                    <span className={tagClass(memo.status)}>{memo.status}</span>
+                                    {memo.nextDecisions.length ? <span>{memo.nextDecisions.join(" | ")}</span> : null}
+                                    {memo.riskNotes.length ? <span>{memo.riskNotes.join(" | ")}</span> : null}
+                                </div>
+                            ))}
+                            {!data.workspace.strategistMemos.length ? <div className={styles.empty}>No memo yet.</div> : null}
                         </div>
                     </div>
                 </section>
@@ -1041,36 +1855,36 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <form className={styles.panel} onSubmit={runEnrichmentWaterfall}>
                         <div className={styles.panelHeader}>
                             <h2>Enrichment Waterfall</h2>
-                            <button className={styles.button} disabled={saving || !resolvedTargetId || !resolvedWaterfallId} type="submit">Run</button>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedTargetId || !resolvedWaterfallId} type="submit">Run</WorkspaceButton>
                         </div>
                         <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
-                        <select className={styles.input} onChange={(event) => setSelectedWaterfallId(event.target.value)} value={resolvedWaterfallId}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedWaterfallId(event.target.value)} value={resolvedWaterfallId}>
                             {data.workspace.enrichmentWaterfalls.map((waterfall) => (
                                 <option key={waterfall.waterfallId} value={waterfall.waterfallId}>{waterfall.name} / {waterfall.status}</option>
                             ))}
-                        </select>
+                        </WorkspaceSelect>
                     </form>
                     <form className={styles.panel} onSubmit={runSourceProvider}>
                         <div className={styles.panelHeader}>
                             <h2>Live Source Run</h2>
-                            <button className={styles.button} disabled={saving || !resolvedProviderPolicyId || !sourceQuery.trim()} type="submit">Run</button>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedProviderPolicyId || !sourceQuery.trim()} type="submit">Run</WorkspaceButton>
                         </div>
-                        <select className={styles.input} onChange={(event) => setSourceProvider(event.target.value)} value={sourceProvider}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setSourceProvider(event.target.value)} value={sourceProvider}>
                             <option value="google-places">Google Places</option>
                             <option value="apify">Apify</option>
                             <option value="foursquare">Foursquare</option>
-                        </select>
-                        <input className={styles.input} onChange={(event) => setSourceQuery(event.target.value)} value={sourceQuery} />
+                        </WorkspaceSelect>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setSourceQuery(event.target.value)} value={sourceQuery} />
                         <div className={styles.formGrid}>
-                            <input className={styles.input} onChange={(event) => setSourceCity(event.target.value)} value={sourceCity} />
-                            <input className={styles.input} onChange={(event) => setSourceCountry(event.target.value)} value={sourceCountry} />
-                            <input className={styles.input} max={20} min={1} onChange={(event) => setSourceMaxResults(Number(event.target.value))} type="number" value={sourceMaxResults} />
+                            <WorkspaceInput className={styles.input} onChange={(event) => setSourceCity(event.target.value)} value={sourceCity} />
+                            <WorkspaceInput className={styles.input} onChange={(event) => setSourceCountry(event.target.value)} value={sourceCountry} />
+                            <WorkspaceInput className={styles.input} max={20} min={1} onChange={(event) => setSourceMaxResults(Number(event.target.value))} type="number" value={sourceMaxResults} />
                         </div>
-                        <select className={styles.input} onChange={(event) => setSourcePolicyId(event.target.value)} value={resolvedProviderPolicyId}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setSourcePolicyId(event.target.value)} value={resolvedProviderPolicyId}>
                             {providerPolicies.length ? providerPolicies.map((policy) => (
                                 <option key={policy.sourcePolicyId} value={policy.sourcePolicyId}>{policy.name} / {policy.sourceType}</option>
                             )) : <option value="">No provider source policy</option>}
-                        </select>
+                        </WorkspaceSelect>
                     </form>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}><h2>Waterfalls</h2><span className={styles.tag}>{data.workspace.enrichmentWaterfalls.length}</span></div>
@@ -1093,6 +1907,56 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                     <span>{run.status} / {run.importedCount} imported / {run.blockedCount} blocked</span>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                    <div className={styles.panel}>
+                        <div className={styles.panelHeader}>
+                            <h2>Provider Evaluation</h2>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled} onClick={createProviderEvaluation} type="button">Create</WorkspaceButton>
+                        </div>
+                        <div className={styles.formGrid}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setProviderEvaluationProvider(event.target.value)} value={providerEvaluationProvider}>
+                                <option value="google-places">google-places</option>
+                                <option value="apify">apify</option>
+                                <option value="owned-email">owned-email</option>
+                                <option value="smartlead">smartlead</option>
+                                <option value="openai">openai</option>
+                            </WorkspaceSelect>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setProviderEvaluationUse(event.target.value)} value={providerEvaluationUse}>
+                                <option value="discovery">discovery</option>
+                                <option value="enrichment">enrichment</option>
+                                <option value="verification">verification</option>
+                                <option value="sender">sender</option>
+                                <option value="sequencer">sequencer</option>
+                                <option value="ai">ai</option>
+                            </WorkspaceSelect>
+                        </div>
+                        <div className={styles.list}>
+                            {data.workspace.providerEvaluations.map((evaluation) => (
+                                <div className={styles.listItem} key={evaluation.providerEvaluationId}>
+                                    <strong>{evaluation.provider} / {evaluation.use}</strong>
+                                    <span>{evaluation.sampleSize} samples / {evaluation.evidenceQualityScore} evidence score</span>
+                                    <span className={tagClass(evaluation.recommendation)}>{evaluation.recommendation}</span>
+                                </div>
+                            ))}
+                            {!data.workspace.providerEvaluations.length ? <div className={styles.empty}>No provider evaluation yet.</div> : null}
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Provider Source Retention</h2><span className={styles.tag}>{data.workspace.providerSourceRetentions.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.providerSourceRetentions.map((retention) => (
+                                <div className={styles.tableRowCompact} key={retention.providerSourceRetentionId}>
+                                    <div><strong>{retention.provider}</strong><span>{retention.targetName || retention.targetId || retention.providerRecordId || "source row"}</span></div>
+                                    <span className={tagClass(retention.status)}>{retention.status}</span>
+                                    <span>{retention.refreshDueAt || "no refresh due"}</span>
+                                    <div className={styles.rowActions}>
+                                        {retention.providerRecordUrl ? <a className={styles.ghostButton} href={retention.providerRecordUrl} rel="noreferrer" target="_blank">Open</a> : null}
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => refreshProviderRetention(retention.providerSourceRetentionId)} type="button">Mark Refreshed</WorkspaceButton>
+                                    </div>
+                                </div>
+                            ))}
+                            {!data.workspace.providerSourceRetentions.length ? <div className={styles.empty}>No provider retention records yet.</div> : null}
                         </div>
                     </div>
                     <div className={styles.panelWide}>
@@ -1123,7 +1987,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     </div>
                     <div className={styles.panelWide}>
                         <div className={styles.panelHeader}><h2>Imported Targets</h2><span className={styles.tag}>{data.workspace.targets.length}</span></div>
-                        <TargetList data={data} onDraft={createDraft} onEvidence={createEvidence} onScore={scoreTarget} saving={saving} />
+                        <TargetList data={data} mobileReadOnly={mobileReadOnly} onDraft={createDraft} onEvidence={createEvidence} onScore={scoreTarget} saving={saving} />
                     </div>
                 </section>
             );
@@ -1134,10 +1998,10 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <form className={styles.panel} onSubmit={runAiAssist}>
                         <div className={styles.panelHeader}>
                             <h2>AI Assist</h2>
-                            <button className={styles.button} disabled={saving || !resolvedTargetId} type="submit">Run</button>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedTargetId} type="submit">Run</WorkspaceButton>
                         </div>
                         <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
-                        <select className={styles.input} onChange={(event) => setAiTask(event.target.value)} value={aiTask}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setAiTask(event.target.value)} value={aiTask}>
                             <option value="score">score</option>
                             <option value="evidence">evidence</option>
                             <option value="draft">draft</option>
@@ -1145,8 +2009,8 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             <option value="approval-packet">approval-packet</option>
                             <option value="weekly-strategist">weekly-strategist</option>
                             <option value="vendor-audit">vendor-audit</option>
-                        </select>
-                        <textarea className={styles.textareaSmall} onChange={(event) => setAiInstruction(event.target.value)} value={aiInstruction} />
+                        </WorkspaceSelect>
+                        <WorkspaceTextarea className={styles.textareaSmall} onChange={(event) => setAiInstruction(event.target.value)} value={aiInstruction} />
                     </form>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}><h2>Model Routes</h2><span className={styles.tag}>{data.workspace.modelRoutes.length}</span></div>
@@ -1204,18 +2068,18 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                 <section className={styles.contentGrid}>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}><h2>Approved Channel Action</h2><span className={styles.tag}>{approvedItems.length}</span></div>
-                        <select className={styles.input} onChange={(event) => setChannel(event.target.value)} value={channel}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setChannel(event.target.value)} value={channel}>
                             <option value="email">email</option>
                             <option value="whatsapp">whatsapp</option>
                             <option value="instagram">instagram</option>
                             <option value="messenger">messenger</option>
-                        </select>
-                        <select className={styles.input} onChange={(event) => setSequencerProvider(event.target.value)} value={sequencerProvider}>
+                        </WorkspaceSelect>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setSequencerProvider(event.target.value)} value={sequencerProvider}>
                             <option value="owned-email">owned-email</option>
                             <option value="smartlead">smartlead</option>
                             <option value="instantly">instantly</option>
                             <option value="lemlist">lemlist</option>
-                        </select>
+                        </WorkspaceSelect>
                         {resolvedSenderDomainId ? <div className={styles.statusRow}><span>Sender domain</span><span className={tagClass("ready")}>{resolvedSenderDomainId}</span></div> : <div className={styles.alert}>No ready sender domain.</div>}
                         <div className={styles.list}>
                             {approvedItems.map((approval) => (
@@ -1223,10 +2087,47 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                     <strong>{approval.targetName}</strong>
                                     <span>{approval.reviewReason}</span>
                                     <div className={styles.rowActions}>
-                                        <button className={styles.ghostButton} disabled={saving} onClick={() => prepareChannelHandoff(approval.approvalId)} type="button">Handoff</button>
-                                        <button className={styles.ghostButton} disabled={saving} onClick={() => createSequencerHandoff(approval.approvalId)} type="button">{sequencerProvider === "owned-email" ? "Queue Owned" : "Sequencer"}</button>
-                                        <button className={styles.ghostButton} disabled={saving || !data.setup.providerSendEnabled} onClick={() => sendApprovedMessage(approval.approvalId)} type="button">Send</button>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => prepareChannelHandoff(approval.approvalId)} type="button">Handoff</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => createSequencerHandoff(approval.approvalId)} type="button">{sequencerProvider === "owned-email" ? "Queue Owned" : "Sequencer"}</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !data.setup.providerSendEnabled} onClick={() => sendApprovedMessage(approval.approvalId)} type="button">Send</WorkspaceButton>
                                     </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className={styles.panel}>
+                        <div className={styles.panelHeader}>
+                            <h2>Channel Window</h2>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || channel === "email"} onClick={upsertChannelWindow} type="button">Save</WorkspaceButton>
+                        </div>
+                        <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
+                        <div className={styles.formGrid}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setChannel(event.target.value)} value={channel}>
+                                <option value="whatsapp">whatsapp</option>
+                                <option value="instagram">instagram</option>
+                                <option value="messenger">messenger</option>
+                            </WorkspaceSelect>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setChannelWindowSource(event.target.value)} value={channelWindowSource}>
+                                <option value="inbound">inbound</option>
+                                <option value="opt-in">opt-in</option>
+                                <option value="ad-click">ad-click</option>
+                                <option value="template">template</option>
+                                <option value="manual">manual</option>
+                            </WorkspaceSelect>
+                        </div>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setChannelWindowStatus(event.target.value)} value={channelWindowStatus}>
+                            <option value="open">open</option>
+                            <option value="closed">closed</option>
+                            <option value="expired">expired</option>
+                            <option value="blocked">blocked</option>
+                            <option value="needs-template">needs-template</option>
+                        </WorkspaceSelect>
+                        <div className={styles.list}>
+                            {data.workspace.channelWindows.map((windowState) => (
+                                <div className={styles.listItem} key={windowState.channelWindowId}>
+                                    <strong>{windowState.channel}</strong>
+                                    <span>{windowState.targetName || windowState.targetId || "global"} / {windowState.source}</span>
+                                    <span className={tagClass(windowState.status)}>{windowState.eligibleForHandoff ? "eligible" : windowState.status}</span>
                                 </div>
                             ))}
                         </div>
@@ -1235,11 +2136,11 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         <div className={styles.panelHeader}>
                             <h2>Sender Domain</h2>
                             <div className={styles.rowActions}>
-                                <button className={styles.ghostButton} disabled={saving || !senderDomain.trim()} type="submit">Register Hold</button>
-                                <button className={styles.button} disabled={saving || !senderDomain.trim()} onClick={readySenderDomain} type="button">Mark Ready</button>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !senderDomain.trim()} type="submit">Register Hold</WorkspaceButton>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled || !senderDomain.trim()} onClick={readySenderDomain} type="button">Mark Ready</WorkspaceButton>
                             </div>
                         </div>
-                        <input className={styles.input} onChange={(event) => setSenderDomain(event.target.value)} value={senderDomain} />
+                        <WorkspaceInput className={styles.input} onChange={(event) => setSenderDomain(event.target.value)} value={senderDomain} />
                         <div className={styles.list}>
                             {data.workspace.senderDomains.map((sender) => (
                                 <div className={styles.listItem} key={sender.senderDomainId}>
@@ -1272,7 +2173,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                     <div className={styles.rowActions}>
                                         <span>{handoff.blockedReason || handoff.nextSendAt || "ready"}</span>
                                         {handoff.provider === "owned-email" && (handoff.status === "queued" || handoff.status === "ready") ? (
-                                            <button className={styles.ghostButton} disabled={saving || !data.setup.providerSendEnabled} onClick={() => sendOwnedSequenceStep(handoff.sequencerHandoffId)} type="button">Send Step</button>
+                                            <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !data.setup.providerSendEnabled} onClick={() => sendOwnedSequenceStep(handoff.sequencerHandoffId)} type="button">Send Step</WorkspaceButton>
                                         ) : null}
                                     </div>
                                 </div>
@@ -1306,6 +2207,337 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                 </section>
             );
         }
+        if (activeSection === "content") {
+            const contentChannelOptions = ["linkedin", "x", "email", "newsletter", "partner-brief", "blog", "short-video", "other"];
+            return (
+                <section className={styles.contentGrid}>
+                    <form className={styles.panel} onSubmit={upsertContentSource}>
+                        <div className={styles.panelHeader}>
+                            <h2>Source</h2>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !contentSourceTitle.trim()} type="submit">Save</WorkspaceButton>
+                        </div>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setContentSourceTitle(event.target.value)} value={contentSourceTitle} />
+                        <div className={styles.formGrid}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentSourceType(event.target.value)} value={contentSourceType}>
+                                <option value="manual">manual</option>
+                                <option value="blog">blog</option>
+                                <option value="changelog">changelog</option>
+                                <option value="proof-page">proof-page</option>
+                                <option value="demo">demo</option>
+                                <option value="case-note">case-note</option>
+                                <option value="customer-story">customer-story</option>
+                                <option value="youtube">youtube</option>
+                                <option value="podcast">podcast</option>
+                                <option value="other">other</option>
+                            </WorkspaceSelect>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentSourceAudience(event.target.value)} value={contentSourceAudience}>
+                                <option value="restaurant-owner">restaurant-owner</option>
+                                <option value="agency-partner">agency-partner</option>
+                                <option value="trust-partner">trust-partner</option>
+                                <option value="local-operator">local-operator</option>
+                                <option value="general">general</option>
+                            </WorkspaceSelect>
+                        </div>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setContentSourceUrl(event.target.value)} value={contentSourceUrl} />
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedContentSourceId(event.target.value)} value={resolvedContentSourceId}>
+                            <option value="">No source selected</option>
+                            {data.workspace.contentSources.map((source) => (
+                                <option key={source.contentSourceId} value={source.contentSourceId}>{source.title}</option>
+                            ))}
+                        </WorkspaceSelect>
+                    </form>
+                    <form className={styles.panel} onSubmit={createContentAsset}>
+                        <div className={styles.panelHeader}>
+                            <h2>Asset</h2>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !contentAssetTitle.trim() || !contentAssetMessage.trim()} type="submit">Create</WorkspaceButton>
+                        </div>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setContentAssetTitle(event.target.value)} value={contentAssetTitle} />
+                        <WorkspaceTextarea className={styles.textareaSmall} onChange={(event) => setContentAssetMessage(event.target.value)} value={contentAssetMessage} />
+                        <div className={styles.formGrid}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentAssetSourceType(event.target.value)} value={contentAssetSourceType}>
+                                <option value="manual">manual</option>
+                                <option value="proof-page">proof-page</option>
+                                <option value="demo">demo</option>
+                                <option value="case-note">case-note</option>
+                                <option value="customer-story">customer-story</option>
+                                <option value="blog">blog</option>
+                                <option value="other">other</option>
+                            </WorkspaceSelect>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentAssetAudience(event.target.value)} value={contentAssetAudience}>
+                                <option value="restaurant-owner">restaurant-owner</option>
+                                <option value="agency-partner">agency-partner</option>
+                                <option value="trust-partner">trust-partner</option>
+                                <option value="local-operator">local-operator</option>
+                                <option value="general">general</option>
+                            </WorkspaceSelect>
+                        </div>
+                        <div className={styles.formGrid}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentAssetProofLevel(event.target.value)} value={contentAssetProofLevel}>
+                                <option value="owned">owned</option>
+                                <option value="customer-proof">customer-proof</option>
+                                <option value="market-research">market-research</option>
+                                <option value="internal-note">internal-note</option>
+                            </WorkspaceSelect>
+                            <WorkspaceInput className={styles.input} onChange={(event) => setContentAssetUrl(event.target.value)} value={contentAssetUrl} />
+                        </div>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedContentAssetId(event.target.value)} value={resolvedContentAssetId}>
+                            <option value="">No asset selected</option>
+                            {data.workspace.contentAssets.map((asset) => (
+                                <option key={asset.contentAssetId} value={asset.contentAssetId}>{asset.title}</option>
+                            ))}
+                        </WorkspaceSelect>
+                    </form>
+                    <div className={styles.panel}>
+                        <div className={styles.panelHeader}>
+                            <h2>Drafts</h2>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedContentAssetId || !contentDraftChannels.length} onClick={generateContentDrafts} type="button">Generate</WorkspaceButton>
+                        </div>
+                        <div className={styles.checkboxGrid}>
+                            {contentChannelOptions.map((channelOption) => (
+                                <WorkspaceInput className={styles.checkboxLabel} checked={contentDraftChannels.includes(channelOption)} key={channelOption} onChange={() => toggleContentDraftChannel(channelOption)} type="checkbox">
+                                    {channelOption}
+                                </WorkspaceInput>
+                            ))}
+                        </div>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setContentScheduleAt(event.target.value)} placeholder="2026-06-25T09:00:00.000Z" value={contentScheduleAt} />
+                    </div>
+                    <div className={styles.panel}>
+                        <div className={styles.panelHeader}>
+                            <h2>Performance</h2>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedContentAssetId} onClick={recordContentPerformance} type="button">Record</WorkspaceButton>
+                        </div>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedContentDraftId(event.target.value)} value={resolvedContentDraftId}>
+                            <option value="">No draft selected</option>
+                            {data.workspace.contentDistributionDrafts.map((draft) => (
+                                <option key={draft.contentDraftId} value={draft.contentDraftId}>{draft.title}</option>
+                            ))}
+                        </WorkspaceSelect>
+                        <div className={styles.formGrid}>
+                            <WorkspaceInput className={styles.input} min={0} onChange={(event) => setContentPerformanceViews(Number(event.target.value))} type="number" value={contentPerformanceViews} />
+                            <WorkspaceInput className={styles.input} min={0} onChange={(event) => setContentPerformanceClicks(Number(event.target.value))} type="number" value={contentPerformanceClicks} />
+                        </div>
+                        <div className={styles.formGrid}>
+                            <WorkspaceInput className={styles.input} min={0} onChange={(event) => setContentPerformanceOwnerLeads(Number(event.target.value))} type="number" value={contentPerformanceOwnerLeads} />
+                            <WorkspaceInput className={styles.input} min={0} onChange={(event) => setContentPerformanceSubmissions(Number(event.target.value))} type="number" value={contentPerformanceSubmissions} />
+                        </div>
+                        <WorkspaceInput className={styles.input} min={0} onChange={(event) => setContentPerformanceActivations(Number(event.target.value))} type="number" value={contentPerformanceActivations} />
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Sources</h2><span className={styles.tag}>{data.workspace.contentSources.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.contentSources.map((source) => (
+                                <div className={styles.tableRowCompact} key={source.contentSourceId}>
+                                    <div><strong>{source.title}</strong><span>{source.sourceType} / {source.defaultAudience}</span></div>
+                                    <span className={tagClass(source.status)}>{source.status}</span>
+                                    <span>{source.lastAssetAt || source.lastCheckedAt || "pending"}</span>
+                                    <WorkspaceButton className={styles.ghostButton} disabled={saving} onClick={() => setSelectedContentSourceId(source.contentSourceId)} type="button">Select</WorkspaceButton>
+                                </div>
+                            ))}
+                            {!data.workspace.contentSources.length ? <div className={styles.empty}>No content source yet.</div> : null}
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Assets</h2><span className={styles.tag}>{data.workspace.contentAssets.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.contentAssets.map((asset) => (
+                                <div className={styles.tableRowCompact} key={asset.contentAssetId}>
+                                    <div><strong>{asset.title}</strong><span>{asset.primaryAudience} / {asset.proofLevel}</span></div>
+                                    <span className={tagClass(asset.status)}>{asset.status}</span>
+                                    <span>{asset.sourceType}</span>
+                                    <WorkspaceButton className={styles.ghostButton} disabled={saving} onClick={() => setSelectedContentAssetId(asset.contentAssetId)} type="button">Select</WorkspaceButton>
+                                </div>
+                            ))}
+                            {!data.workspace.contentAssets.length ? <div className={styles.empty}>No content asset yet.</div> : null}
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Distribution Drafts</h2><span className={styles.tag}>{data.workspace.contentDistributionDrafts.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.contentDistributionDrafts.map((draft) => (
+                                <div className={styles.tableRowCompact} key={draft.contentDraftId}>
+                                    <div><strong>{draft.title}</strong><span>{draft.hook}</span></div>
+                                    <span className={tagClass(draft.approvalStatus)}>{draft.approvalStatus}</span>
+                                    <span className={tagClass(draft.status)}>{draft.status}</span>
+                                    <div className={styles.rowActions}>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={saving} onClick={() => setSelectedContentDraftId(draft.contentDraftId)} type="button">Select</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || draft.approvalStatus === "approved"} onClick={() => reviewContentDraft(draft.contentDraftId, "approved")} type="button">Approve</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || draft.approvalStatus === "rejected"} onClick={() => reviewContentDraft(draft.contentDraftId, "rejected")} type="button">Reject</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || draft.approvalStatus !== "approved"} onClick={() => scheduleContentDraft(draft.contentDraftId)} type="button">Schedule</WorkspaceButton>
+                                    </div>
+                                </div>
+                            ))}
+                            {!data.workspace.contentDistributionDrafts.length ? <div className={styles.empty}>No distribution draft yet.</div> : null}
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Calendar</h2><span className={styles.tag}>{data.workspace.contentCalendarItems.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.contentCalendarItems.map((item) => (
+                                <div className={styles.tableRowCompact} key={item.contentCalendarItemId}>
+                                    <div><strong>{item.channel}</strong><span>{item.contentDraftId}</span></div>
+                                    <span className={tagClass(item.status)}>{item.status}</span>
+                                    <span>{item.scheduledFor}</span>
+                                    <span>{item.publishedAt || "not published"}</span>
+                                </div>
+                            ))}
+                            {!data.workspace.contentCalendarItems.length ? <div className={styles.empty}>No calendar item yet.</div> : null}
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Performance Records</h2><span className={styles.tag}>{data.workspace.contentPerformanceSummaries.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.contentPerformanceSummaries.map((record) => (
+                                <div className={styles.tableRowCompact} key={record.contentPerformanceId}>
+                                    <div><strong>{record.channel}</strong><span>{record.contentAssetId}</span></div>
+                                    <span>{record.views} views</span>
+                                    <span>{record.clicks} clicks</span>
+                                    <span>{record.ownerLeads + record.currentListSubmissions + record.activations} owner signals</span>
+                                </div>
+                            ))}
+                            {!data.workspace.contentPerformanceSummaries.length ? <div className={styles.empty}>No performance record yet.</div> : null}
+                        </div>
+                    </div>
+                </section>
+            );
+        }
+        if (activeSection === "partners") {
+            return (
+                <section className={styles.contentGrid}>
+                    <form className={styles.panel} onSubmit={upsertTrustPartnerProfile}>
+                        <div className={styles.panelHeader}>
+                            <h2>Partner Profile</h2>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !partnerName.trim()} type="submit">Save</WorkspaceButton>
+                        </div>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setPartnerName(event.target.value)} value={partnerName} />
+                        <div className={styles.formGrid}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setPartnerType(event.target.value)} value={partnerType}>
+                                <option value="restaurant-consultant">restaurant-consultant</option>
+                                <option value="menu-photographer">menu-photographer</option>
+                                <option value="local-business-creator">local-business-creator</option>
+                                <option value="agency-freelancer">agency-freelancer</option>
+                                <option value="pos-payment-partner">pos-payment-partner</option>
+                                <option value="operator-advocate">operator-advocate</option>
+                                <option value="generic-creator">generic-creator</option>
+                            </WorkspaceSelect>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setPartnerChannel(event.target.value)} value={partnerChannel}>
+                                <option value="instagram">instagram</option>
+                                <option value="youtube">youtube</option>
+                                <option value="tiktok">tiktok</option>
+                                <option value="linkedin">linkedin</option>
+                                <option value="newsletter">newsletter</option>
+                                <option value="community">community</option>
+                                <option value="offline">offline</option>
+                                <option value="other">other</option>
+                            </WorkspaceSelect>
+                        </div>
+                        <div className={styles.formGrid}>
+                            <WorkspaceInput className={styles.input} onChange={(event) => setPartnerGeography(event.target.value)} value={partnerGeography} />
+                            <WorkspaceInput className={styles.input} max={100} min={0} onChange={(event) => setPartnerScore(Number(event.target.value))} type="number" value={partnerScore} />
+                        </div>
+                        <WorkspaceTextarea className={styles.textareaSmall} onChange={(event) => setPartnerSourceNotes(event.target.value)} value={partnerSourceNotes} />
+                    </form>
+                    <div className={styles.panel}>
+                        <div className={styles.panelHeader}><h2>Niche Test</h2><WorkspaceButton className={styles.button} disabled={actionDisabled} onClick={createTrustPartnerNicheTest} type="button">Create</WorkspaceButton></div>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setNicheName(event.target.value)} value={nicheName} />
+                        <WorkspaceInput className={styles.input} max={5} min={1} onChange={(event) => setNicheAttempts(Number(event.target.value))} type="number" value={nicheAttempts} />
+                        <WorkspaceTextarea className={styles.textareaSmall} onChange={(event) => setNicheAngle(event.target.value)} value={nicheAngle} />
+                        <div className={styles.statusRow}><span>Market pod</span><span>{resolvedMarketPodId || "none"}</span></div>
+                        <div className={styles.statusRow}><span>Partner</span><span>{resolvedPartnerId || "none"}</span></div>
+                    </div>
+                    <div className={styles.panel}>
+                        <div className={styles.panelHeader}><h2>Deal And Brief</h2><WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedPartnerId} onClick={reviewTrustPartnerDeal} type="button">Approve Deal</WorkspaceButton></div>
+                        <div className={styles.formGrid}>
+                            <WorkspaceInput className={styles.input} max={100000} min={0} onChange={(event) => setDealFeeUsd(Number(event.target.value))} type="number" value={dealFeeUsd} />
+                            <WorkspaceInput className={styles.input} max={10} min={1} onChange={(event) => setDealDeliverables(Number(event.target.value))} type="number" value={dealDeliverables} />
+                        </div>
+                        <WorkspaceTextarea className={styles.textareaSmall} onChange={(event) => setBriefText(event.target.value)} value={briefText} />
+                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedPartnerId} onClick={createTrustPartnerBrief} type="button">Create Brief</WorkspaceButton>
+                    </div>
+                    <div className={styles.panel}>
+                        <div className={styles.panelHeader}><h2>Deliverable And Metrics</h2><WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedPartnerId} onClick={recordTrustPartnerDeliverable} type="button">Record</WorkspaceButton></div>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setDeliverablePostUrl(event.target.value)} placeholder="Post URL" value={deliverablePostUrl} />
+                        <div className={styles.formGrid}>
+                            <WorkspaceInput className={styles.input} min={0} onChange={(event) => setMetricViews(Number(event.target.value))} type="number" value={metricViews} />
+                            <WorkspaceInput className={styles.input} min={0} onChange={(event) => setMetricOwnerLeads(Number(event.target.value))} type="number" value={metricOwnerLeads} />
+                        </div>
+                        <div className={styles.rowActions}>
+                            <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedPartnerId} onClick={recordTrustPartnerMetrics} type="button">Record Metrics</WorkspaceButton>
+                            <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedPartnerId} onClick={reviewTrustPartnerRenewal} type="button">Renewal</WorkspaceButton>
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Profiles</h2><span className={styles.tag}>{data.workspace.trustPartnerProfiles.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.trustPartnerProfiles.map((partner) => (
+                                <div className={styles.tableRowCompact} key={partner.partnerId}>
+                                    <div><strong>{partner.displayName}</strong><span>{partner.partnerType} / {partner.channel}</span></div>
+                                    <span className={tagClass(partner.status)}>{partner.status}</span>
+                                    <span>{partner.trustScore} trust</span>
+                                    <span>{partner.sourceNotes}</span>
+                                </div>
+                            ))}
+                            {!data.workspace.trustPartnerProfiles.length ? <div className={styles.empty}>No partner profile yet.</div> : null}
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Niche Tests And Deals</h2><span className={styles.tag}>{data.workspace.trustPartnerNicheTests.length + data.workspace.trustPartnerDeals.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.trustPartnerNicheTests.map((test) => (
+                                <div className={styles.tableRowCompact} key={test.nicheTestId}>
+                                    <div><strong>{test.nicheName}</strong><span>{test.angle}</span></div>
+                                    <span className={tagClass(test.status)}>{test.status}</span>
+                                    <span>{test.partnerCount}/{test.intendedAttempts}</span>
+                                    <span className={tagClass(test.recommendation)}>{test.recommendation}</span>
+                                </div>
+                            ))}
+                            {data.workspace.trustPartnerDeals.map((deal) => (
+                                <div className={styles.tableRowCompact} key={deal.dealId}>
+                                    <div><strong>{deal.partnerName}</strong><span>{deal.pricingModel} / ${deal.flatFeeUsd}</span></div>
+                                    <span className={tagClass(deal.approvalStatus)}>{deal.approvalStatus}</span>
+                                    <span>{deal.deliverableCount} deliverable</span>
+                                    <span>{deal.paymentState}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Deliverables And Metrics</h2><span className={styles.tag}>{data.workspace.trustPartnerDeliverables.length + data.workspace.trustPartnerMetrics.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.trustPartnerDeliverables.map((deliverable) => (
+                                <div className={styles.tableRowCompact} key={deliverable.deliverableId}>
+                                    <div><strong>{deliverable.partnerId}</strong><span>{deliverable.postUrl || "no post URL"}</span></div>
+                                    <span className={tagClass(deliverable.status)}>{deliverable.status}</span>
+                                    <span className={tagClass(deliverable.reviewState)}>{deliverable.reviewState}</span>
+                                    <span>{deliverable.disclosurePresent ? "disclosed" : "missing disclosure"}</span>
+                                </div>
+                            ))}
+                            {data.workspace.trustPartnerMetrics.map((metric) => (
+                                <div className={styles.tableRowCompact} key={metric.metricsId}>
+                                    <div><strong>{metric.partnerId}</strong><span>{metric.views} views / {metric.comments} comments</span></div>
+                                    <span>{metric.ownerLeads} leads</span>
+                                    <span>{metric.currentListSubmissions} submissions</span>
+                                    <span>{metric.activations} activations</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Renewal Decisions</h2><span className={styles.tag}>{data.workspace.trustPartnerRenewalDecisions.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.trustPartnerRenewalDecisions.map((decision) => (
+                                <div className={styles.tableRowCompact} key={decision.decisionId}>
+                                    <div><strong>{decision.partnerId}</strong><span>{decision.evidenceSummary}</span></div>
+                                    <span className={tagClass(decision.recommendation)}>{decision.recommendation}</span>
+                                    <span>{decision.ownerDecision || "pending"}</span>
+                                    <span>{decision.nicheTestId || "no test"}</span>
+                                </div>
+                            ))}
+                            {!data.workspace.trustPartnerRenewalDecisions.length ? <div className={styles.empty}>No renewal decision yet.</div> : null}
+                        </div>
+                    </div>
+                </section>
+            );
+        }
         if (activeSection === "settings") {
             const showEmailFields = connectorKind === "email-smtp";
             const showMetaFields = connectorKind === "meta-whatsapp" || connectorKind === "meta-instagram" || connectorKind === "meta-messenger";
@@ -1317,60 +2549,60 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <form className={styles.panel} onSubmit={upsertConnectorSetting}>
                         <div className={styles.panelHeader}>
                             <h2>Connector</h2>
-                            <button className={styles.button} disabled={saving || !connectorName.trim()} type="submit">Save</button>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !connectorName.trim()} type="submit">Save</WorkspaceButton>
                         </div>
                         <div className={styles.formGrid}>
-                            <select className={styles.input} onChange={(event) => handleConnectorKindChange(event.target.value)} value={connectorKind}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => handleConnectorKindChange(event.target.value)} value={connectorKind}>
                                 <option value="email-smtp">Email SMTP</option>
                                 <option value="meta-whatsapp">Meta WhatsApp</option>
                                 <option value="meta-instagram">Meta Instagram</option>
                                 <option value="meta-messenger">Meta Messenger</option>
                                 <option value="smartlead">Smartlead</option>
                                 <option value="apify">Apify</option>
-                            </select>
-                            <select className={styles.input} onChange={(event) => setConnectorStatus(event.target.value)} value={connectorStatus}>
+                            </WorkspaceSelect>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setConnectorStatus(event.target.value)} value={connectorStatus}>
                                 <option value="hold">hold</option>
                                 <option value="active">active</option>
                                 <option value="inactive">inactive</option>
                                 <option value="blocked">blocked</option>
-                            </select>
+                            </WorkspaceSelect>
                         </div>
-                        <input className={styles.input} onChange={(event) => setConnectorName(event.target.value)} value={connectorName} />
+                        <WorkspaceInput className={styles.input} onChange={(event) => setConnectorName(event.target.value)} value={connectorName} />
                         {showEmailFields ? (
                             <>
                                 <div className={styles.formGrid}>
-                                    <input className={styles.input} onChange={(event) => setConnectorFromName(event.target.value)} placeholder="From name" value={connectorFromName} />
-                                    <input className={styles.input} onChange={(event) => setConnectorSenderDomain(event.target.value)} placeholder="Sender domain" value={connectorSenderDomain} />
+                                    <WorkspaceInput className={styles.input} onChange={(event) => setConnectorFromName(event.target.value)} placeholder="From name" value={connectorFromName} />
+                                    <WorkspaceInput className={styles.input} onChange={(event) => setConnectorSenderDomain(event.target.value)} placeholder="Sender domain" value={connectorSenderDomain} />
                                 </div>
                                 <div className={styles.formGrid}>
-                                    <input className={styles.input} onChange={(event) => setConnectorSenderEmail(event.target.value)} placeholder="Sender email" value={connectorSenderEmail} />
-                                    <input className={styles.input} onChange={(event) => setConnectorReplyToEmail(event.target.value)} placeholder="Reply-to email" value={connectorReplyToEmail} />
+                                    <WorkspaceInput className={styles.input} onChange={(event) => setConnectorSenderEmail(event.target.value)} placeholder="Sender email" value={connectorSenderEmail} />
+                                    <WorkspaceInput className={styles.input} onChange={(event) => setConnectorReplyToEmail(event.target.value)} placeholder="Reply-to email" value={connectorReplyToEmail} />
                                 </div>
                             </>
                         ) : null}
                         {showMetaFields ? (
                             <>
                                 <div className={styles.formGrid}>
-                                    <input className={styles.input} onChange={(event) => setConnectorAppId(event.target.value)} placeholder="Meta app ID" value={connectorAppId} />
-                                    {showWhatsAppFields ? <input className={styles.input} onChange={(event) => setConnectorPhoneNumberId(event.target.value)} placeholder="Phone number ID" value={connectorPhoneNumberId} /> : null}
-                                    {showInstagramFields ? <input className={styles.input} onChange={(event) => setConnectorInstagramPageId(event.target.value)} placeholder="Instagram page ID" value={connectorInstagramPageId} /> : null}
-                                    {showMessengerFields ? <input className={styles.input} onChange={(event) => setConnectorMessengerPageId(event.target.value)} placeholder="Messenger page ID" value={connectorMessengerPageId} /> : null}
+                                    <WorkspaceInput className={styles.input} onChange={(event) => setConnectorAppId(event.target.value)} placeholder="Meta app ID" value={connectorAppId} />
+                                    {showWhatsAppFields ? <WorkspaceInput className={styles.input} onChange={(event) => setConnectorPhoneNumberId(event.target.value)} placeholder="Phone number ID" value={connectorPhoneNumberId} /> : null}
+                                    {showInstagramFields ? <WorkspaceInput className={styles.input} onChange={(event) => setConnectorInstagramPageId(event.target.value)} placeholder="Instagram page ID" value={connectorInstagramPageId} /> : null}
+                                    {showMessengerFields ? <WorkspaceInput className={styles.input} onChange={(event) => setConnectorMessengerPageId(event.target.value)} placeholder="Messenger page ID" value={connectorMessengerPageId} /> : null}
                                 </div>
-                                {showWhatsAppFields ? <input className={styles.input} onChange={(event) => setConnectorPhoneNumber(event.target.value)} placeholder="Display number" value={connectorPhoneNumber} /> : null}
+                                {showWhatsAppFields ? <WorkspaceInput className={styles.input} onChange={(event) => setConnectorPhoneNumber(event.target.value)} placeholder="Display number" value={connectorPhoneNumber} /> : null}
                             </>
                         ) : null}
-                        <textarea className={styles.textareaSmall} onChange={(event) => setConnectorNotes(event.target.value)} placeholder="Notes" value={connectorNotes} />
+                        <WorkspaceTextarea className={styles.textareaSmall} onChange={(event) => setConnectorNotes(event.target.value)} placeholder="Notes" value={connectorNotes} />
                     </form>
 
                     <form className={styles.panel} onSubmit={holdSenderDomain}>
                         <div className={styles.panelHeader}>
                             <h2>Sender Domain</h2>
                             <div className={styles.rowActions}>
-                                <button className={styles.ghostButton} disabled={saving || !senderDomain.trim()} type="submit">Hold</button>
-                                <button className={styles.button} disabled={saving || !senderDomain.trim()} onClick={readySenderDomain} type="button">Ready</button>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !senderDomain.trim()} type="submit">Hold</WorkspaceButton>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled || !senderDomain.trim()} onClick={readySenderDomain} type="button">Ready</WorkspaceButton>
                             </div>
                         </div>
-                        <input className={styles.input} onChange={(event) => setSenderDomain(event.target.value)} value={senderDomain} />
+                        <WorkspaceInput className={styles.input} onChange={(event) => setSenderDomain(event.target.value)} value={senderDomain} />
                         <div className={styles.list}>
                             {data.workspace.senderDomains.map((sender) => (
                                 <div className={styles.listItem} key={sender.senderDomainId}>
@@ -1431,20 +2663,20 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         <div className={styles.panel}>
                             <div className={styles.panelHeader}>
                                 <h2>Scoped Pause</h2>
-                                <button
+                                <WorkspaceButton
                                     className={scopedPauseActive ? styles.button : styles.dangerButton}
-                                    disabled={saving || (!scopedPauseActive && !canPause) || (scopedPauseActive && !canResume)}
+                                    disabled={actionDisabled || (!scopedPauseActive && !canPause) || (scopedPauseActive && !canResume)}
                                     onClick={handleScopedPauseToggle}
                                     type="button"
                                 >
                                     {scopedPauseActive ? "Clear" : "Pause"}
-                                </button>
+                                </WorkspaceButton>
                             </div>
-                            <select className={styles.input} onChange={(event) => setPauseScope(event.target.value as SignalDeskKillSwitchScope)} value={pauseScope}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setPauseScope(event.target.value as SignalDeskKillSwitchScope)} value={pauseScope}>
                                 {PAUSE_SCOPES.map((scope) => (
                                     <option key={scope} value={scope}>{scope}</option>
                                 ))}
-                            </select>
+                            </WorkspaceSelect>
                             <div className={styles.statusRow}><span>Selected scope</span><span className={tagClass(scopedPauseActive ? "warning" : "good")}>{scopedPauseActive ? "paused" : "clear"}</span></div>
                         </div>
                         <div className={styles.panel}>
@@ -1507,62 +2739,143 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     };
 
     return (
-        <div className={styles.shell}>
-            <div className={styles.layout}>
-                <aside className={styles.sidebar}>
-                    <div className={styles.brand}>
-                        <div className={styles.mark}>SD</div>
-                        <div className={styles.brandText}>
-                            <strong>MenuList SignalDesk</strong>
-                            <span>Internal growth control</span>
+        <Layout
+            className={styles.dashboardFrame}
+            style={{
+                background: token.colorBgLayout,
+                color: token.colorTextBase,
+            }}
+        >
+            {!mobileReadOnly ? (
+                <DashboardSidebarShell
+                    ariaLabel="SignalDesk sections"
+                    collapsedWidth={DASHBOARD_SIDEBAR_COLLAPSED_WIDTH}
+                    expandedWidth={SIGNALDESK_SIDEBAR_EXPANDED_WIDTH}
+                    isCollapsed={isCollapsed}
+                    logoCollapsed={<span className={styles.sidebarBrandMark}>SD</span>}
+                    logoExpanded={
+                        <div className={styles.sidebarBrand}>
+                            <span className={styles.sidebarBrandMark}>SD</span>
+                            <span>SignalDesk</span>
                         </div>
-                    </div>
-                    <nav className={styles.nav} aria-label="SignalDesk navigation">
-                        {NAV_ITEMS.map((item) => {
-                            return (
-                                <SignalDeskNavLink
-                                    activeSection={activeSection}
-                                    item={item}
-                                    key={item.section}
+                    }
+                    navItems={navItems}
+                    onExpandedChange={setSidebarShellExpanded}
+                />
+            ) : null}
+
+            <Drawer
+                destroyOnClose
+                onClose={() => setMobileNavOpen(false)}
+                open={mobileNavOpen}
+                placement="left"
+                styles={{
+                    body: { padding: 0 },
+                    content: { overflow: "hidden" },
+                    header: { display: "none" },
+                }}
+                width={280}
+            >
+                <DashboardSidebarShell
+                    ariaLabel="SignalDesk sections"
+                    expandedWidth={SIGNALDESK_SIDEBAR_EXPANDED_WIDTH}
+                    logoCollapsed={<span className={styles.sidebarBrandMark}>SD</span>}
+                    logoExpanded={
+                        <div className={styles.sidebarBrand}>
+                            <span className={styles.sidebarBrandMark}>SD</span>
+                            <span>SignalDesk</span>
+                        </div>
+                    }
+                    mobile
+                    navItems={navItems}
+                />
+            </Drawer>
+
+            <Layout
+                className={styles.dashboardBody}
+                style={{
+                    background: token.colorBgLayout,
+                    paddingLeft: mobileReadOnly ? 0 : `${sidebarOffset}px`,
+                }}
+            >
+                <DashboardHeaderShell
+                    className={styles.dashboardHeader}
+                    left={
+                        <Flex align="center" gap={10} className={styles.headerLeft}>
+                            {mobileReadOnly ? (
+                                <Tooltip title="Open navigation">
+                                    <Button
+                                        aria-label="Open navigation"
+                                        icon={<LuMenu />}
+                                        onClick={() => setMobileNavOpen(true)}
+                                        type="text"
+                                    />
+                                </Tooltip>
+                            ) : (
+                                <Tooltip title={isCollapsed ? "Expand navigation" : "Collapse navigation"}>
+                                    <Button
+                                        aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+                                        icon={isCollapsed ? <LuPanelLeftOpen /> : <LuPanelLeftClose />}
+                                        onClick={() => dispatch(toggleSidbar(!isCollapsed))}
+                                        type="text"
+                                    />
+                                </Tooltip>
+                            )}
+                            <div className={styles.headerTitle}>
+                                <span>MenuList SignalDesk</span>
+                                <strong>{meta.title}</strong>
+                            </div>
+                        </Flex>
+                    }
+                    right={
+                        <Flex align="center" gap={8} wrap>
+                            {mobileReadOnly ? <Text type="secondary">Observe-only mobile</Text> : null}
+                            <Tooltip title="Refresh workspace">
+                                <Button
+                                    aria-label="Refresh SignalDesk"
+                                    disabled={loading}
+                                    icon={<LuRefreshCw />}
+                                    onClick={() => void refresh()}
+                                    type="text"
                                 />
-                            );
-                        })}
-                    </nav>
-                </aside>
-
-                <main className={styles.main}>
-                    <header className={styles.header}>
-                        <div>
-                            <p className={styles.eyebrow}>Private internal tool</p>
-                            <h1 className={styles.title}>{meta.title}</h1>
-                            <p className={styles.subtitle}>{meta.description}</p>
-                        </div>
-                        <div className={styles.actions}>
-                            <button className={styles.ghostButton} disabled={loading} onClick={() => void refresh()} type="button">
-                                <LuRefreshCw size={16} />
-                                Refresh
-                            </button>
-                            <button
-                                className={globalPauseActive ? styles.button : styles.dangerButton}
-                                disabled={saving || (!globalPauseActive && !canPause) || (globalPauseActive && !canResume)}
+                            </Tooltip>
+                            <Tooltip title={isDarkMode ? "Use light mode" : "Use dark mode"}>
+                                <Button
+                                    aria-label={isDarkMode ? "Use light mode" : "Use dark mode"}
+                                    icon={isDarkMode ? <LuSun /> : <LuMoon />}
+                                    onClick={() => dispatch(toggleDarkMode(!isDarkMode))}
+                                    type="text"
+                                />
+                            </Tooltip>
+                            <Button
+                                danger={!globalPauseActive}
+                                disabled={actionDisabled || (!globalPauseActive && !canPause) || (globalPauseActive && !canResume)}
+                                icon={<LuPauseCircle />}
                                 onClick={handlePauseToggle}
-                                type="button"
+                                type={globalPauseActive ? "primary" : "default"}
                             >
-                                <LuPauseCircle size={16} />
                                 {globalPauseActive ? "Clear Pause" : "Global Pause"}
-                            </button>
-                        </div>
-                    </header>
+                            </Button>
+                        </Flex>
+                    }
+                />
 
-                    {error ? <div className={`${styles.alert} ${styles.error}`}>{error}</div> : null}
+                <Content className={styles.dashboardContent}>
+                    <div className={styles.pageIntro}>
+                        <Text type="secondary">Private internal tool</Text>
+                        <Typography.Title level={2}>{meta.title}</Typography.Title>
+                        <Typography.Paragraph type="secondary">{meta.description}</Typography.Paragraph>
+                    </div>
+
+                    {error ? <Alert message={error} showIcon type="error" /> : null}
                     {loading || !data ? <LoadingState /> : (
                         <>
                             <SetupAlert data={data} />
                             {renderSection()}
                         </>
                     )}
-                </main>
-            </div>
-        </div>
+                </Content>
+            </Layout>
+        </Layout>
     );
 }

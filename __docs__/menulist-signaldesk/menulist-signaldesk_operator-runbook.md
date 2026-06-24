@@ -18,6 +18,20 @@ It should not make the team send more low-quality messages or force the founder 
 
 ## Daily Workflow
 
+### 0. Open Daily Growth Mission
+
+Start with the ranked daily mission before entering detail views.
+
+The mission should contain no more than five actions:
+
+- approve a prepared target cohort, draft, proof asset, or partner step;
+- hold work that lacks source, proof, sender, or suppression clarity;
+- pause a source, channel, template, or partner test;
+- redirect the current pod, CTA, proof asset, or source;
+- manually publish or manually send an approved item when the channel is ready.
+
+If the mission is noisy, do not widen execution. Fix grouping, blocked reasons, or source quality first.
+
 ### 1. Observe Control Room
 
 Review:
@@ -137,6 +151,22 @@ The weekly decision should be one of:
 - pause a channel;
 - hold provider send;
 - stop the experiment.
+
+## First 7-Day Operating Trial
+
+Before scaling, run one pod only:
+
+| Day | Operator work | Founder decision |
+| --- | --- | --- |
+| 1 | Prepare one city/category/contact-path/source-list/CTA/sender proposal. | Approve or change the pod. |
+| 2 | Import 25-50 targets from the approved source. | Confirm source policy and source-list quality. |
+| 3 | Review scoring, dedupe, evidence, and contactability exceptions. | Hold or approve only the clean target group. |
+| 4 | Prepare drafts from approved evidence only. | Approve, hold, or reject a small number. |
+| 5 | Export or manually send through the controlled email rail only if checks pass. | Confirm final suppression and sender readiness. |
+| 6 | Classify replies and attach next route/CTA. | Approve edge-case replies only. |
+| 7 | Review outcomes and source quality. | Repeat, narrow, change CTA/source/proof, or stop. |
+
+The trial should measure founder workload as well as outcomes. A pod that creates many manual exceptions is not ready to scale even if the reply count looks promising.
 
 ## Target States
 

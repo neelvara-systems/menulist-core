@@ -357,6 +357,13 @@ function resolveSignalDeskMyCodexAliasPath(pathname: string): {
     strippedPath: string;
 } | null {
     const prefix = SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH;
+    const appPrefix = `${prefix}/app`;
+    if (pathname === appPrefix || pathname.startsWith(`${appPrefix}/`)) {
+        return {
+            basePath: prefix,
+            strippedPath: pathname.slice(appPrefix.length) || '/',
+        };
+    }
     if (pathname !== prefix && !pathname.startsWith(`${prefix}/`)) return null;
 
     return {

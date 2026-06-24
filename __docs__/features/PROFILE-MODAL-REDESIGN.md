@@ -1,8 +1,43 @@
 # 👤 Profile Modal - Industry Standard Redesign
 
 **Date**: Nov 22, 2025  
-**Status**: ✅ Complete  
+**Status**: ✅ Complete; updated Jun 24, 2026 for the self-profile management modal
 **Quality**: Matches Slack, Linear, Notion
+
+---
+
+## 2026-06-24 Completion: My Profile Management Modal
+
+The profile popover remains the entry point, but the logged-in user's **My Profile** modal is now the single owner/staff self-service surface for account identity.
+
+### Code Truth
+
+- Popover entry point: `src/components/organisms/headerComponent/profileActionsModal/index.tsx`
+- Self-profile modal: `src/components/organisms/headerComponent/profileActionsModal/userProfileModal/index.tsx`
+- Self-profile styling: `src/components/organisms/headerComponent/profileActionsModal/userProfileModal/userProfileModal.module.scss`
+- Profile update API: `src/app/api/auth/update-profile/route.ts`
+- Password change API: `src/app/api/auth/change-password/route.ts`
+- Staff management reference flow: `src/components/templates/main-app/users/usersList/userForm/index.tsx`
+
+### Final UX Contract
+
+- Opening **My Profile** lands on an overview first.
+- **Edit Profile** is an explicit state change, not a selected default tab.
+- The user can edit only their own display name and phone number.
+- Email/login identifier, Staff ID, role, store access, activation, reset password, and force sign-out are not self-editable from this modal.
+- Store access and permissions are visible as read-only reference.
+- Email/password users can change their password from the modal.
+- Staff ID/passcode users can change their current password or passcode from the modal.
+- Owner-created temporary passcode resets and forced sign-out remain in the Users screen.
+- Google/OAuth-style users are warned that Google-managed passwords must be changed in Google, while the MenuList password form remains available only if the account also has an email password.
+
+### Permission Boundary
+
+The Users drawer remains the authoritative management surface for another user's access. The My Profile modal reuses the same staff identity field shape for name and phone, but intentionally does not reuse the role/store/activation controls. This prevents a logged-in owner or staff member from accidentally changing their own access or bypassing the user-management permission model.
+
+### Firebase Cost
+
+No new collections, listeners, or list reads were added. Saving the self profile uses the existing authenticated profile API and writes only the current `users/{userId}` document.
 
 ---
 

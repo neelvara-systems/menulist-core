@@ -926,26 +926,23 @@ On mobile, the hamburger keeps `Features` open by default because feature discov
 
 1. Menu Import — `/features/menu-import`
 2. Menu Content Prep — `/features/menu-content-prep`
-3. Featured Choices — `/features/featured-choices`
-4. Official Business Page — `/features/official-business-page`
-5. QR Menu and Links — `/features/qr-menu-links`
-6. Print-ready Kit — `/features/print-ready-kit`
-7. Owner PWA Dashboard — `/features/owner-phone-dashboard`
-8. Business Health — `/features/business-health`
-9. Customer Feedback Loop — `/features/customer-feedback-loop`
-10. Public Discovery — `/features/public-discovery`
-
-**Additional dedicated feature pages reachable from `/features` and discovery:**
-
-- Analytics — `/features/analytics`
-- Menu Quality Validation — `/features/menu-quality-validation`
+3. Menu Quality Validation — `/features/menu-quality-validation`
+4. Featured Choices — `/features/featured-choices`
+5. Official Business Page — `/features/official-business-page`
+6. QR Menu and Links — `/features/qr-menu-links`
+7. Print-ready Kit — `/features/print-ready-kit`
+8. AI Menu Manager — `/ai-menu-manager`
+9. Owner PWA Dashboard — `/features/owner-phone-dashboard`
+10. Analytics Dashboard — `/features/analytics`
+11. Business Health — `/features/business-health`
+12. Customer Feedback Loop — `/features/customer-feedback-loop`
+13. Public Discovery — `/features/public-discovery`
 
 **Selection rationale:**
 
-- These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, prepare descriptions/images/languages, guide customers toward useful choices, create one public customer source, share it through QR/links, deploy print-ready files, manage the core owner workflow from phone or PWA, know what needs attention, and provide a clearer public source for search/answer systems.
-- POS sync, staff roles, analytics depth, and advanced multi-location governance remain on `/features`, `/multi-location`, or supporting resources. They should not crowd the primary header dropdown unless the buyer strategy changes.
-- v3.6.71 adds `/features/analytics` as a dedicated page because the owner dashboard now has clear desktop/mobile period views worth explaining publicly. It remains outside the desktop header dropdown in this pass so analytics depth does not crowd the primary Start/Publish/Operate navigation.
-- v3.6.39 adds `/features/menu-quality-validation` as a dedicated page but keeps it out of the desktop dropdown to preserve the restrained top-nav shape. The route is reached from `/features` quality, pricing integrity, and customer-trust cards because validation is high-value proof but not the first nine-link evaluation path.
+- These are the feature surfaces most likely to help a non-technical SMB owner understand why MenuList is useful: start from the current menu, prepare descriptions/images/languages, catch quality issues, guide customers toward useful choices, create one public customer source, share it through QR/links, deploy print-ready files, update by message, manage core owner work from phone or PWA, understand aggregate customer signals, know what needs attention, and provide a clearer public source for search/answer systems.
+- POS sync, staff roles, and advanced multi-location governance remain on `/features`, `/multi-location`, or supporting resources. They should not crowd the primary header dropdown unless the buyer strategy changes.
+- v3.6.86 closes the dedicated feature-page dropdown parity gap by adding Analytics Dashboard and Menu Quality Validation to `websiteFeatureNavGroups`. Because `Header.tsx` renders both the desktop hover dropdown and mobile hamburger feature accordion from that same source, both surfaces now expose the same dedicated feature-page set.
 - v3.6.43 adds `/features/customer-feedback-loop` as a dedicated page and navigation link in the desktop Features dropdown and mobile hamburger feature list. Public customer feedback is valuable proof when framed as a correction loop from customer issue to owner source.
 - v3.6.44 groups the desktop dropdown by the same Start, Publish, and Operate categories used by mobile. Keep this grouping source shared through `websiteFeatureNavGroups`; do not return to a flat desktop list.
 - Mobile feature navigation groups the same top feature links as Start, Publish, and Operate so the drawer is readable on phone screens without becoming a full product sitemap.

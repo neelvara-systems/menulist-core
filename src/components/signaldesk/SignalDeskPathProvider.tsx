@@ -27,6 +27,8 @@ export const useSignalDeskPath = (href: string): string => {
     return useMemo(() => withSignalDeskBasePath(href, basePath), [basePath, href]);
 };
 
+export const useSignalDeskBasePath = (): string => useContext(SignalDeskPathContext);
+
 interface SignalDeskPathProviderProps {
     basePath?: string | null;
     children: React.ReactNode;

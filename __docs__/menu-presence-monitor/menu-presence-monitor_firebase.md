@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Firebase Cost Tracking
 
-> **Version:** 1.2
-> **Last Updated:** June 1, 2026
+> **Version:** 1.3
+> **Last Updated:** June 24, 2026
 
 ---
 
@@ -21,6 +21,8 @@
 
 For starter activation stores, confirming Google Business, Instagram Bio, or WhatsApp Profile also writes the matching `starterActivationSignals.actions.*` key in the same `updateDoc()` call. This keeps the distribution activation metric measurable without adding a second write.
 
+`buildStarterActivationSummary()` computes activation proof from the already-loaded `menuPresence` and `starterActivationSignals` fields. It adds no Firestore read, write, listener, query, index, or collection.
+
 ## Cost Estimate
 
 | Scenario | Reads | Writes | Monthly Cost |
@@ -28,6 +30,7 @@ For starter activation stores, confirming Google Business, Instagram Bio, or Wha
 | 1 owner, confirms 3 surfaces once | 0 additional | 3 | ~$0.000003 |
 | 1,000 owners, each confirms 3 surfaces | 0 additional | 3,000 | ~$0.003 |
 | 10,000 owners, each confirms 3 surfaces | 0 additional | 30,000 | ~$0.03 |
+| Activation proof summary renders | 0 additional | 0 | Pure client computation from loaded store doc |
 
 **Total incremental cost: $0.00–$0.03/month** at any realistic scale.
 

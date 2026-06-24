@@ -1,6 +1,6 @@
 # MenuList SignalDesk - Firebase Cost Plan
 
-**Status:** Foundation config, connector settings, Apify source broker, owned email sequencer queue, gated provider/source/AI/channel runtime, and investment-control ledgers implemented; deploy skipped in this session
+**Status:** Foundation config, connector settings, Apify source broker, owned email sequencer queue, gated provider/source/AI/channel runtime, content distribution rail, and investment-control ledgers implemented; deploy skipped in this session
 **Created:** June 23, 2026
 **Cost impact now:** Local verification only; no deployed SignalDesk project or production data writes.
 **Runtime posture:** Dedicated SignalDesk Firebase projects are configured in code but still need owner-side project creation/access before deployment.
@@ -54,6 +54,8 @@ Hard rules:
 15. No AI call from list screens, dashboards, or mobile summaries.
 16. No provider webhook writes raw payloads to Firestore.
 17. No contact reveal without audit and role permission.
+18. No trust-partner deal, brief, deliverable, or metrics dashboard should read raw social payloads by default.
+19. No content distribution screen should auto-publish or read raw third-party social payloads by default.
 
 The corrected review explicitly recommends summary docs such as `leadSummaries`, `targetSummaries`, `conversationSummaries`, `campaignSummaries`, `channelHealthSummaries`, `costDailySummaries`, and `sourceRunSummaries` (`../growth-engine/growth-engine_private-internal-tool-review-2026-06-23.md:359`).
 
@@ -68,6 +70,9 @@ The corrected review explicitly recommends summary docs such as `leadSummaries`,
 | `/signaldesk/inbox` | `signaldeskConversationSummaries` | Messages only after opening a conversation |
 | `/signaldesk/attribution` | `signaldeskOutcomeSummaries` | Attribution touches only after opening a target/action |
 | `/signaldesk/settings` | `signaldeskConnectorSettings`, `signaldeskSenderDomains`, `signaldeskChannelHealthSummaries`, `signaldeskProviderAccounts` | No raw secrets; no provider payloads |
+| `/signaldesk/sources` | `signaldeskProviderSourceRetention`, `signaldeskProviderEvaluations`, `signaldeskSourceRunSummaries`, `signaldeskVendorRuns`, `signaldeskEnrichmentResults` | Provider-source refresh status and evaluation summaries only; no raw provider payloads |
+| `/signaldesk/content` | `signaldeskContentSources`, `signaldeskContentAssets`, `signaldeskContentDistributionDrafts`, `signaldeskContentCalendarItems`, `signaldeskContentPerformanceSummaries`, plus CTA/market-pod summaries | Draft body is internal review material only; no auto-publish and no raw social payloads |
+| `/signaldesk/partners` | `signaldeskTrustPartnerProfiles`, `signaldeskTrustPartnerNicheTests`, `signaldeskTrustPartnerDeals`, `signaldeskTrustPartnerBriefs`, `signaldeskTrustPartnerDeliverables`, `signaldeskTrustPartnerMetrics`, `signaldeskTrustPartnerRenewalDecisions` summaries | Brief/deal/metric detail only after opening a record; no raw social payloads |
 | `/signaldesk/control-room` | Control-room, channel, source, AI, queue, cost summaries | Raw incident/debug reads only after admin drill-down |
 
 No default screen may subscribe to a raw collection with a real-time listener.
@@ -111,10 +116,15 @@ No default screen may subscribe to a raw collection with a real-time listener.
 | `signaldeskMarketPods` | Founder-approved pod plan | Attribution/control-room summary |
 | `signaldeskAudienceSegments` | Dynamic signal/source/outcome criteria | Attribution/control-room summary |
 | `signaldeskSequencerHandoffs` | Owned email queue plus optional external execution-rail readiness | Channels summary list |
-| `signaldeskSequencerSteps` | Owned email step state, schedule, body preview, send status | Channels summary list and future due-step worker |
+| `signaldeskSequencerSteps` | Owned email step state, schedule, body preview, send status | Channels summary list and reserved due-step worker |
 | `signaldeskSenderDomains` | Sender auth/ramp/bounce/complaint/unsubscribe/risk | Channels/control-room summary |
 | `signaldeskRunTimelines` | Founder-readable run trace | Control-room bounded list |
 | `signaldeskSelfServiceCtas` | Proof/activation CTA copy | Template/control-room summary |
+| `signaldeskContentSources` | Source registry for owned proof and content inputs | Content summary list |
+| `signaldeskContentAssets` | Canonical content messages, proof level, CTA, audience, and risk notes | Content summary list |
+| `signaldeskContentDistributionDrafts` | Platform-ready drafts with approval and schedule state | Content review list |
+| `signaldeskContentCalendarItems` | Queued internal content calendar items | Content calendar list |
+| `signaldeskContentPerformanceSummaries` | Compact views/clicks/owner-signal records | Content performance list |
 
 ## Cold / Detail Collections
 
@@ -193,7 +203,7 @@ MenuList bridge reads/writes must be sparse and event-shaped:
 | attribution touch | owner billing mutation |
 | operator evidence note | customer session copy |
 
-Any future MenuList-side bridge route must document its reads/writes in both SignalDesk and MenuList docs before implementation.
+Any MenuList-side bridge route must document its reads/writes in both SignalDesk and MenuList docs before implementation.
 
 ## Storage
 
@@ -225,6 +235,9 @@ Firestore stores refs, hashes, timestamps, status, compact normalized fields, an
 | Send owned email step | 7-12 reads | 8-12 writes | Rechecks pauses, suppression, recipient, email env; writes message export, conversation, handoff, step, target, audit, timeline, and channel health. |
 | Save connector setting | 1-4 reads | 3-5 writes | Writes connector metadata, channel or source status, audit, control summary, and cost summary. No raw secrets stored. |
 | Apify source provider run | 4-8 reads plus per-row import checks | Import-path writes plus 4-7 provider ledger writes | Requires Apify provider account, budget policy, active provider source policy, evidence-use permission, env token/Actor readiness, and per-run cap. Stores normalized target rows and webhook payload hashes only. |
+| Generate content drafts | 2-4 reads | 3 + selected channel count writes | Reads one content asset and CTA, writes one draft per channel plus audit, timeline, queue summary, and cost summary. |
+| Schedule content draft | 1-2 reads | 4 writes | Requires approved content draft; writes draft schedule state, calendar item, audit, timeline, and cost summary. Does not publish. |
+| Record content performance | 1-2 reads | 4-5 writes | Writes compact performance summary; writes demand summary only when owner-quality signals exist. |
 | Reply capture | 2-6 reads | 3-8 writes | Update conversation summary and target summary. |
 | Outcome event | 2-5 reads | 3-6 writes | Update attribution and summaries, no raw scan. |
 | Dashboard load | 5-15 summary reads | 0 | No raw event/message reads. |
@@ -283,7 +296,7 @@ Do not index:
 | Admin config | `signaldeskFirebaseAdmin` resolves shared/separate mode, full SignalDesk env names, and optional Firestore database ID. |
 | Client config | `signaldeskFirebaseClient` resolves shared/separate mode without using the default MenuList client for separate projects. |
 | Functions | `functions-signaldesk` builds locally; provider webhooks, AI workers, and scheduled summaries are flag-disabled in the skeleton. |
-| Investment controls | Provider accounts, budget policies, vendor runs, enrichment results, waterfalls, model routes/evals, approval packets, market pods, audience segments, sequencer handoffs, sender domains, run timelines, and self-service CTAs are product-local collections. |
+| Investment controls | Provider accounts, budget policies, vendor runs, enrichment results, waterfalls, model routes/evals, approval packets, market pods, audience segments, channel windows, provider-source retention, strategist memos, provider evaluations, sequencer handoffs, sender domains, run timelines, self-service CTAs, and content distribution summaries are product-local collections. |
 | Rules for new controls | Client reads are limited to platform admins or active SignalDesk team members; client writes remain denied for every new investment-control collection. |
 
 ## Implemented Write Paths
@@ -305,6 +318,7 @@ Do not index:
 | Enrichment waterfall run | Checks source-provider pause, writes one skipped/ready/blocked vendor run summary, normalized enrichment result, run timeline, audit event, and cost summary. | No external provider connector is called yet; approved source values are reused without provider spend. |
 | Approval packet create | Writes or refreshes approval packet, optional approval pointer, run timeline, audit event, and cost summary. | Packet compresses evidence/draft/suppression/source/sender/CTA risk for owner approval. |
 | Sequencer handoff | Writes ready/blocked sequencer handoff, run timeline, audit event, and cost summary. | No Smartlead/Instantly/lemlist API call; readiness requires approved message, provider account approval, prior-contact guard, and sender-domain readiness. |
+| Content Distribution Rail | Writes content source, asset, distribution draft, calendar item, performance, optional demand signal, audit, timeline, queue, and cost summaries through protected actions. | No auto-publish; real channel posting needs a later explicit adapter decision. |
 | Reply capture | Writes conversation summary, message, reply classification, optional contact-scoped suppression event, target summary update, queue summary, audit event, and cost summary. | DNC/wrong-contact replies use the same email/phone/Instagram/Messenger suppression IDs that import/manual capture checks; manual capture and signed provider webhook capture both normalize into the same conversation/suppression model. |
 | Outcome and demand signal | Writes compact event and summary docs plus audit/control/cost summaries. | SignalDesk-only bridge; no MenuList truth writes. |
 
@@ -320,3 +334,5 @@ Do not index:
 | Storage bucket lifecycle | Import/provider implementation |
 | Firestore rules role source for non-platform operators | First non-founder operator account |
 | Apify source Actor selection and terms review | First real Apify run |
+| First content proof asset and channel mix | First real content distribution test |
+| Trust Partner Rail executable workflow | Runtime is enabled for internal testing; first real partner spend still needs active budget policy, founder approval, disclosure review, and manual execution |

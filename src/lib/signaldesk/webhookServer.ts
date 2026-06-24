@@ -161,6 +161,10 @@ export async function processSignalDeskProviderWebhook(params: {
     const event = getProviderEvent(params.provider, payload);
     const targetId = event.targetId || await findTargetByIdentity(db, params.provider, event.identity);
     const eventRef = db.collection(SIGNALDESK_COLLECTIONS.WEBHOOK_EVENTS).doc(event.externalId);
+    const existingEventSnap = await eventRef.get();
+    if (existingEventSnap.exists) {
+        return { eventId: eventRef.id, status: "duplicate" as const };
+    }
     const batch = db.batch();
     const timestamp = now();
 

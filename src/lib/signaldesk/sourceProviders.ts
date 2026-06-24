@@ -24,6 +24,8 @@ type SourceProviderTargetRow = {
     instagram?: string;
     notes?: string;
     phone?: string;
+    providerRecordId?: string;
+    providerRecordUrl?: string;
     website?: string;
 };
 
@@ -64,6 +66,8 @@ const normalizePlaceRow = (place: any, input: SourceProviderInput): SourceProvid
             place?.businessStatus ? `Google business status: ${place.businessStatus}` : "",
             place?.formattedAddress ? `Address: ${place.formattedAddress}` : "",
         ].filter(Boolean).join(" | ") || undefined,
+        providerRecordId: String(place?.id || ""),
+        providerRecordUrl: String(place?.googleMapsUri || ""),
     };
 };
 
@@ -143,6 +147,8 @@ const normalizeApifyRow = (item: any, input: SourceProviderInput): SourceProvide
             item?.reviewsCount ? `Reviews: ${item.reviewsCount}` : "",
         ].filter(Boolean).join(" | "),
         phone: phone || undefined,
+        providerRecordId: firstString(item?.placeId, item?.id, item?.cid, item?.businessId),
+        providerRecordUrl: mapsUrl || website || undefined,
         website: website || undefined,
     };
 };

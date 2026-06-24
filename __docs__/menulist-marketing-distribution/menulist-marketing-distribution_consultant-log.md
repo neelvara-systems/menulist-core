@@ -12,6 +12,137 @@
 - Separate founder-side blockers from Codex-side work.
 - Do not leave important decisions only in chat.
 
+## June 24, 2026 - Activation Proof Runtime Foundation
+
+### Context
+
+Founder asked how MenuList practically knows whether an activation action is done and pointed to the existing discovery setup screen.
+
+### Decision
+
+Use the existing MenuList activation/discovery surfaces instead of creating a new Activation Concierge route. Action-done proof now has two runtime classes:
+
+- MenuList-recorded owner action: copy, WhatsApp share, QR download, Menu Kit download, or native share recorded in `starterActivationSignals`.
+- Owner-confirmed external placement: Google Business, Instagram Bio, or WhatsApp Profile marked in Presence Monitor and stored in `menuPresence`.
+
+External platform placement is not claimed as API-verified.
+
+### Files Changed
+
+- `src/lib/onboarding/starterActivation.ts`
+- `src/components/onboarding/StarterActivationBanner.tsx`
+- `src/components/templates/main-app/useMenuList/PresenceMonitor.tsx`
+- `src/components/mobile/components/PresenceMonitor.tsx`
+- `public/locales/menulist.ai/en-US.json`
+- `public/locales/menulist.ai/hi-IN.json`
+- `scripts/verification/verify-menulist-activation-concierge.js`
+- `package.json`
+- `__docs__/menulist-activation-concierge/`
+- `__docs__/menu-presence-monitor/`
+
+### Verification
+
+- Added `npm run verify:menulist-activation-concierge`.
+- TypeScript pass completed after runtime changes.
+
+### Action Register
+
+- Marked `MLD-F011` done for the existing-surface Activation Concierge runtime foundation.
+
+## June 24, 2026 - Activation Concierge Doc Set
+
+### Context
+
+Founder asked Codex to do the needful after the founder-distribution research and mark the accepted work done from Codex's side.
+
+### Decision
+
+The next valid MenuList-side work is Activation Concierge: upload or receive the current list, prepare a preview, owner approves, customer link publishes, two customer surfaces are activated, and proof becomes eligible only after confirmation and permission.
+
+This is not a SignalDesk feature. SignalDesk may route and observe outcomes, but MenuList owns upload, extraction, preview, claim, publish, QR/share/presence, and public truth.
+
+### Files Added
+
+- `../menulist-activation-concierge/README.md`
+- `../menulist-activation-concierge/menulist-activation-concierge_spec.md`
+- `../menulist-activation-concierge/menulist-activation-concierge_impl.md`
+- `../menulist-activation-concierge/menulist-activation-concierge_marketing.md`
+- `../menulist-activation-concierge/menulist-activation-concierge_website.md`
+- `../menulist-activation-concierge/menulist-activation-concierge_helpdoc.md`
+- `../menulist-activation-concierge/menulist-activation-concierge_firebase.md`
+- `../menulist-activation-concierge/menulist-activation-concierge_mobile-support.md`
+- `../menulist-activation-concierge/menulist-activation-concierge_test-cases.md`
+
+### Action Register
+
+- Marked `SD-F022` done for the separate MenuList Activation Concierge doc set.
+- Added `MLD-F010` as done for Activation Concierge docs.
+- Added `MLD-F011` for runtime implementation pending founder route decision at that time.
+
+### Boundaries
+
+No runtime code, public route, provider send, external API, paid campaign, SignalDesk public page, SignalDesk MenuList truth write, Firebase deploy, Vercel deploy, or production build was added.
+
+## June 24, 2026 - Founder Distribution Deep Research
+
+### Context
+
+Founder asked Codex to research how successful startups and solo product owners handle marketing/distribution across X, Reddit, founder communities, and adjacent case studies, then translate that into what MenuList should do and automate so one founder can operate it.
+
+### Decision
+
+MenuList should not copy generic viral-launch, influencer, or lead-blasting playbooks. The validated pattern is narrow audience, fast first result, shareable proof artifact, trust channel, activation measurement, and repeated learning.
+
+For MenuList, the matching loop is: current-list problem found, MenuList preview prepared, owner approves, official customer link published, QR/WhatsApp/Google/Profile/Instagram/staff surface activated, proof asset created, then SignalDesk recommends the next target, proof draft, partner, or pod decision.
+
+The next build should be MenuList-side Activation Concierge and proof automation before more provider adapters, sequencer plumbing, paid campaigns, or social/WhatsApp automation.
+
+### File Added
+
+- `../menulist-signaldesk/menulist-signaldesk_founder-distribution-research-2026-06-24.md`
+
+### Action Register
+
+- Added `MLD-R011` for founder distribution and automation research.
+- Added `SD-D024` for the SignalDesk research document.
+- Moved `SD-F022` from deferred to not started as the next recommended MenuList-side Activation Concierge doc set.
+
+### Boundaries
+
+No runtime code, provider adapter, external account, paid API, outreach, social automation, WhatsApp automation, public SignalDesk page, Firebase deploy, Vercel deploy, or MenuList truth write was added.
+
+### Remaining Founder-Side Blockers
+
+- Approve first market pod or revise the recommended Bengaluru Indiranagar + Koramangala restaurant pod.
+- Approve first self-service CTA and proof format.
+- Decide sender identity, physical address policy, and source policy before real outreach.
+- Approve whether Activation Concierge starts as a local/demo path or direct owner-facing MenuList route.
+
+## June 24, 2026 - Creator Distribution Article Fit
+
+### Context
+
+Founder shared an external consumer-app influencer distribution article and a ChatGPT interpretation, then asked Codex to turn the accepted parts into repo changes.
+
+### Decision
+
+MenuList should not become an influencer or creator-campaign product. The article is useful for MenuList only as a proof/content distribution discipline: test small local creator or category angles, measure actual activation, and keep the launch story centered on one owner-approved customer link.
+
+CampaignCue owns the product primitive: local creator test brief, creator/audience-fit checklist, lightweight creator brief, 3-test plan, flat-fee boundary, disclosure/consent notes, and result-memory prompt inside the existing campaign pack/export runtime.
+
+### Files Changed
+
+- `src/constants/campaigncue/outputPicker.ts`
+- `src/lib/campaigncue/server.ts`
+- `scripts/verification/verify-campaigncue-pack-templates.js`
+- `__docs__/campaigncue/`
+- `menulist-marketing-distribution_strategy.md`
+- `menulist-marketing-distribution_action-register.md`
+
+### Boundaries
+
+No MenuList influencer workflow, CampaignCue creator marketplace, creator CRM, contract/payment flow, provider integration, Firebase rule/index/function change, Vercel deploy, Firebase deploy, production build, paid ad, outreach, or real creator deal was added.
+
 ## June 23, 2026 - Placeholder Demo Asset Bridge
 
 ### Context
@@ -800,3 +931,35 @@ The user also confirmed MenuList should stay broad across relevant SMB categorie
 
 - `git diff --check` passed after the launch-support docs update.
 - Claim-boundary scan only found negative guardrail wording such as "do not claim", "does not replace", and "no guarantee" statements.
+
+---
+
+## June 24, 2026 - AI Startup Growth Playbook Fit Review
+
+### Context
+
+The founder shared a synthesized review comparing MenuList to fast-growing AI products and solo-founder distribution workflows. The review was evaluated through the MenuList marketing/distribution doctrine and SignalDesk's private internal boundary.
+
+### Decisions
+
+- Adopt the activation-proof loop, not generic viral launch tactics.
+- Use the MenuList equivalent of first-use magic: current menu/source -> preview -> owner approval -> official customer link -> two customer surfaces -> proof asset.
+- Keep the north star as two-surface activation within seven days.
+- Record the recommended first pod hypothesis as Bengaluru, Indiranagar + Koramangala, cafes/dessert shops/QSR/cloud-kitchen-facing storefronts, founder email/manual export first.
+- Treat Activation Concierge as MenuList-side product work, with SignalDesk only routing and observing outcomes.
+- Keep cold WhatsApp, cold Meta DMs, Reddit/X auto-replies, LinkedIn automation, provider send, paid campaign automation, and auto-publish rejected until explicit policy gates change.
+
+### Files Updated
+
+- `../menulist-signaldesk/menulist-signaldesk_growth-playbook-review-2026-06-24.md`
+- `menulist-marketing-distribution_strategy.md`
+- `menulist-marketing-distribution_action-register.md`
+- `../menulist-signaldesk/menulist-signaldesk_action-register.md`
+- `../menulist-signaldesk/menulist-signaldesk_feature-map.md`
+- `../menulist-signaldesk/menulist-signaldesk_validation.md`
+
+### Boundaries
+
+- No outreach was sent.
+- No runtime feature was added.
+- No public SignalDesk page, public MenuList route, provider send, paid campaign, auto-publish, Firebase deploy, production build, or Vercel deploy was run.

@@ -14,7 +14,7 @@ The registry should help an SMB owner start from a useful campaign structure:
 
 It must then rehydrate current business facts, run missing-input/trust checks, and keep manual delivery instructions inside the campaign pack.
 
-The owner may also choose what the pack should help with, but this is not a design-format browser. CampaignCue output choices are business-use intents such as WhatsApp sales pack, booking push pack, Google local update, poster/flyer, staff share pack, ad handoff, Campaign Proof Deck, reuse old asset, or custom size.
+The owner may also choose what the pack should help with, but this is not a design-format browser. CampaignCue output choices are business-use intents such as source-to-channel pack, WhatsApp sales pack, booking push pack, Google local update, poster/flyer, staff share pack, ad handoff, local creator test brief, Campaign Proof Deck, reuse old asset, or custom size.
 
 ## Product Role
 
@@ -107,6 +107,7 @@ CampaignCue uses a small grouped output-intent registry instead of a generic "Ch
 | Output intent | Owner meaning | Typical outputs |
 | --- | --- | --- |
 | Recommended pack | Use the Daily Desk recommendation. | Current campaign pack output mix. |
+| Source-to-channel pack | Turn the current source-backed campaign cue into a coordinated manual pack. | WhatsApp message, Google/local draft, social/print creative, manual task, result prompt. |
 | WhatsApp sales pack | Get replies, orders, or customer questions. | WhatsApp image/message, status text, reply script, social support. |
 | Booking push pack | Fill slots, appointments, classes, or service openings. | WhatsApp booking message, story, Google update, reception poster. |
 | Google local update | Keep local visibility fresh without inventing an offer. | Google update/offer fields, local caption, flyer if useful. |
@@ -114,6 +115,7 @@ CampaignCue uses a small grouped output-intent registry instead of a generic "Ch
 | Poster or flyer | Use the campaign offline. | Poster PDF, flyer PDF, counter or reception use. |
 | Staff share pack | Give staff a clear message and script. | Staff WhatsApp text, counter script, customer reply prompt. |
 | Ad handoff pack | Prepare copy for a human ad-account owner or agency. | Headline, copy, destination, terms, approval notes. |
+| Local creator test brief | Prepare a lightweight creator/audience-fit handoff without running a marketplace. | Creator-fit checklist, native brief, 3-test plan, disclosure, flat-fee boundary, result prompt. |
 | Campaign proof deck | Prepare a review brief for owner, client, or agency approval. | Brand system, campaign/social set, focus, UGC/reel reference, checklist, source trace. |
 | Reuse old poster/image | Start from an existing owner asset. | CueLayers-safe source preservation and manual export. |
 | Custom size | Advanced blank layout when the owner already knows the size. | Shared editor blank asset, desktop-preferred. |
@@ -128,7 +130,7 @@ Selecting an output intent filters the already-loaded category template summarie
 2. CampaignCue resolves business category from existing business truth.
 3. CampaignCue reads one matching platform template catalog.
 4. Daily Desk suggests a relevant template only when it supports the current cue.
-5. Owner can optionally choose a CampaignCue output intent such as WhatsApp, Google, print, staff, ads, reuse, or custom size.
+5. Owner can optionally choose a CampaignCue output intent such as source-to-channel, WhatsApp, Google, print, staff, ads, reuse, or custom size.
 6. Owner sees what the template will prepare and what facts are missing.
 7. Owner confirms missing details.
 8. Creative Studio creates or opens the pack.
@@ -170,6 +172,7 @@ Selecting an output intent filters the already-loaded category template summarie
 - Generic template marketplace.
 - Public community templates.
 - Direct posting or scheduling.
+- Creator recruiting, contracts, payments, or marketplace browsing.
 - Paid provider generation during template browsing.
 - Template rankings based only on visual style.
 - Persisting signed URLs, base64 previews, or generated binaries in Firestore.
@@ -185,6 +188,7 @@ Selecting an output intent filters the already-loaded category template summarie
 | Product drifts into template marketplace | Keep Daily Desk and campaign pack outcome as primary entry; templates are supporting surfaces only. |
 | Search gets too broad | Use curated tags and in-memory filters; no full catalog scan. |
 | Output picker becomes a format marketplace | Keep labels business-use based and keep custom size as the advanced escape hatch. |
+| Creator test intent becomes influencer CRM | Keep the local creator output as a brief/checklist/result-memory handoff only; no roster, contract, payment, or marketplace records. |
 
 ## Open Questions Before Implementation
 

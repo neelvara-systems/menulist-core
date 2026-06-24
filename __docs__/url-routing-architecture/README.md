@@ -119,7 +119,7 @@ Localhost `/__mycodex` remains open for development.
 
 Internal portfolio aliases `/cl`, `/ml`, `/al`, and `/cc` are only enabled on the MyCodex product host or an already-resolved MyCodex request. They are convenience path aliases for private portfolio navigation, not public canonical product URLs, tenant paths, Firebase targets, or product-code aliases. `/cl` maps to the ConstantLayer public site route group.
 
-SignalDesk uses the app-only MyCodex-host alias `/sd`. `https://menulist.digital/sd` rewrites to the private `/signaldesk` app, and SignalDesk navigation preserves `/sd/*` while serving through that host. `/sd/signin` rewrites to the shared sign-in page so the callback can return to `/sd`.
+SignalDesk uses the app-only MyCodex-host alias `/sd`. `https://menulist.digital/sd` rewrites to the private `/signaldesk` app, and SignalDesk navigation preserves `/sd/*` while serving through that host. `/sd/app` is accepted as a compatibility alias for people expecting the CampaignCue-style app suffix, but it still rewrites to the same private SignalDesk app and normalizes navigation to `/sd/*`. `/sd/signin` rewrites to the shared sign-in page so the callback can return to `/sd`.
 
 #### Product Site Vs Product App Routes
 
@@ -132,7 +132,7 @@ Authenticated owner dashboards, product workspaces, admin tools, and paid/runtim
 | ConstantLayer | `src/app/sites/constantlayer` | None | Static entity/trust site only; no product app route. MyCodex-only alias: `/cl`. |
 | Answerlattice | `src/app/sites/answerlattice` | `src/app/(answerlattice)/answerlattice` | Dashboard roots rewrite to `/answerlattice/*`. |
 | CampaignCue | `src/app/sites/campaigncue` | `src/app/(campaigncue)/campaigncue` | `/app` rewrites to `/campaigncue/app`; local `/__campaigncue/app` also rewrites to `/campaigncue/app`. |
-| SignalDesk | None | `src/app/(signaldesk)/signaldesk` | Local `/signaldesk`; dedicated hosts rewrite to `/signaldesk/*`; MyCodex-host alias `/sd` rewrites to `/signaldesk/*`. |
+| SignalDesk | None | `src/app/(signaldesk)/signaldesk` | Local `/signaldesk`; dedicated hosts rewrite to `/signaldesk/*`; MyCodex-host aliases `/sd` and `/sd/app` rewrite to `/signaldesk/*`. |
 
 This separation keeps public SEO/discovery surfaces away from authenticated owner runtime code, keeps product files easy to inventory, and prevents future products from hiding dashboards below `sites/`.
 

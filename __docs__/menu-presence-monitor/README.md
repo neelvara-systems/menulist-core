@@ -1,9 +1,9 @@
 # Menu Presence Monitor
 
-> **Status:** DOCUMENTED — Implementation pending
+> **Status:** IMPLEMENTED — Embedded in owner desktop/mobile surfaces
 > **Feature Flag:** `ENABLE_MENU_PRESENCE_MONITOR`
-> **Route:** Embedded panel on Use MenuList page (`/use-menulist`)
-> **Mobile:** Embedded in MobileShareScreen
+> **Route:** Embedded panel on Use MenuList (`/use-menulist`) and Business Settings > Search & Discovery
+> **Mobile:** Embedded in MobileShareScreen and reachable from More > Search & Discovery
 > **Source:** ChatGPT Owner Features Session (March 15, 2026) → Cascade Review
 
 ## What It Is
@@ -26,7 +26,12 @@ Menu Presence Monitor gently surfaces these gaps without overwhelming the owner.
 
 ## Architecture Principle
 
-**Mostly manual confirmation + partial automatic detection.** Zero new collections for v1. Store-level field (`menuPresence`) on existing store document tracks confirmed surfaces. Automatic detection for QR (Menu Kit downloaded) and Screens (screen token exists).
+**Mostly manual confirmation + partial automatic detection.** Zero new collections for v1. Store-level field (`menuPresence`) on existing store document tracks confirmed surfaces. Starter activation actions use `starterActivationSignals` on the same store document.
+
+The monitor now shows an activation-proof summary through the shared `buildStarterActivationSummary()` helper. It separates:
+
+- MenuList-recorded owner actions such as copy, WhatsApp share, QR download, Menu Kit download, or native share;
+- owner-confirmed external placements such as Google Business, Instagram Bio, and WhatsApp Profile.
 
 ## Surface Checklist
 
@@ -35,9 +40,17 @@ Menu Presence Monitor gently surfaces these gaps without overwhelming the owner.
 | Google Business | Manual confirmation | ✓ Added / ⚠ Not added |
 | Instagram Bio | Manual confirmation | ✓ Added / ⚠ Not added |
 | WhatsApp Profile | Manual confirmation | ✓ Added / ⚠ Not added |
-| Table QR | Auto (Menu Kit downloaded) | ✓ Installed / ⚠ Not set up |
+| Table QR | Auto readiness from published menu/share surface | ✓ Ready / ⚠ Not set up |
 | Digital Screens | Auto (screen token exists) | ✓ Active / ⚠ Not set up |
 | Feedback QR | Auto (feedback enabled) | ✓ Active / ⚠ Not enabled |
+
+## Action-Done Model
+
+| Action class | How MenuList knows | UI label |
+| --- | --- | --- |
+| Product action | MenuList records the action in `starterActivationSignals.actions.*`. | MenuList recorded |
+| External placement | Owner marks the placement in the Presence Monitor; MenuList stores `menuPresence.*`. | Owner confirmed |
+| Customer usage | Future scan/source/referrer data may support stronger proof. | Not part of P0 |
 
 ## Key Files (Planned)
 
@@ -45,7 +58,8 @@ Menu Presence Monitor gently surfaces these gaps without overwhelming the owner.
 |------|---------|
 | `src/components/templates/main-app/useMenuList/PresenceMonitor.tsx` | Presence checklist component |
 | `src/components/mobile/components/PresenceMonitor.tsx` | Mobile version (shared logic) |
-| `src/database/stores/index.ts` | Add `menuPresence` field read/write |
+| `src/database/stores/index.tsx` | `menuPresence` field write and starter activation signal write |
+| `src/lib/onboarding/starterActivation.ts` | Shared activation target and action-done evidence summary |
 
 ## Documents
 
@@ -71,4 +85,4 @@ Menu Presence Monitor gently surfaces these gaps without overwhelming the owner.
 ---
 
 **Created:** March 15, 2026
-**Last Updated:** March 15, 2026
+**Last Updated:** June 24, 2026
