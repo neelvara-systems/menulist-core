@@ -18,6 +18,8 @@ import { DB_COLLECTIONS } from "./database";
 
 export const AI_MODEL = "gemini-2.5-flash";
 export const OWNER_ANALYTICS_AI_MODEL = "gemini-2.5-flash-lite";
+export const AI_ADVANCED_MODEL = "gemini-2.5-pro";
+export const AI_EMBEDDING_MODEL = "text-embedding-004";
 
 /**
  * Extraction prompt version — increment when parallelProcessingPrompt.ts changes

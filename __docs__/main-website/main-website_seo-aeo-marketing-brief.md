@@ -67,7 +67,7 @@ MenuList still does **not** promise rankings, Google refresh timing, AI visibili
 
 ### Measurement Layer
 
-Implemented GA4-only public website tracking for resource behavior, including:
+Implemented consent-gated public website tracking for resource behavior. Plausible receives property-free custom event names, and GA4 compatibility payloads remain available when GA4 is configured:
 
 - `resource_page_view`
 - `resource_primary_cta_click`

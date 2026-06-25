@@ -407,7 +407,10 @@ _Estimates based on 50 stores, 3 publishes/day average._
 | **Sentry**            | Error tracking (already set up) | Free (5K events/month)   | **₹0**       |
 | **GCP Budget Alerts** | Budget threshold notifications  | Free (built into GCP)    | **₹0**       |
 | **Upstash Redis**     | Rate limiting (already set up)  | Free (10K requests/day)  | **₹0**       |
-| **TOTAL Third-Party** |                                 |                          | **₹0**       |
+| **Plausible Cloud**   | Public marketing website analytics for `menulist.ai` and `answerlattice.com` | Paid plan selected in Plausible | **Plan cost** |
+| **TOTAL Third-Party** |                                 |                          | **Plausible Cloud plan cost** |
+
+Plausible Cloud is the approved public marketing-website analytics layer for `menulist.ai` and `answerlattice.com` once the Plausible sites, consent-gated env vars, and custom-event goals are configured. PostHog is not a launch prerequisite and must stay out unless `__docs__/client-menu/analytics-tracking/analytics-tracking_vendor-plan.md` is followed as a separate internal-product-analytics task.
 
 ### Grand Total
 
@@ -415,8 +418,8 @@ _Estimates based on 50 stores, 3 publishes/day average._
 | ------------------------- | --------------------------- |
 | Firebase reads/writes     | ~₹12                        |
 | Cloud Functions compute   | ~₹5                         |
-| Third-party services      | ₹0                          |
-| **TOTAL MONITORING COST** | **~₹17/month** (~$0.20 USD) |
+| Third-party services      | Plausible Cloud plan cost   |
+| **TOTAL MONITORING COST** | **~₹17/month + Plausible Cloud plan** |
 
 **At 200 stores:** ~₹50/month (~$0.60 USD)  
 **At 500 stores:** ~₹120/month (~$1.40 USD)

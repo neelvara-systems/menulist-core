@@ -182,6 +182,26 @@ are `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and `GEMINI_AI_KEY_4`.
 `GEMINI_API_KEY` is a legacy app env alias only. Do not set it as the primary
 Firebase Functions secret unless code is intentionally changed to read it again.
 
+Production Gemini keys must be created per environment and restricted to the
+Gemini API. Do not reuse the local or staging key in production. Do not expose
+Gemini keys in browser code, mobile apps, widgets, Firestore, or logs.
+
+The extra key slots are for credential rotation, leak response, and transient
+failover. They do not create unlimited capacity when they belong to the same
+Google project because Gemini quotas are enforced at the project/model tier.
+For production scaling, use billing, quota monitoring, budget alerts, and
+quota increase requests.
+
+Daily provider health records:
+
+```text
+MenuList: _health/aiProvider_gemini
+Answerlattice: platformSummary/answerlatticeAiProviderHealth
+```
+
+After deploying Functions, confirm those records update once per UTC day and
+that failed checks surface through the scheduler alert path.
+
 ## Deploy Note
 
 After adding a new secret name to a function's `secrets` option, deploy the

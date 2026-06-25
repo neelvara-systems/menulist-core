@@ -3,7 +3,7 @@
 **Feature:** SignalDesk Foundation
 **Status:** Initial doc set
 **Created:** June 23, 2026
-**Last Updated:** June 23, 2026
+**Last Updated:** June 25, 2026
 **Parent project:** [MenuList SignalDesk](../README.md)
 
 ---
@@ -13,7 +13,7 @@
 SignalDesk Foundation is the base layer for the private internal tool:
 
 - internal access boundary;
-- team roles;
+- team roles and internal team access management;
 - audit events;
 - contact reveal audit;
 - kill switches;
@@ -42,3 +42,4 @@ The corrected review says the first build must start with team auth, roles, and 
 | Version | Date | Changes |
 | --- | --- | --- |
 | 0.1 | 2026-06-23 | Created first per-feature SignalDesk doc set. |
+| 0.2 | 2026-06-25 | Documented implemented Settings-based team member add/update/deactivate flow and audited role assignment. |

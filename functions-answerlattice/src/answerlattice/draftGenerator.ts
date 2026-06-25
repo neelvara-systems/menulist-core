@@ -20,6 +20,7 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
+import { ANSWERLATTICE_TEXT_MODEL } from '../constants/ai';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -296,7 +297,7 @@ function parseDraftResponse(rawResponse: string | null): ParsedDraft | null {
 async function callGeminiForDraft(systemPrompt: string, userPrompt: string): Promise<AnswerlatticeGeminiCallResult | null> {
     try {
         return await callAnswerlatticeGeminiContent({
-            model: 'gemini-2.0-flash',
+            model: ANSWERLATTICE_TEXT_MODEL,
             systemPrompt,
             userPrompt,
         });

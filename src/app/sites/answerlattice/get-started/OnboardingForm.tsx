@@ -2,6 +2,7 @@
 
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/routes';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { trackPlausibleEvent } from '@lib/website/plausible';
 import type { CSSProperties } from 'react';
 import { SessionProvider, signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
@@ -87,6 +88,9 @@ function OnboardingFormInner() {
     useEffect(() => {
         if (step !== 'done' || !result) return;
 
+        trackPlausibleEvent('onboarding_completed');
+        trackPlausibleEvent('widget_key_generated');
+
         const win = window as AnswerlatticeAnalyticsWindow;
         if (typeof win.gtag !== 'function') return;
 
@@ -96,7 +100,7 @@ function OnboardingFormInner() {
         });
         win.gtag('event', 'widget_key_generated', {
             event_category: 'answerlattice_website',
-            event_label: result.apiKey.slice(0, 8),
+            event_label: result.plan.id,
         });
     }, [result, step]);
 

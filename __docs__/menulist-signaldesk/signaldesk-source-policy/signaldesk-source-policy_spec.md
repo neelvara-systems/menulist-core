@@ -29,6 +29,7 @@ It must exist before imports, enrichment, AI evidence, drafts, or sends.
 | Paid intent | Warm lead handling after explicit user action. |
 | Public website | Manual evidence review. |
 | Google Maps / Places-like | Temporary candidate discovery only after source-policy review. |
+| FHRS/FHIS official UK establishment data | Official establishment seed and evidence only after provider source-policy review; contact permission is not inferred. |
 | Foursquare | Blocked for prospect outreach unless separate permission exists. |
 | Apify/Outscraper-style | Blocked by default; allowed only through the Apify Source Broker after provider source policy, owner provider approval, env-controlled Actor review, and budget cap. |
 

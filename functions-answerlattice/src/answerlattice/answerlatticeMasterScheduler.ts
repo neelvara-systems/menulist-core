@@ -3,6 +3,7 @@ import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { runAnswerlatticeAiProviderHealthCheck } from './aiProviderHealth';
 import { discoverActiveTenants, runAnswerlatticeNightly } from './answerlatticeNightly';
 import {
     ANSWERLATTICE_DEFAULT_BUSINESS_DAY_END_TIME,
@@ -350,6 +351,13 @@ async function runGovernanceNightlyTask(context: {
 }
 
 const TASKS: AnswerlatticeSchedulerTask[] = [
+    {
+        name: 'ai_provider_health_check',
+        lockTtlMs: 5 * MINUTE_MS,
+        run: (context) => runAnswerlatticeAiProviderHealthCheck({
+            force: context.trigger === 'manual' && context.forceAllTenants === true,
+        }),
+    },
     {
         name: 'governance_nightly',
         lockTtlMs: TASK_LEASE_MS,

@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
+import { getModelName } from "@constant/AI/models";
 import { CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
@@ -18,7 +19,7 @@ import { NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from "../../../middleware/auth";
 import descriptionPrompt, { descriptionPromptSystemInstruction } from "./prompt";
 
-const AI_MODEL = "gemini-2.5-flash";
+const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const LOG_FILE = "descriptions.log";
 
 export const POST = withAuth(async (request, session) => {

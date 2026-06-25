@@ -607,6 +607,15 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 - **Env vars:** `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`
 - **Cost:** Free (read-only API)
 
+#### 10B. Marketing Website Analytics Vendor Boundary
+
+- **Current launch position:** use consent-gated Plausible Cloud for the public MenuList and Answerlattice marketing websites once the Plausible sites and Vercel env vars are configured.
+- **Plausible:** website-only. Configure `NEXT_PUBLIC_MENULIST_PLAUSIBLE_DOMAIN` and `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN`; use script overrides only when Plausible provides a site-specific script URL.
+- **GA4/Clarity:** GA4 remains optional for paid-ad/conversion continuity. Microsoft Clarity remains MenuList-only for visual behavior observation.
+- **PostHog:** rejected for launch. Any later internal product analytics plan must disable autocapture/session replay and use manual events only.
+- **Product analytics:** public menu, Official Business Page, Customer App, Owner Dashboard, and Business Health analytics stay on the existing MenuList-owned aggregate analytics/read-model pipeline.
+- **Reference:** `__docs__/client-menu/analytics-tracking/analytics-tracking_vendor-plan.md`
+
 #### 11. Unsplash API — Background Images
 
 - **What to create:** Developer account + application
@@ -632,18 +641,32 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 - **Cost:** Free
 - **Note:** Optional — alternative to Unsplash
 
-#### 13. Microsoft Clarity — Heatmaps/Session Replay
+#### 13. Microsoft Clarity — Marketing Website Analytics
 
-- **What to create:** Project in Clarity
+- **What to create:** No new project by default if retaining the current configured project. Verify ownership/access before launch.
 - **Where:** https://clarity.microsoft.com
 - **Steps:**
   1. Sign up with Microsoft account
-  2. Add new project
+  2. Confirm the existing MenuList project is accessible, or add a new project only if replacing the configured id
   3. Site URL: `https://menulist.ai`
-  4. **Copy Project ID** (looks like `sc0tsmzg6b`)
+  4. If replacing, copy the Project ID (looks like `sc0tsmzg6b`)
 - **Env vars:** `NEXT_PUBLIC_CLARITY_ID`
 - **Cost:** Free (always free, unlimited sites)
-- **Note:** Code has fallback ID — optional but recommended
+- **Note:** Loads only through `WebsiteAnalyticsConsent` after accepted analytics consent. Clarity is visual behavior review, not the canonical website analytics dashboard.
+
+#### 13B. Plausible Cloud — Marketing Website Analytics
+
+- **What to create:** Plausible Cloud account with separate sites for `menulist.ai` and `answerlattice.com`
+- **Where:** https://plausible.io
+- **Steps:**
+  1. Add site: `menulist.ai`
+  2. Add site: `answerlattice.com`
+  3. Configure custom-event goals for the launch event names listed in `analytics-tracking_vendor-plan.md`
+  4. Use Growth by default unless Business-only features are needed immediately
+  5. Copy a site-specific script URL only if Plausible provides one; otherwise leave the script override env blank
+- **Env vars:** `NEXT_PUBLIC_MENULIST_PLAUSIBLE_DOMAIN`, `NEXT_PUBLIC_MENULIST_PLAUSIBLE_SCRIPT_SRC`, `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN`, `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_SCRIPT_SRC`
+- **Cost:** Paid Plausible Cloud plan
+- **Note:** Loads only through the public website consent banners after accepted analytics consent. Do not use Plausible for owner dashboard, public menu, Official Business Page, Customer App, widget, or Business Health truth.
 
 #### 14. GCP Billing Alerts — Budget Monitoring
 
@@ -681,7 +704,8 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 | 10  | GA4 Service Account  | Verify access         | Free            | P2       | N/A                          |
 | 11  | Unsplash             | Developer app         | Free            | P2       | N/A                          |
 | 12  | Pixabay              | API key               | Free            | P2       | N/A                          |
-| 13  | Clarity              | New project           | Free            | P2       | N/A                          |
+| 13  | Clarity              | Verify project access | Free            | P2       | N/A                          |
+| 13B | Plausible Cloud      | Create website sites  | Paid plan       | P2       | N/A                          |
 | 14  | GCP Billing          | Budget alert          | Free            | P1       | N/A                          |
 
 ---
@@ -709,7 +733,9 @@ These enable ops visibility and alerts. Launch without them is risky but possibl
 - [ ] Create reCAPTCHA v3 site key
 - [ ] Verify GA4 service account access
 - [ ] Sign up Unsplash/Pixabay (optional)
-- [ ] Create Clarity project
+- [ ] Verify Clarity project access if retaining the current website analytics stack
+- [ ] Create Plausible sites for `menulist.ai` and `answerlattice.com`, set website-only Plausible env vars, and configure launch custom-event goals
+- [ ] Do not add PostHog unless `analytics-tracking_vendor-plan.md` has a separate approved internal-product-analytics task
 - [ ] Set GCP budget alerts
 
 ---

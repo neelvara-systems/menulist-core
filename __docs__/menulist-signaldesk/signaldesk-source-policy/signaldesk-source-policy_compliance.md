@@ -16,6 +16,7 @@ The project-level research memo records current source constraints:
 - Google Maps Platform terms restrict scraping/bulk storage and use to create or augment advertising products (`../menulist-signaldesk_compliance.md` links to the research memo).
 - GBP APIs must not be used for lead generation.
 - Foursquare PAYG Places terms prohibit using Places Data to contact businesses as prospective customers.
+- FHRS/FHIS data is useful as official UK establishment identity/evidence, but it is not owner contact permission and public rating/image use needs separate accuracy and non-endorsement review.
 - Apify-style scraping availability is not permission; the implemented Apify Source Broker still requires an env-controlled Actor, provider source policy, owner provider approval, budget cap, and source-policy contact-use enforcement.
 
 ## Required Policy Fields

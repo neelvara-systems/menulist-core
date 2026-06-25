@@ -25,6 +25,7 @@ export type CreativeFabricObject = fabric.Object & {
     creativeEditorType?: CreativeEditorElementType | "visibleWatermark" | "watermark" | "workspace";
     darkColor?: string;
     editorGuide?: boolean;
+    errorCorrectionLevel?: Extract<CreativeEditorElement, { type: "qr" }>["errorCorrectionLevel"];
     excludeFromExport?: boolean;
     gradient?: CreativeEditorLinearGradient;
     imageFilterAdjustments?: CreativeEditorImageFilterAdjustments;
@@ -41,6 +42,7 @@ export type CreativeFabricObject = fabric.Object & {
     pathVisible?: boolean;
     printFrameId?: string;
     printFrameLocked?: boolean;
+    qrMargin?: number;
     sourceRefs?: CreativeEditorSourceRef[];
     src?: string;
     strokeLineCap?: CreativeEditorStrokeLineCap;
@@ -54,6 +56,7 @@ export const CREATIVE_EDITOR_FABRIC_ATTRIBUTES = [
     "arrowStyle",
     "darkColor",
     "editorGuide",
+    "errorCorrectionLevel",
     "excludeFromExport",
     "gradient",
     "imageFilterAdjustments",
@@ -70,6 +73,7 @@ export const CREATIVE_EDITOR_FABRIC_ATTRIBUTES = [
     "pathVisible",
     "printFrameId",
     "printFrameLocked",
+    "qrMargin",
     "sourceRefs",
     "src",
     "strokeLineCap",
@@ -704,7 +708,8 @@ async function createObjectFromElement(
                     dark: element.darkColor || "#16231f",
                     light: element.lightColor || "#ffffff",
                 },
-                margin: 1,
+                errorCorrectionLevel: element.errorCorrectionLevel || "H",
+                margin: element.margin ?? 4,
                 width: Math.max(128, Math.round(Math.max(element.width, element.height))),
             })
             : await buildOutlinedImageSrc(element);
@@ -724,7 +729,9 @@ async function createObjectFromElement(
         if (element.type === "qr") {
             object.value = element.value;
             object.darkColor = element.darkColor;
+            object.errorCorrectionLevel = element.errorCorrectionLevel || "H";
             object.lightColor = element.lightColor;
+            object.qrMargin = element.margin ?? 4;
         }
     }
     applyBaseObjectData(fabricApi, object, element);
@@ -1084,7 +1091,9 @@ export function serializeFabricCanvasToDocument(
                 return {
                     ...common,
                     darkColor: object.darkColor || "#16231f",
+                    errorCorrectionLevel: object.errorCorrectionLevel || "H",
                     lightColor: object.lightColor || "#ffffff",
+                    margin: object.qrMargin ?? 4,
                     type: "qr",
                     value: object.value || "https://example.com",
                 } satisfies CreativeEditorElement;

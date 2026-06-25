@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { GEMINI_MODELS } from "@constant/AI/models";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { GenerateContentResponse, Modality } from "@google/genai";
@@ -20,7 +21,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from "../../../middleware/auth";
 import { generateImageEditingPrompt } from "./promptsList";
 
-const AI_MODEL = "gemini-2.5-flash-image";
+const AI_MODEL = GEMINI_MODELS.IMAGE_GEN;
 const LOG_FILE = "image-editing.log"
 
 async function editImageViaFlash(generationConfig: { prompt?: string, referanceImage: UserUploadedFileType, promptImages?: UserUploadedFileType[] }): Promise<{ images: { base64: string; mimeType: string }[], response: GenerateContentResponse } | null> {

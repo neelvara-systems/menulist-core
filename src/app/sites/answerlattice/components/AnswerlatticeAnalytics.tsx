@@ -3,13 +3,17 @@
 import { useEffect } from 'react';
 import Script from 'next/script';
 import PublicCookieConsentBanner, { type PublicCookieConsentChoice } from '@/components/shared/publicCookieConsent/PublicCookieConsentBanner';
+import { trackPlausibleEvent } from '@lib/website/plausible';
+import AnswerlatticePlausibleAnalytics from './AnswerlatticePlausibleAnalytics';
 
 const ANSWERLATTICE_GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID || process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const ANSWERLATTICE_PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN;
 const ANSWERLATTICE_ANALYTICS_CONSENT_STORAGE_KEY = 'answerlattice_website_analytics_consent_v1';
 
 type AnswerlatticeWindow = Window & {
     dataLayer?: unknown[];
     gtag?: (...args: unknown[]) => void;
+    plausible?: (...args: unknown[]) => void;
 };
 
 function deleteCookie(name: string) {
@@ -46,6 +50,10 @@ function clearKnownGoogleAnalyticsCookies() {
 
 function applyAnswerlatticeConsent(choice: PublicCookieConsentChoice) {
     const win = window as AnswerlatticeWindow;
+    if (choice === 'declined') {
+        win.plausible = undefined;
+    }
+
     if (typeof win.gtag !== 'function') {
         if (choice === 'declined') clearKnownGoogleAnalyticsCookies();
         return;
@@ -65,8 +73,6 @@ function applyAnswerlatticeConsent(choice: PublicCookieConsentChoice) {
 
 function AnswerlatticeConversionTracker() {
     useEffect(() => {
-        if (!ANSWERLATTICE_GA_MEASUREMENT_ID) return undefined;
-
         const handleClick = (event: MouseEvent) => {
             const target = event.target instanceof Element
                 ? event.target.closest<HTMLElement>('[data-answerlattice-event]')
@@ -75,6 +81,8 @@ function AnswerlatticeConversionTracker() {
 
             const eventName = target.dataset.answerlatticeEvent;
             if (!eventName) return;
+
+            trackPlausibleEvent(eventName);
 
             const win = window as AnswerlatticeWindow;
             if (typeof win.gtag !== 'function') return;
@@ -121,13 +129,12 @@ function AnswerlatticeGoogleAnalytics() {
                     });
                 `}
             </Script>
-            <AnswerlatticeConversionTracker />
         </>
     );
 }
 
 export default function AnswerlatticeAnalytics({ privacyHref = '/privacy-policy' }: { privacyHref?: string }) {
-    const hasAnalytics = Boolean(ANSWERLATTICE_GA_MEASUREMENT_ID);
+    const hasAnalytics = Boolean(ANSWERLATTICE_GA_MEASUREMENT_ID || ANSWERLATTICE_PLAUSIBLE_DOMAIN);
 
     return (
         <PublicCookieConsentBanner
@@ -147,7 +154,9 @@ export default function AnswerlatticeAnalytics({ privacyHref = '/privacy-policy'
             statusDeclined="Current choice: essentials only."
             storageKey={ANSWERLATTICE_ANALYTICS_CONSENT_STORAGE_KEY}
         >
-            {hasAnalytics ? <AnswerlatticeGoogleAnalytics /> : null}
+            {hasAnalytics ? <AnswerlatticePlausibleAnalytics /> : null}
+            {ANSWERLATTICE_GA_MEASUREMENT_ID ? <AnswerlatticeGoogleAnalytics /> : null}
+            {hasAnalytics ? <AnswerlatticeConversionTracker /> : null}
         </PublicCookieConsentBanner>
     );
 }

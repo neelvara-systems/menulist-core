@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import getActiveSession from '@lib/auth/getActiveSession';
+import { GEMINI_MODELS } from '@constant/AI/models';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { recordAiOperationForSession } from '@lib/ai/operationLog';
@@ -237,8 +238,9 @@ Generate a JSON response with:
 }`;
 
     const operationStart = Date.now();
+    const aiModel = GEMINI_MODELS.TEXT_GEN;
     const geminiResult = await genAIClient.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: aiModel,
       contents: prompt,
     });
     const parsed = parseWeeklyNarrativeResponse(geminiResult.text ?? '', fallbackNarrative);
@@ -281,7 +283,7 @@ Generate a JSON response with:
         weekStart,
       },
       geminiResponse: geminiResult,
-      model: 'gemini-2.5-flash',
+      model: aiModel,
       processingTime: Date.now() - operationStart,
       source: 'weekly_narrative_local',
     }).catch((logError) => {

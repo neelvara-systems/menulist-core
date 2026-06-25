@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { AI_BLOCKED_METADATA_FIELDS } from "@config/itemMetadataConfig";
+import { getModelName } from "@constant/AI/models";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
@@ -17,7 +18,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from "../../../middleware/auth";
 import getMultilingualNewItemPrompt from "./prompt";
 
-const AI_MODEL = "gemini-2.5-flash";
+const AI_MODEL = getModelName('NEW_ITEM_METADATA');
 const LOG_FILE = "new-item-metadata.log";
 const action = AI_ACTIONS_TYPES.NEW_ITEM_METADATA;
 

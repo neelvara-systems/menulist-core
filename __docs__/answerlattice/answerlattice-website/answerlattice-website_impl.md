@@ -1,7 +1,7 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.2.89
-> **Last Updated:** 2026-06-18
+> **Version:** 1.2.91
+> **Last Updated:** 2026-06-26
 > **Audience:** Developers
 
 ---
@@ -453,10 +453,12 @@ Use-cases, install, resources, updates, and the homepage product/widget preview 
 
 Conversion analytics is client-side only:
 
-- `AnswerlatticeAnalytics.tsx` shows the shared public cookie banner first. It loads Google Analytics only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` exists.
-- CTA/demo/pricing/onboarding events are emitted through `window.gtag`.
+- `AnswerlatticeAnalytics.tsx` shows the shared public cookie banner first. It loads Plausible only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN` exists. It loads Google Analytics only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` exists.
+- CTA/demo/pricing/onboarding events are emitted to Plausible as property-free custom events and to `window.gtag` when GA4 is configured.
+- Resource page/referrer events keep page, entry-page, referrer, UTM, slug, and target URL context for GA4 compatibility, but do not send a custom repo-generated `session_id` parameter to third-party website analytics.
+- Public get-started completion analytics do not send API key material or token prefixes.
 - No event is written to Firestore, no API route is called, and no AnswerLattice Firebase cost is introduced by normal tracking.
-- `src/config/csp-allowlist.ts` allows Google Analytics connect destinations so the optional script can report when enabled.
+- `src/config/csp-allowlist.ts` allows Plausible and Google Analytics destinations so optional website analytics can report when enabled.
 
 ---
 
@@ -479,6 +481,8 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-26 | 1.2.91 | Added consent-gated Plausible Cloud support for public website events and removed API-key material from onboarding success analytics labels |
+| 2026-06-25 | 1.2.90 | Removed the custom repo-generated resource analytics `session_id` parameter from GA4 payloads while preserving consent-gated page, entry-page, referrer, UTM, slug, and target URL context |
 | 2026-06-21 | 1.2.89 | Refined the homepage support-suite presentation after reviewing Supahub, Peppermint, Front, and the supplied Grabee reference, then simplified it after visual QA: the section now uses a lighter `Collect → Shape → Serve` flow rail, keeps the four suite cards, and renders the build path as a stable non-sticky panel without adding runtime behavior or unsupported product claims |
 | 2026-06-21 | 1.2.88 | Added reviewed-support-layer center copy to `SupportKnowledgeMapSection` so the support knowledge map makes approved-first, fallback-tracked, and review-loop behavior visible without changing runtime surfaces |
 | 2026-06-21 | 1.2.87 | Added the shared public AI summary footer strip with AnswerLattice-specific Claude, ChatGPT, and Gemini prompt links, preserving governed-answer positioning and non-goal boundaries |

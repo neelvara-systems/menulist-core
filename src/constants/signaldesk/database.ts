@@ -72,6 +72,8 @@ export const SIGNALDESK_COLLECTIONS = {
     OFFER_CTAS: "signaldeskOfferCtas",
     REPLY_PLAYBOOKS: "signaldeskReplyPlaybooks",
     SOURCE_QUALITY_SNAPSHOTS: "signaldeskSourceQualitySnapshots",
+    RESEARCH_RUNS: "signaldeskResearchRuns",
+    RESEARCH_TABLE_ROWS: "signaldeskResearchTableRows",
     CONTENT_SOURCES: "signaldeskContentSources",
     CONTENT_ASSETS: "signaldeskContentAssets",
     CONTENT_DISTRIBUTION_DRAFTS: "signaldeskContentDistributionDrafts",

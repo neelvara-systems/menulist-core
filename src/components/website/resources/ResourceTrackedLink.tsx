@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Link from '../shared/WebsiteLink';
+import { trackPlausibleEvent } from '@lib/website/plausible';
 
 type WebsiteGtagWindow = Window & {
     gtag?: (...args: unknown[]) => void;
@@ -23,21 +24,6 @@ function getUtmSource(): string | undefined {
 
 function getUtmMedium(): string | undefined {
     return new URLSearchParams(window.location.search).get('utm_medium') || undefined;
-}
-
-function getSessionId(): string {
-    const storageKey = 'menulist_resource_session_id';
-    const nextId = `rs_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-
-    try {
-        const existing = window.sessionStorage.getItem(storageKey);
-        if (existing) return existing;
-        window.sessionStorage.setItem(storageKey, nextId);
-    } catch {
-        return nextId;
-    }
-
-    return nextId;
 }
 
 function getEntryPage(): string {
@@ -79,8 +65,8 @@ export default function ResourceTrackedLink({
             href={href}
             className={className}
             onClick={() => {
-                const analyticsWindow = window as WebsiteGtagWindow;
-                if (typeof analyticsWindow.gtag !== 'function') return;
+                trackPlausibleEvent(eventName);
+
                 const payload = {
                     category: eventProps?.cluster,
                     destination: href,
@@ -88,21 +74,31 @@ export default function ResourceTrackedLink({
                     locale: document.documentElement.lang || undefined,
                     referrer: document.referrer || undefined,
                     referrer_host: getReferrerHost(),
-                    session_id: getSessionId(),
                     target_url: href,
                     utm_medium: getUtmMedium(),
                     utm_source: getUtmSource(),
                     ...eventProps,
                 };
 
-                analyticsWindow.gtag('event', eventName, payload);
+                const analyticsWindow = window as WebsiteGtagWindow;
+                if (typeof analyticsWindow.gtag === 'function') {
+                    analyticsWindow.gtag('event', eventName, payload);
+                }
 
                 if (shouldTrackPath(href, '/create-menu')) {
-                    analyticsWindow.gtag('event', 'upload_menu_click_from_resource', payload);
+                    trackPlausibleEvent('create_customer_link_clicked');
+
+                    if (typeof analyticsWindow.gtag === 'function') {
+                        analyticsWindow.gtag('event', 'upload_menu_click_from_resource', payload);
+                    }
                 }
 
                 if (shouldTrackPath(href, '/pricing')) {
-                    analyticsWindow.gtag('event', 'pricing_click_from_resource', payload);
+                    trackPlausibleEvent('pricing_clicked');
+
+                    if (typeof analyticsWindow.gtag === 'function') {
+                        analyticsWindow.gtag('event', 'pricing_click_from_resource', payload);
+                    }
                 }
             }}
         >

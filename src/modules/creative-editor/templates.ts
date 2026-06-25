@@ -54,9 +54,11 @@ const rectElement = (params: Partial<Extract<CreativeEditorElement, { type: "rec
 
 const qrElement = (params: Partial<Extract<CreativeEditorElement, { type: "qr" }>>): Extract<CreativeEditorElement, { type: "qr" }> => ({
     darkColor: "#16231f",
+    errorCorrectionLevel: "H",
     height: 164,
     id: buildCreativeEditorId("layer"),
     lightColor: "#ffffff",
+    margin: 4,
     name: "QR code",
     opacity: 1,
     type: "qr",

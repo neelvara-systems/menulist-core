@@ -1,7 +1,7 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.2.89
-> **Last Updated:** 2026-06-21
+> **Version:** 1.2.91
+> **Last Updated:** 2026-06-26
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -412,7 +412,9 @@ Rules:
 
 ## Conversion Tracking
 
-The website may emit optional GA/measurement events when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` is configured. Tracking is client-only and does not write to Firestore.
+The website may emit optional Plausible and GA/measurement events after analytics consent. Plausible loads only when `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN` is configured. GA4 loads only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` is configured. Tracking is client-only and does not write to Firestore.
+
+Existing `data-answerlattice-event` CTA names are forwarded to Plausible as property-free custom events and to GA4 with website context when GA4 is configured. Resource/referrer events may include page, entry-page, referrer, UTM, slug, and target URL context in GA4, but they must not send a custom repo-generated session identifier to third-party website analytics. Public get-started completion analytics must not send API key material or token prefixes.
 
 ## Agent-Readable Website Context
 
@@ -599,6 +601,8 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-06-26 | 1.2.91 | Added consent-gated Plausible Cloud support for public website events and removed API-key material from onboarding success analytics labels |
+| 2026-06-25 | 1.2.90 | Removed custom repo-generated resource analytics session identifiers from GA4 payloads while preserving consent-gated acquisition context |
 | 2026-06-21 | 1.2.89 | Required the homepage Support Suite to present scattered founder materials as a lighter `Collect → Shape → Serve` flow rail with four suite cards and a non-sticky build-path panel, avoiding another dense transformation-card grid on the homepage |
 | 2026-06-18 | 1.2.86 | Sharpened the homepage first-fold contract around approved answers before fallback, missing coverage becoming support gaps, and founder review without changing the domain/deployment setup |
 | 2026-06-10 | 1.2.85 | Added the concept-illustration requirement for abstract AnswerLattice boundaries such as safe context, install verification, source-to-answer, governance loop, and category positioning |

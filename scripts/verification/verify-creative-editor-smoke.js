@@ -101,6 +101,12 @@ function verifyEditorQaHooks() {
   assertIncludes(editor, 'const showInternalExportTools = chromeMode === "full"', "Editor hides internal export shortcuts in embedded mode");
   assertIncludes(editor, 'data-chrome-mode={chromeMode}', "Editor root exposes chrome mode for layout verification");
   assertIncludes(editor, 'chromeMode === "full"', "Editor top chrome is full-mode only");
+  assertIncludes(editor, "QR_ACTION_PRESETS", "Editor exposes guided QR action presets");
+  assertIncludes(editor, "Add action card", "Editor QR drawer prioritizes action-card insertion");
+  assertIncludes(editor, "QR quiet-zone panel", "Editor QR action card includes a white quiet-zone panel");
+  assertIncludes(editor, 'errorCorrectionLevel: "H"', "Editor QR defaults use high error correction");
+  assertIncludes(editor, "margin: 4", "Editor QR defaults use four-module quiet-zone margin");
+  assertIncludes(editor, 'lightColor: "#ffffff"', "Editor QR action cards preserve white QR panels");
   assertNotIncludes(editor, "templateRegistryDal", "Shared editor does not import product template registry DAL");
   assertNotIncludes(editor, "storeAssetTemplates", "Shared editor does not import MenuList store template collection");
 }
@@ -111,6 +117,9 @@ function verifyDocsAndScripts() {
   const impl = read("__docs__/shared-creative-editor/shared-creative-editor_impl.md");
   const tests = read("__docs__/shared-creative-editor/shared-creative-editor_test-cases.md");
   const validation = read("__docs__/shared-creative-editor/shared-creative-editor_validation.md");
+  const brandedQrReadme = read("__docs__/branded-qr-action-templates/README.md");
+  const brandedQrImpl = read("__docs__/branded-qr-action-templates/branded-qr-action-templates_impl.md");
+  const brandedQrTests = read("__docs__/branded-qr-action-templates/branded-qr-action-templates_test-cases.md");
 
   assertIncludes(packageJson, "verify:creative-editor-smoke", "Package exposes creative editor smoke verifier");
   assertIncludes(readme, "/creative-editor-smoke?qa=1", "Shared editor README documents QA smoke route");
@@ -127,6 +136,9 @@ function verifyDocsAndScripts() {
   assertIncludes(tests, "Keyboard traversal", "Shared editor tests include accessibility traversal");
   assertIncludes(validation, "Creative Editor Smoke QA", "Shared editor validation documents browser QA");
   assertIncludes(validation, "MyCodex Deployed Editor Preview", "Shared editor validation documents deployed preview route");
+  assertIncludes(brandedQrReadme, "The shared Creative Editor QR drawer provides guided action-card presets", "Branded QR README documents editor QR action presets");
+  assertIncludes(brandedQrImpl, "Project style changes and campaign starters must preserve those QR safety fields", "Branded QR impl documents QR safety preservation");
+  assertIncludes(brandedQrTests, "QR drawer shows guided action presets", "Branded QR tests include editor QR action presets");
 }
 
 verifySmokeRoute();

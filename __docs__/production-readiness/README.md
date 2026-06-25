@@ -107,6 +107,7 @@ Each must:
 | SAFE_MODE mechanism ready | ☐ | Core built; complete `launch-prerequisites.md` Step 2C before production |
 | GCP budget alerts configured | ☐ | Set progressive thresholds |
 | BigQuery billing export data verified | ☐ | After export is enabled, confirm billing tables receive daily cost rows before production launch |
+| Website analytics configured | ☐ | Configure Plausible sites/env/goals for `menulist.ai` and `answerlattice.com`; keep PostHog out of launch; see `__docs__/client-menu/analytics-tracking/analytics-tracking_vendor-plan.md` |
 
 ---
 

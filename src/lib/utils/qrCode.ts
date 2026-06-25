@@ -541,7 +541,7 @@ export async function generateBrandedQrCodeDataUrl(
     const qrCanvas = document.createElement('canvas');
     await QRCode.toCanvas(qrCanvas, value, {
         width: qrSize,
-        margin: options?.margin ?? 2,
+        margin: options?.margin ?? 4,
         color: {
             dark: options?.darkColor || brand.qrDark,
             light: options?.lightColor || brand.qrLight,

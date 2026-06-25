@@ -1,6 +1,6 @@
 # ConstantLayer Main Website - Help And Support Notes
 
-**Status:** Draft  
+**Status:** Implemented; pending owner/legal launch review
 **Audience:** Founder, support/legal reviewer, future help center author  
 **Scope:** Parent website support questions only
 
@@ -11,6 +11,8 @@
 Do not create a help center for ConstantLayer v1.
 
 The parent website only needs a short FAQ-style support policy that can live on the Contact or Legal page. Product support belongs to the relevant product surface.
+
+The Prism glass redesign does not change support routing, data collection, legal scope, or product-support boundaries.
 
 ---
 

@@ -313,7 +313,7 @@ All items discussed in the Cascade session have been implemented.
 
 | Current Implementation                      | Google Recommendation                                    | Gap                       |
 | ------------------------------------------- | -------------------------------------------------------- | ------------------------- |
-| `gemini-2.0-flash-preview-image-generation` | `gemini-2.5-flash-image` or `gemini-3-pro-image-preview` | Consider upgrade          |
+| `gemini-2.5-flash-image` | `gemini-3.1-flash-image` only after output and billing regression checks | Current stable production default |
 | Basic prompts                               | Be hyper-specific, provide context and intent            | Prompts are good          |
 | No thinking process                         | Gemini 3 Pro has "Thinking Process"                      | Future consideration      |
 | 1 reference image                           | Gemini 3 Pro supports up to 14 images                    | Good for current use case |
@@ -458,7 +458,7 @@ Initial implementation didn't anticipate very large batches. Adding limit is rec
 
 | Change                         | Files Modified                                           | Description                                                                         |
 | ------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| **Model Upgrade**              | `route.ts`, `batch-generation/route.ts`                  | Upgraded to `gemini-2.5-flash-preview-05-20` (500 free req/day, 1024x1024)          |
+| **Model Upgrade**              | `route.ts`, `batch-generation/route.ts`                  | Upgraded to stable `gemini-2.5-flash-image` and centralized through `GEMINI_MODELS.IMAGE_GEN` |
 | **Constants Consolidation**    | `imageViewType.ts`, `constants.ts`, `EditImageModal.tsx` | Removed redundant `FEATURE_FRIENDLY_INFO` - fields now in `ImageEditingFeatureType` |
 | **StyleSelector Improvements** | `StyleSelector.tsx`                                      | Added visual emoji previews, prominent danger-styled Clear all button               |
 | **Quick Generate Button**      | `ChatWidgetUi.tsx`                                       | Added zero-config "Quick Generate" with smart defaults                              |
@@ -508,8 +508,8 @@ export type ImageEditingFeatureType = {
 
 | Before                                      | After                            |
 | ------------------------------------------- | -------------------------------- |
-| `gemini-2.0-flash-preview-image-generation` | `gemini-2.5-flash-preview-05-20` |
-| Unknown free tier                           | 500 requests/day free            |
+| Deprecated preview image model              | `gemini-2.5-flash-image` |
+| Unverified free-tier assumption             | Current billing/quota must be checked in Google AI Studio |
 | Lower quality                               | Better image quality             |
 
 ---

@@ -1,6 +1,6 @@
 # MenuList SignalDesk - Implementation Validation
 
-**Status:** Gated runtime expansion, connector settings, Apify source broker, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation shell, channel-window/source-retention runtime, Content Distribution Rail runtime, Trust Partner Rail runtime, solo-founder Operating Layer runtime, source-policy expiry enforcement, hard mobile read-only enforcement, local E2E workflow, and Firestore/Storage semantic rules tests implemented for local validation.
+**Status:** Gated runtime expansion, internal team access management, connector settings, Apify source broker, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation shell, channel-window/source-retention runtime, Content Distribution Rail runtime, Trust Partner Rail runtime, solo-founder Operating Layer runtime, source-policy expiry enforcement, hard mobile read-only enforcement, local E2E workflow, and Firestore/Storage semantic rules tests implemented for local validation.
 **Created:** June 23, 2026
 **Scope:** Product identity, protected app shell, summary API, kill switch API, workspace read API, action API, internal workflow, gated source/AI/channel/webhook runtime, dedicated Firebase config/rules/indexes/storage rules, and functions skeleton.
 
@@ -8,7 +8,21 @@
 
 The SignalDesk internal workflow plus gated runtime expansion is implemented and locally validated.
 
-The implemented flow covers source policy, manual import, dedupe/provenance, rules-based scoring, Google Places source-provider import, Apify Source Broker import, Gemini AI assist with model route/budget gating, evidence packets, evidence-bound drafts, approval packets, connector settings, export-only email rail, owned email sequencer queue, assisted WhatsApp/Instagram/Messenger handoff, channel-window state, sender-domain risk state, blocked/ready external sequencer handoff records, signed provider webhooks, manual inbox replies, outcomes, demand signals, audience segments, market pod recommendations, weekly strategist memos, provider-source retention refresh records, provider evaluation records, Content Distribution Rail sources/assets/drafts/approvals/calendar/performance, Trust Partner Rail partner profiles/niche tests/deals/briefs/deliverables/metrics/renewals, Daily Growth Mission records, experiment cards, offer CTAs, reply playbooks, source quality snapshots, enrichment waterfalls, vendor run ledgers, normalized enrichment results, provider registry, budget policies, model evals, run timelines, self-service CTAs, control-room summaries, workspace reads, and audit.
+The implemented flow covers internal team member access management, source policy, manual import, dedupe/provenance, rules-based scoring, Google Places source-provider import, FHRS/FHIS UK source-provider import, Apify Source Broker import, Gemini AI assist with model route/budget gating, evidence packets, evidence-bound drafts, approval packets, connector settings, export-only email rail, owned email sequencer queue, assisted WhatsApp/Instagram/Messenger handoff, channel-window state, sender-domain risk state, blocked/ready external sequencer handoff records, signed provider webhooks, manual inbox replies, outcomes, demand signals, audience segments, market pod recommendations, weekly strategist memos, provider-source retention refresh records, provider evaluation records, Content Distribution Rail sources/assets/drafts/approvals/calendar/performance, Trust Partner Rail partner profiles/niche tests/deals/briefs/deliverables/metrics/renewals, Daily Growth Mission records, experiment cards, offer CTAs, reply playbooks, source quality snapshots, enrichment waterfalls, vendor run ledgers, normalized enrichment results, provider registry, budget policies, model evals, run timelines, self-service CTAs, control-room summaries, workspace reads, and audit.
+
+## Internal Team Access Runtime - June 25, 2026
+
+SignalDesk now has a private Settings flow for adding a partner or growth teammate without creating a public signup surface.
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Access resolver | `src/lib/signaldesk/access.ts` resolves non-platform access through `signaldeskTeamMembers` by document ID, stored `userId`, or normalized `emailLower`. |
+| Types | `src/types/signaldesk/index.ts` defines `SignalDeskTeamMemberSummary` and includes `teamMembers` in the Settings workspace payload. |
+| Server action | `src/lib/signaldesk/workflowServer.ts` adds `upsertSignalDeskTeamMemberServer`, writes only `signaldeskTeamMembers`, blocks self-deactivation, preserves existing extra permissions without granting new ones from the UI, and audits membership changes. |
+| API | `src/app/api/signaldesk/actions/route.ts` validates `upsert-team-member`, maps it to `signaldesk.configure`, applies rate limiting, and classifies it as mobile-blocked configuration. |
+| Client DAL | `src/database/signaldesk/index.ts` adds `upsert-team-member` to the SignalDesk action union. |
+| UI | `src/components/signaldesk/SignalDeskWorkspace.tsx` adds a Team Access panel under private Settings with add/update/deactivate/reactivate controls and role assignment; the workspace API only includes team-member rows for users with `signaldesk.configure`. |
+| Boundary | No public SignalDesk signup, no owner/customer navigation, no MenuList truth write, no raw secret storage, and no provider-send change was added. |
 
 Provider send is wired but disabled by `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND: false`. It must remain disabled until sender identity, physical address, unsubscribe, bounce/complaint/suppression handling, approved source lists, provider credentials, and project access are ready. Paid campaign automation, real external paid-provider adapters except the gated Apify source broker, real external sequencer API calls, content auto-publish, and Firebase deploy were explicitly skipped for this slice.
 
@@ -96,7 +110,7 @@ The fresh cross-check rebuilt the SignalDesk docs inventory, code inventory, sec
 | Finding | Classification | Fix |
 | --- | --- | --- |
 | `/signaldesk/settings` existed in routes, UI nav, and the `SignalDeskSection` union, but `src/app/api/signaldesk/workspace/route.ts` did not accept `settings` in its section allowlist. | Code mismatch | Added `settings` to the protected workspace API section allowlist so authenticated Settings requests load the Settings workspace instead of falling back to dashboard. |
-| `menulist-signaldesk_feature-map.md` still described source-provider runs and assisted channel routing as excluded/deferred even though the gated Google Places/Apify source providers and assisted channel plumbing are implemented. | Stale docs | Updated the feature map to mark implemented runtime slices, keep cold sends/provider sends/paid campaigns skipped, and reflect monorepo product-isolated runtime status. |
+| `menulist-signaldesk_feature-map.md` still described source-provider runs and assisted channel routing as excluded/deferred even though the gated Google Places/FHRS-FHIS/Apify source providers and assisted channel plumbing are implemented. | Stale docs | Updated the feature map to mark implemented runtime slices, keep cold sends/provider sends/paid campaigns skipped, and reflect monorepo product-isolated runtime status. |
 | `menulist-signaldesk_action-register.md` reused `SD-I034` for two different implementation rows. | Documentation integrity | Renumbered the prior-contact/prior-outcome spend guard row to `SD-I041` and added this parity pass plus the Settings API alignment as tracked actions. |
 
 Final verdict after fixes: PASS for the implemented and intentionally skipped scope. The remaining blockers are still owner/access/policy blockers, not code/docs parity failures.
@@ -120,6 +134,25 @@ SignalDesk now includes Apify as a gated source/evidence broker. It does not run
 | Documentation | `__docs__/menulist-signaldesk/menulist-signaldesk_apify-source-broker.md` records the source-policy, provider approval, env Actor, no-raw-payload, and no-direct-send rules. |
 
 Final cross-check fix: the adapter now accepts copied `owner/actor-name` values by normalizing them to Apify's `owner~actor-name` API form, sends both `limit` and `maxItems`, and uses the same 5-25 cent estimated cap that the provider budget guard checks before the external call.
+
+## FHRS/FHIS UK Source Provider - June 25, 2026
+
+SignalDesk now includes FHRS/FHIS as a free official UK food-business establishment seed. It is not a contact-permission source, not a public hygiene-rating feature, and not a send path.
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Feature gate | `src/config/features.ts` adds `ENABLE_MENULIST_SIGNALDESK_FHRS_FHIS_SOURCE_PROVIDER` beside the broader source-provider flag. |
+| API base | `src/constants/signaldesk/integrations.ts` adds `SIGNALDESK_FHRS_API_BASE = "https://api.ratings.food.gov.uk"`. |
+| Types | `src/types/signaldesk/index.ts` adds `fhrs-fhis` to source provider/provider unions and provider-source retention eligibility. |
+| Source adapter | `src/lib/signaldesk/sourceProviders.ts` calls `GET /Establishments` with `x-api-version: 2`, maps restaurant/takeaway/pub/caterer query tokens to FSA business type IDs, and normalizes establishment rows into target import rows. |
+| Contact boundary | The adapter intentionally does not map FHRS/FHIS `Phone` or local authority email into SignalDesk contact fields; notes state that no contact permission is inferred. |
+| Workflow guard | `src/lib/signaldesk/workflowServer.ts` blocks the provider when the feature flag is off, requires provider source policy/evidence use, checks provider account/budget through the normal governor, writes zero-cost vendor/source ledgers, and stores provider-source retention without raw payload. |
+| Defaults | `src/lib/signaldesk/workflowServer.ts` seeds `fhrs-fhis` as a zero-cost `not_required` discovery provider account in evaluation state. |
+| Sources UI | `src/components/signaldesk/SignalDeskWorkspace.tsx` exposes `FHRS/FHIS UK` in private live source runs and includes a provider-approval shortcut. |
+| Verification | `scripts/verification/verify-signaldesk-runtime.js` checks flag/type/adapter/UI/docs contracts; `scripts/verification/e2e-signaldesk-local.js` mocks the FSA API and verifies normalization, no contact identities, and retention without raw payload. |
+| Documentation | `__docs__/menulist-signaldesk/menulist-signaldesk_fhrs-fhis-source-provider.md` records the official-source basis, query behavior, source-policy rules, contact boundary, and public-rating restriction. |
+
+The long-term use is UK market-pod discovery: official establishment seed -> source policy -> target import -> website/menu/social enrichment -> current-menu gap score -> evidence packet -> owner-approved outreach/export. It does not change MenuList product truth and does not publish hygiene claims.
 
 ## Owned Email Sequencer Self-Build - June 23, 2026
 
@@ -468,7 +501,7 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | Strong-model adapter approval | Required before OpenAI/Anthropic routes move from held policy records into executable model routes. |
 | Browser-auth workflow smoke data | Required to verify route/API permissions, role-negative cases, malformed payloads, suppressed contact, missing sender readiness, provider-send disabled, and unsupported-claim rejection with real session access and emulator or QA Firebase. |
 | Operating-layer smoke data | Required to verify seed -> mission -> offer CTA -> experiment card -> reply playbook -> source snapshot -> mission review with a real authenticated SignalDesk session. |
-| Team-member seed policy | Required for non-platform growth team members to access SignalDesk. |
+| Partner auth account | The internal team access flow can grant SignalDesk access by login email, but the partner still needs a valid auth account/session using that email. |
 | MenuList-side Activation Concierge runtime foundation | Existing MenuList upload/parse/preview/claim/publish/share/presence paths now have a shared activation-proof summary over `starterActivationSignals` and `menuPresence`; SignalDesk still observes outcomes only and does not write MenuList truth. |
 | Paid campaign automation | Explicitly skipped for this slice and still out of scope. |
 | Firebase deploy | Explicitly skipped for this slice and still out of scope. |

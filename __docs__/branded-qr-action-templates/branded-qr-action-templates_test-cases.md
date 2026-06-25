@@ -1,6 +1,6 @@
 # Branded QR Action Templates Test Cases
 
-**Status:** Docs-ready alignment layer
+**Status:** Editor-backed alignment layer
 **Last Updated:** June 25, 2026
 
 ## Docs Alignment Tests
@@ -9,7 +9,16 @@
 - Print Assets keeps normal QR files direct to the live page.
 - Menu Kit stays focused on current MenuList deployment surfaces.
 - QR WhatsApp Experiments owns measured WhatsApp campaign behavior.
-- Changelog records docs-only alignment.
+- Changelog records editor-backed alignment.
+
+## Creative Editor Tests
+
+- QR drawer shows guided action presets for Menu, Feedback, Order, Offer, Book, and Loyalty.
+- Adding an action card creates editable frame, headline, helper, destination hint, QR panel, and QR layers.
+- Action-card QR uses `errorCorrectionLevel: "H"`, `margin: 4`, and `lightColor: "#ffffff"`.
+- Plain QR insertion still works for simple QR-only use cases.
+- Project style changes do not recolor QR light modules away from white.
+- Campaign starters that include QR preserve the same scan-safe QR defaults.
 
 ## Runtime Safety Tests For Future Work
 

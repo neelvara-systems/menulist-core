@@ -29,6 +29,7 @@
 | --- | --- |
 | Google/Places-like source used for prospect truth | Fails. |
 | GBP API used for lead generation | Fails. |
+| FHRS/FHIS source used as contact permission | Fails; source/evidence may be allowed, but outreach contact use needs a separate approved contact source. |
 | Foursquare PAYG source used to contact business | Fails. |
 | Apify-like source used without policy | Fails. |
 | Apify Source Broker used with provider policy, owner approval, env Actor, and budget cap | Runs as candidate discovery/evidence only; contact fields are stripped unless policy allows contact use. |

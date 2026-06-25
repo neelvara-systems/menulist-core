@@ -79,7 +79,20 @@
 
 ---
 
-## 6. Mobile And Accessibility Checks
+## 6. Visual And Presentation Checks
+
+| ID | Check | Expected |
+| --- | --- | --- |
+| VIS-01 | Prism mesh/grain | Background mesh and grain are scoped to ConstantLayer pages |
+| VIS-02 | Glass primitive | Header, cards, tables, product band, and CTAs reuse one glass treatment |
+| VIS-03 | No product-funnel import | Prism pricing/customer/testimonial sections are not copied as-is |
+| VIS-04 | Home section order | Hero, studio mock, ledger, marquee, bento, spotlight cards, quote, stats, comparison, product lineup, contact routes, CTA, footer |
+| VIS-05 | Small-phone hero | Large hero mock is hidden on small phones so the entity ledger appears in the first viewport |
+| VIS-06 | CTA contrast | Solid CTA text remains dark and readable in normal, visited, and focus states |
+
+---
+
+## 7. Mobile And Accessibility Checks
 
 | ID | Check | Expected |
 | --- | --- | --- |
@@ -95,12 +108,14 @@
 
 ---
 
-## 7. Static Code Checks
+## 8. Static Code Checks
 
 Run from repo root:
 
 ```bash
 npx tsc --noEmit --incremental false --pretty false
+npm run lint -- --dir src/app/sites/constantlayer
+node scripts/verification/verify-agent-readiness.js --env-targets-only
 ```
 
 Expected:
@@ -112,7 +127,7 @@ Expected:
 
 ---
 
-## 8. No-Firebase Checks
+## 9. No-Firebase Checks
 
 | ID | Check | Expected |
 | --- | --- | --- |
@@ -126,7 +141,7 @@ Expected:
 
 ---
 
-## 9. Launch Checks
+## 10. Launch Checks
 
 | ID | Check | Expected |
 | --- | --- | --- |

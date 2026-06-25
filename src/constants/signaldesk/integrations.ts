@@ -1,3 +1,5 @@
+import { GEMINI_MODELS } from '@constant/AI/models';
+
 export const SIGNALDESK_INTEGRATION_ENV = {
     AI_MODEL: "MENULIST_SIGNALDESK_AI_MODEL",
     APIFY_API_TOKEN: "MENULIST_SIGNALDESK_APIFY_API_TOKEN",
@@ -24,8 +26,9 @@ export const SIGNALDESK_INTEGRATION_ENV = {
     SMARTLEAD_WEBHOOK_SECRET: "MENULIST_SIGNALDESK_SMARTLEAD_WEBHOOK_SECRET",
 } as const;
 
-export const SIGNALDESK_DEFAULT_AI_MODEL = "gemini-2.5-flash";
+export const SIGNALDESK_DEFAULT_AI_MODEL = GEMINI_MODELS.TEXT_GEN;
 export const SIGNALDESK_APIFY_API_BASE = "https://api.apify.com";
+export const SIGNALDESK_FHRS_API_BASE = "https://api.ratings.food.gov.uk";
 export const SIGNALDESK_GOOGLE_PLACES_TEXT_SEARCH_ENDPOINT = "https://places.googleapis.com/v1/places:searchText";
 export const SIGNALDESK_GOOGLE_PLACES_FIELD_MASK = [
     "places.id",

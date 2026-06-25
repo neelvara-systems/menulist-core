@@ -1,6 +1,6 @@
 # Branded QR Action Templates Firebase Cost
 
-**Status:** Docs-ready alignment layer
+**Status:** Editor-backed alignment layer
 **Last Updated:** June 25, 2026
 
 ## Cost Decision

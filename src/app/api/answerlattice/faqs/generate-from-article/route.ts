@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
@@ -196,7 +197,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const operationStart = Date.now();
         const response = await genAIClient.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: ANSWERLATTICE_TEXT_MODEL,
             contents: buildFaqPrompt(article, articleText),
             config: {
                 responseMimeType: 'application/json',
@@ -273,7 +274,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 skippedDuplicateCount: normalizedFaqs.length - createdFaqs.length,
             },
             geminiResponse: response,
-            model: 'gemini-2.0-flash',
+            model: ANSWERLATTICE_TEXT_MODEL,
             processingTime: Date.now() - operationStart,
             source: 'answerlattice_article_faq_generation',
         }, {

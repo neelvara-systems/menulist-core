@@ -1,8 +1,8 @@
 # SignalDesk Foundation - Implementation Plan
 
-**Status:** Initial technical blueprint
+**Status:** Runtime implemented for internal testing
 **Created:** June 23, 2026
-**Runtime:** Not created.
+**Runtime:** Protected SignalDesk shell, role access, kill switches, audit, mobile read-only enforcement, and internal team access management are implemented.
 
 ## Future File Layout
 
@@ -70,6 +70,18 @@ type SignalDeskPermission =
   | "kill-switch.deactivate"
   | "audit.view";
 ```
+
+## Internal Team Access Runtime
+
+SignalDesk Settings includes an internal-only team access panel. Founder admins with `signaldesk.configure` can:
+
+- add a team member by login email;
+- optionally attach the auth user ID when known;
+- assign a SignalDesk role;
+- activate, deactivate, or update the member;
+- keep every membership mutation behind `/api/signaldesk/actions` and audit it as `team_member_upsert` or `team_member_deactivate`.
+
+The access resolver checks platform admin first, then `signaldeskTeamMembers` by document ID, stored `userId`, and normalized `emailLower`. This keeps the practical partner flow simple without creating public signup, owner/customer navigation, or direct client writes.
 
 ## Audit Event Contract
 

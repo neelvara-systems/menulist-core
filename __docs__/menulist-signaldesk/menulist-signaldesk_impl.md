@@ -1,8 +1,8 @@
 # MenuList SignalDesk - Implementation Plan
 
-**Status:** First-build internal workflow, investment-control runtime, Apify source broker, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation harness, channel-window/source-retention runtime, Content Distribution Rail runtime, and Trust Partner Rail runtime implemented; paid campaigns, external paid-provider adapters, provider send, auto-publish, and deploy skipped
+**Status:** First-build internal workflow, investment-control runtime, FHRS/FHIS UK source provider, Apify source broker, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation harness, channel-window/source-retention runtime, Content Distribution Rail runtime, and Trust Partner Rail runtime implemented; paid campaigns, external paid-provider adapters, provider send, auto-publish, and deploy skipped
 **Created:** June 23, 2026
-**Runtime:** Product-isolated app shell, API guard, overview API, workspace API, action API, kill-switch API, first-build workflow service, provider registry, budget governor, model routes, model evals, enrichment waterfalls, vendor run ledger, Apify source broker, approval packets, sender-domain risk, owned email sequencer queue, content distribution rail, optional external sequencer handoff records, run timelines, Firebase config, rules/indexes/storage rules, and functions skeleton created.
+**Runtime:** Product-isolated app shell, API guard, overview API, workspace API, action API, kill-switch API, first-build workflow service, provider registry, budget governor, model routes, model evals, enrichment waterfalls, vendor run ledger, FHRS/FHIS UK source provider, Apify source broker, approval packets, sender-domain risk, owned email sequencer queue, content distribution rail, optional external sequencer handoff records, run timelines, Firebase config, rules/indexes/storage rules, and functions skeleton created.
 **Implementation posture:** Product-isolated internal module inside this monorepo first; extraction-ready boundaries.
 
 ## Owner Control Posture
@@ -35,6 +35,7 @@ The June 23 investment-control implementation added the internal controls needed
 | Model evals | `signaldeskModelEvals` records sampled confidence/pass/rejected-fact state for AI assist runs. |
 | Waterfall policy | `signaldeskEnrichmentWaterfalls` stores provider order, requested field, max credits, stop condition, verification requirement, source policy, retention, and active/hold state. |
 | Vendor ledger | `signaldeskVendorRuns` records source-provider and waterfall readiness/blocked states with estimated cost and blocked reason. |
+| FHRS/FHIS source provider | `fhrs-fhis` can import UK official food-business establishment seeds from the FSA API after source policy, provider account, budget governor, and feature-flag checks; contact use is not inferred and raw payloads are not stored. |
 | Apify source broker | `apify` can run one env-controlled source Actor after source policy, provider approval, env readiness, and provider budget checks; rows are normalized into target imports without storing raw dataset payloads. |
 | Enrichment result | `signaldeskEnrichmentResults` stores normalized field-level result status, confidence, source policy, expiry, and masked value preview when approved source data already has the field. |
 | Approval packet | `signaldeskApprovalPackets` compress target, evidence, draft, suppression, source policy, sender readiness, CTA, risk summary, and recommended action into one owner decision record. |
@@ -369,7 +370,7 @@ AI may not:
 
 - assisted WhatsApp: implemented as gated handoff/provider-send plumbing
 - Instagram/Messenger inbound routing: implemented as gated webhook/handoff plumbing
-- live source-provider import: implemented for Google Places Text Search and Apify Source Broker with provider source policy, max-result cap, provider budget, and no raw provider payload storage
+- live source-provider import: implemented for Google Places Text Search, FHRS/FHIS UK establishment seed, and Apify Source Broker with provider source policy, max-result cap, provider budget, and no raw provider payload storage
 - real AI provider assist: implemented through the existing Gemini gateway
 - trust partner rail: implemented for internal testing; real partner outreach/spend still requires active budget policy, founder approval, disclosure review, and manual partner execution
 - Meta paid intent: skipped in this session
@@ -425,16 +426,17 @@ The second implementation slice adds the remaining non-paid, non-deploy runtime 
 
 1. provider integration env names under `MENULIST_SIGNALDESK_*`;
 2. internal `/signaldesk/sources`, `/signaldesk/ai`, and `/signaldesk/channels` pages;
-3. source-provider action using Google Places Text Search or Apify Source Broker with a required provider source policy, max-result cap, provider account, and budget cap;
-4. Apify connector/settings readiness, env-controlled Actor ID, normalized target rows, vendor ledger, source health event logging, and webhook status intake;
-5. Foursquare provider placeholder blocked until explicit source approval;
-6. real Gemini AI assist action for score/evidence/draft/reply-classification review runs;
-7. AI worker run, decision snapshot, AI operation ledger, audit, and cost summary writes for AI assist;
-8. signed webhook endpoint for email, WhatsApp, Instagram, Messenger, and Apify providers;
-9. webhook HMAC/shared-secret validation, public rate limiting, normalized event storage, channel/source health updates, and suppression updates where channel events apply;
-10. assisted channel handoff for approved drafts;
-11. SMTP/Meta provider-send adapter behind the global provider-send flag and channel readiness checks;
-12. phone, WhatsApp, and Instagram contact identity indexing when source policy allows contact use.
+3. source-provider action using Google Places Text Search, FHRS/FHIS UK official establishment seed, or Apify Source Broker with a required provider source policy, max-result cap, provider account, and budget cap;
+4. FHRS/FHIS normalization for UK food-business establishment rows with no contact-permission inference;
+5. Apify connector/settings readiness, env-controlled Actor ID, normalized target rows, vendor ledger, source health event logging, and webhook status intake;
+6. Foursquare provider placeholder blocked until explicit source approval;
+7. real Gemini AI assist action for score/evidence/draft/reply-classification review runs;
+8. AI worker run, decision snapshot, AI operation ledger, audit, and cost summary writes for AI assist;
+9. signed webhook endpoint for email, WhatsApp, Instagram, Messenger, and Apify providers;
+10. webhook HMAC/shared-secret validation, public rate limiting, normalized event storage, channel/source health updates, and suppression updates where channel events apply;
+11. assisted channel handoff for approved drafts;
+12. SMTP/Meta provider-send adapter behind the global provider-send flag and channel readiness checks;
+13. phone, WhatsApp, and Instagram contact identity indexing when source policy allows contact use.
 
 ## Remaining Implementation Gates
 

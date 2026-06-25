@@ -1,11 +1,17 @@
+import {
+    ANSWERLATTICE_EMBEDDING_CACHE_VERSION,
+    ANSWERLATTICE_EMBEDDING_MODEL,
+    ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY,
+    ANSWERLATTICE_VISION_CONTEXT_MODEL,
+} from '@constant/answerlattice/ai';
 import { Vector } from '@lib/firebase/firebaseAdmin';
 import { genAIClient } from '@lib/google/genAi';
 import { writeLogEntry } from 'logs/utils';
 
-export const EMBED_MODEL = 'gemini-embedding-001';
-export const EMBED_OUTPUT_DIMENSIONALITY = 768;
-export const EMBEDDING_CACHE_VERSION = `${EMBED_MODEL}:${EMBED_OUTPUT_DIMENSIONALITY}:v1`;
-const CHAT_MODEL = 'gemini-2.5-flash';
+export const EMBED_MODEL = ANSWERLATTICE_EMBEDDING_MODEL;
+export const EMBED_OUTPUT_DIMENSIONALITY = ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY;
+export const EMBEDDING_CACHE_VERSION = ANSWERLATTICE_EMBEDDING_CACHE_VERSION;
+const CHAT_MODEL = ANSWERLATTICE_VISION_CONTEXT_MODEL;
 
 type VectorInstance = InstanceType<typeof Vector>;
 type EmbeddingTaskType = 'RETRIEVAL_QUERY' | 'RETRIEVAL_DOCUMENT';

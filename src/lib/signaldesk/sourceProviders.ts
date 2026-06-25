@@ -1,5 +1,6 @@
 import {
     SIGNALDESK_APIFY_API_BASE,
+    SIGNALDESK_FHRS_API_BASE,
     SIGNALDESK_GOOGLE_PLACES_FIELD_MASK,
     SIGNALDESK_GOOGLE_PLACES_TEXT_SEARCH_ENDPOINT,
     SIGNALDESK_INTEGRATION_ENV,
@@ -35,6 +36,14 @@ const estimateApifyCostCapUsd = (maxResults: number) => (
     Math.min(0.25, Math.max(0.05, clampMaxResults(maxResults) * 0.01))
 );
 const normalizeApifyActorId = (actorId: string) => actorId.trim().replace(/\//g, "~");
+const FHRS_BUSINESS_TYPE_IDS: Array<{ id: number; tokens: string[] }> = [
+    { id: 1, tokens: ["restaurant", "cafe", "canteen", "coffee"] },
+    { id: 7844, tokens: ["takeaway", "sandwich"] },
+    { id: 7843, tokens: ["pub", "bar", "nightclub"] },
+    { id: 7846, tokens: ["mobile caterer", "food truck", "food van", "caterer"] },
+    { id: 7842, tokens: ["hotel", "bed and breakfast", "guest house"] },
+    { id: 7841, tokens: ["catering", "caterers"] },
+];
 
 const firstString = (...values: unknown[]) => {
     for (const value of values) {
@@ -52,6 +61,21 @@ const firstArrayString = (value: unknown) => {
             : firstString((item as any)?.name, (item as any)?.title, (item as any)?.category)
     )).filter(Boolean).join(", ");
 };
+
+const inferFhrsBusinessTypeId = (query: string) => {
+    const normalized = query.toLowerCase();
+    return FHRS_BUSINESS_TYPE_IDS.find((entry) => (
+        entry.tokens.some((token) => normalized.includes(token))
+    ))?.id || null;
+};
+
+const joinAddress = (item: any) => [
+    item?.AddressLine1,
+    item?.AddressLine2,
+    item?.AddressLine3,
+    item?.AddressLine4,
+    item?.PostCode,
+].map((part) => firstString(part)).filter(Boolean).join(", ");
 
 const normalizePlaceRow = (place: any, input: SourceProviderInput): SourceProviderTargetRow | null => {
     const displayName = String(place?.displayName?.text || "").trim();
@@ -201,9 +225,79 @@ async function runApifySourceSearch(input: SourceProviderInput): Promise<SourceP
         .slice(0, maxResults) as SourceProviderTargetRow[];
 }
 
+const normalizeFhrsRow = (item: any, input: SourceProviderInput): SourceProviderTargetRow | null => {
+    const displayName = firstString(item?.BusinessName);
+    if (!displayName) return null;
+
+    const fhrsId = firstString(item?.FHRSID);
+    const address = joinAddress(item);
+    const schemeType = firstString(item?.SchemeType);
+    const ratingValue = firstString(item?.RatingValue);
+    const ratingDate = firstString(item?.RatingDate).slice(0, 10);
+    const localAuthority = firstString(item?.LocalAuthorityName);
+    const newRatingPending = item?.NewRatingPending === true ? "New rating pending" : "";
+    const geocode = item?.geocode && typeof item.geocode === "object"
+        ? [firstString(item.geocode.latitude), firstString(item.geocode.longitude)].filter(Boolean).join(",")
+        : "";
+
+    return {
+        category: firstString(item?.BusinessType) || undefined,
+        city: input.city || localAuthority || undefined,
+        country: input.country || "UK",
+        displayName,
+        notes: [
+            "FHRS/FHIS official establishment seed. No contact permission is inferred.",
+            schemeType ? `Scheme: ${schemeType}` : "",
+            ratingValue ? `Rating: ${ratingValue}` : "",
+            ratingDate ? `Rating date: ${ratingDate}` : "",
+            localAuthority ? `Local authority: ${localAuthority}` : "",
+            address ? `Address: ${address}` : "",
+            geocode ? `Geocode: ${geocode}` : "",
+            newRatingPending,
+        ].filter(Boolean).join(" | "),
+        providerRecordId: fhrsId,
+        providerRecordUrl: fhrsId
+            ? `${SIGNALDESK_FHRS_API_BASE}/Establishments/${encodeURIComponent(fhrsId)}`
+            : undefined,
+    };
+};
+
+async function runFhrsFhisSourceSearch(input: SourceProviderInput): Promise<SourceProviderTargetRow[]> {
+    const maxResults = clampMaxResults(input.maxResults);
+    const endpoint = new URL("/Establishments", SIGNALDESK_FHRS_API_BASE);
+    const businessTypeId = inferFhrsBusinessTypeId(input.query);
+    endpoint.searchParams.set("pageNumber", "1");
+    endpoint.searchParams.set("pageSize", String(maxResults));
+    endpoint.searchParams.set("sortOptionKey", "Relevance");
+    if (businessTypeId) {
+        endpoint.searchParams.set("businessTypeId", String(businessTypeId));
+    } else {
+        endpoint.searchParams.set("name", input.query);
+    }
+    if (input.city || input.country) {
+        endpoint.searchParams.set("address", [input.city, input.country].filter(Boolean).join(" "));
+    }
+
+    const response = await fetch(endpoint.toString(), {
+        headers: {
+            Accept: "application/json",
+            "x-api-version": "2",
+        },
+        method: "GET",
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(`FHRS/FHIS provider failed: ${response.status}`);
+
+    return (Array.isArray(payload?.establishments) ? payload.establishments : [])
+        .map((item: any) => normalizeFhrsRow(item, input))
+        .filter(Boolean)
+        .slice(0, maxResults) as SourceProviderTargetRow[];
+}
+
 export async function runSignalDeskSourceProvider(input: SourceProviderInput): Promise<SourceProviderTargetRow[]> {
     if (input.provider === "google-places") return runGooglePlacesSearch(input);
     if (input.provider === "apify") return runApifySourceSearch(input);
+    if (input.provider === "fhrs-fhis") return runFhrsFhisSourceSearch(input);
     if (input.provider === "foursquare") throw new Error("Foursquare provider is blocked pending source approval");
     throw new Error("Source provider is not configured");
 }

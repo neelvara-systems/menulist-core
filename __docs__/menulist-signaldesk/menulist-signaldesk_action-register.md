@@ -61,7 +61,7 @@
 | SD-I011 | Implement provider send/webhooks runtime | Codex | Done | Runtime plumbing exists; keep actual provider send disabled until sender identity, physical address, unsubscribe, bounce, complaint, suppression, and project access are ready |
 | SD-I012 | Cross-check and harden first-build workflow | Codex | Done | Firebase config gating, security validation logs, source-policy contact enforcement, evidence/draft/export gates, public-surface isolation, and local validation completed |
 | SD-I013 | Implement signed provider webhook intake | Codex | Done | Email shared-secret and Meta HMAC webhook route added; normalized provider events, inbound messages, channel health, and suppression updates are stored without raw payloads |
-| SD-I014 | Implement live source-provider run | Codex | Done | Google Places Text Search and Apify Source Broker connectors added behind source-provider flags, provider source policy, max-result cap, provider budget, and import pipeline; Foursquare remains blocked pending source approval |
+| SD-I014 | Implement live source-provider run | Codex | Done | Google Places Text Search, FHRS/FHIS UK establishment seed, and Apify Source Broker connectors added behind source-provider flags, provider source policy, max-result cap, provider budget, and import pipeline; Foursquare remains blocked pending source approval |
 | SD-I015 | Implement real AI provider assist | Codex | Done | Gemini assist action added behind AI-provider flag; writes AI worker run, decision snapshot, operation ledger, audit, and cost estimate |
 | SD-I016 | Implement assisted channel and provider-send plumbing | Codex | Done | Approved drafts can create WhatsApp/Instagram/Messenger/email handoffs; provider send adapter exists but remains disabled until send readiness is approved |
 | SD-I017 | Implement paid campaign automation | Founder/Codex | Deferred | Explicitly skipped by founder in this session |
@@ -97,7 +97,9 @@
 | SD-I047 | Add mobile read-only runtime gate | Codex | Done | Mobile requests are marked with `x-signaldesk-client-mode`, action mutations are blocked server-side, and mobile kill-switch use is pause-only |
 | SD-I048 | Add local workflow and security-rules smoke harnesses | Codex | Done | Added emulator workflow smoke and Firestore/Storage rules verifier; local checks cover expired source policy, first-build workflow state, public denial, storage denial, and no MenuList truth writes |
 | SD-I049 | Harden email export sender readiness | Codex | Done | Export-only email records now require a ready sender domain in addition to approval, source policy, evidence, suppression, and contactability checks |
-| SD-I050 | Run first activation-proof operating trial | Founder + Codex | Blocked | Use one founder-approved pod, source policy, CTA, proof asset, sender identity, and manual/export path; no provider send, paid campaign, or public SignalDesk surface |
+| SD-I050 | Add internal team access management | Codex | Done | Settings now lets founder admins add/update/deactivate SignalDesk team members by login email, assign roles, audit changes, and keep mobile/public access blocked |
+| SD-I051 | Add FHRS/FHIS UK source provider | Codex | Done | Official UK food-business establishment seed added behind feature flag, source policy, provider account/budget, retention, verifier, and local E2E; no contact permission, public hygiene-rating feature, or send enablement |
+| SD-I052 | Run first activation-proof operating trial | Founder + Codex | Blocked | Use one founder-approved pod, source policy, CTA, proof asset, sender identity, and manual/export path; no provider send, paid campaign, or public SignalDesk surface |
 
 ## Feature Doc Backlog
 

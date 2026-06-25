@@ -43,7 +43,7 @@ Append-only log of every AI operation. Each document represents one API call to 
     action: string,                 // AI_ACTIONS_TYPES value (e.g., "IMAGE_GENERATION")
     projectId: string,              // Project that triggered the operation
     fileId: string,                 // File within the project
-    model: string,                  // Gemini model used (e.g., "gemini-2.0-flash-preview-image-generation")
+    model: string,                  // Gemini model used (e.g., "gemini-2.5-flash-image")
 
     // Token Usage (from Gemini API response)
     promptTokenCount: number,       // Input tokens consumed

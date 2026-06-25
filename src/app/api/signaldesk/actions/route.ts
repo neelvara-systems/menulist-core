@@ -56,6 +56,7 @@ import {
     upsertSignalDeskEnrichmentWaterfallServer,
     upsertSignalDeskModelRouteServer,
     upsertSignalDeskProviderAccountServer,
+    upsertSignalDeskTeamMemberServer,
     upsertSignalDeskOfferCtaServer,
     upsertSignalDeskReplyPlaybookServer,
     upsertSignalDeskSelfServiceCtaServer,
@@ -125,6 +126,7 @@ const ActionEnvelopeSchema = z.object({
         "record-trust-partner-deliverable",
         "record-trust-partner-metrics",
         "review-trust-partner-renewal",
+        "upsert-team-member",
     ]),
     payload: z.unknown().default({}),
 });
@@ -141,6 +143,7 @@ const SourcePolicySchema = z.object({
         "google-places",
         "foursquare",
         "apify",
+        "fhrs-fhis",
         "apollo",
         "hunter",
         "zerobounce",
@@ -221,7 +224,7 @@ const SourceProviderRunSchema = z.object({
     city: z.string().trim().max(120).optional(),
     country: z.string().trim().max(120).optional(),
     maxResults: z.number().int().min(1).max(20).default(10),
-    provider: z.enum(["google-places", "foursquare", "apify"]),
+    provider: z.enum(["google-places", "foursquare", "apify", "fhrs-fhis"]),
     query: z.string().trim().min(3).max(180),
     sourcePolicyId: z.string().trim().min(3).max(160),
 });
@@ -250,6 +253,7 @@ const ProviderIdSchema = z.enum([
     "google-places",
     "foursquare",
     "apify",
+    "fhrs-fhis",
     "manual",
     "owned-email",
     "apollo",
@@ -594,6 +598,15 @@ const TrustPartnerRenewalSchema = z.object({
     recommendation: z.enum(["renew", "hold", "cut", "retest"]),
 });
 
+const TeamMemberSchema = z.object({
+    active: z.boolean(),
+    email: z.string().trim().email().max(180),
+    name: z.string().trim().max(120).optional(),
+    role: z.enum(["founder-admin", "growth-manager", "operator", "compliance-reviewer", "readonly-analyst", "system-worker"]),
+    teamMemberId: z.string().trim().max(180).optional(),
+    userId: z.string().trim().max(180).optional(),
+});
+
 const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["action"]): SignalDeskPermission => {
     if (action === "seed-defaults") return "signaldesk.configure";
     if (action === "create-source-policy") return "source.configure";
@@ -646,6 +659,7 @@ const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["actio
     if (action === "record-trust-partner-deliverable") return "source.configure";
     if (action === "record-trust-partner-metrics") return "source.configure";
     if (action === "review-trust-partner-renewal") return "policy.approve";
+    if (action === "upsert-team-member") return "signaldesk.configure";
     return "target.review";
 };
 
@@ -714,6 +728,7 @@ const SIGNALDESK_MOBILE_ACTION_CLASS: Record<z.infer<typeof ActionEnvelopeSchema
     "upsert-reply-playbook": "configure",
     "upsert-self-service-cta": "configure",
     "upsert-sender-domain": "configure",
+    "upsert-team-member": "configure",
     "upsert-trust-partner-profile": "configure",
 };
 
@@ -778,6 +793,8 @@ const SAFE_ACTION_ERRORS = new Set([
     "SignalDesk Firebase is not configured",
     "SignalDesk Operating Layer is disabled",
     "SignalDesk provider send is disabled",
+    "SignalDesk team member cannot deactivate own access",
+    "SignalDesk team member email is required",
     "SignalDesk source providers are disabled",
     "SignalDesk source providers are paused",
     "SOURCE_POLICY_EXPIRED",
@@ -1320,6 +1337,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await reviewSignalDeskTrustPartnerRenewalServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "upsert-team-member") {
+            const payload = validatePayload(TeamMemberSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await upsertSignalDeskTeamMemberServer(accessResult.access, payload.data as any) });
         }
 
         const payload = validatePayload(CaptureDemandSignalSchema, envelope.data.payload, {

@@ -1,8 +1,8 @@
 # AI System Layer — Implementation
 
 **Feature:** Centralized AI Infrastructure for MenuList  
-**Status:** ✅ PHASE 1 COMPLETE — Key rotation + AI Gateway implemented globally  
-**Last Updated:** March 13, 2026
+**Status:** ✅ PRODUCTION HARDENING ACTIVE — Gateway, model constants, scheduled health checks
+**Last Updated:** June 25, 2026
 
 ---
 
@@ -205,10 +205,14 @@ Adding more keys is a deployment config change, not a code change.
 
 ---
 
-## Constants (Existing in `functions/src/constants/ai.ts`)
+## Constants
 
 ```typescript
+// functions/src/constants/ai.ts
 export const AI_MODEL = "gemini-2.5-flash";
+export const OWNER_ANALYTICS_AI_MODEL = "gemini-2.5-flash-lite";
+export const AI_ADVANCED_MODEL = "gemini-2.5-pro";
+export const AI_EMBEDDING_MODEL = "text-embedding-004";
 export const EXTRACTION_PROMPT_VERSION = "parallel_v2";
 export const AI_OPERATIONS_COLLECTION = "MENULIST_AI_OPERATIONS";
 export const CIRCUIT_BREAKER_CONFIG = {
@@ -219,13 +223,47 @@ export const CIRCUIT_BREAKER_CONFIG = {
 };
 ```
 
+Application routes use `src/constants/AI/models.ts`. Answerlattice app routes use
+`src/constants/answerlattice/ai.ts`, and Answerlattice Functions use
+`functions-answerlattice/src/constants/ai.ts`.
+
+Production model policy:
+
+- Stable model ids only in production paths.
+- No `latest`, preview, experimental, or Gemini 2.0 Flash ids in active source.
+- Keep Answerlattice RAG on `gemini-embedding-001` until a planned re-embed and
+  index migration is executed.
+- Frontier stable constants can exist in `src/constants/AI/models.ts`, but a
+  workload should move to them only after prompt/output regression checks.
+
+## Provider Health Checks
+
+MenuList runs a daily health task through the existing maintenance scheduler:
+
+```text
+functions/src/schedulers/menulistMaintenanceScheduler.ts
+  task: ai_provider_health_check
+  writes: _health/aiProvider_gemini
+```
+
+Answerlattice runs a matching daily task through its master scheduler:
+
+```text
+functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts
+  task: ai_provider_health_check
+  writes: platformSummary/answerlatticeAiProviderHealth
+```
+
+Both tasks perform a small Gemini request, record latency/status/model metadata,
+and throw on failure so the existing scheduler alert path can report the issue.
+
 ---
 
 ## Cost Tracking (Current State)
 
 Extraction cost tracking uses the existing `MENULIST_AI_OPERATIONS` collection (1 doc per extraction with token usage, credits, charges).
 
-**NOT YET IMPLEMENTED:**
+**Still deferred:**
 
 - `aiUsageLog` collection (cross-feature cost tracking) — deferred to Phase 2
 - `AI_TASK_TYPES` constant — deferred to Phase 2
@@ -261,8 +299,10 @@ functions/src/services/gemini/*.ts → All import genAIClient from ../genAiClien
 | Circuit breaker reuse      | Existing singleton                     | `functions/src/lib/circuitBreaker.ts`      | ✅     |
 | Retry handler reuse        | Existing function                      | `functions/src/logic/processMenuImages.ts` | ✅     |
 | Cross-feature cost tracker | `aiUsageLog` collection                | —                                          | 📝 P2  |
-| Model router               | Task→model mapping                     | —                                          | 📝 P2  |
+| Model constants            | Centralized per product/runtime         | `src/constants/AI/models.ts`, `src/constants/answerlattice/ai.ts`, `functions/src/constants/ai.ts`, `functions-answerlattice/src/constants/ai.ts` | ✅ |
 | Global rate limiter        | Cross-feature request throttle         | —                                          | 📝 P2  |
+| MenuList provider health   | Daily Gemini smoke task                | `functions/src/schedulers/aiProviderHealth.ts` | ✅ |
+| Answerlattice provider health | Daily Gemini smoke task             | `functions-answerlattice/src/answerlattice/aiProviderHealth.ts` | ✅ |
 
 ---
 
@@ -272,12 +312,12 @@ functions/src/services/gemini/*.ts → All import genAIClient from ../genAiClien
 
 | Test             | Steps                                   | Expected                             |
 | ---------------- | --------------------------------------- | ------------------------------------ |
-| Gateway direct   | Call `executeAITask` with simple prompt | Response returned with usage metrics |
-| Rate limiting    | Fire 15 requests in 1 second            | Requests > 10 delayed, not rejected  |
+| Gateway direct   | Call a guarded AI route or scheduler task with a small prompt | Response returned through `genAIClient` |
+| Route rate limiting | Fire repeated guarded app-route requests in staging | Requests over the limit are blocked by the route guard |
 | Circuit breaker  | Simulate 5 failures                     | Circuit opens, fast-fail for 30s     |
-| Feature flag OFF | Disable flag, call gateway              | Direct Gemini call (bypass gateway)  |
-| Cost tracking    | Process one extraction                  | Usage record in `aiUsageLog`         |
-| SDK migration    | Run feedback analysis                   | Same results, new SDK under the hood |
+| Cost tracking    | Process one extraction                  | Usage record in `MENULIST_AI_OPERATIONS` |
+| Provider health  | Run scheduler health task               | Latest status doc updates and failures alert through scheduler path |
+| SDK migration    | Run feedback analysis                   | Same results through `@google/genai` |
 
 ---
 
@@ -286,7 +326,7 @@ functions/src/services/gemini/*.ts → All import genAIClient from ../genAiClien
 | ChatGPT Suggestion                       | Our Decision | Reason                                                                                      |
 | ---------------------------------------- | ------------ | ------------------------------------------------------------------------------------------- |
 | "Build AI Task Queue for all features"   | **DEFER**    | Only extraction needs async queue. Nightly features run in scheduler (already queued).      |
-| "API Key Pool with rotation"             | **PHASE 2**  | Single key is sufficient at current scale. Add when hitting limits.                         |
+| "API Key Pool with rotation"             | **IMPLEMENTED** | Useful for leak response and transient failover; not a way to bypass per-project quotas. |
 | "Translation memory + description cache" | **PHASE 3**  | Needs real data volume (1000+ menus) before caching provides value.                         |
 | "Worker pools with priority system"      | **REJECT**   | Over-engineering. Cloud Functions scale automatically. Priority handled by scheduler order. |
 | "Queue backpressure"                     | **REJECT**   | Not needed at current scale. Rate limiter handles this.                                     |
@@ -294,5 +334,5 @@ functions/src/services/gemini/*.ts → All import genAIClient from ../genAiClien
 
 ---
 
-_Document Status: ✅ PHASE 1 IMPLEMENTED — Key rotation + gateway live_
-_Last Updated: March 13, 2026 — Stale checklist and SDK sections corrected during production audit_
+_Document Status: ✅ PRODUCTION HARDENING ACTIVE — Gateway, rotation, constants, and health checks live_
+_Last Updated: June 25, 2026_

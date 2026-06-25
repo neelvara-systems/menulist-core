@@ -113,8 +113,8 @@ async function buildQrDataUrl(element: Extract<CreativeEditorElement, { type: "q
             dark: element.darkColor || "#16231f",
             light: element.lightColor || "#ffffff",
         },
-        errorCorrectionLevel: element.errorCorrectionLevel || "M",
-        margin: element.margin ?? 1,
+        errorCorrectionLevel: element.errorCorrectionLevel || "H",
+        margin: element.margin ?? 4,
         width: Math.max(128, Math.round(Math.max(element.width, element.height))),
     });
 }

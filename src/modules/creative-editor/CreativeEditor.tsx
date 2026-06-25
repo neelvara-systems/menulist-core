@@ -300,6 +300,16 @@ type CampaignStarterAction = {
     templateSearch: string;
 };
 
+type QrActionPreset = {
+    accentColor: string;
+    backgroundColor: string;
+    description: string;
+    helper: string;
+    id: "book" | "feedback" | "loyalty" | "menu" | "offer" | "order";
+    label: string;
+    title: string;
+};
+
 type ReadinessIssue = {
     actionLabel?: string;
     detail: string;
@@ -781,6 +791,63 @@ const CAMPAIGN_STARTER_ACTIONS: CampaignStarterAction[] = [
     },
 ];
 
+const QR_ACTION_PRESETS: QrActionPreset[] = [
+    {
+        accentColor: "#2f80ed",
+        backgroundColor: "#f0f7ff",
+        description: "Menu or service list.",
+        helper: "Open the live menu.",
+        id: "menu",
+        label: "Menu",
+        title: "Scan to view menu",
+    },
+    {
+        accentColor: "#4fac96",
+        backgroundColor: "#eefaf5",
+        description: "Review and feedback card.",
+        helper: "Tell us how we did.",
+        id: "feedback",
+        label: "Feedback",
+        title: "Leave feedback",
+    },
+    {
+        accentColor: "#e7792b",
+        backgroundColor: "#fff3e8",
+        description: "Order, reorder, or buy again.",
+        helper: "Open camera and order.",
+        id: "order",
+        label: "Order",
+        title: "Order now",
+    },
+    {
+        accentColor: "#ef6680",
+        backgroundColor: "#fff0f4",
+        description: "Coupon or seasonal offer.",
+        helper: "Get today's offer.",
+        id: "offer",
+        label: "Offer",
+        title: "Unlock offer",
+    },
+    {
+        accentColor: "#6d5dfc",
+        backgroundColor: "#f4f3ff",
+        description: "Appointment or reservation.",
+        helper: "Book in a few taps.",
+        id: "book",
+        label: "Book",
+        title: "Book a visit",
+    },
+    {
+        accentColor: "#d7a414",
+        backgroundColor: "#fff9dc",
+        description: "Rewards or repeat visits.",
+        helper: "Join rewards.",
+        id: "loyalty",
+        label: "Loyalty",
+        title: "Join rewards",
+    },
+];
+
 const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
     {
         id: "general",
@@ -947,6 +1014,19 @@ const normalizeGradientStops = (gradient: CreativeEditorLinearGradient): Creativ
 const getPrimaryColor = (documentValue: CreativeEditorDocument) => (
     documentValue.metadata?.brand?.primaryColor || "#24564d"
 );
+
+const formatQrDestinationHint = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return "Set a destination";
+    try {
+        const url = new URL(trimmed);
+        const path = url.pathname && url.pathname !== "/" ? url.pathname.replace(/\/$/, "") : "";
+        const label = `${url.host}${path}`;
+        return label.length > 42 ? `${label.slice(0, 39)}...` : label;
+    } catch {
+        return trimmed.length > 42 ? `${trimmed.slice(0, 39)}...` : trimmed;
+    }
+};
 
 const encodeSvgDataUri = (svg: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
@@ -1323,6 +1403,7 @@ export default function CreativeEditor({
     const [qrDarkColor, setQrDarkColor] = useState("#16231f");
     const [qrLightColor, setQrLightColor] = useState("#ffffff");
     const [qrSize, setQrSize] = useState(164);
+    const [selectedQrActionPresetId, setSelectedQrActionPresetId] = useState<QrActionPreset["id"]>("menu");
     const [backgroundMode, setBackgroundMode] = useState<"solid" | "gradient">(
         initialDocument.canvas.backgroundGradient?.enabled ? "gradient" : "solid",
     );
@@ -1416,6 +1497,7 @@ export default function CreativeEditor({
     const layerList = [...documentValue.elements].reverse();
     const primaryColor = getPrimaryColor(documentValue);
     const brand = documentValue.metadata?.brand;
+    const selectedQrActionPreset = QR_ACTION_PRESETS.find((preset) => preset.id === selectedQrActionPresetId) || QR_ACTION_PRESETS[0];
     const brandColorItems = [
         { id: "primary", label: "Primary", value: brand?.primaryColor },
         { id: "secondary", label: "Secondary", value: brand?.secondaryColor },
@@ -2054,7 +2136,7 @@ export default function CreativeEditor({
     ) {
         const patchKeys = Object.keys(patch);
         if (patchKeys.some((key) => SELECTED_PATCH_RELOAD_KEYS.has(key))) return true;
-        if (element.type === "qr" && patchKeys.some((key) => key === "value" || key === "darkColor" || key === "lightColor")) return true;
+        if (element.type === "qr" && patchKeys.some((key) => key === "value" || key === "darkColor" || key === "lightColor" || key === "errorCorrectionLevel" || key === "margin")) return true;
         if ((element.type === "path" || element.type === "pathText") && patchKeys.includes("path")) return true;
         if (element.type === "pathText" && patchKeys.some((key) => key === "pathStroke" || key === "pathVisible")) return true;
         if (element.type === "line" && patchKeys.includes("arrowStyle")) return true;
@@ -3047,8 +3129,10 @@ export default function CreativeEditor({
             nextElements.push({
                 ...buildCreativeEditorQrElement(value),
                 darkColor: getReadableTextColor(action.backgroundColor),
+                errorCorrectionLevel: "H",
                 height: size,
-                lightColor: action.backgroundColor,
+                lightColor: "#ffffff",
+                margin: 4,
                 name: "Customer link QR",
                 width: size,
                 x: Math.round(canvas.width - size - canvas.width * 0.07),
@@ -3411,7 +3495,9 @@ export default function CreativeEditor({
                 return {
                     ...element,
                     darkColor: preset.textColor,
-                    lightColor: preset.backgroundColor,
+                    errorCorrectionLevel: "H",
+                    lightColor: "#ffffff",
+                    margin: 4,
                 } as CreativeEditorElement;
             }
             if (element.type === "image" && element.outlineEnabled) {
@@ -3462,12 +3548,159 @@ export default function CreativeEditor({
         addElement({
             ...buildCreativeEditorQrElement(value),
             darkColor: qrDarkColor,
+            errorCorrectionLevel: "H",
             height: size,
             lightColor: qrLightColor,
+            margin: 4,
             width: size,
             x: Math.round((documentRef.current.canvas.width - size) / 2),
             y: Math.round((documentRef.current.canvas.height - size) / 2),
         });
+    };
+
+    const addQrActionCard = (preset: QrActionPreset = selectedQrActionPreset) => {
+        if (blockIfActivePageLocked()) return;
+        const current = documentRef.current;
+        const canvas = current.canvas;
+        const value = qrValue.trim() || "https://example.com/";
+        const accentColor = normalizeHexColor(brand?.accentColor || "") || preset.accentColor;
+        const backgroundColor = normalizeHexColor(brand?.secondaryColor || "") || preset.backgroundColor;
+        const brandTextColor = normalizeHexColor(brand?.primaryColor || "");
+        const textColor = brandTextColor && (getContrastRatio(brandTextColor, backgroundColor) || 0) >= 3
+            ? brandTextColor
+            : getReadableTextColor(backgroundColor);
+        const destinationHint = formatQrDestinationHint(value);
+        const canvasMin = Math.min(canvas.width, canvas.height);
+        const qrSizeForCard = Math.round(clampNumber(numberInput(qrSize, 164), 132, Math.min(420, canvasMin * 0.34)));
+        const cardWidth = Math.round(clampNumber(canvas.width * 0.68, Math.min(canvas.width - 72, 430), Math.min(canvas.width - 72, 840)));
+        const cardHeight = Math.round(clampNumber(Math.max(qrSizeForCard + 112, canvas.height * 0.28), 300, Math.min(canvas.height - 72, 560)));
+        const cardX = Math.round((canvas.width - cardWidth) / 2);
+        const cardY = Math.round((canvas.height - cardHeight) / 2);
+        const padding = Math.round(clampNumber(cardWidth * 0.07, 24, 52));
+        const qrPanelPadding = Math.round(clampNumber(qrSizeForCard * 0.12, 18, 34));
+        const qrPanelSize = qrSizeForCard + qrPanelPadding * 2;
+        const qrPanelX = Math.round(cardX + cardWidth - padding - qrPanelSize);
+        const qrPanelY = Math.round(cardY + (cardHeight - qrPanelSize) / 2);
+        const qrX = qrPanelX + qrPanelPadding;
+        const qrY = qrPanelY + qrPanelPadding;
+        const textX = cardX + padding;
+        const textWidth = Math.max(180, qrPanelX - textX - Math.round(padding * 0.75));
+        const titleSize = Math.round(clampNumber(canvasMin * 0.052, 28, 58));
+        const helperSize = Math.round(clampNumber(titleSize * 0.48, 16, 24));
+        const hintSize = Math.round(clampNumber(titleSize * 0.34, 12, 18));
+        const headline = buildCreativeEditorTextElement(preset.title);
+        const helper = buildCreativeEditorTextElement(preset.helper);
+        const hint = buildCreativeEditorTextElement(destinationHint);
+        const elements: CreativeEditorElement[] = [
+            {
+                ...buildCreativeEditorRectElement(backgroundColor),
+                height: cardHeight,
+                name: `${preset.label} QR card`,
+                radius: Math.round(clampNumber(cardWidth * 0.04, 18, 34)),
+                stroke: accentColor,
+                strokeWidth: Math.max(2, Math.round(canvasMin * 0.003)),
+                width: cardWidth,
+                x: cardX,
+                y: cardY,
+            },
+            {
+                ...buildCreativeEditorRectElement(accentColor),
+                height: Math.round(cardHeight * 0.12),
+                name: `${preset.label} QR accent`,
+                radius: Math.round(cardHeight * 0.06),
+                stroke: "transparent",
+                strokeWidth: 0,
+                width: Math.round(cardWidth * 0.38),
+                x: cardX + padding,
+                y: cardY + padding,
+            },
+            {
+                ...headline,
+                align: "left",
+                color: textColor,
+                fontFamily: brand?.fontFamily || headline.fontFamily,
+                fontSize: titleSize,
+                fontWeight: "800",
+                height: Math.round(titleSize * 2.2),
+                lineHeight: 1.02,
+                name: `${preset.label} QR headline`,
+                width: textWidth,
+                x: textX,
+                y: cardY + Math.round(cardHeight * 0.32),
+            },
+            {
+                ...helper,
+                color: textColor,
+                fontFamily: brand?.fontFamily || helper.fontFamily,
+                fontSize: helperSize,
+                fontWeight: "600",
+                height: Math.round(helperSize * 2.4),
+                lineHeight: 1.16,
+                name: `${preset.label} QR helper`,
+                opacity: 0.8,
+                width: textWidth,
+                x: textX,
+                y: cardY + Math.round(cardHeight * 0.58),
+            },
+            {
+                ...hint,
+                color: textColor,
+                fontFamily: brand?.fontFamily || hint.fontFamily,
+                fontSize: hintSize,
+                fontWeight: "700",
+                height: Math.round(hintSize * 1.8),
+                lineHeight: 1.1,
+                name: `${preset.label} QR destination`,
+                opacity: 0.68,
+                width: textWidth,
+                x: textX,
+                y: cardY + cardHeight - padding - Math.round(hintSize * 1.8),
+            },
+            {
+                ...buildCreativeEditorRectElement("#ffffff"),
+                height: qrPanelSize,
+                name: "QR quiet-zone panel",
+                radius: Math.round(clampNumber(qrPanelSize * 0.07, 16, 30)),
+                stroke: "rgba(22, 35, 31, 0.14)",
+                strokeWidth: Math.max(1, Math.round(canvasMin * 0.0015)),
+                width: qrPanelSize,
+                x: qrPanelX,
+                y: qrPanelY,
+            },
+            {
+                ...buildCreativeEditorQrElement(value),
+                darkColor: qrDarkColor,
+                errorCorrectionLevel: "H",
+                height: qrSizeForCard,
+                lightColor: "#ffffff",
+                margin: 4,
+                name: `${preset.label} QR`,
+                sourceRefs: [
+                    {
+                        label: `${preset.label} QR destination`,
+                        productId: current.productContext.productId,
+                        sourceRef: "creative-editor-qr-action",
+                        value,
+                    },
+                ],
+                width: qrSizeForCard,
+                x: qrX,
+                y: qrY,
+            },
+        ];
+        const selectedQr = elements[elements.length - 1];
+        setRightPanelMode("properties");
+        setInspectorOpen(true);
+        commitDocument({
+            ...current,
+            elements: [...current.elements, ...elements],
+        }, true, selectedQr.id, true, `Added ${preset.label} QR action`);
+        recordRecentInsertion({
+            id: `recent-qr-action-${preset.id}-${Date.now().toString(36)}`,
+            label: `${preset.label} QR action`,
+            search: `${preset.label} QR action ${preset.title} ${preset.description}`,
+        });
+        setNotice(`${preset.label} QR action added.`);
     };
 
     const addBarcode = () => {
@@ -5283,9 +5516,35 @@ export default function CreativeEditor({
         if (activeTool === "qr") {
             return (
                 <div className={styles.barcodePanel}>
-                    <div className={styles.qrPreviewCard} style={{ background: qrLightColor }}>
-                        <LuQrCode color={qrDarkColor} size={76} />
-                        <span>QR preview</span>
+                    <div className={styles.qrPreviewCard} style={{ background: selectedQrActionPreset.backgroundColor }}>
+                        <span className={styles.qrPreviewBadge} style={{ background: selectedQrActionPreset.accentColor }}>
+                            {selectedQrActionPreset.label}
+                        </span>
+                        <LuQrCode color={qrDarkColor} size={72} />
+                        <strong>{selectedQrActionPreset.title}</strong>
+                        <small>{formatQrDestinationHint(qrValue)}</small>
+                    </div>
+                    <div className={styles.drawerSection}>
+                        <div className={styles.drawerSectionHeader}>
+                            <span>Action styles</span>
+                            <small>Scan-safe</small>
+                        </div>
+                        <div className={styles.qrActionGrid}>
+                            {QR_ACTION_PRESETS.map((preset) => (
+                                <button
+                                    data-active={preset.id === selectedQrActionPresetId ? "true" : "false"}
+                                    key={preset.id}
+                                    onClick={() => setSelectedQrActionPresetId(preset.id)}
+                                    type="button"
+                                >
+                                    <span style={{ background: preset.accentColor }}>
+                                        <LuQrCode size={15} />
+                                    </span>
+                                    <strong>{preset.label}</strong>
+                                    <small>{preset.description}</small>
+                                </button>
+                            ))}
+                        </div>
                     </div>
                     <label>
                         Link or text
@@ -5326,9 +5585,13 @@ export default function CreativeEditor({
                         />
                     </label>
                     <div className={styles.drawerActionGrid}>
+                        <button disabled={!qrValue.trim()} onClick={() => addQrActionCard(selectedQrActionPreset)} type="button">
+                            <LuSparkles size={18} />
+                            Add action card
+                        </button>
                         <button disabled={!qrValue.trim()} onClick={addQrCode} type="button">
                             <LuQrCode size={18} />
-                            Add QR code
+                            Add plain QR
                         </button>
                     </div>
                 </div>

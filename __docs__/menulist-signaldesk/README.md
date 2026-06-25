@@ -1,9 +1,9 @@
 # MenuList SignalDesk - Documentation Hub
 
 **Project:** MenuList SignalDesk
-**Status:** Internal workflow, connector settings, Apify source broker, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation shell, gated provider/source/AI/channel runtime, Content Distribution Rail runtime, Trust Partner Rail runtime, and solo-founder Operating Layer runtime implemented for internal testing; paid campaigns, paid external adapters, provider send, auto-publish, and Firebase deploy skipped
+**Status:** Internal workflow, internal team access management, connector settings, FHRS/FHIS UK source provider, Apify source broker, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation shell, gated provider/source/AI/channel runtime, Content Distribution Rail runtime, Trust Partner Rail runtime, and solo-founder Operating Layer runtime implemented for internal testing; paid campaigns, paid external adapters, provider send, auto-publish, and Firebase deploy skipped
 **Created:** June 23, 2026
-**Last Updated:** June 24, 2026
+**Last Updated:** June 25, 2026
 **Owner:** Danny and MenuList marketing/growth team
 **Audience:** Internal only
 
@@ -82,6 +82,7 @@ Do not start with:
 | [Email Rail](./signaldesk-email-rail/README.md) | Email/export, sender readiness, unsubscribe, bounce, and complaint doc set. |
 | [Owned Email Sequencer](./signaldesk-email-rail/signaldesk-email-rail_owned-sequencer.md) | Self-owned low-volume sequencer queue and Smartlead fallback boundary. |
 | [Connector Settings](./menulist-signaldesk_connector-settings.md) | Internal email, Meta channel, and Smartlead fallback metadata without storing raw secrets. |
+| [FHRS/FHIS Source Provider](./menulist-signaldesk_fhrs-fhis-source-provider.md) | Official UK food-business establishment seed for source/evidence use only; no contact permission or public rating feature. |
 | [Apify Source Broker](./menulist-signaldesk_apify-source-broker.md) | Gated Apify source discovery/evidence connector with env-controlled Actor ID, provider budget, and no raw payload storage. |
 | [Inbox](./signaldesk-inbox/README.md) | Unified inbox, reply classifier, suppression, and operator work-item doc set. |
 | [Outcome Bridge](./signaldesk-outcome-bridge/README.md) | Route tokens, MenuList outcomes, and attribution doc set. |
@@ -213,3 +214,5 @@ Approved sources
 | 2.4 | 2026-06-24 | Added growth-playbook review: adopt activation-proof loop, record recommended first pod/CTA/proof defaults, keep unsafe channel automations rejected, and keep Activation Concierge as MenuList-side work. |
 | 2.5 | 2026-06-24 | Added founder-distribution deep research across startup growth cases, founder communities, restaurant/SMB signals, and platform policies; confirmed Activation Concierge and proof automation as the next MenuList-side build before more outbound automation. |
 | 2.6 | 2026-06-24 | Created the separate MenuList Activation Concierge doc set and preserved SignalDesk as outcome observer only, with no MenuList truth writes or send/provider expansion. |
+| 2.7 | 2026-06-25 | Added SignalDesk-only internal team access management in Settings: founder admins can add/update/deactivate members by login email, assign SignalDesk roles, preserve private auth gating, and audit membership changes. |
+| 2.8 | 2026-06-25 | Added the FHRS/FHIS UK source provider as an official establishment seed for source/evidence use only, with source policy, provider account, provider budget, retention, verifier, and E2E coverage; no contact permission, public rating feature, or send enablement added. |

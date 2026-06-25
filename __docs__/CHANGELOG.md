@@ -6,6 +6,58 @@
 
 ---
 
+## June 26, 2026 - Website Plausible Analytics
+
+### Added
+
+- **Plausible website analytics added** - MenuList and Answerlattice public marketing websites now support consent-gated Plausible Cloud scripts through product-specific env vars.
+- **Marketing CTA events added** - MenuList website CTAs and resource actions now emit property-free Plausible custom events, while Answerlattice reuses existing `data-answerlattice-event` names for website conversion tracking.
+- **Plausible setup docs added** - CSP, env templates, privacy copy, launch prerequisites, and analytics vendor guidance now document Plausible as website-only analytics for `menulist.ai` and `answerlattice.com`.
+
+### Changed
+
+- **Answerlattice onboarding analytics hardened** - Public get-started completion events no longer send API-key material or token prefixes as analytics labels.
+
+### Boundaries
+
+- **Website-only analytics** - Product analytics, owner dashboard analytics, public menu/OBP/customer-app analytics, Answerlattice workspace truth, Firebase rules, Cloud Functions, dependencies, Vercel deploy, and production build were not changed.
+- **PostHog remains out** - PostHog is still rejected for launch unless a separate internal-product-analytics plan is approved.
+
+---
+
+## June 25, 2026 - Analytics Vendor Boundary
+
+### Changed
+
+- **Website resource analytics minimized** - MenuList and Answerlattice public resource GA4 events no longer send custom repo-generated session identifiers while preserving page, referrer, UTM, entry-page, CTA, and target URL context.
+- **Analytics vendor plan recorded** - Launch guidance now keeps MenuList-owned analytics as product truth, keeps Sentry as reliability monitoring, rejects PostHog for launch, and treats Plausible as an explicit future marketing-site migration decision.
+
+### Boundaries
+
+- **No new vendor added** - No Plausible, PostHog, dependency, CSP, env, Firebase, Cloud Function, Vercel deploy, or production build change was added.
+
+---
+
+## June 25, 2026 - Gemini Production Hardening
+
+### Added
+
+- **AI provider health checks added** - MenuList and Answerlattice schedulers now run a daily Gemini smoke check and store the latest provider status for launch monitoring.
+- **Answerlattice AI constants added** - Answerlattice app and Functions paths now use product-specific Gemini model constants instead of scattered model literals.
+
+### Changed
+
+- **Gemini model usage centralized** - Active MenuList and Answerlattice AI call sites now route model ids through shared constants, with Gemini 2.0 Flash removed from active source paths.
+- **Production setup guidance hardened** - Deployment docs now require separate restricted Gemini keys per environment, budget/quota alerts, and health-record verification after Functions deploy.
+
+### Boundaries
+
+- **No default jump to Gemini 3.x** - Stable Gemini 3.x constants are available for deliberate future migration, but production defaults stay on the proven Gemini 2.5 workload models until prompt/output regression checks are complete.
+- **No embedding reindex** - Answerlattice RAG stays on its current embedding model and cache version until a planned vector-space migration is executed.
+- **No Vercel deploy** - This change does not deploy website/app runtime or run a production build.
+
+---
+
 ## June 25, 2026 - Item Photo Capture Assist
 
 ### Added

@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.86 (Feature Dropdown Dedicated-Page Parity)
+**Version:** 3.6.88 (Plausible Marketing Website Analytics)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** June 24, 2026
+**Last Updated:** June 26, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,7 +13,15 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.86** | **Feature Dropdown Dedicated-Page Parity** | **Every dedicated MenuList feature-detail page is now represented in the shared desktop hover and mobile hamburger feature dropdown source.** | **ACTIVE** |
+| **3.6.88** | **Plausible Marketing Website Analytics** | **MenuList and Answerlattice marketing websites can send consent-gated Plausible page/event signals without touching product analytics.** | **ACTIVE** |
+
+Version 3.6.88 adds website-only Plausible Cloud wiring for the public MenuList and Answerlattice marketing websites after the analytics scope was clarified away from owner/dashboard/product analytics. Plausible scripts mount only after the public analytics consent banner is accepted and only when `NEXT_PUBLIC_MENULIST_PLAUSIBLE_DOMAIN` or `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN` is configured. MenuList now has a delegated marketing CTA tracker for create-customer-link, pricing, WhatsApp, login, and AI-summary clicks; resource pages send property-free Plausible custom events alongside the existing GA4 payloads. Answerlattice reuses the existing `data-answerlattice-event` taxonomy and public resource/get-started events for Plausible. CSP and env templates now include Plausible. PostHog remains out of launch, product analytics remains MenuList-owned, and no Firebase rules, Cloud Functions, dependency, Vercel deploy, or production build were changed.
+
+Version 3.6.87 remains Analytics Vendor Boundary and Session-ID Minimization and is preserved below as the previous website version note.
+
+Version 3.6.87 records the analytics vendor boundary after validating the Plausible/PostHog/Sentry conversation against current code and vendor docs. Public resource GA4 events in `ResourceAnalytics` and `ResourceTrackedLink` no longer send custom repo-generated `session_id` parameters; they still keep page, entry-page, referrer, UTM, locale, CTA, and target URL context. This is public website analytics minimization and docs governance only; owner dashboard runtime, customer menu/OBP analytics, Firebase rules, Cloud Functions, dependencies, Vercel deploy, and production build were not changed.
+
+Version 3.6.86 remains Feature Dropdown Dedicated-Page Parity and is preserved below as the previous website version note.
 
 Version 3.6.86 closes the dedicated feature-page dropdown parity gap. `/features/analytics` and `/features/menu-quality-validation` now live in `websiteFeatureNavGroups`, the same shared source used by the desktop hover dropdown and mobile hamburger feature accordion. AI Menu Manager remains inside the Operate group and is not duplicated as a separate mobile top-level row. This is static website navigation, locale, and documentation work only; feature routes, discovery files, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, production build, Vercel deploy, and DNS were not changed.
 
@@ -161,7 +169,7 @@ Version 3.6.19 completes the first Indian-language resource rollout by adding re
 
 Version 3.6.20 completes long-form resource coverage for every language in the public website switcher by adding reviewed Arabic and Spanish packs for the resources hub and all 12 resource articles. Reviewed resource routes now cover `/hi-IN/resources`, `/ta-IN/resources`, `/te-IN/resources`, `/mr-IN/resources`, `/bn-IN/resources`, `/ar-SA/resources`, and `/es-ES/resources`, with localized metadata, JSON-LD `inLanguage`, sitemap `hreflang`, LLM context coverage, locale JSON loading, and Arabic RTL direction support. This is static public website content only; owner dashboard, customer menu runtime, auth, billing, Firebase, Cloud Functions, Answerlattice, Canonica, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 
-Version 3.6.21 updates the website to match the complete resources navigation and discovery strategy without changing product runtime. Header navigation is Features -> How it works -> Multi-location -> Pricing -> Resources, desktop Resources opens a compact dropdown, mobile navigation exposes the same resource cluster, the homepage includes the eight-card "Learn how to keep your public menu current" bridge, footer resource links point to the core resource set, robots/LLM files carry modest official-source positioning, and GA4-only resource measurement includes resource-to-upload and resource-to-pricing events.
+Version 3.6.21 updates the website to match the complete resources navigation and discovery strategy without changing product runtime. Header navigation is Features -> How it works -> Multi-location -> Pricing -> Resources, desktop Resources opens a compact dropdown, mobile navigation exposes the same resource cluster, the homepage includes the eight-card "Learn how to keep your public menu current" bridge, footer resource links point to the core resource set, robots/LLM files carry modest official-source positioning, and resource measurement includes resource-to-create-customer-link and resource-to-pricing events.
 
 Version 3.6.22 expands the public content/discovery layer with three additional resource articles (`/resources/restaurant-menu-schema`, `/resources/official-menu-url-checklist`, and `/resources/restaurant-qr-menu-mistakes`), reviewed coverage for those articles across all active resource locale packs, four industry landing pages under `/industries/`, sitemap/LLM discovery coverage, and a real checklist-copy UI that emits `resource_checklist_copy` only when checklist content exists. Downloadable template tracking remains intentionally unimplemented until real downloadable assets are designed and QA'd.
 
@@ -268,7 +276,7 @@ These archived documents are not source-code backups and are not restoration tar
 | `src/components/website/home/HomePage.tsx`                  | Current compressed homepage composition plus sticky CTA |
 | `src/components/website/Header.tsx`                         | Shared header (all pages)                      |
 | `src/components/website/Footer.tsx`                         | Shared footer (all pages)                      |
-| `src/components/website/resources/`                          | Resource hub, article layout, cards, schema, and GA4-only resource tracking |
+| `src/components/website/resources/`                          | Resource hub, article layout, cards, schema, and consent-gated website resource tracking |
 | `src/components/website/industries/`                          | Shared industry landing-page component for MenuList-fit pages |
 | `src/content/websiteResources/`                              | Typed localized resource content registry      |
 | `src/content/websiteIndustries.ts`                            | Typed industry landing-page registry           |

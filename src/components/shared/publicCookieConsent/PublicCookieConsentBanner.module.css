@@ -111,6 +111,12 @@
   color: #0f172a;
 }
 
+.banner[data-product="constantlayer"] .privacyLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
 .banner[data-product="menulist"] {
   border-color: var(--ws-border-default, rgb(15 23 42 / 10%));
   background: var(--ws-bg-elevated, rgb(255 255 255 / 96%));
@@ -277,6 +283,14 @@
 
   .privacyLink {
     grid-column: 1;
+  }
+
+  .banner[data-product="constantlayer"] .actions {
+    grid-template-columns: minmax(0, 1fr) minmax(86px, auto);
+  }
+
+  .banner[data-product="constantlayer"] .privacyLink {
+    grid-column: auto;
   }
 }
 

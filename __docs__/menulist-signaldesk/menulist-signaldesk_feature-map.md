@@ -129,7 +129,7 @@ Still excluded from the implemented slice:
 - cold WhatsApp API send
 - Instagram/Messenger cold automation
 - campaign optimizer
-- external paid-provider adapters except gated Google Places and Apify source discovery
+- external paid-provider adapters except gated Google Places, FHRS/FHIS, and Apify source discovery
 - paid Meta webhooks
 - local cluster planner
 - public pages

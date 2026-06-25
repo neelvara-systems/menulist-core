@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { GEMINI_MODELS } from '@constant/AI/models';
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from '@constant/common';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from '@constant/AI/unitCosts';
 import { finalizeAiOperationAccounting } from '@lib/ai/accounting';
@@ -99,6 +100,7 @@ const FALLBACK_REPLIES: Record<string, string> = {
 };
 
 const ACTION = AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION;
+const AI_MODEL = GEMINI_MODELS.TEXT_GEN;
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION || !FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST) {
@@ -168,7 +170,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const startTime = Date.now();
         const model = genAIClient.models;
         const result = await model.generateContent({
-            model: 'gemini-2.0-flash',
+            model: AI_MODEL,
             contents: userPrompt,
             config: {
                 systemInstruction: systemPrompt,
@@ -224,7 +226,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         temperature: 0.7,
                     },
                     geminiResponse: result,
-                    model: 'gemini-2.0-flash',
+                    model: AI_MODEL,
                     processingTime,
                     rating,
                     reviewLength: reviewText.length,

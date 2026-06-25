@@ -1,8 +1,8 @@
 # AnswerLattice Website (answerlattice.com)
 
 > **Feature:** Public marketing website for AnswerLattice product
-> **Status:** ✅ IMPLEMENTED — refreshed for approved-answers-first homepage positioning, product-led support-suite conversion, self-service AnswerLattice, concept illustrations, and agent-readable public discovery
-> **Date:** 2026-06-18
+> **Status:** ✅ IMPLEMENTED — refreshed for approved-answers-first homepage positioning, product-led support-suite conversion, self-service AnswerLattice, concept illustrations, agent-readable public discovery, and consent-gated Plausible marketing-site analytics
+> **Date:** 2026-06-26
 > **Domain:** answerlattice.com (production) | answerlattice.menulist.online (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -283,6 +283,8 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-06-26 | Added consent-gated Plausible Cloud support for the public marketing website, forwarded existing `data-answerlattice-event` names to Plausible, and removed API-key material from onboarding success analytics labels |
+| 2026-06-25 | Removed the custom repo-generated `session_id` parameter from AnswerLattice resource GA4 events while preserving consent-gated page, entry-page, referrer, UTM, slug, and target URL context |
 | 2026-06-21 | Refined and simplified the homepage support-suite presentation with a lighter `Collect → Shape → Serve` flow rail, four suite cards, and a stable non-sticky build-path panel so the section stays readable without adding unsupported claims |
 | 2026-06-21 | Added reviewed-support-layer proof copy inside the support knowledge map center so approved-first, fallback-tracked, and review-loop behavior are visible in the diagram |
 | 2026-06-21 | Added footer-level AI summary links to Claude, ChatGPT, and Gemini with a governed-answer prompt that rejects generic chatbot, helpdesk-replacement, CMS, autopilot, and analytics-platform framing |

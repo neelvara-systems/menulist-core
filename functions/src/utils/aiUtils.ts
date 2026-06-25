@@ -3,13 +3,14 @@ import * as admin from "firebase-admin";
 import * as functions from 'firebase-functions';
 import * as fs from 'fs'; // Import the 'fs' module
 import { normalizeProcessedKBData, normalizeVector } from ".";
+import { AI_ADVANCED_MODEL, AI_EMBEDDING_MODEL } from "../constants/ai";
 import { firestoreAdmin, vertexAIClient } from "../firebaseAdmin";
 import { genAIClient } from "../genAiClient";
 import { AI_TYPE, KB_ARTICLES_COLLECTION } from "../types";
 import { tiptapToText } from "./tiptapUtils";
 
-const EMBEDDING_MODEL = "text-embedding-004";
-const GENERATIVE_MODEL = "gemini-2.5-pro";
+const EMBEDDING_MODEL = AI_EMBEDDING_MODEL;
+const GENERATIVE_MODEL = AI_ADVANCED_MODEL;
 /**
  * Calls Vertex AI to generate a structured knowledge base from source files.
  * @param {any[]} prompt - The constructed prompt parts for the AI model.

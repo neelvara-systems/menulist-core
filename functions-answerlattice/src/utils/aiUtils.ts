@@ -1,10 +1,11 @@
 import * as functions from 'firebase-functions';
 import { extractGeminiUsageMetadata, recordEmbeddingOperation } from '../answerlattice/aiOperationAccounting';
+import { ANSWERLATTICE_EMBEDDING_MODEL, ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY } from '../constants/ai';
 import { vertexAIClient } from '../firebaseAdmin';
 import { tiptapToText } from './tiptapUtils';
 
-const EMBEDDING_MODEL = 'gemini-embedding-001';
-const EMBEDDING_OUTPUT_DIMENSIONALITY = 768;
+const EMBEDDING_MODEL = ANSWERLATTICE_EMBEDDING_MODEL;
+const EMBEDDING_OUTPUT_DIMENSIONALITY = ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY;
 
 const normalizeVector = (input: unknown): number[] => {
     if (!Array.isArray(input)) return [];

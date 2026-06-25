@@ -152,7 +152,7 @@ notContains(
   'src/app/api/public/create-menu/route.ts',
   [
     'triggerExtraction',
-    'gemini-2.0-flash',
+    'genAIClient.models.generateContent',
   ],
   'Public create-menu no longer runs inline extraction',
 );

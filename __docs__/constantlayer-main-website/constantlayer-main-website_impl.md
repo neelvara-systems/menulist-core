@@ -39,6 +39,7 @@ Middleware uses the existing generic product-site rewrite flow. No ConstantLayer
 | `src/app/sites/constantlayer/ConstantLayerCookieConsentBanner.tsx` | Client-side essential-storage banner with local-prefix-aware privacy link |
 | `src/app/sites/constantlayer/content.tsx` | Shared content, shell, header/footer, cards, structured data |
 | `src/app/sites/constantlayer/ScrollRevealController.tsx` | Local viewport-entry reveal controller with reduced-motion fallback |
+| `src/app/sites/constantlayer/SpotlightCard.tsx` | Client-side cursor spotlight primitive for glass cards |
 | `src/app/sites/constantlayer/page.tsx` | Home page |
 | `src/app/sites/constantlayer/home/page.tsx` | Internal local-prefix homepage alias for bare `/__constantlayer` dev routing |
 | `src/app/sites/constantlayer/products/page.tsx` | Products page |
@@ -51,7 +52,7 @@ Middleware uses the existing generic product-site rewrite flow. No ConstantLayer
 | `src/app/sites/constantlayer/[...missing]/route.ts` | True 404 catch-all response for unmatched ConstantLayer URLs |
 | `src/app/sites/constantlayer/robots.txt/route.ts` | Product-domain robots response |
 | `src/app/sites/constantlayer/sitemap.xml/route.ts` | Product-domain sitemap response |
-| `src/app/sites/constantlayer/styles.css` | Scoped website styles based on the main website design tokens |
+| `src/app/sites/constantlayer/styles.css` | Scoped Prism glass tokens, mesh/grain background, glass primitives, and responsive layout |
 | `public/constantlayer-icon.svg` | Site icon |
 
 ---
@@ -65,6 +66,7 @@ Middleware uses the existing generic product-site rewrite flow. No ConstantLayer
 | `src/constants/urls.ts` | Added ConstantLayer domain notes and reserved subdomain slug |
 | `src/lib/env/validateEnv.ts` | Added no-Firebase env validation entry for ConstantLayer |
 | `scripts/verification/verify-agent-readiness.js` | Added ConstantLayer routing and no-Firebase assertions |
+| `src/components/shared/publicCookieConsent/PublicCookieConsentBanner.module.css` | Added ConstantLayer-only privacy-link touch target styling |
 | `__docs__/CHANGELOG.md` | Recorded corrected Next/Vercel implementation |
 
 ---
@@ -86,21 +88,20 @@ Middleware uses the existing generic product-site rewrite flow. No ConstantLayer
 
 ## 6. UI/UX Contract
 
-The visual implementation follows the main website design-system direction:
+The visual implementation now follows the Prism glass direction supplied for the ConstantLayer redesign while preserving the parent-site boundary:
 
-- white, slate, and restrained blue token values
-- no decorative gradient backgrounds
-- no nested cards
-- cards capped at 8px radius
-- stable grid dimensions and mobile breakpoints
-- hero entity signal in the first viewport
-- concise, factual copy
-- body text uses neutral color hierarchy, not colored marketing text
-- no viewport-width font scaling
+- fixed six-stop mesh layer and SVG grain layer behind every section
+- shared glass primitive for header, hero mock, bento cells, spotlight cards, table, product band, contact cards, and CTA bands
+- Instrument Serif display headlines, Inter body text, and JetBrains Mono labels
+- floating pill navigation with local-prefix-aware links for `/__constantlayer` and `/cl`
+- home page anatomy: floating nav, hero, glass studio mock, entity ledger, marquee, bento grid, spotlight cards, pull quote, stats strip, comparison table, product lineup, contact routing cards, CTA, footer
+- secondary pages inherit the same mesh/glass shell, page hero, spotlight cards, glass text panels, and final CTA
+- the large hero studio mock remains on desktop/tablet; small phones hide it so the entity ledger appears in the first mobile viewport
+- scroll reveal remains local to ConstantLayer sections, one-time on viewport entry, and disabled for reduced-motion users
+- no pricing table, testimonials, customer logos, lead form, product checkout, analytics, API route, Firebase runtime, or owner app behavior was added
+- Prism pricing/customer sections were translated into entity-safe equivalents: boundary comparison, product lineup, and business/legal/privacy contact routing
 - local development links preserve the `/__constantlayer` prefix without using server header reads
-- scroll reveal is local to ConstantLayer sections, one-time on viewport entry, and disabled for reduced-motion users
-- hero scene uses meaningful parent-record, product-surface, and inquiry-routing labels instead of blank decorative cards
-- reference modules use compact bordered cards and row-level facts to add presentation depth without adding product-funnel behavior
+- public copy remains concise, factual, and governed by ConstantLayer's legal/product separation rules
 
 ---
 
@@ -142,6 +143,8 @@ Current validation:
 
 ```bash
 npx tsc --noEmit --incremental false --pretty false
+npm run lint -- --dir src/app/sites/constantlayer
+node scripts/verification/verify-agent-readiness.js --env-targets-only
 ```
 
 Result: pass.

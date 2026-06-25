@@ -1,17 +1,20 @@
 # AI System Layer — Firebase Cost Tracking
 
 **Feature:** Centralized AI Infrastructure for MenuList  
-**Status:** 📝 DOCUMENTED — Implementation pending  
-**Last Updated:** March 12, 2026
+**Status:** ✅ CURRENT CODEBASE TRUTH — Existing ledgers plus daily provider health records
+**Last Updated:** June 25, 2026
 
 ---
 
 ## Summary
 
-- **New Collection:** `aiUsageLog` (lightweight, append-only usage tracking)
-- **Modified Collection:** None (existing collections unchanged)
-- **Cloud Functions Impact:** Gateway adds ~20-50ms overhead per AI call
-- **Estimated Additional Cost:** ~$0.50/month per 1000 tenants (usage log storage only)
+- **Existing extraction audit ledger:** `MENULIST_AI_OPERATIONS`
+- **Existing billable app-route ledger:** `menulistAiOperations/{tId}/{sId}/{docId}`
+- **New MenuList health record:** `_health/aiProvider_gemini`
+- **New Answerlattice health record:** `platformSummary/answerlatticeAiProviderHealth`
+- **No new `aiUsageLog` collection:** That older design remains deferred and is not part of the active schema.
+
+The AI System Layer should avoid creating a write per internal AI call unless the operation is billable, owner-visible, or needed for incident response. The daily provider health checks add only one small status write per product per UTC day.
 
 ---
 
@@ -19,115 +22,65 @@
 
 ### Reads
 
-| Operation | Collection | Trigger | Frequency | Docs Read | Notes |
-|-----------|-----------|---------|-----------|-----------|-------|
-| Global rate limit check | Upstash Redis | Every AI call | Per AI request | 0 Firestore | Uses existing Upstash, not Firestore |
-| Feature flag check | In-memory | Every AI call | Per AI request | 0 | Feature flags are in-memory constants |
+| Operation | Backend | Trigger | Frequency | Docs Read | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Route rate limit check | Upstash Redis | Protected AI app routes | Per guarded request | 0 Firestore | Existing route guard; not a Firestore read |
+| Scheduler health previous status | Firestore Admin SDK | Answerlattice health task | Once per scheduler run | 1 | Skips duplicate successful checks inside the same UTC day |
 
 ### Writes
 
-| Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |
-|-----------|-----------|---------|-----------|-------------|--------|-------|
-| Log AI usage | `aiUsageLog` | After each AI call | Per AI request | 1 | taskType, model, tokens, cost, duration | Lightweight append-only. Fire-and-forget (never blocks AI response). |
+| Operation | Collection/path | Trigger | Frequency | Docs Written | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Extraction audit | `MENULIST_AI_OPERATIONS` | Menu extraction completion | Per extraction job | 1 | Existing detailed Cloud Functions audit record |
+| Billable app-route operation | `menulistAiOperations/{tId}/{sId}` | Successful billable app-route AI output | Per charged operation | 1 | Existing route accounting path |
+| MenuList provider health | `_health/aiProvider_gemini` | `menulistMaintenanceScheduler.ai_provider_health_check` | Daily | 1 | Records provider/model/latency/status/key stats |
+| Answerlattice provider health | `platformSummary/answerlatticeAiProviderHealth` | `answerlatticeMasterScheduler.ai_provider_health_check` | Daily | 1 | Records provider/model/latency/status |
 
 ### Deletes
 
-| Operation | Collection | Trigger | Frequency | Notes |
-|-----------|-----------|---------|-----------|-------|
-| TTL cleanup | `aiUsageLog` | Nightly scheduler | Daily | Delete docs older than 90 days. Piggybacked on existing nightly scheduler. |
+No new delete path was added for this hardening pass.
 
 ---
 
 ## Cost Estimate
 
-### Per 1000 tenants/month (assuming ~5000 AI calls/month total)
+### Daily Provider Health
 
-| Resource | Operations/month | Unit Cost | Monthly Cost |
-|----------|-----------------|-----------|-------------|
-| Firestore Writes (usage log) | 5,000 | $0.18/100K | $0.01 |
-| Firestore Storage (usage log docs, ~500 bytes each) | 2.5 MB | $0.18/GB | $0.00 |
-| Firestore Deletes (90-day cleanup) | ~1,700/month | $0.02/100K | $0.00 |
-| Upstash Redis (global rate limit) | 5,000 × 4 commands | Existing plan | $0.00 |
-| **Total additional cost** | | | **~$0.01/month** |
+| Resource | Operations/month | Monthly Cost Impact |
+| --- | --- | --- |
+| MenuList health writes | ~30 writes | Negligible |
+| Answerlattice health reads | ~30 reads | Negligible |
+| Answerlattice health writes | ~30 writes | Negligible |
+| Gemini health prompts | ~60 tiny requests | Provider-billed, minimal |
 
-> **Note:** The AI System Layer itself adds negligible cost. The AI calls themselves (Gemini API) are the dominant cost — those are tracked, not increased, by this layer.
-
----
-
-## Existing AI Cost Tracking (Reference)
-
-### Current: `MENULIST_AI_OPERATIONS` collection
-
-Used by menu extraction only. Heavy documents (~5KB each) with full transaction details.
-
-| Field | Stored |
-|-------|--------|
-| Full request/response | ✅ Yes |
-| Token usage | ✅ Yes |
-| Cost calculation | ✅ Yes |
-| File details | ✅ Yes |
-| Generation config | ✅ Yes |
-
-### New: `aiUsageLog` collection
-
-Used by ALL AI features. Lightweight documents (~500 bytes each).
-
-| Field | Stored |
-|-------|--------|
-| Task type + feature name | ✅ Yes |
-| Token usage | ✅ Yes |
-| Cost calculation | ✅ Yes |
-| Duration | ✅ Yes |
-| Tenant context (optional) | ✅ Yes |
-| Full request/response | ❌ No (too heavy) |
-
-**Relationship:** `MENULIST_AI_OPERATIONS` continues for extraction (detailed audit trail). `aiUsageLog` provides cross-feature cost visibility.
-
----
-
-## Indexes Required
-
-```json
-{
-  "collectionGroup": "aiUsageLog",
-  "fields": [
-    { "fieldPath": "taskType", "order": "ASCENDING" },
-    { "fieldPath": "createdAt", "order": "DESCENDING" }
-  ]
-},
-{
-  "collectionGroup": "aiUsageLog",
-  "fields": [
-    { "fieldPath": "tenantId", "order": "ASCENDING" },
-    { "fieldPath": "createdAt", "order": "DESCENDING" }
-  ]
-}
-```
+The provider calls, not the health records, are the real production cost surface. Production scaling should be managed with billing, model-level quota monitoring, budget alerts, and quota increase requests.
 
 ---
 
 ## Security Rules
 
+The health records are written with Admin SDK from Cloud Functions. Browser clients must not write provider health or operation accounting docs.
+
+Existing rule coverage:
+
+```text
+firestore.rules
+  match /MENULIST_AI_OPERATIONS/{docId}
+  match /menulistAiOperations/{tId}/{sId}/{docId}
 ```
-match /aiUsageLog/{docId} {
-  // Only Cloud Functions (admin SDK) can write
-  // Platform admins can read for monitoring
-  allow read: if request.auth != null && 
-    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.platformRole == 'PLATFORM';
-  allow write: if false; // Admin SDK only
-}
-```
+
+No new Firestore rules or indexes are required for the daily health records because they are Admin SDK writes and point reads by operators/schedulers.
 
 ---
 
-## DAL Functions
+## Current Accounting Boundaries
 
-| Function | Location | Operation |
-|----------|----------|-----------|
-| `logAIUsage()` | `functions/src/ai/costTracker.ts` | Write (fire-and-forget) |
-| `getAIUsageSummary()` | `functions/src/ai/costTracker.ts` | Read (aggregation query) |
-| `cleanupOldUsageLogs()` | `functions/src/ai/costTracker.ts` | Delete (TTL cleanup) |
+`MENULIST_AI_OPERATIONS` remains the detailed extraction audit collection.
+
+`menulistAiOperations/{tId}/{sId}` remains the billable app-route operation ledger used by AI accounting paths.
+
+`aiUsageLog` is not implemented. Do not add rules, indexes, cleanup jobs, or owner dashboards for it unless a future cost-control implementation explicitly introduces that collection.
 
 ---
 
-_Document Status: 📝 DOCUMENTED — Implementation pending_
+_Document Status: ✅ CURRENT — no new usage-log collection introduced_

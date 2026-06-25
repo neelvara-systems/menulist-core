@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { getUnitCost } from '@constant/AI/unitCosts';
 import { AI_ACTIONS_TYPES } from '@constant/common';
@@ -193,7 +194,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 proposalId,
                 trigger: 'manual_regenerate',
             },
-            model: 'gemini-2.5-flash',
+            model: ANSWERLATTICE_TEXT_MODEL,
             processingTime: Date.now() - startedAt,
             source: 'answerlattice_governance_draft_regeneration',
             candidatesTokenCount: geminiResult.usageMetadata.candidatesTokenCount || 0,

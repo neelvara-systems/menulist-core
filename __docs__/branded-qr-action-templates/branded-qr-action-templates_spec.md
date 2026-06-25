@@ -1,6 +1,6 @@
 # Branded QR Action Templates Spec
 
-**Status:** Docs-ready alignment layer
+**Status:** Editor-backed alignment layer
 **Last Updated:** June 25, 2026
 
 ## Problem
@@ -76,6 +76,9 @@ The owner should be able to choose a business action and download a finished phy
 
 - Existing Assets docs identify this as a scan-safe template layer.
 - Existing QR WhatsApp docs identify it as the creative source for measured campaign variants.
+- Shared Creative Editor QR drawer exposes guided action-card presets before raw QR insertion.
+- QR action cards keep the QR on a high-contrast white scan panel.
+- QR rendering, Fabric serialization, and export preserve high error correction and four-module quiet-zone margin.
 - Menu Kit remains focused on current MenuList deployment, not campaign experiments.
 - Firebase cost remains unchanged for normal standard templates.
 - Future artistic QR work is blocked until scan-regression coverage exists.

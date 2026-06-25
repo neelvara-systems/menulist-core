@@ -79,7 +79,7 @@
 │  │  POST /api/image-editing                                            │    │
 │  │       │                                                              │    │
 │  │       ▼                                                              │    │
-│  │  Gemini 2.0 Flash (with reference image)                            │    │
+│  │  Gemini 2.5 Flash Image (with reference image)                      │    │
 │  │       │                                                              │    │
 │  │       ▼                                                              │    │
 │  │  Preview → Select → Upload                                          │    │
@@ -93,7 +93,7 @@
 
 | Model                                       | Use Case                    | Notes                       |
 | ------------------------------------------- | --------------------------- | --------------------------- |
-| `gemini-2.0-flash-preview-image-generation` | Primary generation, editing | Supports reference images   |
+| `gemini-2.5-flash-image`                    | Primary generation, editing | Supports reference images   |
 | `imagen-3.0-generate-002`                   | Alternative generation      | Better for text-free images |
 
 ---

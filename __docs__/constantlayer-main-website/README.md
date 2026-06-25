@@ -1,6 +1,6 @@
 # ConstantLayer Main Website
 
-**Status:** Implemented in the shared Next/Vercel app; pending owner/legal launch review  
+**Status:** Implemented and Prism-redesigned in the shared Next/Vercel app; pending owner/legal launch review
 **Owner:** Founder / engineering  
 **Feature folder:** `__docs__/constantlayer-main-website/`  
 **Primary source input:** [`constantlayer-main-website_chatgpt-transcript.md`](./constantlayer-main-website_chatgpt-transcript.md)
@@ -30,6 +30,7 @@ Build ConstantLayer inside the existing Next.js/Vercel product-site architecture
 - no Firebase project
 - no API routes, auth, CMS, contact form, or analytics in v1
 - public cookie banner is essential-storage acknowledgement only; there is no analytics or ads consent claim in v1
+- Prism glass visual system applied only to presentation: mesh, grain, glass cards, spotlight cards, and responsive section layout; no product funnel behavior added
 
 Reason: the repo already uses a shared Vercel app with hostname/path-prefix routing for public product sites. ConstantLayer should follow that routing architecture while staying outside database-backed product identity.
 
@@ -73,10 +74,13 @@ Implemented as static Next pages under `src/app/sites/constantlayer/`.
 Validation completed:
 
 - `npx tsc --noEmit --incremental false --pretty false`: pass
+- `npm run lint -- --dir src/app/sites/constantlayer`: pass
+- `node scripts/verification/verify-agent-readiness.js --env-targets-only`: pass
 - ConstantLayer route registered in the existing `productDomains` / `deploymentTargets` architecture
 - `/__constantlayer/` local dev path maps to `/sites/constantlayer`
 - no `PRODUCT_IDS` entry or Firebase requirement added
 - no API routes, forms, auth, Firestore, Storage, Cloud Functions, or schedulers added
+- Prism glass redesign route and responsive checks completed at desktop, mobile, and narrow-mobile viewports
 - legal/privacy/terms/contact content audit completed against current official DPDP and e-commerce references
 - shared public cookie acknowledgement mounted in the website layout without adding analytics, forms, auth, Firebase, or API routes
 

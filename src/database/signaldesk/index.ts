@@ -70,7 +70,8 @@ export type SignalDeskAction =
     | "review-trust-partner-deal"
     | "record-trust-partner-deliverable"
     | "record-trust-partner-metrics"
-    | "review-trust-partner-renewal";
+    | "review-trust-partner-renewal"
+    | "upsert-team-member";
 
 export async function getSignalDeskOverview(): Promise<SignalDeskOverview> {
     const response = await fetch(SIGNALDESK_API_ROUTES.OVERVIEW, {

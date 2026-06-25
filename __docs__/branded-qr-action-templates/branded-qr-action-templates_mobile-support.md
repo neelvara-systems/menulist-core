@@ -1,6 +1,6 @@
 # Branded QR Action Templates Mobile Support
 
-**Status:** Docs-ready alignment layer
+**Status:** Editor-backed alignment layer
 **Last Updated:** June 25, 2026
 
 ## Mobile Admission
@@ -14,6 +14,8 @@ pick asset
 ```
 
 Advanced design editing, QR styling controls, and experiment setup are not admitted on mobile.
+
+The desktop Creative Editor exposes guided QR action-card presets, but mobile should continue to consume the resulting template/document through the existing Assets flow.
 
 ## Mobile Scope
 

@@ -42,7 +42,7 @@ public/llms-full.txt
 scripts/verification/verify-agent-readiness.js
 ```
 
-June 2, 2026 update: the resource layer was hardened after live-site review and current crawler/source-control research. The website now uses a desktop Resources dropdown, mobile nested resource links, the requested eight-card homepage resources block, footer links aligned to the core resource set, grouped robots rules for named search/AI crawlers plus generic crawlers, `CCBot` in the discovery allowlist, LLM positioning limits, and GA4-only resource conversion/referrer events. The complete release scope now includes 15 resource articles, four industry landing pages, reviewed locale coverage for the expanded resource set, and checklist-copy measurement where visible checklist UI exists.
+June 2, 2026 update; analytics wording refreshed June 26, 2026: the resource layer was hardened after live-site review and current crawler/source-control research. The website now uses a desktop Resources dropdown, mobile nested resource links, the requested eight-card homepage resources block, footer links aligned to the core resource set, grouped robots rules for named search/AI crawlers plus generic crawlers, `CCBot` in the discovery allowlist, LLM positioning limits, and consent-gated website resource conversion/referrer events. The complete release scope now includes 15 resource articles, four industry landing pages, reviewed locale coverage for the expanded resource set, and checklist-copy measurement where visible checklist UI exists.
 
 ---
 
@@ -149,7 +149,7 @@ These additions are now part of the recommended plan because they directly suppo
 | Use `www.menulist.online` in sitemap and LLM files | Reject | Canonical discovery must stay `https://menulist.ai`. |
 | Add a header Resources dropdown | Accept after June 2 review | Implement a compact desktop dropdown plus mobile nested resource links. Keep the top navigation product-led and do not add a blog-style mega menu. |
 | Add resource CTAs to homepage | Accept | Add one compact lower-page section. Do not turn the homepage into a blog index. |
-| Track resource CTA and AI/search referrals | Accept with scope | Use GA4-only public marketing events where possible. Do not write tenant/customer analytics or sensitive data for public resource traffic. |
+| Track resource CTA and AI/search referrals | Accept with scope | Use consent-gated public marketing website analytics. Plausible receives property-free event names; GA4 compatibility payloads remain optional. Do not write tenant/customer analytics or sensitive data for public resource traffic. |
 | Publish resource routes in one complete scope | Accept with additions | Ship the hub plus 15 article routes, including `/resources/menu-source-audit`, schema guidance, official URL checklist, and QR mistake cleanup as MenuList-native conversion assets. |
 
 ---
@@ -422,7 +422,6 @@ Properties:
 - `utm_source`
 - `utm_medium`
 - `entry_page`
-- `session_id`
 
 Do not store:
 
@@ -432,6 +431,7 @@ Do not store:
 - Emails
 - Payment data
 - Raw search/query text from external referrers
+- Custom third-party session identifiers
 
 ### 8. Resource Distribution Pack
 
@@ -754,7 +754,7 @@ Implementation should not be considered ready until all items pass:
 - Homepage does not become a blog index.
 - Distribution snippets are prepared for the launch resources where needed.
 - The Menu Source Audit page can be shared as a standalone acquisition asset.
-- Analytics events are GA4-only unless explicitly approved otherwise.
+- Analytics events are consent-gated public website events. Plausible receives property-free event names; GA4 compatibility payloads remain optional.
 - No sensitive data is tracked.
 - English resource source content and reviewed active-locale resource packs are present.
 - `npm run verify:website-resource-locales` passes for reviewed resource locale packs.
@@ -782,7 +782,7 @@ See `main-website_resources-localization-plan.md` for the reviewed resource tran
 | Downloadable worksheet assets now? | Keep worksheet as HTML first unless a real generated file is designed and QA'd. |
 | Static or interactive Menu Source Audit? | Static HTML checklist first. Add client-side interaction only if it stays anonymous and does not create backend cost. |
 | Gated templates or ungated resources? | Ungated first. Do not add an email gate until there is a separate consent and follow-up plan. |
-| GA4-only public website events? | Yes. Avoid Firebase customer analytics writes for resource traffic. |
+| Public website events only? | Yes. Avoid Firebase customer analytics writes for resource traffic. |
 | Public launch domain for smoke test? | Use `menulist.ai` as canonical; `menulist.online` can be preview verification only. |
 
 ---

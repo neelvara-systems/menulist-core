@@ -29,6 +29,8 @@ export const CSP_ALLOWLIST = {
         "https://checkout.razorpay.com",
         "https://cdn.razorpay.com",
         'https://*.clarity.ms', // Microsoft Clarity analytics (scripts.clarity.ms + www.clarity.ms)
+        'https://plausible.io', // Plausible Cloud website analytics
+        'https://*.plausible.io', // Plausible site-specific script hosts
         // Add more script sources here as needed
     ],
 
@@ -83,6 +85,8 @@ export const CSP_ALLOWLIST = {
         'http://127.0.0.1:9199', // Firebase Storage Emulator (dev only)
         'http://localhost:9199', // Firebase Storage Emulator (alternative)
         'https://*.clarity.ms', // Microsoft Clarity analytics reporting
+        'https://plausible.io', // Plausible Cloud event endpoint
+        'https://*.plausible.io', // Plausible site-specific event endpoints
         'https://*.razorpay.com', // Razorpay payment processing API calls
         'https://us-central1-menulist-qa.cloudfunctions.net', // MenuList QA callable Cloud Functions
         'https://us-central1-menulist.cloudfunctions.net', // MenuList production callable Cloud Functions

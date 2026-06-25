@@ -174,10 +174,10 @@ LANGUAGE_TRANSLATION: "languageTranslation";
 const AI_MODEL = "gemini-2.5-flash";
 
 // constants/AI/models.ts has:
-AI_MODELS.TRANSLATION.model = "gemini-2.0-flash";
+AI_MODELS.TRANSLATION.model = GEMINI_MODELS.TEXT_GEN; // gemini-2.5-flash
 ```
 
-**Note:** Route uses 2.5 Flash, models.ts says 2.0 Flash. Route is correct (user preference). Consider updating models.ts to match. **Not blocking.**
+**Note:** Route and centralized model config now both use the stable production text model.
 
 ---
 
@@ -316,7 +316,7 @@ npx tsc --noEmit
 
 1. ~~**AI Copy in UI:** "AI will translate" should be "Menu will be translated" per Language Governance.~~ ✅ **FIXED** (Feb 1, 2026)
 
-2. **Model Version Mismatch:** `route.ts` uses `gemini-2.5-flash`, `models.ts` suggests `gemini-2.0-flash`. Current route is correct (per user), but constants file is outdated. **Low priority.**
+2. ~~**Model Version Mismatch:** Route and centralized model config now both use `gemini-2.5-flash`.~~ ✅ **FIXED** (June 25, 2026)
 
 3. **AVAILABLE_LANGUAGES:** Legacy constant with only 3 languages. Consider removing if unused. **Low priority.**
 

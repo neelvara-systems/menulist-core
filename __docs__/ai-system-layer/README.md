@@ -1,17 +1,19 @@
 # AI System Layer
 
 **Feature:** Centralized AI Infrastructure for MenuList  
-**Status:** ✅ PHASE 1 COMPLETE — Key rotation + AI Gateway implemented globally  
+**Status:** ✅ PRODUCTION HARDENING ACTIVE — Gateway, rotation, model constants, daily health checks
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation  
-**Last Updated:** June 2, 2026
+**Last Updated:** June 25, 2026
 
 ---
 
 ## Overview
 
-The AI System Layer is a centralized infrastructure that governs ALL AI operations across MenuList. Instead of each feature calling Gemini independently with its own retry logic, rate limiting, and error handling, all AI calls flow through a single gateway.
+The AI System Layer is a centralized infrastructure that governs AI operations across MenuList and the shared Answerlattice paths that live in this repo. Instead of each feature calling Gemini independently with its own retry logic, rate limiting, and error handling, AI calls flow through a gateway plus shared model constants.
 
 **Core principle:** AI is an expensive, rate-limited external resource. Treat it like a database — centralize access, control cost, and monitor health.
+
+Production rule: API keys are failover and rotation credentials, not a quota scaling strategy. Google Gemini rate limits are enforced at the project/model tier, so production capacity must be handled with billing, quota monitoring, model choice, and provider health checks.
 
 ---
 
@@ -31,9 +33,9 @@ The AI System Layer is a centralized infrastructure that governs ALL AI operatio
 
 ## Quick Reference
 
-### Current State (✅ Implemented March 13, 2026)
+### Current State (✅ Updated June 25, 2026)
 
-All 18 AI call sites (11 frontend + 7 CF) now flow through the AI Gateway with multi-key rotation:
+AI call sites use the gateway and shared model constants. Active source code no longer calls Gemini 2.0 Flash models.
 
 | AI Feature              | SDK             | Model                                | Key Rotation | Retry           | Rate Limiting |
 | ----------------------- | --------------- | ------------------------------------ | ------------ | --------------- | ------------- |
@@ -41,19 +43,20 @@ All 18 AI call sites (11 frontend + 7 CF) now flow through the AI Gateway with m
 | Feedback Analysis       | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
 | Owner Dashboard Summary | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
 | KB Quality Analysis     | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
-| Weekly Narrative        | `@google/genai` | varies                               | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
+| Weekly Narrative        | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
 | KB Generation           | `@google/genai` | `gemini-2.5-pro`                     | ✅ Gateway   | ✅ Gateway      | ❌ None       |
 | Embeddings (CF)         | `@google/genai` | `text-embedding-004`                 | ✅ Gateway   | ✅ Gateway      | ❌ None       |
 | Help Center Search      | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Descriptions            | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Translations            | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Image Generation        | `@google/genai` | `gemini-2.5-flash-preview-05-20`     | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Image Editing           | `@google/genai` | `gemini-2.0-flash-preview-image-gen` | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Image Generation        | `@google/genai` | `gemini-2.5-flash-image`             | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Image Editing           | `@google/genai` | `gemini-2.5-flash-image`             | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | New Item Metadata       | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Campaign Captions       | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Answerlattice Translate      | `@google/genai` | varies                               | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Review Drafts           | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Answerlattice Translate | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Public Create Menu      | `@google/genai` | varies                               | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Embeddings (Frontend)   | `@google/genai` | `text-embedding-004`                 | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Answerlattice Embeddings | `@google/genai` | `gemini-embedding-001`               | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 
 ### Architecture (Implemented)
 
@@ -86,6 +89,11 @@ Gemini API (via @google/genai SDK)
 | Default model         | `gemini-2.5-flash`               | Cost-effective, already proven in extraction                |
 | Key pool              | **✅ IMPLEMENTED** (1-4 keys)    | Auto-discovers available keys from env vars                 |
 | Proxy approach        | Transparent (same interface)     | Zero changes to 19 call sites                               |
+| Production key policy | Separate restricted keys per environment | Limits blast radius; keys are not exposed client-side       |
+| Quota policy          | Per Google project/model tier    | Extra keys are for failover/rotation, not unlimited quota   |
+| Model names           | Stable names only for production | No `latest`, preview, or experimental aliases in active prod paths |
+| Answerlattice embeddings | Keep `gemini-embedding-001` until reindex | Embedding 2 migration requires a planned vector-space rebuild |
+| Provider health       | Daily scheduler checks           | Detect key, model, or quota failures before owners report them |
 | Task queue            | Phase 2 (not MVP)                | Extraction already has job queue; others don't need one yet |
 | Knowledge reuse layer | Phase 3                          | Needs real data volume before caching is valuable           |
 
@@ -112,6 +120,8 @@ Gemini API (via @google/genai SDK)
 | `src/lib/google/genAi/index.ts`      | Entry point — exports `genAIClient` (gateway) |
 | `src/lib/google/genAi/aiGateway.ts`  | AI Gateway — retry + key rotation proxy       |
 | `src/lib/google/genAi/keyManager.ts` | Key Manager — pool + health tracking          |
+| `src/constants/AI/models.ts`         | Shared MenuList model constants               |
+| `src/constants/answerlattice/ai.ts`  | Shared Answerlattice model constants          |
 
 ### Cloud Functions (functions/src/)
 
@@ -121,6 +131,22 @@ Gemini API (via @google/genai SDK)
 | `functions/src/ai/aiGateway.ts`   | AI Gateway — retry + key rotation proxy       |
 | `functions/src/ai/keyManager.ts`  | Key Manager — pool + health tracking          |
 | `functions/src/config/secrets.ts` | Secret names + groups (4 AI key slots)        |
+| `functions/src/constants/ai.ts`   | Cloud Functions AI model constants            |
+| `functions/src/schedulers/aiProviderHealth.ts` | Daily MenuList Gemini health check |
+
+### Answerlattice Cloud Functions
+
+| File | Purpose |
+| --- | --- |
+| `functions-answerlattice/src/constants/ai.ts` | Answerlattice Functions AI model constants |
+| `functions-answerlattice/src/answerlattice/aiProviderHealth.ts` | Daily Answerlattice Gemini health check |
+
+### Health Records
+
+| Product | Scheduler | Health Record |
+| --- | --- | --- |
+| MenuList | `menulistMaintenanceScheduler` task `ai_provider_health_check` | `_health/aiProvider_gemini` |
+| Answerlattice | `answerlatticeMasterScheduler` task `ai_provider_health_check` | `platformSummary/answerlatticeAiProviderHealth` |
 
 ### Environment Variables
 
@@ -130,6 +156,8 @@ Gemini API (via @google/genai SDK)
 | `GEMINI_AI_KEY_2` | Optional | Vercel + Firebase Secrets |
 | `GEMINI_AI_KEY_3` | Optional | Vercel + Firebase Secrets |
 | `GEMINI_AI_KEY_4` | Optional | Vercel + Firebase Secrets |
+
+Each environment must use its own key values. Do not share the production key with local or staging. Restrict keys to the Gemini API and keep browser code behind server routes or Firebase Functions.
 
 ### Accounting Guardrails
 
@@ -145,4 +173,4 @@ npm run verify:ai-accounting
 
 ---
 
-_Last Updated: June 2, 2026_
+_Last Updated: June 25, 2026_

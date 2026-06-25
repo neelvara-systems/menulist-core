@@ -1,6 +1,6 @@
 # ConstantLayer Main Website - Marketing And Messaging
 
-**Status:** Draft  
+**Status:** Implemented; pending owner/legal launch review
 **Audience:** Founder, copy reviewer, implementation agent  
 **Public tone:** Calm, factual, entity-trust oriented
 
@@ -175,14 +175,15 @@ The parent site can borrow presentation mechanics from strong SaaS/product sites
 
 Use:
 
+- Prism glass mesh, grain, and glass-panel treatment as a scoped visual system
 - meaningful hero artifact instead of blank decoration
-- compact module cards with row-level facts
+- bento, spotlight-card, comparison, product-lineup, and contact-routing sections
 - clear first-viewport hierarchy
 - restrained proof-style details such as entity, product surface, and contact routing
 
 Reject:
 
-- loud purple/pink gradients
+- unrelated or overpowering gradient systems outside the approved Prism mesh palette
 - playful illustration-heavy payment styling
 - customer logos or testimonials
 - product-conversion claims

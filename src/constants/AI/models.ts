@@ -3,18 +3,10 @@
  * ════════════════════════════════════════════════════════════════
  * 
  * Centralized configuration for all AI models used across the application.
- * Based on benchmarks and real-world testing (Nov 2025):
- * 
- * 🔬 Key Findings:
- * - Gemini 2.0 Flash: BEST for OCR/data extraction (98-99% accuracy)
- * - Gemini 2.0 Flash: BEST for translation (more idiomatic)
- * - Gemini 2.5 Flash: Good for creative text generation
- * - Gemini 2.5 Pro: Best for complex reasoning tasks
- * 
- * Sources:
- * - Reddit r/LocalLLaMA: "Gemini 2.0-flash was better than 2.5-PRO for OCR"
- * - Reddit r/GeminiAI: "2.0 models seem consistently superior for OCR"
- * - Google AI Forum: "2.0 is much better for OCR tasks"
+ * Production rule:
+ * - Do not use preview, experimental, or latest aliases in production.
+ * - Do not use shut-down model families such as Gemini 2.0 Flash.
+ * - Keep default upgrades deliberate; model changes affect cost, parsing, and output shape.
  * 
  * Usage:
  * import { AI_MODELS } from '@constant/AI/models';
@@ -28,12 +20,20 @@
 export const GEMINI_MODELS = {
     // Text Generation Models
     TEXT_GEN: 'gemini-2.5-flash',
+    TEXT_FAST: 'gemini-2.5-flash-lite',
+    TEXT_PRO: 'gemini-2.5-pro',
+    TEXT_FRONTIER_STABLE: 'gemini-3.5-flash',
+    TEXT_FRONTIER_FAST_STABLE: 'gemini-3.1-flash-lite',
+
     // Image Generation Models
     IMAGE_GEN: 'gemini-2.5-flash-image',
+    IMAGE_FRONTIER_STABLE: 'gemini-3.1-flash-image',
+    // Legacy generateImages() branch. The active image routes default to IMAGE_GEN.
     IMAGEN_3: 'imagen-3.0-generate-002',
 
     // Embedding Model
-    TEXT_EMBEDDING: 'text-embedding-004',
+    TEXT_EMBEDDING: 'gemini-embedding-001',
+    MULTIMODAL_EMBEDDING: 'gemini-embedding-2',
 } as const;
 
 // ═══════════════════════════════════════════════════════════════
@@ -74,11 +74,11 @@ export const AI_MODELS = {
 
     /**
      * 🌐 Translation
-     * 
-     * Model: Gemini 2.0 Flash
-     * Why: More idiomatic, native-like translations
-     *      Better terminology, word order, and style
-     * 
+     *
+     * Model: Gemini 2.5 Flash
+     * Why: Stable production model. Gemini 2.0 Flash is shut down and must not
+     *      be used in production paths.
+     *
      * Config: Moderate temperature for natural language
      */
     TRANSLATION: {
@@ -115,10 +115,10 @@ export const AI_MODELS = {
 
     /**
      * 📝 New Item Metadata Generation
-     * 
-     * Model: Gemini 2.0 Flash
-     * Why: Structured data extraction benefits from 2.0's accuracy
-     * 
+     *
+     * Model: Gemini 2.5 Flash
+     * Why: Stable production model for structured JSON output.
+     *
      * Config: Moderate temperature for balanced output
      */
     NEW_ITEM_METADATA: {
@@ -149,11 +149,12 @@ export const AI_MODELS = {
     },
 
     /**
-     * 🎨 Image Generation (Imagen 3)
-     * 
+     * 🎨 Image Generation (legacy Imagen 3 branch)
+     *
      * Model: imagen-3.0-generate-002
-     * Why: Highest quality photorealistic images
-     *      Built-in safety filters
+     * Why: Preserved for the dormant generateImages() branch. Do not make this
+     *      the production default without a provider-specific migration and
+     *      current model/deprecation check.
      */
     IMAGEN: {
         model: GEMINI_MODELS.IMAGEN_3,
@@ -199,9 +200,11 @@ export const AI_MODELS = {
 
     /**
      * 📊 Text Embeddings
-     * 
-     * Model: text-embedding-004
-     * Why: Google's latest embedding model for semantic search
+     *
+     * Model: gemini-embedding-001
+     * Why: Existing Answerlattice/help-center vector indexes use this text-only
+     *      embedding space. Migrating to Gemini Embedding 2 requires a full
+     *      re-embedding plan, not a string-only change.
      */
     EMBEDDINGS: {
         model: GEMINI_MODELS.TEXT_EMBEDDING,

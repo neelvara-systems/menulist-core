@@ -50,6 +50,7 @@ Before SignalDesk can import targets, score opportunities, draft messages, route
 | SDF-R006 | Stale policy/config warning. | P0 |
 | SDF-R007 | Mobile emergency pause only. | P0 |
 | SDF-R008 | No public indexing, public sitemap, or public route. | P0 |
+| SDF-R009 | Founder admin can add, update, deactivate, and role-assign internal SignalDesk team members without a public signup path. | P0 |
 
 ## Kill Switch Scopes
 
@@ -85,3 +86,4 @@ Those belong to later module doc sets.
 - Every kill-switch change writes audit event.
 - Active global outbound kill switch blocks sends/exports.
 - Mobile can pause global outbound but cannot send or approve.
+- Founder admin can add a partner by login email, assign a role, and audit the membership change.

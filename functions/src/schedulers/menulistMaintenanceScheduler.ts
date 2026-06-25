@@ -20,6 +20,7 @@ import { sendPlatformAlertDelivery } from '../monitoring/platformNotificationDel
 import { sendTelegramAlert } from '../monitoring/telegramAlert';
 import { intakeProcessorLogic } from '../messagingOnboarding';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
+import { runAiProviderHealthCheckLogic } from './aiProviderHealth';
 import {
     cleanupExpiredPreviewJobsLogic,
     cleanupOldJobsLogic,
@@ -942,6 +943,14 @@ async function runChatStatsAggregation(): Promise<MaintenanceTaskResult> {
     };
 }
 
+async function runAiProviderHealthCheck(): Promise<MaintenanceTaskResult> {
+    const result = await runAiProviderHealthCheckLogic();
+    return {
+        activity: false,
+        details: result,
+    };
+}
+
 const TASKS: MaintenanceTask[] = [
     {
         name: 'messaging_intake',
@@ -966,6 +975,12 @@ const TASKS: MaintenanceTask[] = [
         cadence: { type: 'daily', hourUtc: 1, minuteUtc: 0, retryAfterMinutes: 60 },
         lockTtlMs: 10 * MINUTE_MS,
         run: runChatStatsAggregation,
+    },
+    {
+        name: 'ai_provider_health_check',
+        cadence: { type: 'daily', hourUtc: 1, minuteUtc: 20, retryAfterMinutes: 60 },
+        lockTtlMs: 5 * MINUTE_MS,
+        run: runAiProviderHealthCheck,
     },
     {
         name: 'menu_old_cleanup',

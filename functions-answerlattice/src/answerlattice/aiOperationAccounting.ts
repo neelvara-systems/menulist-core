@@ -1,5 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
+import { ANSWERLATTICE_EMBEDDING_MODEL, ANSWERLATTICE_TEXT_MODEL } from '../constants/ai';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db, vertexAIClient } from '../firebaseAdmin';
 
@@ -46,8 +47,8 @@ export type AnswerlatticeAiOperationInput = {
 const PRODUCT_ID = 'AL';
 const TOKENS_PER_CREDIT = 500;
 const CHARGE_PER_CREDIT = 100;
-const GEMINI_MODEL = 'gemini-2.0-flash';
-const EMBEDDING_MODEL = 'gemini-embedding-001';
+const GEMINI_MODEL = ANSWERLATTICE_TEXT_MODEL;
+const EMBEDDING_MODEL = ANSWERLATTICE_EMBEDDING_MODEL;
 
 const sanitizeForFirestore = (value: any): any => {
     if (value === undefined) return null;

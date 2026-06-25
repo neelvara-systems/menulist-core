@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** June 22, 2026
+**Last Updated:** June 25, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -25,7 +25,7 @@
 
 > Public truth indexing note (June 2, 2026): The business-page strategy is handled in the customer-facing tenant/OBP/menu discovery layer, not by creating more website articles. Existing public tenant pages now use a central indexability gate for metadata and sitemap inclusion. Marketing should not request keyword-variant restaurant pages, AI-written business pages, or city/category directory pages until owner-approval, source-confidence, and claim/update rules are documented.
 
-> Privacy and analytics note (June 5, 2026; CTA label updated June 22, 2026): Main MenuList website analytics are consent-gated. Google Analytics and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Create customer link` or `See customer preview` actions. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
+> Privacy and analytics note (June 5, 2026; CTA label updated June 22, 2026; vendor boundary tightened June 25, 2026; Plausible website-only layer added June 26, 2026): Main MenuList website analytics are consent-gated. Plausible, Google Analytics, and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Plausible is website-only and env-gated by `NEXT_PUBLIC_MENULIST_PLAUSIBLE_DOMAIN`; GA4 remains for paid-ad/conversion continuity; Clarity remains for visual behavior observation. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Create customer link` or `See customer preview` actions. Public website third-party events may include page, entry-page, referrer, UTM, locale, CTA, and target URL context, but they must not send custom repo-generated session identifiers, tenant ids, owner ids, customer ids, emails, phone numbers, or private business identifiers. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
 
 > Business Health website note (June 17, 2026): Business Health may now be promoted as MenuList's AI health check for the menu and public presence. This is a diagnostic-only AI positioning: Business Health checks cached MenuList facts, shows what needs attention, says No action needed when stable, and hands fixes to AI Menu Manager or existing owner screens. Do not call it a chatbot, autonomous business agent, revenue optimizer, prediction system, competitor tracker, or direct public-truth editor.
 
@@ -1700,7 +1700,7 @@ Chat-style sequence:
 ### Privacy Policy, Terms of Service, Refund Policy
 
 - **Privacy Policy staff-access content:** Disclose staff account details, role/store assignment, account status, reset/session metadata, authorized team access, and that MenuList does not store plain-text staff passcodes.
-- **Privacy Policy analytics content:** Disclose that main website Google Analytics and Microsoft Clarity load only after analytics consent. Keep customer menu analytics separate: they do not ask visitors for names, emails, or payment details, but they are not controlled by the main website banner.
+- **Privacy Policy analytics content:** Disclose that main website Plausible, Google Analytics, and Microsoft Clarity load only after analytics consent when configured. Keep customer menu analytics separate: they do not ask visitors for names, emails, or payment details, but they are not controlled by the main website banner.
 - **Privacy Policy retention content:** Use purpose-based retention language unless an exact lifecycle is enforced in code or provider configuration. Do not publish fixed 90-day, 35-day, DPA, SCC, or sub-processor commitments until the matching operational artifacts exist.
 - **Privacy/security claim discipline:** Avoid exact encryption algorithms, fixed backup windows, broad model-training guarantees, DPA/SCC/sub-processor readiness, universal export/delete controls, and "all third parties" confidentiality language unless the matching code, provider configuration, or legal artifact is present.
 - **Terms staff-access content:** Make owners responsible for staff access they create, safe sharing of Staff ID/passcode details, correct role assignment, and ending access when staff leave.

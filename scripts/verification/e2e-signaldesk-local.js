@@ -21,6 +21,7 @@ const path = require("path");
 const { SIGNALDESK_COLLECTIONS, SIGNALDESK_SUMMARY_DOCS } = require("@constant/signaldesk/database");
 const { admin, signaldeskFirestoreAdmin } = require("@lib/firebase/signaldeskFirebaseAdmin");
 const { isSignalDeskMobileRequest } = require("@lib/signaldesk/apiGuards");
+const { getSignalDeskAccessContext } = require("@lib/signaldesk/access");
 const { recordSignalDeskMobileActionBlockedServer } = require("@lib/signaldesk/server");
 const { processSignalDeskProviderWebhook } = require("@lib/signaldesk/webhookServer");
 const {
@@ -39,6 +40,7 @@ const {
   seedSignalDeskDefaultsServer,
   sendSignalDeskApprovedMessageServer,
   upsertSignalDeskSenderDomainServer,
+  upsertSignalDeskTeamMemberServer,
 } = require("@lib/signaldesk/workflowServer");
 
 const db = signaldeskFirestoreAdmin;
@@ -53,7 +55,21 @@ const access = {
   firebaseConfigured: true,
   isPlatformAdmin: true,
   name: "SignalDesk E2E",
-  permissions: ["*"],
+  permissions: [
+    "signaldesk.view",
+    "signaldesk.configure",
+    "target.review",
+    "draft.create",
+    "draft.approve",
+    "message.export",
+    "message.send",
+    "source.configure",
+    "channel.configure",
+    "policy.approve",
+    "kill-switch.activate",
+    "kill-switch.deactivate",
+    "audit.view",
+  ],
   role: "founder-admin",
   userId: "signaldesk-e2e",
 };
@@ -272,6 +288,72 @@ async function assertHappyPath() {
   return { approvalId: draftResult.approval.approvalId, sourcePolicyId: sourcePolicy.sourcePolicyId, targetId };
 }
 
+async function assertTeamAccessManagement() {
+  const partnerEmail = "signaldesk-partner@example.invalid";
+  const partnerSession = {
+    uId: "partner-auth-session",
+    user: {
+      email: partnerEmail,
+      name: "SignalDesk Partner",
+    },
+  };
+  const member = await upsertSignalDeskTeamMemberServer(access, {
+    active: true,
+    email: partnerEmail,
+    name: "SignalDesk Partner",
+    role: "growth-manager",
+  });
+  assert(member.teamMemberId, "Team member was not created");
+  assert(member.active === true, "Team member was not active");
+
+  const memberSnap = await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS).doc(member.teamMemberId).get();
+  assert(memberSnap.exists, "Team member document was not stored");
+
+  const partnerAccess = await getSignalDeskAccessContext(partnerSession);
+  assert(partnerAccess?.active === true, "Partner access did not resolve by login email");
+  assert(partnerAccess.role === "growth-manager", "Partner role did not resolve from team member record");
+
+  const updated = await upsertSignalDeskTeamMemberServer(access, {
+    active: true,
+    email: partnerEmail,
+    name: "SignalDesk Partner",
+    role: "operator",
+    teamMemberId: member.teamMemberId,
+  });
+  assert(updated.role === "operator", "Team member role update failed");
+
+  const operatorAccess = await getSignalDeskAccessContext(partnerSession);
+  assert(operatorAccess?.role === "operator", "Updated partner role did not resolve");
+
+  await upsertSignalDeskTeamMemberServer(access, {
+    active: false,
+    email: partnerEmail,
+    name: "SignalDesk Partner",
+    role: "operator",
+    teamMemberId: member.teamMemberId,
+  });
+  const blockedAccess = await getSignalDeskAccessContext(partnerSession);
+  assert(blockedAccess === null, "Inactive team member still resolved access");
+
+  await expectRejects("Self-deactivation", () => upsertSignalDeskTeamMemberServer(access, {
+    active: false,
+    email: access.email,
+    name: access.name,
+    role: access.role,
+    teamMemberId: access.userId,
+    userId: access.userId,
+  }), "SignalDesk team member cannot deactivate own access");
+
+  const auditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+    data.entityType === "teamMember" &&
+    (data.action === "team_member_upsert" || data.action === "team_member_deactivate")
+  ));
+  assert(auditCount >= 3, "Team member changes did not write audit events");
+
+  const settingsWorkspace = await loadSignalDeskWorkspaceServer(access, "settings");
+  assert(settingsWorkspace.workspace.teamMembers.some((item) => item.teamMemberId === member.teamMemberId), "Settings workspace did not include team member");
+}
+
 async function assertSourcePolicyNegatives() {
   await expectRejects("Import without source policy", () => importSignalDeskTargetsServer(access, {
     rows: [rowFor("MissingPolicy")],
@@ -325,6 +407,72 @@ async function assertSourcePolicyNegatives() {
   const heldTargetId = await importOne(contactBlockedPolicy.sourcePolicyId, "NoContact", { email: "blocked@example.invalid" });
   const heldTargetSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(heldTargetId).get();
   assert(heldTargetSnap.data()?.contactability === "blocked", "Contact-disallowed import did not block contactability");
+}
+
+async function assertFhrsFhisSourceProvider() {
+  const policy = await createPolicy("FHRS FHIS provider", {
+    allowContact: false,
+    provider: "fhrs-fhis",
+    sourceType: "provider",
+  });
+  const originalFetch = global.fetch;
+  global.fetch = async (url, options = {}) => {
+    const requestUrl = new URL(String(url));
+    assert(requestUrl.origin === "https://api.ratings.food.gov.uk", "FHRS/FHIS provider used unexpected host");
+    assert(requestUrl.pathname === "/Establishments", "FHRS/FHIS provider used unexpected endpoint");
+    assert(requestUrl.searchParams.get("businessTypeId") === "1", "FHRS/FHIS provider did not map restaurant query to business type");
+    assert(requestUrl.searchParams.get("address") === "Leeds UK", "FHRS/FHIS provider did not pass location as address filter");
+    assert(options.headers?.["x-api-version"] === "2", "FHRS/FHIS provider did not request API v2");
+    return {
+      ok: true,
+      json: async () => ({
+        establishments: [{
+          AddressLine1: "1 Test Street",
+          AddressLine2: "",
+          AddressLine3: "Leeds",
+          AddressLine4: "",
+          BusinessName: "FHRS Test Cafe",
+          BusinessType: "Restaurant/Cafe/Canteen",
+          BusinessTypeID: 1,
+          FHRSID: 1234567,
+          LocalAuthorityName: "Leeds",
+          NewRatingPending: false,
+          Phone: "01130000000",
+          PostCode: "LS1 1AA",
+          RatingDate: "2026-01-10T00:00:00",
+          RatingValue: "5",
+          SchemeType: "FHRS",
+          geocode: { latitude: 53.8, longitude: -1.54 },
+        }],
+      }),
+    };
+  };
+
+  try {
+    const result = await runSignalDeskSourceProviderServer(access, {
+      city: "Leeds",
+      country: "UK",
+      maxResults: 1,
+      provider: "fhrs-fhis",
+      query: "restaurant",
+      sourcePolicyId: policy.sourcePolicyId,
+    });
+    assert(result.targets.length === 1, "FHRS/FHIS provider did not import one target");
+    const target = result.targets[0];
+    assert(target.displayName === "FHRS Test Cafe", "FHRS/FHIS provider target name was not normalized");
+    const targetDetail = await db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(target.targetId).get();
+    assert(String(targetDetail.data()?.notes || "").includes("No contact permission is inferred"), "FHRS/FHIS provider notes did not preserve contact boundary");
+    const retentionCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.PROVIDER_SOURCE_RETENTION, (data) => (
+      data.provider === "fhrs-fhis" && data.providerRecordId === "1234567" && data.rawPayloadStored === false
+    ));
+    assert(retentionCount === 1, "FHRS/FHIS provider retention record was not stored safely");
+    const contactIdentityCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES, (data) => (
+      data.targetId === target.targetId
+    ));
+    assert(contactIdentityCount === 0, "FHRS/FHIS provider created contact identities despite contact use being disabled");
+  } finally {
+    global.fetch = originalFetch;
+  }
 }
 
 async function assertExpiryAcrossWorkflow() {
@@ -534,8 +682,10 @@ async function main() {
   await cleanSignalDeskData();
   await seedAccessAndReadiness();
 
+  await assertTeamAccessManagement();
   const happy = await assertHappyPath();
   await assertSourcePolicyNegatives();
+  await assertFhrsFhisSourceProvider();
   await assertExpiryAcrossWorkflow();
   await assertApprovalAndExportNegatives();
   await assertMobileReadOnlyContract();

@@ -1,6 +1,6 @@
 # Branded QR Action Templates
 
-**Status:** Docs-ready alignment layer
+**Status:** Editor-backed alignment layer
 **Owner:** MenuList
 **Last Updated:** June 25, 2026
 
@@ -16,7 +16,7 @@ physical touchpoint
 -> useful customer outcome
 ```
 
-This is not a separate runtime route today. It aligns existing and future work across Assets, Printable Asset Templates, Menu Kit, and QR WhatsApp Experiments.
+This is not a separate runtime route. It aligns existing and future work across Assets, Printable Asset Templates, Menu Kit, the shared Creative Editor, and QR WhatsApp Experiments.
 
 ## Document Index
 
@@ -35,10 +35,21 @@ This is not a separate runtime route today. It aligns existing and future work a
 
 | Layer | Current Home | Decision |
 | --- | --- | --- |
-| Standard branded QR surface | Assets / Printable Asset Templates / Menu Kit | Implemented pattern. QR stays standard, dark, quiet-zone safe, and surrounded by branded frame, CTA, short link, and business identity. |
-| Business-action template | Assets / Printable Asset Templates | Accepted. Owner chooses output such as menu, order, feedback, booking, offer, loyalty, reorder, event, or product info. |
+| Standard branded QR surface | Assets / Printable Asset Templates / Menu Kit / Creative Editor | Implemented pattern. QR stays standard, high-contrast, error-correction-safe, quiet-zone safe, and surrounded by branded frame, CTA, short link, and business identity. |
+| Business-action template | Assets / Printable Asset Templates / Creative Editor | Accepted. Owner chooses output such as menu, order, feedback, booking, offer, loyalty, reorder, event, or product info. |
 | Measured WhatsApp campaign | QR WhatsApp Experiments | Accepted as separate experiment layer with tokens, consent, and dashboard. |
 | Artistic QR pattern | Not admitted | Rejected until a dedicated scan-regression suite proves reliability across devices and printed materials. |
+
+## Implemented Editor Surface
+
+The shared Creative Editor QR drawer provides guided action-card presets for Menu, Feedback, Order, Offer, Book, and Loyalty. These presets insert normal editable Fabric layers around a scan-safe QR code:
+
+- branded frame and accent block;
+- owner-editable headline, helper copy, and destination hint;
+- white QR quiet-zone panel;
+- QR layer with `errorCorrectionLevel: "H"` and `margin: 4`.
+
+Plain QR insertion remains available for edge cases, but the recommended SMB path is the action card.
 
 ## Safety Tiers
 

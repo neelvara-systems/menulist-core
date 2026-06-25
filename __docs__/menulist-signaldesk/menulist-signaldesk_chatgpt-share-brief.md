@@ -103,11 +103,12 @@ The implemented runtime covers:
 15. Provider-send plumbing, currently disabled.
 16. Signed provider webhook intake.
 17. Google Places source-provider import.
-18. Apify Source Broker import and webhook event logging.
-19. Gemini AI assist through model routes and budget checks.
-20. Provider registry and budget governor.
-21. AI model routes and model evaluation summaries.
-22. Vendor run ledger.
+18. FHRS/FHIS UK source-provider import as source/evidence only, not contact permission.
+19. Apify Source Broker import and webhook event logging.
+20. Gemini AI assist through model routes and budget checks.
+21. Provider registry and budget governor.
+22. AI model routes and model evaluation summaries.
+23. Vendor run ledger.
 23. Enrichment waterfall policies and normalized enrichment results.
 24. Audience and signal segments.
 25. Market pod recommender.
@@ -213,6 +214,7 @@ SignalDesk may use external providers only through approved gates.
 Current posture:
 
 - Apify Source Broker is implemented as a gated source/evidence connector.
+- FHRS/FHIS UK source-provider import is implemented as official establishment seed/evidence only; no contact permission or public rating feature is inferred.
 - Google Places source-provider import is implemented.
 - Gemini AI assist is implemented behind model route, provider approval, and budget gates.
 - Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, and similar paid adapters are intentionally skipped for now.

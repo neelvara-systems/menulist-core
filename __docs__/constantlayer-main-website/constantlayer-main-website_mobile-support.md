@@ -1,6 +1,6 @@
 # ConstantLayer Main Website - Mobile Support
 
-**Status:** Draft  
+**Status:** Validated
 **Decision:** Responsive public website yes; MenuList owner mobile PWA feature no  
 **Scope:** Public static ConstantLayer website
 
@@ -43,6 +43,7 @@ Required:
 - no fixed headers covering content
 - no large hero that hides all next-section context
 - footer legal links visible on mobile
+- ConstantLayer Prism redesign keeps the full desktop/tablet hero studio mock, but hides the large mock on small phones so the entity ledger starts inside the first mobile viewport.
 
 ---
 
@@ -82,18 +83,17 @@ Avoid complex animations, carousels, horizontal cards, or dense multi-column leg
 
 ## 6. Verification
 
-After implementation, check:
+Current redesign verification checked:
 
-- 320x640 mobile viewport
+- 320x720 mobile viewport
 - 375x812 mobile viewport
-- 390x844 mobile viewport
-- 768x1024 tablet viewport
-- 1440x900 desktop viewport
-- keyboard navigation on desktop
+- 1440x1000 desktop viewport
+- every public ConstantLayer page: `/`, `/products`, `/about`, `/contact`, `/legal`, `/privacy`, and `/terms`
 - touch targets on mobile
 - footer link visibility
 - no content overlap
 - no off-screen nav
+- no horizontal overflow (`scrollWidth === viewport width`)
+- home page next-section signal visible in desktop and mobile viewport audits
 
 No MenuList mobile verifier is required unless this site is later moved into the shared app, which is not the current recommendation.
-

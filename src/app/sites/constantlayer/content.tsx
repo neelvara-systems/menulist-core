@@ -2,12 +2,20 @@ import type { Metadata } from 'next';
 import type { IconType } from 'react-icons';
 import {
     LuArrowRight,
+    LuArrowUpRight,
     LuBuilding2,
+    LuCheck,
+    LuCpu,
+    LuDatabase,
     LuExternalLink,
     LuFileText,
+    LuFingerprint,
+    LuGlobe2,
     LuLayers,
+    LuLock,
     LuMail,
     LuMenuSquare,
+    LuMinus,
     LuNetwork,
     LuScale,
     LuShieldCheck,
@@ -23,6 +31,7 @@ import {
 } from './siteConfig';
 import ScrollRevealController from './ScrollRevealController';
 import { ConstantLayerLink, SiteHeaderNav } from './SiteHeaderNav';
+import SpotlightCard, { type SpotlightVariant } from './SpotlightCard';
 
 type NavItem = {
     label: string;
@@ -30,11 +39,13 @@ type NavItem = {
     activeHrefs?: string[];
 };
 
-type InfoCard = {
+export type InfoCard = {
     title: string;
     description: string;
     icon: IconType;
     href?: string;
+    meta?: string;
+    variant?: SpotlightVariant;
 };
 
 type PageData = {
@@ -50,6 +61,13 @@ type PageData = {
     }>;
 };
 
+type ComparisonRow = {
+    label: string;
+    company: string;
+    products: string;
+    apps: string;
+};
+
 export const NAV_ITEMS: NavItem[] = [
     { label: 'Products', href: '/products' },
     { label: 'About', href: '/about' },
@@ -62,16 +80,22 @@ export const OPERATING_ROWS: InfoCard[] = [
         title: 'Entity clarity',
         description: 'ConstantLayer Systems is the company-level reference for business, legal, privacy, and product relationship checks.',
         icon: LuBuilding2,
+        meta: 'Company record',
+        variant: 'warm',
     },
     {
         title: 'Product relationship',
         description: 'Each product keeps its own website, workflows, and product information while the company relationship stays clear here.',
         icon: LuLayers,
+        meta: 'Boundary kept',
+        variant: 'cool',
     },
     {
         title: 'Direct verification',
         description: 'Public company questions route to business, legal, and privacy contacts without a form, account, or data collection surface.',
         icon: LuShieldCheck,
+        meta: 'No parent database',
+        variant: 'amber',
     },
 ];
 
@@ -80,18 +104,24 @@ export const DIRECTORY_ROWS = [
         label: 'Business',
         value: CONSTANTLAYER_CONTACT_EMAIL,
         href: `mailto:${CONSTANTLAYER_CONTACT_EMAIL}`,
+        description: 'General company and product-relationship questions.',
+        icon: LuMail,
     },
     {
         label: 'Legal',
         value: CONSTANTLAYER_LEGAL_EMAIL,
         href: `mailto:${CONSTANTLAYER_LEGAL_EMAIL}`,
+        description: 'Vendor, entity, and contract verification.',
+        icon: LuScale,
     },
     {
         label: 'Privacy',
         value: CONSTANTLAYER_PRIVACY_EMAIL,
         href: `mailto:${CONSTANTLAYER_PRIVACY_EMAIL}`,
+        description: 'Parent-site privacy questions and policy routing.',
+        icon: LuShieldCheck,
     },
-];
+] as const;
 
 const PRODUCT_ICON_BY_NAME: Record<typeof CONSTANTLAYER_PRODUCT_LINEUP[number]['name'], IconType> = {
     MenuList: LuMenuSquare,
@@ -105,11 +135,13 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         title: 'Products',
         description: 'MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.',
         eyebrow: 'Product lineup',
-        cards: CONSTANTLAYER_PRODUCT_LINEUP.map((product) => ({
+        cards: CONSTANTLAYER_PRODUCT_LINEUP.map((product, index) => ({
             title: product.name,
             description: product.summary,
             icon: PRODUCT_ICON_BY_NAME[product.name],
             href: product.url,
+            meta: product.status,
+            variant: index === 0 ? 'warm' : index === 1 ? 'cool' : 'amber',
         })),
         sections: [
             {
@@ -133,16 +165,22 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 title: 'Business information',
                 description: 'The work is centered on stable public facts, governed answers, product context, and source-backed business outputs.',
                 icon: LuFileText,
+                meta: 'Public facts',
+                variant: 'warm',
             },
             {
                 title: 'Quiet operation',
                 description: 'The company favors reliable systems over noisy dashboards or broad promises.',
                 icon: LuShieldCheck,
+                meta: 'Low noise',
+                variant: 'cool',
             },
             {
                 title: 'Small business fit',
                 description: 'The primary lens is practical ownership: less maintenance, fewer decisions, clearer support, and better public output.',
                 icon: LuBuilding2,
+                meta: 'Owner lens',
+                variant: 'amber',
             },
         ],
         sections: [
@@ -163,23 +201,14 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         title: 'Contact',
         description: 'Use the right ConstantLayer Systems contact point for business, legal, or privacy inquiries.',
         eyebrow: 'Contact points',
-        cards: [
-            {
-                title: 'Business',
-                description: CONSTANTLAYER_CONTACT_EMAIL,
-                icon: LuMail,
-            },
-            {
-                title: 'Legal',
-                description: CONSTANTLAYER_LEGAL_EMAIL,
-                icon: LuScale,
-            },
-            {
-                title: 'Privacy',
-                description: CONSTANTLAYER_PRIVACY_EMAIL,
-                icon: LuShieldCheck,
-            },
-        ],
+        cards: DIRECTORY_ROWS.map((row) => ({
+            title: row.label,
+            description: row.value,
+            icon: row.icon,
+            href: row.href,
+            meta: row.description,
+            variant: row.label === 'Business' ? 'warm' : row.label === 'Legal' ? 'cool' : 'amber',
+        })),
         sections: [
             {
                 title: 'Inquiry routing',
@@ -203,16 +232,22 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 title: 'Operating name',
                 description: 'ConstantLayer Systems',
                 icon: LuBuilding2,
+                meta: 'Public reference',
+                variant: 'warm',
             },
             {
                 title: 'Product relationship',
                 description: CONSTANTLAYER_RELATIONSHIP_LINE,
                 icon: LuLayers,
+                meta: 'Lineup statement',
+                variant: 'cool',
             },
             {
                 title: 'Legal contact',
                 description: CONSTANTLAYER_LEGAL_EMAIL,
                 icon: LuMail,
+                meta: 'Email route',
+                variant: 'amber',
             },
         ],
         sections: [
@@ -247,16 +282,22 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 title: 'Static website',
                 description: 'The parent website is informational and does not include an account system.',
                 icon: LuFileText,
+                meta: 'Informational only',
+                variant: 'warm',
             },
             {
                 title: 'No contact form',
                 description: 'The site does not submit inquiries to an API or database.',
                 icon: LuShieldCheck,
+                meta: 'No API write',
+                variant: 'cool',
             },
             {
                 title: 'Privacy contact',
                 description: CONSTANTLAYER_PRIVACY_EMAIL,
                 icon: LuMail,
+                meta: 'Email route',
+                variant: 'amber',
             },
         ],
         sections: [
@@ -301,16 +342,22 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 title: 'Informational use',
                 description: 'This website provides entity, product relationship, and contact information.',
                 icon: LuFileText,
+                meta: 'Website use',
+                variant: 'warm',
             },
             {
                 title: 'Product separation',
                 description: 'Product usage is governed by each product surface and its product terms.',
                 icon: LuLayers,
+                meta: 'Separated terms',
+                variant: 'cool',
             },
             {
                 title: 'Questions',
                 description: CONSTANTLAYER_LEGAL_EMAIL,
                 icon: LuMail,
+                meta: 'Legal email',
+                variant: 'amber',
             },
         ],
         sections: [
@@ -336,6 +383,44 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     },
 };
 
+export const MARQUEE_ITEMS = [
+    'ConstantLayer Systems',
+    'MenuList',
+    'Answerlattice',
+    'CampaignCue',
+    'Company reference',
+    'Legal routing',
+    'Privacy inbox',
+    'Product boundary',
+];
+
+export const COMPARISON_ROWS: ComparisonRow[] = [
+    {
+        label: 'Purpose',
+        company: 'Company relationship and entity reference.',
+        products: 'Product claims, product pages, and onboarding.',
+        apps: 'Authenticated owner workflows and product data.',
+    },
+    {
+        label: 'Data',
+        company: 'Static pages and a local cookie acknowledgement.',
+        products: 'Product-specific public policies and support paths.',
+        apps: 'Product runtime data governed by product architecture.',
+    },
+    {
+        label: 'Inquiries',
+        company: 'Business, legal, and privacy email routes.',
+        products: 'Product support and customer-facing questions.',
+        apps: 'Owner actions, team operations, and account work.',
+    },
+    {
+        label: 'Claims',
+        company: 'Narrow, verifiable company-level statements.',
+        products: 'Capability, pricing, and product-specific promises.',
+        apps: 'Operational behavior shown to signed-in users.',
+    },
+];
+
 export function buildPageMetadata(page: PageData): Metadata {
     return {
         title: page.title,
@@ -354,65 +439,28 @@ export function buildPageMetadata(page: PageData): Metadata {
 }
 
 export function ConstantLayerLogoMark() {
-    return (
-        <span className="cl-logo-mark" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-        </span>
-    );
-}
-
-export function SystemScene() {
-    return (
-        <div className="cl-system-scene" aria-hidden="true">
-            <div className="cl-scene-grid" />
-            <div className="cl-scene-rail cl-scene-rail-a" />
-            <div className="cl-scene-rail cl-scene-rail-b" />
-            <div className="cl-scene-record cl-scene-record-a">
-                <span>Company record</span>
-                <strong>ConstantLayer Systems</strong>
-                <small>Parent reference</small>
-            </div>
-            <div className="cl-scene-record cl-scene-record-b">
-                <span>Product surfaces</span>
-                <div className="cl-scene-chips">
-                    {CONSTANTLAYER_PRODUCT_LINEUP.map((product) => (
-                        <strong key={product.name}>{product.name}</strong>
-                    ))}
-                </div>
-            </div>
-            <div className="cl-scene-record cl-scene-record-c">
-                <span>Inquiry routing</span>
-                <div className="cl-scene-routes">
-                    <strong>Business</strong>
-                    <strong>Legal</strong>
-                    <strong>Privacy</strong>
-                </div>
-            </div>
-            <div className="cl-scene-node cl-scene-node-a" />
-            <div className="cl-scene-node cl-scene-node-b" />
-        </div>
-    );
+    return <span className="cl-logo-mark" aria-hidden="true" />;
 }
 
 export function SiteHeader() {
     return (
         <header className="cl-header">
-            <ConstantLayerLink href="/" className="cl-brand" aria-label="ConstantLayer Systems home">
-                <ConstantLayerLogoMark />
-                <span>ConstantLayer Systems</span>
-            </ConstantLayerLink>
-            <SiteHeaderNav items={NAV_ITEMS} />
-            <ConstantLayerLink
-                className="cl-header-action"
-                href="/products"
-                aria-label="View product lineup"
-                title="View product lineup"
-            >
-                Products
-                <LuArrowRight aria-hidden="true" />
-            </ConstantLayerLink>
+            <div className="cl-header-inner glass">
+                <ConstantLayerLink href="/" className="cl-brand" aria-label="ConstantLayer Systems home">
+                    <ConstantLayerLogoMark />
+                    <span>ConstantLayer</span>
+                </ConstantLayerLink>
+                <SiteHeaderNav items={NAV_ITEMS} />
+                <div className="cl-header-actions">
+                    <a className="cl-button cl-button-ghost" href={`mailto:${CONSTANTLAYER_CONTACT_EMAIL}`}>
+                        Contact
+                    </a>
+                    <ConstantLayerLink className="cl-button cl-button-glass" href="/products">
+                        Products
+                        <LuArrowRight aria-hidden="true" />
+                    </ConstantLayerLink>
+                </div>
+            </div>
         </header>
     );
 }
@@ -420,14 +468,8 @@ export function SiteHeader() {
 export function SiteFooter() {
     return (
         <footer className="cl-footer">
-            <div className="cl-footer-inner">
-                <div>
-                    <ConstantLayerLink href="/" className="cl-footer-brand">
-                        <ConstantLayerLogoMark />
-                        <span>ConstantLayer Systems</span>
-                    </ConstantLayerLink>
-                    <p>{CONSTANTLAYER_SITE_DESCRIPTION}</p>
-                </div>
+            <div className="cl-wrap cl-footer-inner">
+                <p>© 2026 ConstantLayer Systems</p>
                 <div className="cl-footer-links" aria-label="Footer navigation">
                     <ConstantLayerLink href="/products">Products</ConstantLayerLink>
                     <ConstantLayerLink href="/about">About</ConstantLayerLink>
@@ -444,10 +486,24 @@ export function SiteFooter() {
 export function PageShell({ children }: { children: React.ReactNode }) {
     return (
         <div className="constantlayer-site">
+            <div className="cl-page-mesh" aria-hidden="true" />
+            <div className="cl-grain" aria-hidden="true" />
             <ScrollRevealController />
             <SiteHeader />
             <main>{children}</main>
             <SiteFooter />
+        </div>
+    );
+}
+
+export function SegmentControl({ items, activeIndex = 0 }: { items: string[]; activeIndex?: number }) {
+    return (
+        <div className="cl-segmented" aria-label="Reference areas">
+            {items.map((item, index) => (
+                <span className={index === activeIndex ? 'is-active' : undefined} key={item}>
+                    {item}
+                </span>
+            ))}
         </div>
     );
 }
@@ -457,32 +513,37 @@ export function OperatingRows({ rows }: { rows: InfoCard[] }) {
         <div className="cl-operating-rows">
             {rows.map((row) => {
                 const Icon = row.icon;
-
-                const rowContent = (
+                const content = (
                     <>
-                        <span className="cl-row-icon">
+                        <span className="cl-card-icon">
                             <Icon aria-hidden="true" />
                         </span>
-                        <div>
-                            <h3>{row.title}</h3>
-                            <p>{row.description}</p>
-                        </div>
+                        <span className="cl-card-meta mono">{row.meta || 'Reference'}</span>
+                        <h3>{row.title}</h3>
+                        <p>{row.description}</p>
                     </>
                 );
 
                 if (row.href) {
                     return (
-                        <a className="cl-operating-row" href={row.href} key={row.title} aria-label={`Open ${row.title} website`}>
-                            {rowContent}
-                            <LuExternalLink className="cl-row-external-icon" aria-hidden="true" />
-                        </a>
+                        <SpotlightCard
+                            as="a"
+                            className="cl-operating-card"
+                            href={row.href}
+                            key={row.title}
+                            variant={row.variant}
+                            aria-label={`Open ${row.title}`}
+                        >
+                            {content}
+                            <LuExternalLink className="cl-card-link-icon" aria-hidden="true" />
+                        </SpotlightCard>
                     );
                 }
 
                 return (
-                    <article className="cl-operating-row" key={row.title}>
-                        {rowContent}
-                    </article>
+                    <SpotlightCard className="cl-operating-card" key={row.title} variant={row.variant}>
+                        {content}
+                    </SpotlightCard>
                 );
             })}
         </div>
@@ -527,27 +588,175 @@ export function StructuredData() {
     );
 }
 
+export function HeroStudioMock() {
+    const pipelineRows = [
+        ['Entity', 'current', '#8ee0ff'],
+        ['Products', '3 surfaces', '#b89cff'],
+        ['Contacts', 'direct', '#ffb37a'],
+        ['Storage', 'none', '#ff8fb1'],
+    ] as const;
+
+    return (
+        <div className="cl-hero-mock glass cl-reveal">
+            <div className="cl-hero-mock-head mono">
+                <span className="cl-traffic" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                </span>
+                <span>constantlayer.in / company-reference v1</span>
+            </div>
+            <div className="cl-hero-mock-grid">
+                <div className="cl-mock-tile">
+                    <span className="cl-tile-label mono">Lineup clarity</span>
+                    <strong className="serif">3</strong>
+                    <p>Product surfaces, one company reference.</p>
+                    <div className="cl-spark-bars" aria-hidden="true">
+                        {[36, 44, 30, 58, 46, 68, 82, 74].map((height) => (
+                            <span style={{ height: `${height}%` }} key={height} />
+                        ))}
+                    </div>
+                </div>
+                <div className="cl-mock-tile">
+                    <span className="cl-tile-label mono">Reference pipeline</span>
+                    <div className="cl-pipeline-list">
+                        {pipelineRows.map(([label, meta, color]) => (
+                            <span className="cl-pipeline-row mono" key={label}>
+                                <i style={{ backgroundColor: color }} />
+                                {label}
+                                <small>{meta}</small>
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export function MarqueeBand() {
+    const track = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS];
+
+    return (
+        <div className="cl-marquee-wrap" aria-label="ConstantLayer reference scope">
+            <div className="cl-marquee-track">
+                {track.map((item, index) => (
+                    <span className="mono" key={`${item}-${index}`}>
+                        {item}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+export function ComparisonTable() {
+    return (
+        <>
+            <div className="cl-table-wrap glass cl-reveal">
+                <table className="cl-comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Area</th>
+                            <th>
+                                <span>ConstantLayer</span>
+                                <em>Company layer</em>
+                            </th>
+                            <th>Product websites</th>
+                            <th>Owner apps</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {COMPARISON_ROWS.map((row) => (
+                            <tr key={row.label}>
+                                <th>{row.label}</th>
+                                <td>{row.company}</td>
+                                <td>{row.products}</td>
+                                <td>{row.apps}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <div className="cl-table-cards">
+                {COMPARISON_ROWS.map((row) => (
+                    <article className="glass" key={row.label}>
+                        <span className="mono">{row.label}</span>
+                        <h3>ConstantLayer</h3>
+                        <p>{row.company}</p>
+                        <dl>
+                            <div>
+                                <dt>Product websites</dt>
+                                <dd>{row.products}</dd>
+                            </div>
+                            <div>
+                                <dt>Owner apps</dt>
+                                <dd>{row.apps}</dd>
+                            </div>
+                        </dl>
+                    </article>
+                ))}
+            </div>
+        </>
+    );
+}
+
+export function BoundaryList() {
+    const rows = [
+        ['Static website', true],
+        ['Company contacts', true],
+        ['Product pricing', false],
+        ['Owner dashboard', false],
+        ['Firebase runtime', false],
+    ] as const;
+
+    return (
+        <ul className="cl-boundary-list">
+            {rows.map(([label, allowed]) => (
+                <li key={label}>
+                    {allowed ? <LuCheck aria-hidden="true" /> : <LuMinus aria-hidden="true" />}
+                    <span>{label}</span>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
 export function SecondaryPage({ page }: { page: PageData }) {
     return (
         <PageShell>
             <StructuredData />
             <section className="cl-page-hero">
-                <div className="cl-container cl-page-hero-inner">
-                    <span className="cl-eyebrow">{page.eyebrow}</span>
-                    <h1>{page.title}</h1>
+                <div className="cl-wrap cl-page-hero-inner">
+                    <span className="cl-eyebrow mono">
+                        <span className="cl-pip" aria-hidden="true" />
+                        {page.eyebrow}
+                    </span>
+                    <h1 className="serif">{page.title}</h1>
                     <p>{page.description}</p>
+                    <div className="cl-page-hero-meta glass">
+                        <span className="mono">{page.slug}</span>
+                        <span className="mono">company reference</span>
+                        <span className="mono">static surface</span>
+                    </div>
                 </div>
             </section>
-            <section className="cl-section cl-section-subtle cl-reveal">
-                <div className="cl-container">
+            <section className="cl-section cl-reveal">
+                <div className="cl-wrap">
                     <OperatingRows rows={page.cards} />
                 </div>
             </section>
             {page.sections.map((section) => (
-                <section className="cl-section cl-reveal" key={section.title}>
-                    <div className="cl-container cl-text-panel">
-                        <h2>{section.title}</h2>
-                        <p>{section.body}</p>
+                <section className="cl-section cl-section-tight cl-reveal" key={section.title}>
+                    <div className="cl-wrap cl-text-panel glass">
+                        <div>
+                            <span className="cl-eyebrow mono">
+                                <span className="cl-pip" aria-hidden="true" />
+                                Reference note
+                            </span>
+                            <h2 className="serif">{section.title}</h2>
+                            <p>{section.body}</p>
+                        </div>
                         {section.items ? (
                             <ul className="cl-check-list">
                                 {section.items.map((item) => (
@@ -559,25 +768,97 @@ export function SecondaryPage({ page }: { page: PageData }) {
                 </section>
             ))}
             <section className="cl-section cl-final-section cl-reveal">
-                <div className="cl-container cl-final-band">
+                <div className="cl-wrap cl-final-band glass">
                     <div>
-                        <span className="cl-eyebrow">Relationship</span>
-                        <h2>{CONSTANTLAYER_RELATIONSHIP_LINE}</h2>
+                        <span className="cl-eyebrow mono">
+                            <span className="cl-pip" aria-hidden="true" />
+                            Relationship
+                        </span>
+                        <h2 className="serif">{CONSTANTLAYER_RELATIONSHIP_LINE}</h2>
                         <p>{CONSTANTLAYER_SITE_DESCRIPTION}</p>
                     </div>
-                    {page.slug === 'products' ? (
-                        <a className="cl-primary-action" href={`mailto:${CONSTANTLAYER_CONTACT_EMAIL}`}>
-                            Contact ConstantLayer
-                            <LuMail aria-hidden="true" />
-                        </a>
-                    ) : (
-                        <ConstantLayerLink className="cl-primary-action" href="/products">
-                            View Products
-                            <LuArrowRight aria-hidden="true" />
-                        </ConstantLayerLink>
-                    )}
+                    <div className="cl-actions">
+                        {page.slug === 'products' ? (
+                            <a className="cl-button cl-button-solid cl-button-large" href={`mailto:${CONSTANTLAYER_CONTACT_EMAIL}`}>
+                                Contact ConstantLayer
+                                <LuMail aria-hidden="true" />
+                            </a>
+                        ) : (
+                            <ConstantLayerLink className="cl-button cl-button-solid cl-button-large" href="/products">
+                                View Products
+                                <LuArrowRight aria-hidden="true" />
+                            </ConstantLayerLink>
+                        )}
+                    </div>
                 </div>
             </section>
         </PageShell>
+    );
+}
+
+export const BENTO_CARDS = [
+    {
+        className: 'cl-bento-tall',
+        icon: LuFingerprint,
+        eyebrow: 'Entity',
+        title: 'One company record visitors can check quickly.',
+        body: 'The parent site says what the company layer is, what it is not, and where official company questions go.',
+    },
+    {
+        className: 'cl-bento-wide',
+        icon: LuGlobe2,
+        eyebrow: 'Surfaces',
+        title: 'Product relationships stay visible without blending product promises.',
+        body: 'MenuList, Answerlattice, and CampaignCue remain separate product surfaces with their own claims and owner workflows.',
+    },
+    {
+        className: 'cl-bento-med',
+        icon: LuLock,
+        eyebrow: 'Privacy',
+        title: 'No account or form is introduced.',
+        body: 'Company questions route to direct inboxes. The parent website does not create a lead database.',
+    },
+    {
+        className: 'cl-bento-med',
+        icon: LuDatabase,
+        eyebrow: 'Runtime',
+        title: 'No Firebase-backed product identity.',
+        body: 'ConstantLayer stays a static website surface and does not become a stored product code or owner app.',
+    },
+    {
+        className: 'cl-bento-small',
+        icon: LuCpu,
+        eyebrow: 'Routing',
+        title: 'Canonical domain plus local aliases.',
+        body: 'The route works through the existing product-site architecture.',
+    },
+    {
+        className: 'cl-bento-small',
+        icon: LuScale,
+        eyebrow: 'Legal',
+        title: 'Sensitive identifiers stay out of public copy.',
+        body: 'The site avoids incorporation, holding-company, or GST claims unless approved.',
+    },
+] as const;
+
+export function DirectoryCards() {
+    return (
+        <div className="cl-routing-grid">
+            {DIRECTORY_ROWS.map((row) => {
+                const Icon = row.icon;
+
+                return (
+                    <a className="cl-routing-card glass" href={row.href} key={row.label}>
+                        <span className="cl-card-icon">
+                            <Icon aria-hidden="true" />
+                        </span>
+                        <span className="mono">{row.label}</span>
+                        <strong>{row.value}</strong>
+                        <p>{row.description}</p>
+                        <LuArrowUpRight aria-hidden="true" />
+                    </a>
+                );
+            })}
+        </div>
     );
 }

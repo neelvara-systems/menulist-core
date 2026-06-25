@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { trackPlausibleEvent } from '@lib/website/plausible';
 
 type WebsiteGtagWindow = Window & {
     gaId?: string;
@@ -41,21 +42,6 @@ function getUtmMedium(): string | undefined {
     return new URLSearchParams(window.location.search).get('utm_medium') || undefined;
 }
 
-function getSessionId(): string {
-    const storageKey = 'menulist_resource_session_id';
-    const nextId = `rs_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
-
-    try {
-        const existing = window.sessionStorage.getItem(storageKey);
-        if (existing) return existing;
-        window.sessionStorage.setItem(storageKey, nextId);
-    } catch {
-        return nextId;
-    }
-
-    return nextId;
-}
-
 function getEntryPage(): string {
     const storageKey = 'menulist_resource_entry_page';
     const entryPage = `${window.location.pathname}${window.location.search}`;
@@ -82,8 +68,6 @@ export default function ResourceAnalytics({
     slug,
 }: ResourceAnalyticsProps) {
     useEffect(() => {
-        const analyticsWindow = window as WebsiteGtagWindow;
-        if (typeof analyticsWindow.gtag !== 'function') return;
         const referrerHost = getReferrerHost();
         const pageLocale = getPageLocale(locale);
         const referrerMatch = referrerHost
@@ -92,7 +76,10 @@ export default function ResourceAnalytics({
             ))
             : undefined;
 
-        analyticsWindow.gtag('event', 'resource_page_view', {
+        trackPlausibleEvent('resource_page_viewed');
+
+        const analyticsWindow = window as WebsiteGtagWindow;
+        const payload = {
             category: cluster,
             cluster,
             entry_page: getEntryPage(),
@@ -100,27 +87,25 @@ export default function ResourceAnalytics({
             page_type: pageType,
             referrer: document.referrer || undefined,
             referrer_host: referrerHost,
-            session_id: getSessionId(),
             slug,
             target_url: window.location.href,
             utm_medium: getUtmMedium(),
             utm_source: getUtmSource(),
-        });
+        };
+
+        if (typeof analyticsWindow.gtag === 'function') {
+            analyticsWindow.gtag('event', 'resource_page_view', payload);
+        }
 
         if (referrerMatch) {
-            analyticsWindow.gtag('event', 'ai_crawler_referral_detected', {
-                category: cluster,
-                cluster,
-                entry_page: getEntryPage(),
-                locale: pageLocale,
-                page_type: pageType,
-                referrer: document.referrer || undefined,
-                referrer_group: referrerMatch.group,
-                referrer_host: referrerHost,
-                session_id: getSessionId(),
-                slug,
-                target_url: window.location.href,
-            });
+            trackPlausibleEvent('ai_referral_detected');
+
+            if (typeof analyticsWindow.gtag === 'function') {
+                analyticsWindow.gtag('event', 'ai_crawler_referral_detected', {
+                    ...payload,
+                    referrer_group: referrerMatch.group,
+                });
+            }
         }
     }, [cluster, locale, pageType, slug]);
 

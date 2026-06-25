@@ -58,7 +58,8 @@ export type SignalDeskKillSwitchStatus = "active" | "inactive";
 export type SignalDeskTone = "neutral" | "good" | "warning" | "danger";
 export type SignalDeskConfidence = "high" | "medium" | "low";
 export type SignalDeskOutboundChannel = "email" | "whatsapp" | "instagram" | "messenger" | "manual";
-export type SignalDeskSourceProviderId = "google-places" | "foursquare" | "apify" | "manual";
+export type SignalDeskSourceProviderId = "google-places" | "foursquare" | "apify" | "fhrs-fhis" | "manual";
+export type SignalDeskResearchProviderId = Extract<SignalDeskSourceProviderId, "google-places" | "apify" | "fhrs-fhis">;
 export type SignalDeskAiTask = "score" | "evidence" | "draft" | "reply-classification" | "approval-packet" | "weekly-strategist" | "vendor-audit";
 export type SignalDeskProviderId =
     | SignalDeskSourceProviderId
@@ -107,6 +108,22 @@ export interface SignalDeskAccessContext {
     permissions: SignalDeskPermission[];
     role: SignalDeskRole;
     userId: string;
+}
+
+export interface SignalDeskTeamMemberSummary {
+    teamMemberId: string;
+    userId?: string | null;
+    email: string;
+    emailLower: string;
+    name?: string | null;
+    role: SignalDeskRole;
+    permissions: SignalDeskPermission[];
+    active: boolean;
+    status: "active" | "inactive";
+    createdAt?: string | null;
+    createdBy?: string | null;
+    updatedAt?: string | null;
+    updatedBy?: string | null;
 }
 
 export interface SignalDeskKillSwitch {
@@ -592,7 +609,7 @@ export interface SignalDeskSenderDomainSummary {
 
 export interface SignalDeskRunTimelineSummary {
     runTimelineId: string;
-    entityType: "target" | "source-run" | "approval" | "provider" | "model" | "market-pod" | "channel-window" | "trust-partner" | "content" | "mission" | "experiment" | "source-quality";
+    entityType: "target" | "source-run" | "approval" | "provider" | "model" | "market-pod" | "channel-window" | "trust-partner" | "content" | "mission" | "experiment" | "source-quality" | "research";
     entityId: string;
     label: string;
     status: "completed" | "blocked" | "held" | "ready";
@@ -617,7 +634,7 @@ export interface SignalDeskChannelWindowStateSummary {
 
 export interface SignalDeskProviderSourceRetentionSummary {
     lastRefreshedAt?: string | null;
-    provider: Extract<SignalDeskSourceProviderId, "google-places" | "apify">;
+    provider: Extract<SignalDeskSourceProviderId, "google-places" | "apify" | "fhrs-fhis">;
     providerRecordId?: string | null;
     providerRecordUrl?: string | null;
     providerSourceRetentionId: string;
@@ -922,6 +939,60 @@ export interface SignalDeskSourceQualitySnapshotSummary {
     usableTargetRate: number;
 }
 
+export interface SignalDeskResearchRunSummary {
+    city?: string | null;
+    country?: string | null;
+    category?: string | null;
+    createdAt?: string | null;
+    enrichmentColumns: string[];
+    failCount: number;
+    idempotencyKeyHash?: string | null;
+    marketPodId?: string | null;
+    maxResults: number;
+    normalizedQuery: string;
+    passCount: number;
+    prompt: string;
+    provider: SignalDeskResearchProviderId;
+    providerRunIds: string[];
+    researchRunId: string;
+    researchType: "business-prospect" | "market-map" | "partner-list";
+    sourcePolicyId?: string | null;
+    sourceTransparency: string[];
+    status: "queued" | "running" | "completed" | "blocked" | "duplicate";
+    tableRowCount: number;
+    unsureCount: number;
+    updatedAt?: string | null;
+}
+
+export interface SignalDeskResearchTableRowSummary {
+    category?: string | null;
+    city?: string | null;
+    contactability: SignalDeskContactability;
+    country?: string | null;
+    currentListGap: SignalDeskOpportunity;
+    displayName: string;
+    enrichment: Array<{
+        key: string;
+        label: string;
+        sourceRef?: string | null;
+        value: string;
+        verdict: "pass" | "fail" | "unsure";
+    }>;
+    fitDecision: "pass" | "fail" | "unsure";
+    fitScore: number;
+    provider: SignalDeskResearchProviderId;
+    providerRecordUrl?: string | null;
+    recommendedNextAction: "score" | "evidence" | "hold" | "partner-review" | "pod-review";
+    researchRowId: string;
+    researchRunId: string;
+    sourcePolicyId?: string | null;
+    sourceRefs: string[];
+    sourceRunId?: string | null;
+    targetId?: string | null;
+    updatedAt?: string | null;
+    website?: string | null;
+}
+
 export interface SignalDeskSelfServiceCtaSummary {
     ctaId: string;
     label: string;
@@ -999,6 +1070,8 @@ export interface SignalDeskWorkspaceData {
     providerEvents: SignalDeskProviderEventSummary[];
     providerRuns: SignalDeskProviderRunSummary[];
     providerSourceRetentions: SignalDeskProviderSourceRetentionSummary[];
+    researchRuns: SignalDeskResearchRunSummary[];
+    researchTableRows: SignalDeskResearchTableRowSummary[];
     runTimelines: SignalDeskRunTimelineSummary[];
     scores: SignalDeskAiScoreSummary[];
     section: SignalDeskSection;
@@ -1010,6 +1083,7 @@ export interface SignalDeskWorkspaceData {
     replyPlaybooks: SignalDeskReplyPlaybookSummary[];
     sourceQualitySnapshots: SignalDeskSourceQualitySnapshotSummary[];
     targets: SignalDeskTargetSummary[];
+    teamMembers: SignalDeskTeamMemberSummary[];
     templates: SignalDeskTemplateSummary[];
     trustPartnerBriefs: SignalDeskTrustPartnerBriefSummary[];
     trustPartnerDeals: SignalDeskTrustPartnerDealSummary[];

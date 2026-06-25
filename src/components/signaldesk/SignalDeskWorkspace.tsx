@@ -13,8 +13,10 @@ import { getDarkModeState, getSidebarState, toggleDarkMode, toggleSidbar } from 
 import type {
     SignalDeskApprovalItem,
     SignalDeskKillSwitchScope,
+    SignalDeskRole,
     SignalDeskSection,
     SignalDeskTargetSummary,
+    SignalDeskTeamMemberSummary,
     SignalDeskWorkspaceResponse,
 } from "@type/signaldesk";
 import { Alert, Button, Checkbox, Drawer, Flex, Input, InputNumber, Layout, Select, Spin, theme, Tooltip, Typography } from "antd";
@@ -274,7 +276,7 @@ const SECTION_META: Record<SignalDeskSection, { description: string; label: stri
         title: "Trust Partners",
     },
     settings: {
-        description: "Connector records, sender identity, and channel readiness.",
+        description: "Internal team access, connector records, sender identity, and channel readiness.",
         label: "Settings",
         title: "Settings",
     },
@@ -327,6 +329,14 @@ const PAUSE_SCOPES: SignalDeskKillSwitchScope[] = [
     "content-distribution",
     "trust-partner",
     "menu-list-bridge",
+];
+
+const TEAM_ROLE_OPTIONS: Array<{ label: string; value: SignalDeskRole }> = [
+    { label: "Founder admin", value: "founder-admin" },
+    { label: "Growth manager", value: "growth-manager" },
+    { label: "Operator", value: "operator" },
+    { label: "Compliance reviewer", value: "compliance-reviewer" },
+    { label: "Read-only analyst", value: "readonly-analyst" },
 ];
 
 const tagClass = (tone?: string) => {
@@ -626,6 +636,12 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [connectorMessengerPageId, setConnectorMessengerPageId] = useState("");
     const [connectorAppId, setConnectorAppId] = useState("");
     const [connectorNotes, setConnectorNotes] = useState("");
+    const [teamMemberId, setTeamMemberId] = useState("");
+    const [teamMemberEmail, setTeamMemberEmail] = useState("");
+    const [teamMemberName, setTeamMemberName] = useState("");
+    const [teamMemberUserId, setTeamMemberUserId] = useState("");
+    const [teamMemberRole, setTeamMemberRole] = useState<SignalDeskRole>("growth-manager");
+    const [teamMemberActive, setTeamMemberActive] = useState(true);
     const [partnerName, setPartnerName] = useState("Menu photographer partner");
     const [partnerType, setPartnerType] = useState("menu-photographer");
     const [partnerChannel, setPartnerChannel] = useState("instagram");
@@ -740,6 +756,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const scopedPauseActive = Boolean(data?.activeKillSwitches.some((item) => item.scope === pauseScope && item.status === "active"));
     const canPause = Boolean(data?.access.permissions.includes("kill-switch.activate"));
     const canResume = Boolean(data?.access.permissions.includes("kill-switch.deactivate"));
+    const canConfigureSignalDesk = Boolean(data?.access.permissions.includes("signaldesk.configure"));
     const actionDisabled = saving || mobileReadOnly;
 
     const pendingApproval = useMemo(
@@ -963,6 +980,19 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
+    const approveFhrsFhisProvider = () => {
+        void runAction("upsert-provider-account", {
+            credentialState: "not_required",
+            dailyBudgetUsd: 0,
+            monthlyBudgetUsd: 0,
+            ownerApproved: true,
+            perRunBudgetUsd: 0,
+            provider: "fhrs-fhis",
+            status: "approved",
+            use: "discovery",
+        });
+    };
+
     const approveTrustPartnerTestBudget = () => {
         void runAction("upsert-budget-policy", {
             dailyBudgetUsd: 75,
@@ -1030,6 +1060,49 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             senderDomain: connectorSenderDomain || undefined,
             senderEmail: connectorSenderEmail || undefined,
             status: connectorStatus,
+        });
+    };
+
+    const resetTeamMemberForm = () => {
+        setTeamMemberId("");
+        setTeamMemberEmail("");
+        setTeamMemberName("");
+        setTeamMemberUserId("");
+        setTeamMemberRole("growth-manager");
+        setTeamMemberActive(true);
+    };
+
+    const editTeamMember = (member: SignalDeskTeamMemberSummary) => {
+        setTeamMemberId(member.teamMemberId);
+        setTeamMemberEmail(member.email || member.emailLower || "");
+        setTeamMemberName(member.name || "");
+        setTeamMemberUserId(member.userId || "");
+        setTeamMemberRole(member.role);
+        setTeamMemberActive(member.active);
+    };
+
+    const upsertTeamMember = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("upsert-team-member", {
+            active: teamMemberActive,
+            email: teamMemberEmail,
+            name: teamMemberName || undefined,
+            role: teamMemberRole,
+            teamMemberId: teamMemberId || undefined,
+            userId: teamMemberUserId || undefined,
+        }).then((result) => {
+            if (result) resetTeamMemberForm();
+        });
+    };
+
+    const toggleTeamMemberActive = (member: SignalDeskTeamMemberSummary, active: boolean) => {
+        void runAction("upsert-team-member", {
+            active,
+            email: member.email || member.emailLower,
+            name: member.name || undefined,
+            role: member.role,
+            teamMemberId: member.teamMemberId,
+            userId: member.userId || undefined,
         });
     };
 
@@ -1596,6 +1669,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveOwnedEmailSequencerProvider} type="button">Approve Owned Rail</WorkspaceButton>
                                 <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveGooglePlacesProvider} type="button">Approve Places</WorkspaceButton>
                                 <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveApifyProvider} type="button">Approve Apify</WorkspaceButton>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveFhrsFhisProvider} type="button">Approve FHRS/FHIS</WorkspaceButton>
                                 <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={approveGeminiAiProvider} type="button">Approve Gemini</WorkspaceButton>
                             </div>
                         </div>
@@ -1872,6 +1946,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         <WorkspaceSelect className={styles.input} onChange={(event) => setSourceProvider(event.target.value)} value={sourceProvider}>
                             <option value="google-places">Google Places</option>
                             <option value="apify">Apify</option>
+                            <option value="fhrs-fhis">FHRS/FHIS UK</option>
                             <option value="foursquare">Foursquare</option>
                         </WorkspaceSelect>
                         <WorkspaceInput className={styles.input} onChange={(event) => setSourceQuery(event.target.value)} value={sourceQuery} />
@@ -1918,6 +1993,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             <WorkspaceSelect className={styles.input} onChange={(event) => setProviderEvaluationProvider(event.target.value)} value={providerEvaluationProvider}>
                                 <option value="google-places">google-places</option>
                                 <option value="apify">apify</option>
+                                <option value="fhrs-fhis">fhrs-fhis</option>
                                 <option value="owned-email">owned-email</option>
                                 <option value="smartlead">smartlead</option>
                                 <option value="openai">openai</option>
@@ -2546,6 +2622,60 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             const showMessengerFields = connectorKind === "meta-messenger";
             return (
                 <section className={styles.contentGrid}>
+                    <form className={styles.panel} onSubmit={upsertTeamMember}>
+                        <div className={styles.panelHeader}>
+                            <h2>Team Access</h2>
+                            <div className={styles.rowActions}>
+                                <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={resetTeamMemberForm} type="button">Clear</WorkspaceButton>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled || !canConfigureSignalDesk || !teamMemberEmail.trim()} type="submit">
+                                    {teamMemberId ? "Update" : "Add"}
+                                </WorkspaceButton>
+                            </div>
+                        </div>
+                        {!canConfigureSignalDesk ? <Alert message="SignalDesk configure permission is required." showIcon type="warning" /> : null}
+                        <div className={styles.formGrid}>
+                            <WorkspaceInput className={styles.input} onChange={(event) => setTeamMemberEmail(event.target.value)} placeholder="Login email" value={teamMemberEmail} />
+                            <WorkspaceInput className={styles.input} onChange={(event) => setTeamMemberName(event.target.value)} placeholder="Name" value={teamMemberName} />
+                        </div>
+                        <div className={styles.formGrid}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setTeamMemberRole(event.target.value as SignalDeskRole)} value={teamMemberRole}>
+                                {TEAM_ROLE_OPTIONS.map((role) => (
+                                    <option key={role.value} value={role.value}>{role.label}</option>
+                                ))}
+                            </WorkspaceSelect>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setTeamMemberActive(event.target.value === "active")} value={teamMemberActive ? "active" : "inactive"}>
+                                <option value="active">active</option>
+                                <option value="inactive">inactive</option>
+                            </WorkspaceSelect>
+                        </div>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setTeamMemberUserId(event.target.value)} placeholder="Auth user ID (optional)" value={teamMemberUserId} />
+                    </form>
+
+                    <div className={styles.panelWide}>
+                        <div className={styles.panelHeader}><h2>Team Members</h2><span className={styles.tag}>{data.workspace.teamMembers.length}</span></div>
+                        <div className={styles.table}>
+                            {data.workspace.teamMembers.map((member) => (
+                                <div className={styles.tableRowCompact} key={member.teamMemberId}>
+                                    <div><strong>{member.name || member.email}</strong><span>{member.email} / {member.userId || "email match"}</span></div>
+                                    <span className={tagClass(member.status)}>{member.status}</span>
+                                    <span>{member.role}</span>
+                                    <div className={styles.rowActions}>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !canConfigureSignalDesk} onClick={() => editTeamMember(member)} type="button">Edit</WorkspaceButton>
+                                        <WorkspaceButton
+                                            className={member.active ? styles.dangerButton : styles.ghostButton}
+                                            disabled={actionDisabled || !canConfigureSignalDesk}
+                                            onClick={() => toggleTeamMemberActive(member, !member.active)}
+                                            type="button"
+                                        >
+                                            {member.active ? "Deactivate" : "Reactivate"}
+                                        </WorkspaceButton>
+                                    </div>
+                                </div>
+                            ))}
+                            {!data.workspace.teamMembers.length ? <div className={styles.empty}>No team members yet.</div> : null}
+                        </div>
+                    </div>
+
                     <form className={styles.panel} onSubmit={upsertConnectorSetting}>
                         <div className={styles.panelHeader}>
                             <h2>Connector</h2>

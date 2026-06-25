@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { LuCopy } from 'react-icons/lu';
 import type { WebsiteResourceSection } from '@/content/websiteResources/types';
+import { trackPlausibleEvent } from '@lib/website/plausible';
 
 interface ArticleSectionProps {
     articleCluster: string;
@@ -21,6 +22,8 @@ type WebsiteGtagWindow = Window & {
 };
 
 function trackChecklistCopy(articleSlug: string, articleCluster: string, sectionId: string) {
+    trackPlausibleEvent('resource_checklist_copy');
+
     const analyticsWindow = window as WebsiteGtagWindow;
     if (typeof analyticsWindow.gtag !== 'function') return;
 

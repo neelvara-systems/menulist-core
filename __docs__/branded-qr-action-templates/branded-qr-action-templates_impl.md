@@ -1,6 +1,6 @@
 # Branded QR Action Templates Implementation Alignment
 
-**Status:** Docs-ready alignment layer
+**Status:** Editor-backed alignment layer
 **Last Updated:** June 25, 2026
 
 ## Current Implementation Fit
@@ -14,6 +14,10 @@ This layer is already partly implemented through existing systems:
 | Menu Kit | Bundled deployment assets for current MenuList link. |
 | Print Menu Surfaces | Physical table/card layout ownership. |
 | QR WhatsApp Experiments | Future measured campaign layer for WhatsApp-specific tests. |
+| `src/modules/creative-editor/CreativeEditor.tsx` | Guided QR action card presets and editor insertion flow. |
+| `src/modules/creative-editor/templates.ts` | Scan-safe default QR element data. |
+| `src/modules/creative-editor/fabricAdapter.ts` | Fabric rendering/serialization for QR correction level and margin. |
+| `src/modules/creative-editor/export.ts` | Export-time QR rendering defaults. |
 | `src/lib/utils/qrCode.ts` | Shared QR generation safety helpers. |
 
 ## Implementation Contract
@@ -28,6 +32,39 @@ action intent
 -> scan-safe QR source layer
 -> preview/download
 ```
+
+## Current Editor Implementation
+
+The shared Creative Editor QR drawer exposes six guided presets:
+
+- Menu;
+- Feedback;
+- Order;
+- Offer;
+- Book;
+- Loyalty.
+
+Each preset inserts editable Fabric layers rather than a flattened image:
+
+- background card;
+- accent block;
+- CTA headline;
+- helper text;
+- visible destination hint;
+- white QR quiet-zone panel;
+- QR layer.
+
+The QR layer stays standard:
+
+```ts
+{
+  errorCorrectionLevel: "H",
+  margin: 4,
+  lightColor: "#ffffff"
+}
+```
+
+Project style changes and campaign starters must preserve those QR safety fields. Brand styling belongs on surrounding layers first.
 
 ## Template Metadata Extension
 

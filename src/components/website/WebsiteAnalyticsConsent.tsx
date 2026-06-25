@@ -4,6 +4,8 @@ import { useTranslations } from 'next-intl';
 import PublicCookieConsentBanner, { type PublicCookieConsentChoice } from '@/components/shared/publicCookieConsent/PublicCookieConsentBanner';
 import ClarityAnalytics from './ClarityAnalytics';
 import GoogleAnalytics from './GoogleAnalytics';
+import PlausibleAnalytics from './PlausibleAnalytics';
+import WebsiteMarketingClickTracker from './WebsiteMarketingClickTracker';
 import { useWebsitePath } from './shared/WebsiteProductPathProvider';
 import { WEBSITE_ANALYTICS_CONSENT_STORAGE_KEY, WEBSITE_ANALYTICS_PREFERENCES_EVENT } from './shared/websiteAnalyticsConsentConfig';
 
@@ -12,6 +14,7 @@ type AnalyticsConsent = PublicCookieConsentChoice;
 type ConsentWindow = Window & {
   clarity?: (...args: unknown[]) => void;
   gtag?: (...args: unknown[]) => void;
+  plausible?: (...args: unknown[]) => void;
 };
 
 function deleteCookie(name: string) {
@@ -85,6 +88,7 @@ function applyConsentToLoadedVendors(consent: AnalyticsConsent) {
   }
 
   if (consent === 'declined') {
+    consentWindow.plausible = undefined;
     clearKnownAnalyticsCookies();
   }
 }
@@ -109,8 +113,10 @@ export default function WebsiteAnalyticsConsent() {
       statusDeclined={t('currentDeclined')}
       storageKey={WEBSITE_ANALYTICS_CONSENT_STORAGE_KEY}
     >
+      <PlausibleAnalytics />
       <GoogleAnalytics />
       <ClarityAnalytics />
+      <WebsiteMarketingClickTracker />
     </PublicCookieConsentBanner>
   );
 }

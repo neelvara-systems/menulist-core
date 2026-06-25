@@ -1,6 +1,6 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { SIGNALDESK_COLLECTIONS, SIGNALDESK_SUMMARY_DOCS } from "@constant/signaldesk/database";
-import { SIGNALDESK_INTEGRATION_ENV } from "@constant/signaldesk/integrations";
+import { SIGNALDESK_DEFAULT_AI_MODEL, SIGNALDESK_INTEGRATION_ENV } from "@constant/signaldesk/integrations";
 import { SIGNALDESK_PRODUCT_CODE } from "@constant/signaldesk/product";
 import { admin, signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebaseAdmin";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
@@ -57,7 +57,12 @@ import type {
     SignalDeskProviderRunSummary,
     SignalDeskProviderSourceRetentionSummary,
     SignalDeskProviderUse,
+    SignalDeskPermission,
+    SignalDeskResearchProviderId,
+    SignalDeskResearchRunSummary,
+    SignalDeskResearchTableRowSummary,
     SignalDeskRunTimelineSummary,
+    SignalDeskRole,
     SignalDeskSection,
     SignalDeskSegment,
     SignalDeskSelfServiceCtaSummary,
@@ -70,6 +75,7 @@ import type {
     SignalDeskStrategistMemoSummary,
     SignalDeskSuppressionStatus,
     SignalDeskTargetSummary,
+    SignalDeskTeamMemberSummary,
     SignalDeskTemplateSummary,
     SignalDeskReplyPlaybookSummary,
     SignalDeskTrustPartnerBriefSummary,
@@ -121,6 +127,15 @@ type SourceProviderRunInput = {
     provider: Exclude<SignalDeskProviderId, "manual" | "owned-email" | "apollo" | "hunter" | "zerobounce" | "firecrawl" | "tavily" | "exa" | "postmark" | "resend" | "smartlead" | "instantly" | "lemlist" | "gemini" | "openai" | "anthropic">;
     query: string;
     sourcePolicyId: string;
+};
+
+type TeamMemberInput = {
+    active: boolean;
+    email: string;
+    name?: string;
+    role: SignalDeskRole;
+    teamMemberId?: string;
+    userId?: string;
 };
 
 type AiAssistInput = {
@@ -313,6 +328,18 @@ type ReplyPlaybookInput = {
 type SourceQualitySnapshotInput = {
     sourcePolicyId?: string;
     sourceRunId?: string;
+};
+
+type ResearchAgentInput = {
+    city?: string;
+    country?: string;
+    idempotencyKey?: string;
+    maxResults: number;
+    marketPodId?: string;
+    prompt: string;
+    provider?: SignalDeskResearchProviderId;
+    researchType: SignalDeskResearchRunSummary["researchType"];
+    sourcePolicyId?: string;
 };
 
 type EnrichmentWaterfallRunInput = {
@@ -545,6 +572,8 @@ const emptyWorkspace = (section: SignalDeskSection): SignalDeskWorkspaceData => 
     providerEvents: [],
     providerRuns: [],
     providerSourceRetentions: [],
+    researchRuns: [],
+    researchTableRows: [],
     runTimelines: [],
     scores: [],
     section,
@@ -556,6 +585,7 @@ const emptyWorkspace = (section: SignalDeskSection): SignalDeskWorkspaceData => 
     replyPlaybooks: [],
     sourceQualitySnapshots: [],
     targets: [],
+    teamMembers: [],
     templates: [],
     trustPartnerBriefs: [],
     trustPartnerDeals: [],
@@ -826,6 +856,19 @@ const sourceQualitySnapshotIdFor = (input: SourceQualitySnapshotInput) => `sourc
     input.sourcePolicyId || "any",
     todayKey(),
 ].join("|")).slice(0, 16)}`;
+const researchRunIdFor = (input: Pick<ResearchAgentInput, "city" | "country" | "maxResults" | "prompt" | "provider" | "researchType">) => `research_${hashValue([
+    normalizeLower(input.prompt),
+    normalizeLower(input.city),
+    normalizeLower(input.country),
+    input.provider || "auto",
+    input.researchType,
+    input.maxResults,
+    Date.now(),
+].join("|")).slice(0, 22)}`;
+const researchRowIdFor = (researchRunId: string, targetId: string, index: number) => `research_row_${hashValue([
+    researchRunId,
+    targetId || index,
+].join("|")).slice(0, 22)}`;
 const growthMissionIdFor = (day: string) => `growth_mission_${day.replace(/[^a-z0-9_-]/gi, "_")}`;
 
 const readProviderAccount = async (
@@ -983,6 +1026,7 @@ const isSenderDomainReady = (sender: SignalDeskSenderDomainSummary | null) => Bo
 const isEmailChannelReady = () => getSignalDeskChannelReadiness().email.configured;
 
 const estimateSourceProviderCostUsd = (provider: SourceProviderRunInput["provider"], maxResults: number) => {
+    if (provider === "fhrs-fhis") return 0;
     if (provider === "apify") return Math.min(0.25, Math.max(0.05, Math.min(Math.max(maxResults, 1), 20) * 0.01));
     return 0.05;
 };
@@ -1391,6 +1435,195 @@ const inferOpportunity = (row: TargetImportRow): SignalDeskTargetSummary["primar
     return "unknown";
 };
 
+const inferResearchCategory = (prompt: string) => {
+    const text = normalizeLower(prompt);
+    if (/\b(cafe|cafes|coffee)\b/.test(text)) return "cafe";
+    if (/\b(dessert|bakery|bakeries|sweet)\b/.test(text)) return "dessert";
+    if (/\b(takeaway|takeout|cloud kitchen|cloud-kitchen|quick service|qsr)\b/.test(text)) return "quick-service restaurant";
+    if (/\b(consultant|photographer|agency|freelancer|creator|partner)\b/.test(text)) return "restaurant partner";
+    if (/\b(bar|pub|nightlife)\b/.test(text)) return "bar";
+    if (/\b(restaurant|restaurants|food)\b/.test(text)) return "restaurant";
+    return "restaurant";
+};
+
+const inferResearchLocation = (prompt: string, city?: string, country?: string) => {
+    const cityInput = normalizeText(city);
+    const countryInput = normalizeText(country);
+    if (cityInput || countryInput) return { city: cityInput || null, country: countryInput || null };
+    const match = normalizeText(prompt).match(/\bin\s+([^,.]+?)(?:\s+(?:with|who|that|where|having|and)\b|$)/i);
+    const inferred = match?.[1]?.trim() || "";
+    return { city: inferred || null, country: null };
+};
+
+const selectResearchProvider = (
+    input: Pick<ResearchAgentInput, "country" | "provider" | "researchType">,
+): SignalDeskResearchProviderId => {
+    if (input.provider) return input.provider;
+    if (normalizeLower(input.country).includes("uk") || normalizeLower(input.country).includes("united kingdom")) return "fhrs-fhis";
+    if (input.researchType === "partner-list") return "google-places";
+    return "google-places";
+};
+
+const buildResearchProviderQuery = (input: {
+    category: string;
+    city?: string | null;
+    prompt: string;
+    researchType: SignalDeskResearchRunSummary["researchType"];
+}) => {
+    const city = normalizeText(input.city);
+    if (input.researchType === "partner-list") {
+        return normalizeText(`restaurant consultants menu photographers ${city}`.trim()).slice(0, 180);
+    }
+    const category = normalizeText(input.category || "restaurants");
+    return normalizeText(city ? `${category} in ${city}` : category).slice(0, 180) || normalizeText(input.prompt).slice(0, 180);
+};
+
+const researchColumnsFor = (researchType: SignalDeskResearchRunSummary["researchType"]) => {
+    const base = [
+        "business",
+        "category",
+        "location",
+        "website",
+        "current-list-gap",
+        "contactability",
+        "source-ref",
+        "fit-decision",
+        "next-action",
+    ];
+    return researchType === "partner-list"
+        ? ["partner", "partner-type", "location", "source-ref", "trust-fit", "fit-decision", "next-action"]
+        : base;
+};
+
+const readUsableResearchSourcePolicy = async (
+    db: any,
+    access: SignalDeskAccessContext,
+    provider: SignalDeskResearchProviderId,
+    sourcePolicyId?: string,
+) => {
+    if (sourcePolicyId) {
+        const policy = await readSourcePolicy(db, sourcePolicyId);
+        return assertSourcePolicyUsable(db, access, policy, {
+            entityId: sourcePolicyId,
+            requiredProvider: provider,
+            requiredSourceType: "provider",
+            use: "provider-run",
+        });
+    }
+    const snap = await db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES)
+        .where("sourceType", "==", "provider")
+        .where("provider", "==", provider)
+        .limit(20)
+        .get();
+    for (const doc of snap.docs) {
+        const policy = toPlain(doc.data()) as SignalDeskSourcePolicy;
+        try {
+            return await assertSourcePolicyUsable(db, access, policy, {
+                entityId: doc.id,
+                requiredProvider: provider,
+                requiredSourceType: "provider",
+                use: "provider-run",
+            });
+        } catch {
+            // Keep searching for a usable provider policy.
+        }
+    }
+    throw new Error("Provider source policy is required");
+};
+
+const buildResearchRow = (input: {
+    index: number;
+    provider: SignalDeskResearchProviderId;
+    providerRecordUrl?: string | null;
+    researchRunId: string;
+    researchType: SignalDeskResearchRunSummary["researchType"];
+    sourcePolicyId?: string | null;
+    sourceRunId?: string | null;
+    target: SignalDeskTargetSummary;
+}): SignalDeskResearchTableRowSummary => {
+    const category = normalizeLower(input.target.category);
+    const foodFit = /(restaurant|cafe|coffee|dessert|bakery|takeaway|bar|pub|food|menu|service)/.test(category);
+    const partnerFit = /(consultant|photographer|agency|freelancer|creator|partner|operator)/.test(category);
+    const isPartner = input.researchType === "partner-list";
+    const currentListGap = input.target.primaryOpportunity;
+    const gapStrong = currentListGap === "missing-current-list" || currentListGap === "pdf-only" || currentListGap === "instagram-only" || currentListGap === "no-link";
+    const suppressed = input.target.suppressionStatus !== "clear";
+    const fitScore = clampScore(
+        (isPartner ? (partnerFit ? 72 : 48) : (foodFit ? 72 : 42)) +
+        (gapStrong ? 18 : 5) +
+        (input.target.contactability === "ready" ? 8 : input.target.contactability === "limited" ? 5 : 0) -
+        (suppressed ? 60 : 0),
+    );
+    const fitDecision: SignalDeskResearchTableRowSummary["fitDecision"] = suppressed || fitScore < 45
+        ? "fail"
+        : fitScore >= 72
+            ? "pass"
+            : "unsure";
+    const recommendedNextAction: SignalDeskResearchTableRowSummary["recommendedNextAction"] = fitDecision === "pass"
+        ? isPartner ? "partner-review" : "score"
+        : fitDecision === "unsure"
+            ? isPartner ? "pod-review" : "evidence"
+            : "hold";
+    const sourceRefs = [
+        input.sourceRunId ? `source-run:${input.sourceRunId}` : "",
+        input.sourcePolicyId ? `source-policy:${input.sourcePolicyId}` : "",
+        input.providerRecordUrl || "",
+    ].filter(Boolean);
+    const sourceRef = sourceRefs[0] || null;
+
+    return {
+        category: input.target.category || null,
+        city: input.target.city || null,
+        contactability: input.target.contactability,
+        country: input.target.country || null,
+        currentListGap,
+        displayName: input.target.displayName,
+        enrichment: [
+            {
+                key: "website",
+                label: "Website",
+                sourceRef,
+                value: input.target.website || "missing",
+                verdict: input.target.website ? "pass" : "unsure",
+            },
+            {
+                key: "current-list-gap",
+                label: "Current-list gap",
+                sourceRef,
+                value: currentListGap,
+                verdict: gapStrong ? "pass" : "unsure",
+            },
+            {
+                key: "contactability",
+                label: "Contactability",
+                sourceRef,
+                value: input.target.contactability,
+                verdict: input.target.contactability === "blocked" ? "fail" : input.target.contactability === "missing" ? "unsure" : "pass",
+            },
+            {
+                key: "source-transparency",
+                label: "Source transparency",
+                sourceRef,
+                value: sourceRefs.join(" | ") || "missing",
+                verdict: sourceRefs.length ? "pass" : "fail",
+            },
+        ],
+        fitDecision,
+        fitScore,
+        provider: input.provider,
+        providerRecordUrl: input.providerRecordUrl || null,
+        recommendedNextAction,
+        researchRowId: researchRowIdFor(input.researchRunId, input.target.targetId, input.index),
+        researchRunId: input.researchRunId,
+        sourcePolicyId: input.sourcePolicyId || null,
+        sourceRefs,
+        sourceRunId: input.sourceRunId || null,
+        targetId: input.target.targetId,
+        updatedAt: null,
+        website: input.target.website || null,
+    };
+};
+
 const classifyReply = (message: string): SignalDeskConversationSummary["state"] => {
     const text = message.toLowerCase();
     if (/\b(stop|unsubscribe|do not contact|don't contact|dnc)\b/.test(text)) return "dnc";
@@ -1599,6 +1832,9 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.connectorSettings = await readList<SignalDeskConnectorSettingSummary>(db, SIGNALDESK_COLLECTIONS.CONNECTOR_SETTINGS);
         workspace.providerAccounts = await readList<SignalDeskProviderAccountSummary>(db, SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS);
         workspace.senderDomains = await readList<SignalDeskSenderDomainSummary>(db, SIGNALDESK_COLLECTIONS.SENDER_DOMAINS);
+        if (access.permissions.includes("signaldesk.configure")) {
+            workspace.teamMembers = await readList<SignalDeskTeamMemberSummary>(db, SIGNALDESK_COLLECTIONS.TEAM_MEMBERS);
+        }
     } else if (section === "control-room") {
         await readCommon();
         workspace.approvalPackets = await readList<SignalDeskApprovalPacketSummary>(db, SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS);
@@ -1643,6 +1879,7 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
         { credentialState: "not_required", dailyBudgetUsd: 0, monthlyBudgetUsd: 0, ownerApproved: true, perRunBudgetUsd: 0, provider: "manual", status: "approved", use: "discovery" },
         { credentialState: "missing", dailyBudgetUsd: 5, monthlyBudgetUsd: 75, ownerApproved: true, perRunBudgetUsd: 0.25, provider: "google-places", status: "evaluation", use: "discovery" },
         { credentialState: "missing", dailyBudgetUsd: 10, monthlyBudgetUsd: 150, ownerApproved: false, perRunBudgetUsd: 0.25, provider: "apify", status: "disabled", use: "discovery", disabledReason: "Enable only after Apify source actor, legal/source policy, and budget approval." },
+        { credentialState: "not_required", dailyBudgetUsd: 0, monthlyBudgetUsd: 0, ownerApproved: true, perRunBudgetUsd: 0, provider: "fhrs-fhis", status: "evaluation", use: "discovery", disabledReason: "UK official establishment seed only; separate contact source policy is required before outreach contact use." },
         { credentialState: "missing", dailyBudgetUsd: 10, monthlyBudgetUsd: 200, ownerApproved: false, perRunBudgetUsd: 1, provider: "apollo", status: "disabled", use: "enrichment", disabledReason: "Enable only after first market pod and budget approval." },
         { credentialState: "missing", dailyBudgetUsd: 5, monthlyBudgetUsd: 100, ownerApproved: false, perRunBudgetUsd: 0.5, provider: "hunter", status: "disabled", use: "verification", disabledReason: "Enable only after email verification policy is approved." },
         { credentialState: "missing", dailyBudgetUsd: 5, monthlyBudgetUsd: 100, ownerApproved: false, perRunBudgetUsd: 0.5, provider: "zerobounce", status: "disabled", use: "verification", disabledReason: "Enable only after email verification policy is approved." },
@@ -1658,8 +1895,8 @@ export async function seedSignalDeskDefaultsServer(access: SignalDeskAccessConte
         { credentialState: "missing", dailyBudgetUsd: 0, monthlyBudgetUsd: 0, ownerApproved: false, perRunBudgetUsd: 0, provider: "lemlist", status: "disabled", use: "sequencer", disabledReason: "Sequencer eval blocked until sender-domain risk policy is approved." },
     ];
     const modelRouteDefaults: ModelRouteInput[] = [
-        { confidenceThreshold: "medium", defaultModel: "gemini-2.5-flash", defaultProvider: "gemini", escalationModel: "gpt-5-mini", escalationProvider: "openai", maxCostUsd: 0.05, status: "active", task: "score" },
-        { confidenceThreshold: "medium", defaultModel: "gemini-2.5-flash", defaultProvider: "gemini", escalationModel: "gpt-5-mini", escalationProvider: "openai", maxCostUsd: 0.05, status: "active", task: "evidence" },
+        { confidenceThreshold: "medium", defaultModel: SIGNALDESK_DEFAULT_AI_MODEL, defaultProvider: "gemini", escalationModel: "gpt-5-mini", escalationProvider: "openai", maxCostUsd: 0.05, status: "active", task: "score" },
+        { confidenceThreshold: "medium", defaultModel: SIGNALDESK_DEFAULT_AI_MODEL, defaultProvider: "gemini", escalationModel: "gpt-5-mini", escalationProvider: "openai", maxCostUsd: 0.05, status: "active", task: "evidence" },
         { confidenceThreshold: "medium", defaultModel: "gpt-5-mini", defaultProvider: "openai", escalationModel: "claude-opus-4.8", escalationProvider: "anthropic", maxCostUsd: 0.15, status: "hold", task: "approval-packet" },
         { confidenceThreshold: "high", defaultModel: "claude-opus-4.8", defaultProvider: "anthropic", maxCostUsd: 1, status: "hold", task: "weekly-strategist" },
     ];
@@ -2236,6 +2473,81 @@ export async function upsertSignalDeskConnectorSettingServer(access: SignalDeskA
     await batch.commit();
 
     return toPlain(connector) as SignalDeskConnectorSettingSummary;
+}
+
+export async function upsertSignalDeskTeamMemberServer(access: SignalDeskAccessContext, input: TeamMemberInput) {
+    const db = requireDb();
+    const emailLower = normalizeLower(input.email);
+    const userId = normalizeText(input.userId) || null;
+    const teamMemberId = normalizeText(input.teamMemberId);
+
+    if (!emailLower || !emailLower.includes("@")) {
+        throw new Error("SignalDesk team member email is required");
+    }
+    if (!input.active && (
+        (userId && userId === access.userId)
+        || emailLower === normalizeLower(access.email)
+        || teamMemberId === access.userId
+    )) {
+        throw new Error("SignalDesk team member cannot deactivate own access");
+    }
+
+    const explicitSnap = teamMemberId
+        ? await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS).doc(teamMemberId).get()
+        : null;
+    const userSnap = !explicitSnap?.exists && userId
+        ? await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS).doc(userId).get()
+        : null;
+    const emailSnap = !explicitSnap?.exists && !userSnap?.exists
+        ? await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS)
+            .where("emailLower", "==", emailLower)
+            .limit(1)
+            .get()
+        : null;
+
+    const existingSnap = explicitSnap?.exists
+        ? explicitSnap
+        : userSnap?.exists
+            ? userSnap
+            : emailSnap?.docs?.[0] || null;
+    const memberRef = existingSnap?.ref || db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS)
+        .doc(userId || `member_${hashValue(emailLower).slice(0, 24)}`);
+    const existing = existingSnap?.exists ? toPlain(existingSnap.data()) : {};
+    const timestamp = now();
+    const preservedPermissions = Array.isArray(existing.permissions)
+        ? existing.permissions.filter((permission: unknown): permission is SignalDeskPermission => typeof permission === "string")
+        : [];
+    const member = {
+        teamMemberId: memberRef.id,
+        pId: SIGNALDESK_PRODUCT_CODE,
+        userId,
+        email: emailLower,
+        emailLower,
+        name: normalizeText(input.name) || null,
+        role: input.role,
+        permissions: preservedPermissions,
+        active: input.active,
+        status: input.active ? "active" : "inactive",
+        createdAt: existing.createdAt || timestamp,
+        createdBy: existing.createdBy || access.userId,
+        updatedAt: timestamp,
+        updatedBy: access.userId,
+    };
+
+    const batch = db.batch();
+    batch.set(memberRef, sanitizeForFirestore(member), { merge: true });
+    appendAudit(
+        db,
+        batch,
+        access,
+        input.active ? "team_member_upsert" : "team_member_deactivate",
+        "teamMember",
+        memberRef.id,
+        `${member.email} / ${member.role}`,
+    );
+    updateDailyCost(db, batch, 2, 0);
+    await batch.commit();
+    return toPlain(member) as SignalDeskTeamMemberSummary;
 }
 
 export async function upsertSignalDeskSelfServiceCtaServer(access: SignalDeskAccessContext, input: SelfServiceCtaInput) {
@@ -3022,7 +3334,7 @@ export async function createSignalDeskProviderEvaluationServer(
     ]);
     const providerRuns = vendorRuns.filter((run) => run.provider === input.provider);
     const resultRows = enrichmentResults.filter((result) => result.provider === input.provider);
-    const sampleSize = Math.max(providerRuns.length, resultRows.length, input.provider === "google-places" || input.provider === "apify" ? sourceRuns.length : 0);
+    const sampleSize = Math.max(providerRuns.length, resultRows.length, input.provider === "google-places" || input.provider === "apify" || input.provider === "fhrs-fhis" ? sourceRuns.length : 0);
     const completedRuns = providerRuns.filter((run) => run.status === "completed" || run.status === "ready").length;
     const blockedRuns = providerRuns.filter((run) => run.status === "blocked" || run.status === "failed").length;
     const verified = resultRows.filter((result) => result.status === "verified").length;
@@ -4390,6 +4702,9 @@ export async function runSignalDeskSourceProviderServer(access: SignalDeskAccess
     if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_SOURCE_PROVIDERS) {
         throw new Error("SignalDesk source providers are disabled");
     }
+    if (input.provider === "fhrs-fhis" && !FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_FHRS_FHIS_SOURCE_PROVIDER) {
+        throw new Error("FHRS/FHIS source provider is disabled");
+    }
     if (input.provider === "apify" && !FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_APIFY_SOURCE_BROKER) {
         throw new Error("Apify source broker is disabled");
     }
@@ -4431,7 +4746,7 @@ export async function runSignalDeskSourceProviderServer(access: SignalDeskAccess
     const timestamp = now();
     const providerRunRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_HEALTH_SUMMARIES).doc(`provider_${input.provider}`);
     const vendorRunRef = db.collection(SIGNALDESK_COLLECTIONS.VENDOR_RUNS).doc();
-    const retentionEligibleProvider = input.provider === "google-places" || input.provider === "apify";
+    const retentionEligibleProvider = input.provider === "google-places" || input.provider === "apify" || input.provider === "fhrs-fhis";
     batch.set(providerRunRef, sanitizeForFirestore({
         providerRunId: providerRunRef.id,
         pId: SIGNALDESK_PRODUCT_CODE,

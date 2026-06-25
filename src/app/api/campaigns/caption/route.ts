@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { GEMINI_MODELS } from "@constant/AI/models";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
@@ -15,7 +16,7 @@ import { CAMPAIGN_CAPTION_PROMPT_V1, CampaignCaptionInput } from "@services/gemi
 import { NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
-const AI_MODEL = "gemini-2.5-flash";
+const AI_MODEL = GEMINI_MODELS.TEXT_GEN;
 const ACTION = AI_ACTIONS_TYPES.CAMPAIGN_CAPTION;
 
 /**

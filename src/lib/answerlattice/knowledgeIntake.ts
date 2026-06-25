@@ -1,4 +1,5 @@
 import { FEATURE_FLAGS } from '@config/features';
+import { ANSWERLATTICE_EMBEDDING_CACHE_VERSION, ANSWERLATTICE_EMBEDDING_MODEL, ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
@@ -109,7 +110,7 @@ const DEFAULT_SECTION_TITLE = 'Imported Product Knowledge';
 const DISCOVERY_TIMEOUT_MS = 9000;
 const DISCOVERY_MAX_REDIRECTS = 3;
 const DISCOVERY_USER_AGENT = 'AnswerlatticeKnowledgeIntake/1.0 (+https://answerlattice.com)';
-const INTAKE_MEDIA_MODEL = 'gemini-2.5-flash';
+const INTAKE_MEDIA_MODEL = ANSWERLATTICE_TEXT_MODEL;
 const INTAKE_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const INTAKE_AUDIO_MIME_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a', 'audio/aac', 'audio/webm', 'audio/ogg']);
 const INTAKE_VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/x-m4v', 'video/quicktime', 'video/webm', 'video/ogg']);
@@ -1290,7 +1291,7 @@ async function maybeEmbedArticle(articleData: Record<string, any>, actor?: Intak
         });
         articleData.embedding = embeddingResult.vector;
         articleData.embeddingStatus = 'embedded';
-        articleData.embeddingCacheVersion = 'gemini-embedding-001:768:v1';
+        articleData.embeddingCacheVersion = ANSWERLATTICE_EMBEDDING_CACHE_VERSION;
         await recordAnswerlatticeAiOperation({
             tId: Number(articleData.tId),
             sId: Number(articleData.sId),
@@ -1303,7 +1304,7 @@ async function maybeEmbedArticle(articleData: Record<string, any>, actor?: Intak
                 embeddingDimensions: (articleData.embedding?.values || articleData.embedding?._values || []).length,
             },
             fileId: articleData.id || null,
-            model: 'gemini-embedding-001',
+            model: ANSWERLATTICE_EMBEDDING_MODEL,
             processingTime: Date.now() - operationStart,
             source: 'answerlattice_knowledge_intake_publish',
             promptTokenCount: embeddingResult.usageMetadata.promptTokenCount || 0,

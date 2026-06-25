@@ -13,6 +13,11 @@
 | Read-only analyst reveals contact | Blocked. |
 | Operator edits role policy | Blocked. |
 | Founder admin edits role policy | Allowed and audited. |
+| Founder admin adds partner by login email | Allowed and audited. |
+| Founder admin changes partner role | Allowed and audited. |
+| Founder admin deactivates partner | Allowed and audited. |
+| Founder admin deactivates own active access | Blocked. |
+| Mobile edits team access | Blocked. |
 
 ## Audit Tests
 

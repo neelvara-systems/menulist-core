@@ -56,14 +56,19 @@ const getSignalDeskDb = () => {
     return db && typeof db.collection === "function" ? signaldeskFirestoreAdmin : null;
 };
 
+const normalizeEmail = (value: unknown) => {
+    const email = String(value || "").trim().toLowerCase();
+    return email || undefined;
+};
+
 export const getSignalDeskSessionIdentity = (session: any) => {
     const user = session?.user || {};
     const userId = String(session?.uId || user.id || user.uid || "");
-    const email = user.email || session?.email;
+    const email = normalizeEmail(user.email || session?.email);
     const name = user.name || session?.name;
 
     return {
-        email: email ? String(email).trim().toLowerCase() : undefined,
+        email,
         name: name ? String(name).trim() : undefined,
         userId,
     };
@@ -93,10 +98,27 @@ export async function getSignalDeskAccessContext(session: any): Promise<SignalDe
     }
 
     const db = getSignalDeskDb();
-    if (!db || !identity.userId) return null;
+    if (!db) return null;
 
-    const memberSnap = await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS).doc(identity.userId).get();
-    if (!memberSnap.exists) return null;
+    const snapshots: any[] = [];
+    if (identity.userId) {
+        snapshots.push(await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS).doc(identity.userId).get());
+        const userIdQuery = await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS)
+            .where("userId", "==", identity.userId)
+            .limit(1)
+            .get();
+        snapshots.push(...userIdQuery.docs);
+    }
+    if (identity.email) {
+        const emailQuery = await db.collection(SIGNALDESK_COLLECTIONS.TEAM_MEMBERS)
+            .where("emailLower", "==", identity.email)
+            .limit(1)
+            .get();
+        snapshots.push(...emailQuery.docs);
+    }
+
+    const memberSnap = snapshots.find((snap) => snap?.exists);
+    if (!memberSnap?.exists) return null;
 
     const data = memberSnap.data() || {};
     if (data.active !== true) return null;
@@ -112,9 +134,9 @@ export async function getSignalDeskAccessContext(session: any): Promise<SignalDe
         email: identity.email,
         firebaseConfigured: isSignalDeskFirebaseConfigured,
         isPlatformAdmin: false,
-        name: identity.name,
+        name: identity.name || data.name,
         permissions: Array.from(new Set([...rolePermissions, ...extraPermissions])),
         role,
-        userId: identity.userId,
+        userId: identity.userId || data.userId || memberSnap.id,
     };
 }

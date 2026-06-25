@@ -1,14 +1,14 @@
 # AI System Layer — Product Specification
 
 **Feature:** Centralized AI Infrastructure for MenuList  
-**Status:** ✅ PHASE 1 COMPLETE — Key rotation + AI Gateway implemented globally  
-**Last Updated:** March 13, 2026
+**Status:** ✅ PRODUCTION HARDENING ACTIVE — Gateway, key failover, model constants, health checks
+**Last Updated:** June 25, 2026
 
 ---
 
 ## Executive Summary
 
-MenuList uses Google Gemini AI across multiple features: menu extraction, descriptions, translations, image generation, help center search, feedback analysis, weekly narratives, and KB quality scoring. Currently, each feature calls Gemini independently with inconsistent SDKs, models, retry logic, and rate limiting. The AI System Layer centralizes all AI operations through a single gateway with unified rate limiting, key management, retry handling, and cost tracking.
+MenuList uses Google Gemini AI across multiple features: menu extraction, descriptions, translations, image generation, help center search, feedback analysis, weekly narratives, review drafts, and KB quality scoring. The AI System Layer centralizes AI operations through a gateway, shared model constants, key failover, retry handling, and scheduled provider health checks.
 
 ### What It Does
 
@@ -16,8 +16,9 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 - **Rate Limiting** → Global request throttle protecting the Gemini API
 - **Retry Handler** → Consistent exponential backoff with circuit breaker
 - **Cost Tracking** → Per-feature, per-tenant AI cost monitoring
-- **Model Router** → Task-based model selection (centralized)
+- **Model Constants** → Product/runtime-specific model selection
 - **SDK Standardization** → Single Gemini SDK across all features
+- **Provider Health** → Daily Gemini health records for MenuList and Answerlattice
 
 ### What It Does NOT Do
 
@@ -31,28 +32,35 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 
 ## Problem Statement
 
-### Current Issues
+### Solved Issues
 
-1. **Two Gemini SDKs in use**
-   - `@google/genai` (new SDK) — used by menu extraction
-   - `@google/generative-ai` (legacy SDK) — used by feedback analysis, weekly narrative, owner dashboard, KB quality
-   - Different initialization patterns, different response handling
+1. **SDK standardization**
+   - Active source uses `@google/genai` behind gateway entry points.
 
-2. **Inconsistent protection**
-   - Menu extraction: rate limiting ✅, retry ✅, circuit breaker ✅
-   - Feedback analysis: rate limiting ❌, retry ❌, circuit breaker ❌
-   - Weekly narrative: rate limiting ❌, retry ❌, circuit breaker ❌
+2. **Consistent retry and key failover**
+   - MenuList app routes and Functions use the shared gateway.
+   - Answerlattice app/Functions paths now share product-specific model constants.
 
-3. **Model inconsistency**
-   - Extraction: `gemini-2.5-flash` (latest)
-   - Other Cloud Functions: `gemini-2.0-flash-exp` (older, experimental)
+3. **Model deprecation cleanup**
+   - Active source no longer calls Gemini 2.0 Flash ids.
+   - Stable production ids live in constants instead of scattered literals.
 
-4. **No global rate protection**
-   - If nightly scheduler runs 8 AI tasks simultaneously for all tenants, no global throttle prevents Gemini rate limit errors
+4. **Provider health visibility**
+   - Daily health records now exist for MenuList and Answerlattice.
 
-5. **No cross-feature cost visibility**
+### Remaining Risks
+
+1. **Global rate protection**
+   - If many live owner routes and nightly jobs run together, cross-feature throttling is still limited to the existing route/job guards.
+
+2. **Cross-feature cost visibility**
    - Extraction costs tracked in `MENULIST_AI_OPERATIONS` collection
-   - Other AI features: no cost tracking at all
+   - Some newer billable app routes use `menulistAiOperations`
+   - Not every internal scheduler feature has unified per-feature cost reporting
+
+3. **Provider abstraction**
+   - Gemini is still the only live provider in active production paths.
+   - A future OpenAI/Anthropic fallback should use a shared interface, not direct provider calls.
 
 ---
 
@@ -144,18 +152,19 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 
 | ID    | Requirement                                    | Priority | Status |
 | ----- | ---------------------------------------------- | -------- | ------ |
-| FR-01 | Centralized AI gateway for all CF Gemini calls | P0       | 📝     |
+| FR-01 | Centralized AI gateway for Gemini calls        | P0       | ✅     |
 | FR-02 | Global rate limiter (requests/second)          | P0       | 📝     |
-| FR-03 | Unified retry handler with exponential backoff | P0       | 📝     |
-| FR-04 | Circuit breaker (reuse existing)               | P0       | 📝     |
-| FR-05 | Model router (task → model mapping)            | P1       | 📝     |
+| FR-03 | Unified retry handler with exponential backoff | P0       | ✅     |
+| FR-04 | Circuit breaker (reuse existing)               | P0       | ✅     |
+| FR-05 | Model constants                                | P1       | ✅     |
 | FR-06 | Per-feature cost tracking                      | P1       | 📝     |
-| FR-07 | SDK standardization to `@google/genai`         | P1       | 📝     |
+| FR-07 | SDK standardization to `@google/genai`         | P1       | ✅     |
 | FR-08 | Feature adapter pattern (prompt separation)    | P1       | 📝     |
 | FR-09 | API key pool with failover                     | P0       | ✅     |
 | FR-10 | Request fingerprint caching                    | P2       | 📝     |
 | FR-11 | Translation memory                             | P3       | 📝     |
 | FR-12 | Description cache                              | P3       | 📝     |
+| FR-13 | Daily AI provider health check                 | P0       | ✅     |
 
 ### Non-Functional Requirements
 
@@ -163,7 +172,8 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 | ------ | ----------------------------------- | ------------------------ |
 | NFR-01 | Gateway overhead per call           | < 50ms                   |
 | NFR-02 | Zero breaking changes to extraction | Must pass existing tests |
-| NFR-03 | Feature flag controlled             | `ENABLE_AI_GATEWAY`      |
+| NFR-03 | Stable production models            | No preview/latest/experimental aliases in active prod paths |
+| NFR-04 | Key isolation                       | Separate staging and production Gemini keys |
 
 ---
 
@@ -182,13 +192,14 @@ Behavior is determined by how many keys are configured in environment variables.
 
 ### Cloud Functions (Backend)
 
-| Feature           | File                                                     | SDK                     | Model                  | Cost/Call | Frequency  |
-| ----------------- | -------------------------------------------------------- | ----------------------- | ---------------------- | --------- | ---------- |
-| Menu Extraction   | `functions/src/logic/processMenuImages.ts`               | `@google/genai`         | `gemini-2.5-flash`     | ~$0.001   | Per upload |
-| Feedback Analysis | `functions/src/services/gemini/feedbackAnalysis.ts`      | `@google/generative-ai` | `gemini-2.0-flash-exp` | ~$0.001   | Nightly    |
-| Owner Dashboard   | `functions/src/services/gemini/ownerDashboardSummary.ts` | `@google/generative-ai` | `gemini-2.0-flash-exp` | ~$0.001   | Nightly    |
-| Weekly Narrative  | `functions/src/analytics/weeklyNarrative.ts`             | `@google/generative-ai` | varies                 | ~$0.001   | Weekly     |
-| KB Quality        | `functions/src/analytics/kbQuality.ts`                   | `@google/generative-ai` | varies                 | ~$0.001   | Nightly    |
+| Feature           | File                                                     | SDK             | Model constant | Cost/Call | Frequency  |
+| ----------------- | -------------------------------------------------------- | --------------- | -------------- | --------- | ---------- |
+| Menu Extraction   | `functions/src/logic/processMenuImages.ts`               | `@google/genai` | `AI_MODEL`     | ~$0.001   | Per upload |
+| Feedback Analysis | `functions/src/services/gemini/feedbackAnalysis.ts`      | `@google/genai` | `AI_MODEL`     | ~$0.001   | Nightly    |
+| Owner Dashboard   | `functions/src/services/gemini/ownerDashboardSummary.ts` | `@google/genai` | `OWNER_ANALYTICS_AI_MODEL` | ~$0.001 | Nightly |
+| Weekly Narrative  | `functions/src/analytics/weeklyNarrative.ts`             | `@google/genai` | `AI_MODEL`     | ~$0.001   | Weekly     |
+| KB Quality        | `functions/src/analytics/kbQuality.ts`                   | `@google/genai` | `AI_MODEL`     | ~$0.001   | Nightly    |
+| AI Provider Health | `functions/src/schedulers/aiProviderHealth.ts`          | `@google/genai` | `AI_MODEL`     | tiny      | Daily      |
 
 ### Frontend API Routes (Client → Server → Gemini)
 
@@ -200,7 +211,7 @@ Behavior is determined by how many keys are configured in environment variables.
 | Help Search       | `/api/helpCenter/search-kb` | Upstash + SAFE_MODE |
 | New Item Metadata | `/api/new-item-metadata`    | Upstash + SAFE_MODE |
 
-**Phase 1 scope:** Cloud Functions only (backend). Frontend routes already have Upstash protection.
+Frontend routes use the same gateway entry point from `src/lib/google/genAi/` and model constants from `src/constants/AI/models.ts` or `src/constants/answerlattice/ai.ts`.
 
 ---
 
@@ -211,10 +222,10 @@ Behavior is determined by how many keys are configured in environment variables.
 - AI Gateway module with `executeAITask()`
 - Reuse existing circuit breaker
 - Reuse existing rate limiter (add global limiter)
-- Model router with task→model mapping
+- Model constants with product/runtime-specific names
 - Migrate Cloud Function AI features to gateway
 - Per-feature cost tracking
-- Feature flag: `ENABLE_AI_GATEWAY`
+- Gateway entry points stay always-on; no `ENABLE_AI_GATEWAY` bypass exists in active code.
 
 ### Phase 2 — Cost Control & Caching (Future)
 
@@ -222,6 +233,7 @@ Behavior is determined by how many keys are configured in environment variables.
 - ✅ ~~Key health monitoring and cooldown~~ (DONE — exponential cooldown per key)
 - Request fingerprint caching (avoid duplicate calls)
 - Per-tenant AI budget guardrails
+- Provider abstraction for non-Gemini fallback
 
 ### Phase 3 — Knowledge Reuse
 

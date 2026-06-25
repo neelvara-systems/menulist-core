@@ -38,6 +38,7 @@ No foundation collection may be created in `menulist-qa` or `menulist` except a 
 | --- | ---: | ---: | --- |
 | Load dashboard | 3-6 | 0 | Reads summaries, kill switches, incidents. |
 | Check permission | 1-2 | 0 | Cache role policy in server/runtime where safe. |
+| Add/update team member | 1-2 | 2 | Server action writes `signaldeskTeamMembers`, audit, and cost summary. |
 | Contact reveal | 2-4 | 1-2 | Reads role and contact state; writes audit. |
 | Activate kill switch | 2-4 | 2 | Writes kill switch and audit. |
 | Deactivate kill switch | 2-4 | 2 | Writes kill switch and audit. |

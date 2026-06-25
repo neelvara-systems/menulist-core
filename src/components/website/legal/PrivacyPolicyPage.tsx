@@ -37,7 +37,7 @@ const dataCollected = [
         points: [
             'Technical request information such as IP address, browser type, and operating system',
             'Device information and product reliability signals',
-            'Main MenuList website analytics only after you accept optional analytics',
+            'Main MenuList website analytics, including Plausible, Google Analytics, and Microsoft Clarity when configured, only after you accept optional analytics',
             'Authentication and security events, including access checks, reset requests, and session revocation metadata',
             'Customer menu analytics are separate from the main website consent gate and do not ask visitors for names, emails, or payment details',
         ],
@@ -47,7 +47,7 @@ const dataCollected = [
 const privacyHighlights = [
     { label: 'Core data only', value: 'MenuList uses account, business, billing, content, security, reliability, and product-operation data.' },
     { label: 'No data resale flow', value: 'The product does not include advertising-sale or data-broker resale flows.' },
-    { label: 'Main website analytics with consent', value: 'Google Analytics and Microsoft Clarity load on the MenuList website only after analytics is accepted.' },
+    { label: 'Main website analytics with consent', value: 'Plausible, Google Analytics, and Microsoft Clarity load on the MenuList website only after analytics is accepted and the relevant tool is configured.' },
     { label: 'Customer menu identity', value: 'Public menu analytics do not ask visitors for names, emails, or payment details. Guest feedback may include details a visitor chooses to submit.' },
     { label: 'Owner requests', value: 'Owners can contact support@menulist.ai for account-data questions or requests.' },
     { label: 'Model-backed features', value: 'Selected inputs are sent to configured AI providers only when a product feature needs that processing.' },
@@ -113,7 +113,7 @@ const retentionFacts = [
 ];
 
 export default function PrivacyPolicyPage() {
-    const lastUpdated = 'June 5, 2026';
+    const lastUpdated = 'June 26, 2026';
 
     return (
         <div className="ws-page">
@@ -241,7 +241,7 @@ export default function PrivacyPolicyPage() {
                                 </div>
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-2)', borderTop: '1px solid var(--ws-border-subtle)', paddingTop: 'var(--ws-space-3)' }}>
-                                {['Payment processing (Razorpay) — payment method details are handled by Razorpay, not MenuList card-entry forms', 'Cloud hosting and infrastructure such as Vercel, Google Cloud, and Firebase', 'Main website analytics (Google Analytics and Microsoft Clarity) — only after analytics consent', 'Configured AI providers such as Google Gemini — when extraction, translation, description, or image features need model processing'].map((p) => (
+                                {['Payment processing (Razorpay) — payment method details are handled by Razorpay, not MenuList card-entry forms', 'Cloud hosting and infrastructure such as Vercel, Google Cloud, and Firebase', 'Main website analytics (Plausible, Google Analytics, and Microsoft Clarity when configured) — only after analytics consent', 'Configured AI providers such as Google Gemini — when extraction, translation, description, or image features need model processing'].map((p) => (
                                 <li key={p} style={{ display: 'flex', gap: 'var(--ws-space-2)', alignItems: 'center' }}>
                                         <LuCheck size={14} color="var(--ws-success)" style={{ flexShrink: 0 }} />
                                         <span style={{ fontSize: '0.875rem', color: 'var(--ws-text-secondary)' }}>{p}</span>

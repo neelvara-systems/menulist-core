@@ -2,7 +2,7 @@
 
 > Status: one-time infrastructure setup runbook
 > Scope: MenuList, Answerlattice, CampaignCue, MyCodex
-> Last updated: June 22, 2026
+> Last updated: June 25, 2026
 
 This document is the setup checklist for fresh staging/local and production
 infrastructure. It is written from the current codebase contract, not from a
@@ -119,6 +119,7 @@ or select the matching project in the console.
 | Vercel environment variables | https://vercel.com/docs/environment-variables |
 | Vercel domains | https://vercel.com/docs/domains |
 | Google AI Studio API keys | https://aistudio.google.com/app/apikey |
+| Gemini API key security | https://ai.google.dev/gemini-api/docs/api-key |
 | OpenAI API keys, optional legacy env | https://platform.openai.com/api-keys |
 | Upstash Console | https://console.upstash.com/ |
 | Upstash Redis docs | https://upstash.com/docs/redis |
@@ -764,8 +765,10 @@ Open: https://aistudio.google.com/app/apikey
 
 Checklist:
 
-- [ ] Create staging key or confirm shared low-risk staging key.
-- [ ] Create production key.
+- [ ] Create a dedicated staging key.
+- [ ] Create a dedicated production key.
+- [ ] Restrict each key to the Gemini API.
+- [ ] Confirm the production key is not used by local development or staging.
 - [ ] Store staging key in Vercel staging `GEMINI_AI_KEY`.
 - [ ] Store production key in Vercel production `GEMINI_AI_KEY`.
 - [ ] Store keys in MenuList Firebase Secret Manager for `menulist-qa` and
@@ -773,11 +776,22 @@ Checklist:
 - [ ] Add rotation keys only when they exist: `GEMINI_AI_KEY_2`,
       `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`.
 - [ ] Leave `GEMINI_API_KEY` blank unless a legacy path explicitly requires it.
+- [ ] Confirm Google Cloud billing is enabled for the key's project.
+- [ ] Configure budget and usage alerts for the key's Google Cloud project.
+- [ ] Check model/project quota before launch; do not treat extra key slots as
+      quota scaling.
+- [ ] After Functions deploy, confirm `_health/aiProvider_gemini` and
+      `platformSummary/answerlatticeAiProviderHealth` update successfully.
 
 Do not create product-wise Gemini env names. The current code reads
 `GEMINI_AI_KEY` and rotation aliases globally by environment, not
 `MENULIST_GEMINI_AI_KEY`, `ANSWERLATTICE_GEMINI_AI_KEY`, or
 `CAMPAIGNCUE_GEMINI_AI_KEY`.
+
+The rotation aliases are for leak response and transient failover. If the keys
+belong to the same Google project, they share that project's Gemini quota.
+Production scaling requires paid billing, model-level quota monitoring, and
+quota increase requests.
 
 ### 2. OpenAI, optional legacy env
 
@@ -1312,7 +1326,7 @@ Use this table while setting up. Do not paste secret values into this document.
 | Google OAuth | [ ] | [ ] | all domains and callbacks |
 | Admin SDK env | [ ] | [ ] | private keys escaped in Vercel |
 | Firebase Secret Manager | [ ] | [ ] | Functions secrets only |
-| Gemini | [ ] | [ ] | global per environment |
+| Gemini | [ ] | [ ] | restricted, separate per environment |
 | Upstash | [ ] | [ ] | separate DBs |
 | Razorpay | [ ] | [ ] | test vs live |
 | Sentry | [ ] | [ ] | browser/server/source maps |
@@ -1336,6 +1350,10 @@ Use this table while setting up. Do not paste secret values into this document.
 - Do not enable App Check enforcement until valid traffic is confirmed.
 - Do not enable WhatsApp with fake values.
 - Do not create product-wise Gemini env keys unless code is changed first.
+- Do not share one Gemini API key across local, staging, and production.
+- Do not use unrestricted Gemini production keys.
+- Do not assume `GEMINI_AI_KEY_2`/`_3`/`_4` increase capacity when they are in
+  the same Google project.
 - Do not add Firebase env keys for MyCodex.
 - Do not create separate Vercel projects unless the deployment matrix is changed
   first.

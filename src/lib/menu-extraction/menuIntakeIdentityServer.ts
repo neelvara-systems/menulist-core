@@ -1,3 +1,4 @@
+import { GEMINI_MODELS } from "@constant/AI/models";
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
 import {
@@ -26,6 +27,7 @@ export const DEFAULT_STORAGE_BUCKET = "menulist-qa.appspot.com";
 const SUPPORTED_MIME_TYPES = new Set<string>(OWNER_MENU_UPLOAD_MIME_TYPES);
 const SUPPORTED_TEXT_MIME_TYPES = new Set<string>(MENU_LINK_IMPORT_TEXT_MIME_TYPES);
 const MAX_MENU_INTAKE_TEXT_CHARS = 60_000;
+const MENU_INTAKE_IDENTITY_MODEL = GEMINI_MODELS.TEXT_GEN;
 
 export type MenuIntakeIdentityServerResult = MenuIntakeAnalysisResult & {
   analyzedFileCount: number;
@@ -280,7 +282,7 @@ export async function analyzeMenuIntakeIdentity(params: {
     const operationStart = Date.now();
     const geminiResult = readableFileCount > 0
       ? await genAIClient.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: MENU_INTAKE_IDENTITY_MODEL,
         contents: [{ role: "user", parts }],
         config: {
           temperature: 0.1,
@@ -303,7 +305,7 @@ export async function analyzeMenuIntakeIdentity(params: {
           severity: analysis.decision.severity,
         },
         geminiResponse: geminiResult,
-        model: "gemini-2.5-flash",
+        model: MENU_INTAKE_IDENTITY_MODEL,
         processingTime: Date.now() - operationStart,
         projectId: params.operation?.projectId || null,
         source: params.operation?.source || "menu_intake_identity",

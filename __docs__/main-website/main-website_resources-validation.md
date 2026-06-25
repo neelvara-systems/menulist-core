@@ -139,8 +139,8 @@ Additional implementation:
 - `public/robots.txt` now applies protected-route disallows to named search/AI crawlers and the generic crawler group.
 - `DISCOVERY_CRAWLERS` now includes `CCBot`.
 - `public/llms.txt` and `public/llms-full.txt` now include the preferred MenuList description and claim limits.
-- Resource analytics now includes secondary CTA, upload-menu, pricing, and AI/search referrer events through GA4-only public website events.
-- Resource analytics event payloads now include the reshared brief's property contract: `slug`, `category`, `cta_label`, `target_url`, `locale`, `referrer`, `utm_source`, `utm_medium`, `entry_page`, and an anonymous session-scoped `session_id`, while preserving existing compatibility fields such as `cluster`, `destination`, `source_page`, and `referrer_host`.
+- Resource analytics now includes secondary CTA, create-customer-link, pricing, checklist-copy, and AI/search referrer events through consent-gated public website analytics.
+- Plausible receives property-free custom event names. GA4 compatibility payloads include the reshared brief's acquisition properties: `slug`, `category`, `cta_label`, `target_url`, `locale`, `referrer`, `utm_source`, `utm_medium`, and `entry_page`, while preserving existing compatibility fields such as `cluster`, `destination`, `source_page`, and `referrer_host`. Public website events do not send a custom repo-generated `session_id` to third-party website analytics.
 - AI/search referrer classification includes both `chatgpt.com` and legacy `chat.openai.com`.
 - The search/discovery-ready website copy was revised from certain answer-source wording to a modest claim about giving crawlers a clearer public source when they choose to crawl or show menu details.
 

@@ -28,7 +28,7 @@ The site is intentionally small. Do not add blog, pricing, demo, resources, care
 Left:
 
 ```text
-ConstantLayer Systems
+ConstantLayer
 ```
 
 Primary nav:
@@ -48,14 +48,20 @@ Products
 
 The header action routes to the internal product-lineup page. Product-specific conversion CTAs belong on product domains.
 
+Visual treatment:
+
+- Floating pill-shaped glass nav.
+- Desktop shows product nav links, Contact, and Products.
+- Small mobile hides nav text and uses a compact Products icon action.
+
 ---
 
 ## 3. Global Footer
 
-Footer description:
+Footer line:
 
 ```text
-ConstantLayer Systems is the company layer for a portfolio of business information products including MenuList, Answerlattice, and CampaignCue.
+© 2026 ConstantLayer Systems
 ```
 
 Footer links:
@@ -117,21 +123,26 @@ Required fields:
 - Lineup: MenuList / Answerlattice / CampaignCue
 - Public line: MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
 
-### Purpose Section
+Visual treatment:
 
-Heading:
+- Desktop/tablet: show the hero glass studio mock before the entity ledger.
+- Small phones: hide the large hero mock so the entity ledger starts inside the first mobile viewport.
+- The hero mock is a parent-site reference artifact, not a product dashboard.
 
-```text
-A public reference for the company layer behind the product portfolio.
-```
+### Marquee
 
-Body:
+Required items:
 
-```text
-ConstantLayer Systems gives company-level references one stable source: which products sit in the lineup, where inquiries go, and which product relationships are true today.
-```
+- ConstantLayer Systems
+- MenuList
+- Answerlattice
+- CampaignCue
+- Company reference
+- Legal routing
+- Privacy inbox
+- Product boundary
 
-### Reference Modules Section
+### Bento Section
 
 Purpose:
 
@@ -140,26 +151,71 @@ Show the parent site as a compact verification surface, not a broad product funn
 Heading:
 
 ```text
-Visitors can verify the company layer before moving to a product site.
+One glass surface for the narrow company questions.
 ```
 
 Body:
 
 ```text
-The parent website answers narrow company questions first: who operates the surfaces, which products are in the lineup, and where official inquiries should go.
+The parent website identifies the company record, product boundary, privacy/contact routes, and no-runtime boundary.
 ```
 
-Required modules:
+Required cards:
 
-- Company record: entity name and parent-reference scope.
-- Product surfaces: MenuList, Answerlattice, and CampaignCue as separate product surfaces.
-- Company contacts: business, legal, and privacy routing.
+- Entity: one company record visitors can check quickly.
+- Surfaces: product relationships stay visible without blending product promises.
+- Privacy: no account or form is introduced.
+- Runtime: no Firebase-backed product identity.
+- Routing: canonical domain plus local aliases.
+- Legal: sensitive identifiers stay out of public copy.
 
 Visual treatment:
 
-- Use bordered reference modules with compact labels, icon squares, and row-level details.
+- Use glass bento cards with compact mono labels, icon squares, and a single Prism-style geometric reference visual.
 - Keep the section calm and factual; do not introduce customer logos, testimonials, pricing, or product-conversion claims.
-- Do not use loud gradients, illustration-heavy art, or playful payment/product-marketing styling from external references.
+- Do not introduce new hues beyond the Prism mesh palette.
+
+### Spotlight Cards
+
+Required cards:
+
+- Company record, not another product funnel.
+- Product surfaces stay separate.
+- Inquiries route directly.
+
+Each card uses the cursor-following glass spotlight primitive.
+
+### Pull Quote
+
+Quote:
+
+```text
+MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+```
+
+### Stats Strip
+
+Required stats:
+
+- 3 product surfaces
+- 0 forms or lead database
+- 0 Firebase writes
+- 7 public reference pages
+
+### Boundary Comparison
+
+Required columns:
+
+- ConstantLayer / Company layer
+- Product websites
+- Owner apps
+
+Required rows:
+
+- Purpose
+- Data
+- Inquiries
+- Claims
 
 ### Product Lineup Section
 
@@ -189,19 +245,25 @@ Required product rows:
 - Answerlattice: Governed answer infrastructure for support knowledge, approved answers, widgets, and help surfaces.
 - CampaignCue: Campaign readiness and source-backed campaign output systems for local businesses.
 
-### Operating Principles Section
+### Contact Routes Section
 
 Heading:
 
 ```text
-Company information stays clear, narrow, and verifiable.
+Three direct inboxes, no parent-site form.
 ```
 
 Body:
 
 ```text
-This site is intentionally separate from product marketing. It keeps entity, portfolio relationship, legal, privacy, and contact references easy to confirm.
+Business, legal, and privacy contacts stay explicit and reviewable. Sensitive documents should only be sent when requested by the right inbox.
 ```
+
+Required cards:
+
+- Business: `hello@constantlayer.in`
+- Legal: `legal@constantlayer.in`
+- Privacy: `privacy@constantlayer.in`
 
 ---
 

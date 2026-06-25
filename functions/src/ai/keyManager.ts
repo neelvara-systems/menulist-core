@@ -2,8 +2,9 @@
  * AI Key Manager — Multi-key rotation for Gemini API (Cloud Functions)
  * 
  * Manages a pool of API keys with automatic failover on rate limiting.
- * When a key hits Google's rate limit (429), the manager rotates to
- * the next available key and retries immediately.
+ * Google applies Gemini rate limits per project, not per API key, so this is
+ * for rotation/leak response/failover only. It is not a quota scaling strategy
+ * unless the key/project design is intentionally separated.
  * 
  * Key Discovery:
  * - GEMINI_AI_KEY (required, primary)

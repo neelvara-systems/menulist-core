@@ -10,6 +10,7 @@
  */
 
 import { GenerateContentResponse, GenerateImagesResponse, HarmBlockThreshold, HarmCategory, Modality } from "@google/genai";
+import { GEMINI_MODELS } from "@constant/AI/models";
 import { summarizeImageProviderResponse } from "@lib/ai/imageOperationLogging";
 import { getImageAsBase64 } from "@lib/apiUtils";
 import { mapWithConcurrency } from "@lib/async/boundedConcurrency";
@@ -23,8 +24,8 @@ export type GeneratedImagePayload = { base64: string; mimeType: string; uploaded
 export type ImageProviderResponse = GenerateContentResponse | GenerateImagesResponse;
 
 export const IMAGE_AI_MODELS = {
-    GEMINI: "gemini-2.5-flash-image",
-    IMAGEN: "imagen-3.0-generate-002"
+    GEMINI: GEMINI_MODELS.IMAGE_GEN,
+    IMAGEN: GEMINI_MODELS.IMAGEN_3
 } as const;
 
 const IMAGE_PROMPT_CONCURRENCY = 2;

@@ -1,6 +1,6 @@
 # SignalDesk Foundation - Compliance Policy
 
-**Status:** Initial planning doc
+**Status:** Runtime-backed policy
 **Created:** June 23, 2026
 
 ## Access Boundary
@@ -14,6 +14,8 @@ No access is allowed for:
 - public visitors;
 - unauthenticated users;
 - external contractors unless explicitly added as internal team members.
+
+Internal team membership changes must be made through the private Settings flow or an equivalent server-admin maintenance script. Client Firestore writes remain denied. Every add, role change, activation, or deactivation must write an audit event, and self-deactivation is blocked in the runtime action.
 
 ## Contact Reveal
 
@@ -66,7 +68,6 @@ Deactivation requires:
 
 | Item | Owner |
 | --- | --- |
-| Final role membership source | Founder |
 | Contact reveal retention | Founder + compliance review |
 | Contractor access policy | Founder |
 | Incident severity policy | Founder + Codex before implementation |

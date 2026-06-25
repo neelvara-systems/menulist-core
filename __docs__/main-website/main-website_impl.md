@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.82 WhatsApp Test CTA Activation
-**Last Updated:** June 22, 2026
+**Status:** IMPLEMENTED — v3.6.88 Plausible Marketing Website Analytics
+**Last Updated:** June 26, 2026
 **Audience:** Developers
 
 ---
@@ -10,12 +10,12 @@
 
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
 
-The latest WhatsApp onboarding campaign pass adds `/whatsapp` as a public campaign route for the implemented messaging-onboarding flow and wires its primary/final CTA to the supplied test WhatsApp onboarding number `+1 555 657 1424` through `https://wa.me/15556571424`. Root fallback metadata, website layout metadata, homepage JSON-LD, and page-level JSON-LD read from `src/constants/menulist/website.ts`; `/create-menu/success` is a server metadata wrapper around the existing client success UI and is intentionally `noindex, nofollow, nocache` with a self canonical to the non-query success path.
+The latest analytics pass adds consent-gated Plausible Cloud support for the MenuList and Answerlattice public marketing websites only. The scripts mount only after analytics consent and only when the product-specific Plausible domain env var is configured. GA4 remains available for paid-ad/conversion continuity, Microsoft Clarity remains MenuList-only for visual behavior observation, and product analytics plus owner-facing business truth stay in the existing MenuList-owned analytics pipeline.
 
 ```
 Route Group: src/app/(website)/
 Layout:      LocalisationProvider → WebsiteAuthProvider → ThemeProvider (system preference or footer override)
-Analytics:   GoogleAnalytics + ClarityAnalytics (injected in layout)
+Analytics:   WebsiteAnalyticsConsent -> PlausibleAnalytics + GoogleAnalytics + ClarityAnalytics + WebsiteMarketingClickTracker after accepted analytics consent
 Styles:      @styles/app.scss (layout) + @/styles/website.css (per-page)
 Build:       Minimal src/pages defaults satisfy generated Pages Router manifest entries
 ```
@@ -91,7 +91,7 @@ LocalisationProvider (locale from next-intl/server)
     → ThemeProvider
       → WebsiteDocumentTheme
       → WebsiteThemeShortcut
-      → WebsiteAnalyticsConsent (wraps shared PublicCookieConsentBanner and gates GoogleAnalytics/ClarityAnalytics after accepted consent)
+      → WebsiteAnalyticsConsent (wraps shared PublicCookieConsentBanner and gates PlausibleAnalytics/GoogleAnalytics/ClarityAnalytics/WebsiteMarketingClickTracker after accepted consent)
       → {children}
 ```
 
@@ -226,7 +226,7 @@ The existing public platform-domain env config now uses `NEXT_PUBLIC_PLATFORM_DO
 
 **Full resource locale coverage:** v3.6.20 adds reviewed Arabic (`ar-SA`) and Spanish (`es-ES`) resource packs for the hub and all 12 articles. The localized resource layout now loads all active website locale JSON files and applies RTL direction for Arabic. `verify:website-resource-locales` now fails if any active non-default website-switcher language lacks a reviewed resource pack, route, sitemap, hreflang, and LLM context coverage.
 
-**Resource navigation and discovery hardening:** v3.6.21 updates the website to match the complete resource strategy without changing product runtime. Header navigation is now Features -> How it works -> Multi-location -> Pricing -> Resources, with a compact desktop Resources dropdown and mobile nested resource links. The homepage Resources section now uses the eight strategic cards: Menu engineering, QR menu setup, Digital menu vs PDF, Google menu source, Restaurant menu SEO, AI search discovery, Official menu source, and Multi-location control. Footer Resources links now point to the core resource set plus Trust & Security. `public/robots.txt` now groups named search/AI crawlers with the same private-route disallows as the generic crawler group, `CCBot` is listed in `DISCOVERY_CRAWLERS`, and `llms.txt` / `llms-full.txt` now include preferred positioning and claim limits. Resource analytics remains GA4-only and now includes secondary CTA, upload-menu, pricing, AI/search referrer events including `chat.openai.com`, UTM/referrer properties, locale, entry page, target URL, and anonymous session-scoped IDs. The search/discovery-ready product copy was softened so it describes a clearer public source for crawlers rather than implying search or AI systems must answer from MenuList. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
+**Resource navigation and discovery hardening:** v3.6.21 updates the website to match the complete resource strategy without changing product runtime. Header navigation is now Features -> How it works -> Multi-location -> Pricing -> Resources, with a compact desktop Resources dropdown and mobile nested resource links. The homepage Resources section now uses the eight strategic cards: Menu engineering, QR menu setup, Digital menu vs PDF, Google menu source, Restaurant menu SEO, AI search discovery, Official menu source, and Multi-location control. Footer Resources links now point to the core resource set plus Trust & Security. `public/robots.txt` now groups named search/AI crawlers with the same private-route disallows as the generic crawler group, `CCBot` is listed in `DISCOVERY_CRAWLERS`, and `llms.txt` / `llms-full.txt` now include preferred positioning and claim limits. Resource analytics uses consent-gated public website events and now includes secondary CTA, create-customer-link, pricing, checklist-copy, and AI/search referrer events including `chat.openai.com`, UTM/referrer properties, locale, entry page, and target URL without sending custom session identifiers. The search/discovery-ready product copy was softened so it describes a clearer public source for crawlers rather than implying search or AI systems must answer from MenuList. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 
 **Resource expansion and industry pages:** v3.6.22 adds three resource articles for restaurant menu schema, official menu URL checks, and common QR menu mistakes; updates every reviewed resource locale pack to the new source version; adds four industry landing pages for restaurants, cafes/bakeries, takeaway/cloud kitchens, and multi-location food businesses; extends sitemap, LLM context, and discovery-policy coverage; and adds a real checklist-copy button/event for visible checklist sections. `resource_template_download` remains intentionally absent because there are no downloadable assets to track. Owner dashboard, customer menu runtime, tenant routing, auth, middleware, Firebase, Cloud Functions, Canonica, Answerlattice, MyCodex, GrowthOS, and KitStamp surfaces were not changed.
 
@@ -260,6 +260,8 @@ src/components/website/
 ├── Footer.tsx                  — Shared revenue footer with CTA, proof cards, product/source/resource/legal navigation, social links, bottom-row language, and theme controls
 ├── SchemaMarkup.tsx            — Server-rendered homepage JSON-LD schema
 ├── WebsitePageStructuredData.tsx — Server-rendered WebPage + BreadcrumbList JSON-LD for active platform pages
+├── PlausibleAnalytics.tsx       — Env-gated Plausible Cloud script for the public MenuList marketing website
+├── WebsiteMarketingClickTracker.tsx — Delegated website-only CTA tracker for Plausible and optional GA4 events
 ├── GoogleAnalytics.tsx         — GA tracking script
 ├── ClarityAnalytics.tsx        — Microsoft Clarity script
 ├── home/                       — compressed homepage sections + supporting section components + StickyCta
@@ -270,7 +272,7 @@ src/components/website/
 ├── get-started/GetStartedPage.tsx  — Get Started page
 ├── multi-location/MultiLocationPage.tsx — Multi-Location page
 ├── product/ProductPage.tsx     — How It Works page (used by /how-it-works route)
-├── resources/                   — Resources hub, article layout, resource cards, schema wrapper, and GA4-only link tracking
+├── resources/                   — Resources hub, article layout, resource cards, schema wrapper, and consent-gated website link tracking
 ├── industries/                   — Shared industry landing-page renderer
 ├── legal/                      — PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage
 ├── trust-security/TrustSecurityPage.tsx — Trust & Security page
@@ -379,7 +381,7 @@ src/pages/
 | SSR vs CSR | Server components (except homepage) | SEO benefit for all pages |
 | Homepage rendering | Server shell + client composition | Keeps homepage JSON-LD in first-response HTML while preserving translated interactive homepage sections and sticky CTA |
 | Pricing | Reuses existing `pricing-pages/` components | Full Razorpay integration already built |
-| Analytics | GA + Clarity in layout | Covers all pages automatically |
+| Analytics | Consent-gated Plausible + optional GA4 + MenuList-only Clarity through `WebsiteAnalyticsConsent` | Covers public marketing website monitoring after accepted analytics consent without changing product analytics |
 | Auth | `WebsiteAuthProvider` wrapper | Session context for pricing/onboarding flows |
 | Theming | System-aware shadcn ThemeProvider plus footer theme segmented control and website CSS tokens | Light remains default for light system preferences; users can choose Light, System, or Dark from the footer; dark mode uses `#121212`-family surfaces, tokenized cards/forms/overlays, and dark-safe pricing variables |
 | Localization | next-intl via layout provider | Consistent i18n across all pages |

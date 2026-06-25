@@ -8,6 +8,7 @@
  */
 
 import * as functions from "firebase-functions";
+import { AI_MODEL } from "../constants/ai";
 import { genAIClient } from "../genAiClient";
 import {
   buildMenuIntakeIdentityPrompt,
@@ -76,7 +77,7 @@ export async function validateAssets(
 
   // Call Gemini API via gateway (key rotation + retry protection)
   const geminiResult = await genAIClient.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: AI_MODEL,
     contents: [{ role: 'user', parts: imageParts }],
     config: {
       temperature: 0.1,

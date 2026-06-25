@@ -77,6 +77,7 @@ const ACTIONS = [
   "record-trust-partner-deliverable",
   "record-trust-partner-metrics",
   "review-trust-partner-renewal",
+  "upsert-team-member",
 ];
 
 const KILL_SWITCH_SCOPES = [
@@ -303,6 +304,12 @@ function verifyApiSecurityAndActions() {
   assertIncludes(killSwitches, "MOBILE_EMERGENCY_PAUSE", "Kill-switch route requires mobile emergency-pause confirmation");
   assertIncludes(killSwitches, "recordSignalDeskMobileActionBlockedServer", "Kill-switch route audits mobile blocked actions");
   assertIncludes(clientDal, "x-signaldesk-client-mode", "Client marks mobile read-only mode");
+  assertIncludes(workspace, "Team Access", "Settings exposes internal team access panel");
+  assertIncludes(workflow, "upsertSignalDeskTeamMemberServer", "Workflow supports audited SignalDesk team-member updates");
+  assertIncludes(workflow, 'access.permissions.includes("signaldesk.configure")', "Workspace limits team-member list to configure permission");
+  assertIncludes(actions, 'if (action === "upsert-team-member") return "signaldesk.configure"', "Team member updates require SignalDesk configure permission");
+  assertIncludes(actions, '"upsert-team-member": "configure"', "Team member updates are blocked on mobile as configuration");
+  assertIncludes(workflow, '"team_member_upsert"', "Team member update writes audit event");
 
   for (const action of ACTIONS) {
     assertIncludes(actions, `"${action}"`, `Actions route action ${action}`);
@@ -372,8 +379,10 @@ function verifyConnectorProviderAndInvestmentControls() {
   const types = read("src/types/signaldesk/index.ts");
   const workspace = read("src/components/signaldesk/SignalDeskWorkspace.tsx");
   const workflow = read("src/lib/signaldesk/workflowServer.ts");
+  const features = read("src/config/features.ts");
   const integrations = read("src/constants/signaldesk/integrations.ts");
   const sourceProviders = read("src/lib/signaldesk/sourceProviders.ts");
+  const e2eLocal = read("scripts/verification/e2e-signaldesk-local.js");
 
   for (const connector of CONNECTOR_KINDS) {
     assertIncludes(actions, `"${connector}"`, `Connector action schema ${connector}`);
@@ -397,6 +406,15 @@ function verifyConnectorProviderAndInvestmentControls() {
 
   assertIncludes(integrations, "MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID", "Apify Actor ID env is product-scoped");
   assertIncludes(sourceProviders, "SIGNALDESK_INTEGRATION_ENV.APIFY_SOURCE_ACTOR_ID", "Apify Actor ID is read from env constants");
+  assertIncludes(features, "ENABLE_MENULIST_SIGNALDESK_FHRS_FHIS_SOURCE_PROVIDER", "FHRS/FHIS source-provider feature flag");
+  assertIncludes(types, '"fhrs-fhis"', "FHRS/FHIS provider type");
+  assertIncludes(sourceProviders, "runFhrsFhisSourceSearch", "FHRS/FHIS source provider adapter");
+  assertIncludes(sourceProviders, '"x-api-version": "2"', "FHRS/FHIS source provider uses API v2 header");
+  assertIncludes(sourceProviders, "No contact permission is inferred", "FHRS/FHIS provider preserves contact boundary");
+  assertIncludes(workflow, 'provider: "fhrs-fhis"', "FHRS/FHIS provider account seed");
+  assertIncludes(workflow, "FHRS/FHIS source provider is disabled", "FHRS/FHIS provider feature flag block");
+  assertIncludes(workspace, 'value="fhrs-fhis"', "FHRS/FHIS provider exposed in private source run UI");
+  assertIncludes(e2eLocal, "assertFhrsFhisSourceProvider", "FHRS/FHIS provider local E2E fixture");
 
   [
     "providerAccounts",

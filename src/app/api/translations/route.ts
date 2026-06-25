@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { getModelName } from "@constant/AI/models";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
@@ -17,7 +18,7 @@ import { NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from "../../../middleware/auth";
 import getPrompt, { systemInstruction } from "./prompt";
 
-const AI_MODEL = "gemini-2.5-flash"//"gemini-2.0-flash-001";
+const AI_MODEL = getModelName('TRANSLATION');
 const LOG_FILE = "translations.log"
 
 const isStringRecord = (value: unknown): value is Record<string, string> =>

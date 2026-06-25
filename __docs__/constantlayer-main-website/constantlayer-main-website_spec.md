@@ -1,7 +1,7 @@
 # ConstantLayer Main Website - Specification
 
-**Status:** Draft  
-**Stage:** Documentation before implementation  
+**Status:** Implemented and validated; pending owner/legal launch review
+**Stage:** Implemented static website with Prism glass redesign
 **Scope:** ConstantLayer Systems public parent/entity trust website  
 **Primary transcript input:** [`constantlayer-main-website_chatgpt-transcript.md`](./constantlayer-main-website_chatgpt-transcript.md)
 
@@ -239,7 +239,7 @@ Search query ownership targets:
 
 ## 11. Accessibility And UX Requirements
 
-The site must be boring, readable, and fast.
+The site must be calm, readable, and fast. The approved Prism glass redesign may use a fixed mesh layer, grain, glass panels, spotlight cards, and editorial typography, but those visuals must stay presentation-only and must not add product-funnel behavior.
 
 Required:
 
@@ -249,7 +249,8 @@ Required:
 - Visible focus states
 - Plain HTML links
 - No motion-heavy effects
-- No decorative cards inside cards
+- No cards nested inside cards
+- No unrelated hue systems beyond the approved Prism mesh palette
 - No oversized product hero that hides the next section
 - High color contrast
 - No text overlap at 320px width
@@ -259,15 +260,16 @@ Required:
 
 ## 12. Acceptance Criteria
 
-The docs are ready for implementation when:
+The docs and implementation are considered current when:
 
 - All standard docs exist in this folder.
 - The transcript remains preserved unchanged.
-- The implementation plan keeps ConstantLayer outside current product registries.
+- The implementation keeps ConstantLayer outside current product registries.
 - Legal and data-collection blockers are explicit.
 - Firebase cost is zero by design.
 - Mobile support decision is documented.
 - Test cases cover content, legal, SEO, responsive behavior, and no-Firebase boundaries.
+- The Prism redesign keeps the same legal, data, route, and product-boundary constraints.
 
 The website is ready to launch only when:
 

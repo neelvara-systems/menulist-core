@@ -50,7 +50,7 @@ const SECTIONS = [
         title: 'Public Website Cookies and Analytics',
         body: [
             'The public AnswerLattice website may use essential browser storage to keep the site working and remember basic preferences such as cookie choice or theme.',
-            'Optional Google Analytics on the public website loads only after analytics is accepted in the cookie preference banner. If analytics is declined or no measurement id is configured, the public website stays on essentials only.',
+            'Optional Plausible and Google Analytics on the public website load only after analytics is accepted in the cookie preference banner and the relevant measurement setting is configured. If analytics is declined or no measurement setting is configured, the public website stays on essentials only.',
             'The public website banner does not claim ads or personalization tracking.',
         ],
     },
@@ -89,7 +89,7 @@ export default function AnswerlatticePrivacyPolicyPage() {
                     <div className="mx-auto max-w-3xl text-center">
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Privacy Policy</p>
                         <h1 className="mb-4 text-4xl font-bold sm:text-5xl">Privacy Policy</h1>
-                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: June 21, 2026</p>
+                        <p className="mb-2 text-sm text-[#6b6b8a]">Last updated: June 26, 2026</p>
                         <p className="mt-6 text-lg leading-relaxed text-[#a0a0c0]">
                             This policy explains how AnswerLattice handles information for its public website, product dashboard,
                             help widget, and support knowledge features.

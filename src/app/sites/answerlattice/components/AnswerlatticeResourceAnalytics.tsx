@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { trackPlausibleEvent } from '@lib/website/plausible';
 
 type AnswerlatticeAnalyticsWindow = Window & {
     gtag?: (...args: unknown[]) => void;
@@ -47,13 +48,6 @@ function getSessionValue(storageKey: string, nextValue: string): string {
     return nextValue;
 }
 
-function getSessionId(): string {
-    return getSessionValue(
-        'answerlattice_resource_session_id',
-        `ars_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
-    );
-}
-
 function getEntryPage(): string {
     return getSessionValue(
         'answerlattice_resource_entry_page',
@@ -67,9 +61,6 @@ export default function AnswerlatticeResourceAnalytics({
     slug,
 }: AnswerlatticeResourceAnalyticsProps) {
     useEffect(() => {
-        const analyticsWindow = window as AnswerlatticeAnalyticsWindow;
-        if (typeof analyticsWindow.gtag !== 'function') return;
-
         const referrerHost = getReferrerHost();
         const referrerMatch = referrerHost
             ? trackedReferrers.find((referrer) => (
@@ -85,23 +76,30 @@ export default function AnswerlatticeResourceAnalytics({
             page_type: pageType,
             referrer: document.referrer || undefined,
             referrer_host: referrerHost,
-            session_id: getSessionId(),
             slug,
             target_url: window.location.href,
             utm_medium: getQueryParam('utm_medium'),
             utm_source: getQueryParam('utm_source'),
         };
 
-        analyticsWindow.gtag('event', 'answerlattice_resource_page_view', payload);
+        trackPlausibleEvent('answerlattice_resource_page_viewed');
+
+        const analyticsWindow = window as AnswerlatticeAnalyticsWindow;
+        if (typeof analyticsWindow.gtag === 'function') {
+            analyticsWindow.gtag('event', 'answerlattice_resource_page_view', payload);
+        }
 
         if (referrerMatch) {
-            analyticsWindow.gtag('event', 'answerlattice_ai_referral_detected', {
-                ...payload,
-                referrer_group: referrerMatch.group,
-            });
+            trackPlausibleEvent('answerlattice_ai_referral_detected');
+
+            if (typeof analyticsWindow.gtag === 'function') {
+                analyticsWindow.gtag('event', 'answerlattice_ai_referral_detected', {
+                    ...payload,
+                    referrer_group: referrerMatch.group,
+                });
+            }
         }
     }, [cluster, pageType, slug]);
 
     return null;
 }
-

@@ -13,6 +13,7 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
+import { ANSWERLATTICE_TEXT_MODEL } from '../constants/ai';
 import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -90,7 +91,7 @@ Rules:
 - Return ONLY valid JSON, no markdown code blocks`;
 
         const geminiResult = await callAnswerlatticeGeminiContent({
-            model: 'gemini-2.0-flash',
+            model: ANSWERLATTICE_TEXT_MODEL,
             userPrompt: prompt,
         });
         const text = geminiResult.text || '';
