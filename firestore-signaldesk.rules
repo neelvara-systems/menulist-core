@@ -267,6 +267,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /signaldeskResearchRuns/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
+    match /signaldeskResearchTableRows/{docId} {
+      allow read: if canReadSignalDesk();
+      allow write: if false;
+    }
+
     match /signaldeskContentSources/{docId} {
       allow read: if canReadSignalDesk();
       allow write: if false;
