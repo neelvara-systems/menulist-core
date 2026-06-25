@@ -51,6 +51,7 @@ export type SignalDeskAction =
     | "upsert-offer-cta"
     | "upsert-reply-playbook"
     | "create-source-quality-snapshot"
+    | "create-research-agent-run"
     | "refresh-provider-source-retention"
     | "create-weekly-strategist-memo"
     | "create-provider-evaluation"

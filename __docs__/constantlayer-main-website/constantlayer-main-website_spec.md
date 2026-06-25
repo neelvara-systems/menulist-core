@@ -9,9 +9,9 @@
 
 ## 1. Product Context
 
-ConstantLayer Systems is the operating trade name / parent trust layer for the product portfolio.
+ConstantLayer Systems is the operating trade name / parent trust layer for the current public product lineup.
 
-The website must make the entity credible, searchable, and legally consistent without pulling commercial attention away from MenuList, Answerlattice, CampaignCue, or future approved product surfaces.
+The website must make the entity credible, searchable, and legally consistent without pulling commercial attention away from MenuList, Answerlattice, or CampaignCue.
 
 Current repo truth supports this boundary:
 
@@ -20,7 +20,7 @@ Current repo truth supports this boundary:
 - ConstantLayer is a Vercel deployment target with no Firebase project: `src/constants/deploymentTargets.ts:12`.
 - The shared product website router is for product sites under `src/app/sites/[productId]`: `src/constants/productDomains.ts:4`.
 
-Therefore the v1 ConstantLayer website is implemented as a static public site inside the existing shared Next/Vercel routing architecture while staying outside database-backed product identity.
+Therefore the ConstantLayer website is implemented as a static public site inside the existing shared Next/Vercel routing architecture while staying outside database-backed product identity.
 
 ---
 
@@ -34,13 +34,13 @@ Create a small public website that answers five questions:
 4. How can someone contact the operator?
 5. Where can someone find basic legal, privacy, and terms information?
 
-The website succeeds when a visitor can verify the company layer behind the product portfolio without being invited into a second sales flow.
+The website succeeds when a visitor can verify the company layer behind the current public product lineup without being invited into a second sales flow.
 
 ---
 
 ## 3. Non-Goals
 
-Do not build any of the following for v1:
+Do not build any of the following for this parent site:
 
 - Product dashboard
 - Authentication
@@ -56,9 +56,9 @@ Do not build any of the following for v1:
 - Firebase-backed data model
 - Analytics that stores identifiable visitor data
 - MenuList feature duplication
-- Public claims for Canonica, GrowthOS, KitStamp, SurfaceOS, MyCodex, or any other product not yet approved for company-site mention
+- Public claims for Canonica, GrowthOS/Growth Kits, KitStamp, SurfaceOS, MyCodex, SignalDesk, or any other private, internal, reserved, or future product not yet approved for company-site mention
 
-If a future product is legally and publicly ready, add it through a separate docs pass and legal review.
+If another product becomes legally and publicly ready, add it only through a separate docs pass, public-surface review, product-policy review, and legal review.
 
 ---
 
@@ -66,7 +66,7 @@ If a future product is legally and publicly ready, add it through a separate doc
 
 ### Primary
 
-People who need to verify the company layer behind the product portfolio:
+People who need to verify the company layer behind the current public product lineup:
 
 - Prospective product customers checking business legitimacy
 - Partners, vendors, payment providers, and service providers
@@ -107,13 +107,13 @@ Use this long-form positioning internally and in public copy where appropriate:
 
 Use this relationship line exactly:
 
-> MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+> MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 
 ### Safer Legal Description
 
 Use:
 
-> ConstantLayer Systems is the operating trade name used for a portfolio of business information products.
+> ConstantLayer Systems is the operating trade name used for a current public lineup of business information products.
 
 Do not use:
 
@@ -223,7 +223,7 @@ Required:
 - Organization JSON-LD on the home page
 - Website JSON-LD on the home page
 - Exact spelling: `ConstantLayer Systems`
-- Exact portfolio relationship line on Products, Legal, and Footer
+- Exact current-public-lineup relationship line on Products, Legal, and Footer
 
 Search query ownership targets:
 
@@ -277,6 +277,6 @@ The website is ready to launch only when:
 - Domain and trademark checks are recorded.
 - Email deliverability is configured.
 - Static build and preview pass.
-- All public pages repeat the approved portfolio relationship wording where required.
+- All public pages repeat the approved current-public-lineup relationship wording where required.
 - No inactive/future/unapproved product is shown as live.
 - No prohibited public legal claim is made.

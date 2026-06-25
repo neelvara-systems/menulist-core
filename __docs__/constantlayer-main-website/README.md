@@ -11,7 +11,7 @@
 
 This doc set defines the first public website for ConstantLayer Systems.
 
-The site is a quiet operating-entity and trust surface. It explains what ConstantLayer Systems is, confirms the relationship to the product lineup, provides basic legal/contact information, and routes product interest to the relevant product surface.
+The site is a quiet operating-entity and trust surface. It explains what ConstantLayer Systems is, confirms the relationship to the current public product lineup, provides basic legal/contact information, and routes product interest to the relevant public product surface.
 
 It is not a replacement for any product site, not a product funnel, not an owner app, and not a Firebase-backed product runtime.
 
@@ -38,13 +38,13 @@ Reason: the repo already uses a shared Vercel app with hostname/path-prefix rout
 
 ## Canonical Public Relationship
 
-Use this exact sentence where the portfolio relationship needs to be explicit:
+Use this exact sentence where the current public product relationship needs to be explicit:
 
-> MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+> MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 
 Use this safer entity description unless legal counsel/CA confirms stronger wording:
 
-> ConstantLayer Systems is the operating trade name used for a portfolio of business information products.
+> ConstantLayer Systems is the operating trade name used for a current public lineup of business information products.
 
 Do not call ConstantLayer Systems a private limited company, LLP, corporation, group, holding company, subsidiary, or parent company in legal copy unless that becomes legally true.
 
@@ -102,7 +102,8 @@ Validation completed:
 - ConstantLayer Systems is the chosen trade name direction: `constantlayer-main-website_chatgpt-transcript.md:334`.
 - The parent website should not be the MenuList product site: `constantlayer-main-website_chatgpt-transcript.md:497`.
 - The transcript preserved an earlier MenuList-only relationship line: `constantlayer-main-website_chatgpt-transcript.md:377`.
-- Current implementation widens the parent site to the product lineup requested after implementation: MenuList, Answerlattice, CampaignCue, and future approved product surfaces.
+- Current implementation widens the parent site from the old MenuList-only line to the current public lineup: MenuList, Answerlattice, and CampaignCue.
+- Private, internal, reserved, or future product names such as Canonica, GrowthOS/Growth Kits, KitStamp, SurfaceOS, MyCodex, and SignalDesk stay out of public ConstantLayer copy until a separate public-surface/legal-policy review approves them.
 - The site should be a quiet trust/entity website, not a product funnel: `constantlayer-main-website_chatgpt-transcript.md:11954`.
 - GSTIN should not be displayed publicly in v1 unless explicitly approved: `constantlayer-main-website_chatgpt-transcript.md:12062`.
 

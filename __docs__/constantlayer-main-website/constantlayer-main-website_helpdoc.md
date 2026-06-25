@@ -35,11 +35,11 @@ Email addresses are placeholders until the ConstantLayer domain is configured.
 
 ### What is ConstantLayer Systems?
 
-ConstantLayer Systems is the company layer for a portfolio of business information products including MenuList, Answerlattice, and CampaignCue.
+ConstantLayer Systems is the company reference for the current public product lineup: MenuList, Answerlattice, and CampaignCue.
 
 ### What products are in the ConstantLayer lineup?
 
-MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 
 ### Is MenuList part of the ConstantLayer lineup?
 

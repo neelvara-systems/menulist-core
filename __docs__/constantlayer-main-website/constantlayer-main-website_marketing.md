@@ -10,7 +10,7 @@
 
 The ConstantLayer website does not sell ConstantLayer.
 
-It verifies the company layer behind the product portfolio, explains the operating focus, and directs product interest to the relevant product surface.
+It verifies the company layer behind the current public product lineup, explains the operating focus, and directs product interest to the relevant public product surface.
 
 The site should make a visitor think:
 
@@ -33,11 +33,11 @@ Long:
 
 Relationship:
 
-> MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+> MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 
 Entity description:
 
-> ConstantLayer Systems is the operating trade name used for a portfolio of business information products.
+> ConstantLayer Systems is the operating trade name used for a current public lineup of business information products.
 
 ---
 
@@ -46,7 +46,7 @@ Entity description:
 Allowed:
 
 - ConstantLayer Systems builds business information products.
-- MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+- MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 - MenuList focuses on public business information for menus, store facts, and customer-facing surfaces.
 - Answerlattice focuses on governed answer infrastructure for support knowledge and help surfaces.
 - CampaignCue is in the product lineup for campaign readiness and source-backed campaign output systems.
@@ -197,7 +197,7 @@ Products section:
 
 > MenuList, Answerlattice, and CampaignCue share one company reference.
 
-Use a compact portfolio summary panel and linked product rows. Do not use a giant decorative `Portfolio` word because it can split awkwardly and make the page look less finished.
+Use a compact current-public-lineup summary panel and linked product rows. Do not use a giant decorative `Portfolio` word because it can split awkwardly and make the page look less finished.
 
 Product cards should use concise product-specific summaries:
 
@@ -217,7 +217,7 @@ Legal page first paragraph:
 
 Required line:
 
-> MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+> MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 
 Do not say:
 
@@ -232,13 +232,13 @@ Do not say:
 
 Home:
 
-- Title: `ConstantLayer Systems - Product Portfolio Operating Layer`
-- Description: `ConstantLayer Systems is the company layer for a portfolio of business information products including MenuList, Answerlattice, and CampaignCue.`
+- Title: `ConstantLayer Systems - Company Reference For Public Product Surfaces`
+- Description: `ConstantLayer Systems is the company reference for the current public product lineup: MenuList, Answerlattice, and CampaignCue.`
 
 Products:
 
 - Title: `Products - ConstantLayer Systems`
-- Description: `The product lineup represented by ConstantLayer Systems.`
+- Description: `The current public product lineup represented by ConstantLayer Systems.`
 
 About:
 
@@ -272,7 +272,7 @@ Terms:
 Before implementation or launch, confirm:
 
 - "ConstantLayer Systems" spelling is consistent.
-- The approved portfolio relationship line appears where required.
+- The approved current-public-lineup relationship line appears where required.
 - No inactive, private, or unapproved product appears as launched.
 - No legal structure is overstated.
 - No GSTIN/PAN/address appears without approval.

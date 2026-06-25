@@ -18,6 +18,7 @@ import {
     createSignalDeskExperimentCardServer,
     prepareSignalDeskChannelHandoffServer,
     createSignalDeskProviderEvaluationServer,
+    createSignalDeskResearchAgentRunServer,
     createSignalDeskDraftServer,
     createSignalDeskEvidenceServer,
     createSignalDeskSourceQualitySnapshotServer,
@@ -106,6 +107,7 @@ const ActionEnvelopeSchema = z.object({
         "upsert-offer-cta",
         "upsert-reply-playbook",
         "create-source-quality-snapshot",
+        "create-research-agent-run",
         "refresh-provider-source-retention",
         "create-weekly-strategist-memo",
         "create-provider-evaluation",
@@ -444,6 +446,18 @@ const SourceQualitySnapshotSchema = z.object({
     sourceRunId: z.string().trim().max(180).optional(),
 });
 
+const ResearchAgentRunSchema = z.object({
+    city: z.string().trim().max(120).optional(),
+    country: z.string().trim().max(120).optional(),
+    idempotencyKey: z.string().trim().max(180).optional(),
+    marketPodId: z.string().trim().max(180).optional(),
+    maxResults: z.number().int().min(1).max(20).default(10),
+    prompt: z.string().trim().min(5).max(600),
+    provider: z.enum(["google-places", "apify", "fhrs-fhis"]).optional(),
+    researchType: z.enum(["business-prospect", "market-map", "partner-list"]).default("business-prospect"),
+    sourcePolicyId: z.string().trim().max(180).optional(),
+});
+
 const RunWaterfallSchema = z.object({
     targetId: z.string().trim().min(3).max(160),
     waterfallId: z.string().trim().min(3).max(160),
@@ -639,6 +653,7 @@ const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["actio
     if (action === "upsert-offer-cta") return "signaldesk.configure";
     if (action === "upsert-reply-playbook") return "draft.create";
     if (action === "create-source-quality-snapshot") return "source.configure";
+    if (action === "create-research-agent-run") return "source.configure";
     if (action === "refresh-provider-source-retention") return "source.configure";
     if (action === "create-weekly-strategist-memo") return "target.review";
     if (action === "create-provider-evaluation") return "signaldesk.configure";
@@ -686,6 +701,7 @@ const SIGNALDESK_MOBILE_ACTION_CLASS: Record<z.infer<typeof ActionEnvelopeSchema
     "create-evidence": "configure",
     "create-experiment-card": "configure",
     "create-provider-evaluation": "provider_run",
+    "create-research-agent-run": "provider_run",
     "create-sequencer-handoff": "export",
     "create-source-policy": "mutate_policy",
     "create-source-quality-snapshot": "configure",
@@ -793,6 +809,7 @@ const SAFE_ACTION_ERRORS = new Set([
     "SignalDesk Firebase is not configured",
     "SignalDesk Operating Layer is disabled",
     "SignalDesk provider send is disabled",
+    "SignalDesk research agent table is disabled",
     "SignalDesk team member cannot deactivate own access",
     "SignalDesk team member email is required",
     "SignalDesk source providers are disabled",
@@ -1157,6 +1174,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             return NextResponse.json({ data: await createSignalDeskSourceQualitySnapshotServer(accessResult.access, payload.data as any) });
+        }
+        if (envelope.data.action === "create-research-agent-run") {
+            const payload = validatePayload(ResearchAgentRunSchema, envelope.data.payload, {
+                action: envelope.data.action,
+                request,
+                session,
+            });
+            if (!payload.success) return payload.response;
+            return NextResponse.json({ data: await createSignalDeskResearchAgentRunServer(accessResult.access, payload.data as any) });
         }
         if (envelope.data.action === "refresh-provider-source-retention") {
             const payload = validatePayload(ProviderSourceRetentionRefreshSchema, envelope.data.payload, {
