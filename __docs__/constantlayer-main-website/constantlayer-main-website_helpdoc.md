@@ -97,7 +97,7 @@ Do not answer product-data questions from the ConstantLayer parent policy unless
 
 If a user asks for legal identity:
 
-> ConstantLayer Systems is the operating trade name used for a portfolio of business information products. MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+> ConstantLayer Systems is the company reference used for the current public lineup of business information products. MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 
 If a user asks for GSTIN/PAN/address:
 

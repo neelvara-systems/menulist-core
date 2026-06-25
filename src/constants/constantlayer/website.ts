@@ -52,7 +52,7 @@ export const CONSTANTLAYER_PUBLIC_PAGES: Array<{
     {
         path: '/products',
         title: 'Products - ConstantLayer Systems',
-        description: 'The current public product lineup represented by ConstantLayer Systems.',
+        description: 'The approved public product surfaces represented by ConstantLayer Systems.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },

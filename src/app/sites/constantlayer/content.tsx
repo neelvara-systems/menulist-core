@@ -133,8 +133,8 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     products: {
         slug: 'products',
         title: 'Products',
-        description: 'MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.',
-        eyebrow: 'Product lineup',
+        description: 'MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.',
+        eyebrow: 'Public lineup',
         cards: CONSTANTLAYER_PRODUCT_LINEUP.map((product, index) => ({
             title: product.name,
             description: product.summary,
@@ -256,7 +256,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 body: 'This page is the public entity reference for the parent website. It is not a product pricing page, owner dashboard, or customer support portal.',
                 items: [
                     'Product terms and product workflows remain on each product surface.',
-                    'Sensitive entity identifiers are withheld from v1 public copy unless legal review requires disclosure.',
+                    'Sensitive entity identifiers are withheld from parent-site public copy unless legal review requires disclosure.',
                     'This page does not claim incorporation status, subsidiaries, or holding-company structure.',
                     'Legal inquiries should use the dedicated legal email.',
                 ],

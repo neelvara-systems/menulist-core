@@ -43,8 +43,8 @@ Screenshots captured:
 | No ConstantLayer database product code | Pass | No `PRODUCT_IDS.CONSTANTLAYER` in `src/constants/product.ts` |
 | Empty Firebase project id | Pass | `constantlayer` targets use `firebaseProjectId: ''` |
 | Entity strings centralized | Pass | `src/constants/constantlayer/website.ts` |
-| Portfolio relationship line centralized | Pass | `src/constants/constantlayer/website.ts` |
-| Product lineup centralized | Pass | `src/constants/constantlayer/website.ts` |
+| Public relationship line centralized | Pass | `src/constants/constantlayer/website.ts` |
+| Public lineup centralized | Pass | `src/constants/constantlayer/website.ts` |
 | Public routes centralized for sitemap | Pass | `src/constants/constantlayer/website.ts` |
 | Canonical URL helper | Pass | `src/constants/constantlayer/website.ts` |
 | Global metadata in layout | Pass | `src/app/sites/constantlayer/layout.tsx` |
@@ -74,13 +74,13 @@ Screenshots captured:
 | Public-facing copy | Pass | Homepage no longer exposes internal UI/design critique language |
 | Text overlap guards | Pass | CSS uses `min-width: 0`, responsive clamps, and wrapping rules |
 | Mobile breakpoint coverage | Pass | Browser checks at 390px and 320px |
-| Portfolio positioning | Pass | Runtime copy shows MenuList, Answerlattice, and CampaignCue without the old MenuList-only relationship line |
+| Public lineup positioning | Pass | Runtime copy shows MenuList, Answerlattice, and CampaignCue as current public product surfaces without the old MenuList-only relationship line |
 | Product links | Pass | Home and Products page link to `https://menulist.ai`, `https://answerlattice.com`, and `https://campaigncue.ai` |
 | Product link affordance | Pass | Linked product rows show an external-link icon on desktop and mobile |
-| Product section visual strength | Pass | Home product section uses a dark portfolio band with a compact summary panel instead of the oversized `Portfolio` wordmark |
+| Product section visual strength | Pass | Home product section uses a dark product band with a compact current-public-lineup summary panel |
 | Reference presentation depth | Pass | Home page uses the Prism hero mock, entity ledger, bento grid, spotlight cards, comparison table, product band, and contact-routing cards |
 | Viewport reveal motion | Pass | Section-level `cl-reveal` blocks appear once through a local IntersectionObserver, with reduced-motion fallback and no global smooth-scroll layer |
-| Internal alias scope | Pass | `/cl` is documented as a MyCodex/private portfolio alias only, not a canonical ConstantLayer URL or product-code alias |
+| Internal alias scope | Pass | `/cl` is documented as private alias context only, not a canonical ConstantLayer URL or product-code alias |
 | Legal copy scope | Pass | Home and Products copy now uses entity/reference wording instead of ownership phrasing |
 | Structured data scope | Pass | Organization JSON-LD uses `knowsAbout` for the lineup and no longer uses `owns` |
 
@@ -205,7 +205,7 @@ Additional internal route checks also passed for `/sites/constantlayer`, `/sites
 
 Rendered link checks confirmed local internal links keep the `/__constantlayer` prefix.
 
-Rendered content checks confirmed all public pages include the portfolio relationship wording and do not expose the old MenuList-only relationship sentence.
+Rendered content checks confirmed all public pages include the current-public-lineup relationship wording and do not expose the old MenuList-only relationship sentence.
 
 Rendered product-link checks confirmed the Products page exposes MenuList, Answerlattice, and CampaignCue canonical production URLs.
 
@@ -236,7 +236,7 @@ Additional measured evidence:
 - visible touch-target check: no small visible targets across all tested routes/viewports
 - large hero mock is hidden on small phones by design; desktop/tablet retains the full studio mock
 - active nav check: Products/About/Contact mark themselves; Legal also marks Legal, Privacy, and Terms pages
-- portfolio lineup check: Home and Products show MenuList, Answerlattice, and CampaignCue
+- current-public-lineup check: Home and Products show MenuList, Answerlattice, and CampaignCue
 - stale relationship check: no public route renders the old MenuList-only relationship sentence
 - 404 check: unmatched ConstantLayer routes return HTTP `404`, `noindex`, and a plain ConstantLayer-branded page
 - desktop screenshot: `/tmp/constantlayer-cdp-desktop-final.png`
