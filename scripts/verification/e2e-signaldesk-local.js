@@ -29,6 +29,7 @@ const {
   captureSignalDeskReplyServer,
   createSignalDeskDraftServer,
   createSignalDeskEvidenceServer,
+  createSignalDeskResearchAgentRunServer,
   createSignalDeskSourcePolicyServer,
   exportSignalDeskMessageServer,
   importSignalDeskTargetsServer,
@@ -475,6 +476,99 @@ async function assertFhrsFhisSourceProvider() {
   }
 }
 
+async function assertResearchAgentTable() {
+  const policy = await createPolicy("Research agent FHRS", {
+    allowContact: false,
+    provider: "fhrs-fhis",
+    sourceType: "provider",
+  });
+  const originalFetch = global.fetch;
+  global.fetch = async (url, options = {}) => {
+    const requestUrl = new URL(String(url));
+    assert(requestUrl.origin === "https://api.ratings.food.gov.uk", "Research agent used unexpected source host");
+    assert(requestUrl.pathname === "/Establishments", "Research agent used unexpected source endpoint");
+    assert(options.headers?.["x-api-version"] === "2", "Research agent did not preserve FHRS/FHIS API version header");
+    return {
+      ok: true,
+      json: async () => ({
+        establishments: [
+          {
+            AddressLine1: "2 Research Street",
+            AddressLine3: "Leeds",
+            BusinessName: "Research Table Cafe",
+            BusinessType: "Restaurant/Cafe/Canteen",
+            BusinessTypeID: 1,
+            FHRSID: 2345678,
+            LocalAuthorityName: "Leeds",
+            Phone: "01130000001",
+            PostCode: "LS2 2AA",
+            RatingValue: "5",
+            SchemeType: "FHRS",
+            geocode: { latitude: 53.81, longitude: -1.55 },
+          },
+          {
+            AddressLine1: "3 Research Street",
+            AddressLine3: "Leeds",
+            BusinessName: "Research Table Bakery",
+            BusinessType: "Retailers - other",
+            BusinessTypeID: 7845,
+            FHRSID: 2345679,
+            LocalAuthorityName: "Leeds",
+            Phone: "01130000002",
+            PostCode: "LS3 3AA",
+            RatingValue: "4",
+            SchemeType: "FHRS",
+            geocode: { latitude: 53.82, longitude: -1.56 },
+          },
+        ],
+      }),
+    };
+  };
+
+  try {
+    const result = await createSignalDeskResearchAgentRunServer(access, {
+      city: "Leeds",
+      country: "UK",
+      idempotencyKey: "research-agent-e2e-fhrs",
+      maxResults: 2,
+      prompt: "Find cafes in Leeds with weak menu presence",
+      provider: "fhrs-fhis",
+      researchType: "market-map",
+      sourcePolicyId: policy.sourcePolicyId,
+    });
+    assert(result.run.status === "completed", "Research agent run did not complete");
+    assert(result.run.tableRowCount === 2, "Research agent did not create two table rows");
+    assert(result.run.sourceTransparency.some((item) => item.startsWith("provider:fhrs-fhis")), "Research agent did not preserve provider transparency");
+    assert(result.rows.some((row) => row.fitDecision === "pass"), "Research agent did not create any pass rows");
+    assert(result.rows.every((row) => row.sourceRefs.some((ref) => ref.startsWith("source-policy:"))), "Research rows missed source policy refs");
+    assert(result.rows.every((row) => row.enrichment.some((item) => item.key === "source-transparency")), "Research rows missed source transparency enrichment");
+    const rowCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS, (data) => data.researchRunId === result.run.researchRunId);
+    assert(rowCount === 2, "Research table rows were not stored");
+    const podSnap = await db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(result.run.marketPodId).get();
+    assert(podSnap.exists, "Research agent did not create/update market pod map");
+    const contactIdentityCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES, (data) => (
+      result.rows.some((row) => row.targetId === data.targetId)
+    ));
+    assert(contactIdentityCount === 0, "Research agent created contact identities from source-only data");
+
+    const duplicate = await createSignalDeskResearchAgentRunServer(access, {
+      city: "Leeds",
+      country: "UK",
+      idempotencyKey: "research-agent-e2e-fhrs",
+      maxResults: 2,
+      prompt: "Find cafes in Leeds with weak menu presence",
+      provider: "fhrs-fhis",
+      researchType: "market-map",
+      sourcePolicyId: policy.sourcePolicyId,
+    });
+    assert(duplicate.duplicate === true, "Research agent idempotency did not return duplicate");
+    const afterDuplicateRows = await expectCollectionCount(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS, (data) => data.researchRunId === result.run.researchRunId);
+    assert(afterDuplicateRows === rowCount, "Duplicate research run created extra rows");
+  } finally {
+    global.fetch = originalFetch;
+  }
+}
+
 async function assertExpiryAcrossWorkflow() {
   const providerPolicy = await createPolicy("Expired provider", {
     expiresAt: pastIso(),
@@ -686,6 +780,7 @@ async function main() {
   const happy = await assertHappyPath();
   await assertSourcePolicyNegatives();
   await assertFhrsFhisSourceProvider();
+  await assertResearchAgentTable();
   await assertExpiryAcrossWorkflow();
   await assertApprovalAndExportNegatives();
   await assertMobileReadOnlyContract();
