@@ -15,8 +15,7 @@ export const CAMPAIGNCUE_CHANNEL_LABELS: Record<CampaignCueChannelConstant, stri
     google_local: "Google local",
     creative: "Creative",
     video: "Video/Reel",
-    ugc: "UGC script",
+    ugc: "Local creator brief",
     ads: "Ads",
     calendar: "Calendar",
 };
-

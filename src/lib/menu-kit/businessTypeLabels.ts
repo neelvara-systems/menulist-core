@@ -20,18 +20,16 @@ export interface OfferingLabels {
     offeringTitle: string;
     /** Lowercase singular: "menu", "services", "catalog" */
     offeringLower: string;
-    /** "Scan to view our full menu" / "Scan to view our services" */
+    /** "Scan to view current menu" / "Scan to view current services" */
     scanToView: string;
-    /** "SCAN TO VIEW MENU" / "SCAN TO VIEW SERVICES" */
+    /** "SCAN TO VIEW CURRENT MENU" / "SCAN TO VIEW CURRENT SERVICES" */
     scanToViewUpper: string;
-    /** "SCAN FOR MENU" / "SCAN FOR SERVICES" */
+    /** "SCAN FOR CURRENT MENU" / "SCAN FOR CURRENT SERVICES" */
     scanForUpper: string;
     /** "MENU IS LIVE" / "SERVICES ARE LIVE" */
     isLiveUpper: string;
     /** "Updated Menu" / "Updated Services" */
     updatedTitle: string;
-    /** "OFFICIAL MENU" / "OFFICIAL SERVICES" */
-    officialUpper: string;
     /** "Menu & prices updated regularly" / "Services & prices updated regularly" */
     updatedRegularly: string;
     /** Staff script line */
@@ -42,7 +40,7 @@ export interface OfferingLabels {
     gbpLabel: string;
     /** "menu" / "service list" / "product catalog" — for conversational copy */
     offeringPhrase: string;
-    /** Print card title: "OUR MENU" / "OUR SERVICES" / "OUR CATALOG" */
+    /** Print card title: "CURRENT MENU" / "CURRENT SERVICES" / "CURRENT CATALOG" */
     printCardTitle: string;
 
     // ── Dashboard / Analytics labels ──
@@ -125,12 +123,12 @@ export interface OfferingLabels {
 const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     food: {
         offeringUpper: 'MENU', offeringTitle: 'Menu', offeringLower: 'menu',
-        scanToView: 'Scan to view our full menu', scanToViewUpper: 'SCAN TO VIEW MENU', scanForUpper: 'SCAN FOR MENU',
-        isLiveUpper: 'MENU IS LIVE  ✅', updatedTitle: 'Updated Menu  ✅', officialUpper: 'OFFICIAL MENU',
+        scanToView: 'Scan to view current menu', scanToViewUpper: 'SCAN TO VIEW CURRENT MENU', scanForUpper: 'SCAN FOR CURRENT MENU',
+        isLiveUpper: 'MENU IS LIVE  ✅', updatedTitle: 'Updated Menu  ✅',
         updatedRegularly: 'Menu & prices updated regularly',
         staffScript: 'Menu? Please scan the QR on the table or at the counter.',
         shareMessagePrefix: 'Here is our menu:', gbpLabel: 'menu', offeringPhrase: 'menu',
-        printCardTitle: 'OUR MENU',
+        printCardTitle: 'CURRENT MENU',
         // Dashboard
         scansLabel: 'Menu Scans', itemTapsLabel: 'Item Taps',
         scansTooltip: 'Number of times customers scanned your menu',
@@ -169,12 +167,12 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     service: {
         offeringUpper: 'SERVICES', offeringTitle: 'Services', offeringLower: 'services',
-        scanToView: 'Scan to view our services', scanToViewUpper: 'SCAN TO VIEW SERVICES', scanForUpper: 'SCAN FOR SERVICES',
-        isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅', officialUpper: 'OFFICIAL SERVICES',
+        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
+        isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅',
         updatedRegularly: 'Services & prices updated regularly',
         staffScript: 'Services? Please scan the QR at the reception.',
         shareMessagePrefix: 'Here is our service list:', gbpLabel: 'services', offeringPhrase: 'service list',
-        printCardTitle: 'OUR SERVICES',
+        printCardTitle: 'CURRENT SERVICES',
         scansLabel: 'Page Views', itemTapsLabel: 'Service Taps',
         scansTooltip: 'Number of times customers viewed your page',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',
@@ -208,12 +206,12 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     retail: {
         offeringUpper: 'CATALOG', offeringTitle: 'Catalog', offeringLower: 'catalog',
-        scanToView: 'Scan to view our catalog', scanToViewUpper: 'SCAN TO VIEW CATALOG', scanForUpper: 'SCAN FOR CATALOG',
-        isLiveUpper: 'CATALOG IS LIVE  ✅', updatedTitle: 'Updated Catalog  ✅', officialUpper: 'OFFICIAL CATALOG',
+        scanToView: 'Scan to view current catalog', scanToViewUpper: 'SCAN TO VIEW CURRENT CATALOG', scanForUpper: 'SCAN FOR CURRENT CATALOG',
+        isLiveUpper: 'CATALOG IS LIVE  ✅', updatedTitle: 'Updated Catalog  ✅',
         updatedRegularly: 'Products & prices updated regularly',
         staffScript: 'Products? Please scan the QR to browse our catalog.',
         shareMessagePrefix: 'Here is our product catalog:', gbpLabel: 'catalog', offeringPhrase: 'product catalog',
-        printCardTitle: 'OUR CATALOG',
+        printCardTitle: 'CURRENT CATALOG',
         scansLabel: 'Page Views', itemTapsLabel: 'Product Taps',
         scansTooltip: 'Number of times customers viewed your catalog',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',
@@ -247,12 +245,12 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     health: {
         offeringUpper: 'SERVICES', offeringTitle: 'Services', offeringLower: 'services',
-        scanToView: 'Scan to view our services', scanToViewUpper: 'SCAN TO VIEW SERVICES', scanForUpper: 'SCAN FOR SERVICES',
-        isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅', officialUpper: 'OFFICIAL SERVICES',
+        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
+        isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅',
         updatedRegularly: 'Services & pricing updated regularly',
         staffScript: 'Services? Please scan the QR at the front desk.',
         shareMessagePrefix: 'Here are our services:', gbpLabel: 'services', offeringPhrase: 'service list',
-        printCardTitle: 'OUR SERVICES',
+        printCardTitle: 'CURRENT SERVICES',
         scansLabel: 'Page Views', itemTapsLabel: 'Service Taps',
         scansTooltip: 'Number of times customers viewed your page',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',
@@ -286,12 +284,12 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     professional: {
         offeringUpper: 'SERVICES', offeringTitle: 'Services', offeringLower: 'services',
-        scanToView: 'Scan to view our services', scanToViewUpper: 'SCAN TO VIEW SERVICES', scanForUpper: 'SCAN FOR SERVICES',
-        isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅', officialUpper: 'OFFICIAL SERVICES',
+        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
+        isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅',
         updatedRegularly: 'Services updated regularly',
         staffScript: 'Services? Please scan the QR for details.',
         shareMessagePrefix: 'Here are our services:', gbpLabel: 'services', offeringPhrase: 'service list',
-        printCardTitle: 'OUR SERVICES',
+        printCardTitle: 'CURRENT SERVICES',
         scansLabel: 'Page Views', itemTapsLabel: 'Service Taps',
         scansTooltip: 'Number of times customers viewed your page',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',
@@ -325,12 +323,12 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     creative: {
         offeringUpper: 'SERVICES', offeringTitle: 'Services', offeringLower: 'services',
-        scanToView: 'Scan to view our offerings', scanToViewUpper: 'SCAN TO VIEW OFFERINGS', scanForUpper: 'SCAN FOR OFFERINGS',
-        isLiveUpper: 'OFFERINGS ARE LIVE  ✅', updatedTitle: 'Updated Offerings  ✅', officialUpper: 'OFFICIAL OFFERINGS',
+        scanToView: 'Scan to view current offerings', scanToViewUpper: 'SCAN TO VIEW CURRENT OFFERINGS', scanForUpper: 'SCAN FOR CURRENT OFFERINGS',
+        isLiveUpper: 'OFFERINGS ARE LIVE  ✅', updatedTitle: 'Updated Offerings  ✅',
         updatedRegularly: 'Offerings & pricing updated regularly',
         staffScript: 'Offerings? Please scan the QR for details.',
         shareMessagePrefix: 'Here are our offerings:', gbpLabel: 'offerings', offeringPhrase: 'offerings',
-        printCardTitle: 'OUR OFFERINGS',
+        printCardTitle: 'CURRENT OFFERINGS',
         scansLabel: 'Page Views', itemTapsLabel: 'Item Taps',
         scansTooltip: 'Number of times customers viewed your page',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',
@@ -364,8 +362,8 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
     },
     specialty: {
         offeringUpper: 'SERVICES', offeringTitle: 'Services', offeringLower: 'services',
-        scanToView: 'Scan to view our services', scanToViewUpper: 'SCAN TO VIEW SERVICES', scanForUpper: 'SCAN FOR SERVICES',
-        isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅', officialUpper: 'OFFICIAL SERVICES',
+        scanToView: 'Scan to view current services', scanToViewUpper: 'SCAN TO VIEW CURRENT SERVICES', scanForUpper: 'SCAN FOR CURRENT SERVICES',
+        isLiveUpper: 'SERVICES ARE LIVE  ✅', updatedTitle: 'Updated Services  ✅',
         // Processing states
         processingTitle: 'Creating Your Service Page',
         processingDesc: 'We\'re reading your documents and extracting all services and prices. This usually takes 1-2 minutes.',
@@ -377,7 +375,7 @@ const CATEGORY_LABELS: Record<string, OfferingLabels> = {
         updatedRegularly: 'Services & pricing updated regularly',
         staffScript: 'Services? Please scan the QR for details.',
         shareMessagePrefix: 'Here are our services:', gbpLabel: 'services', offeringPhrase: 'service list',
-        printCardTitle: 'OUR SERVICES',
+        printCardTitle: 'CURRENT SERVICES',
         scansLabel: 'Page Views', itemTapsLabel: 'Item Taps',
         scansTooltip: 'Number of times customers viewed your page',
         totalViewsLabel: 'Total Page Views', viewsLabel: 'Page Views',

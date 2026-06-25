@@ -94,7 +94,7 @@ export async function generateInstagramStory(input: StoryInput): Promise<Blob> {
     const qrCanvas = document.createElement('canvas');
     await QRCode.toCanvas(qrCanvas, menuUrl, {
         width: 520,
-        margin: 2,
+        margin: 4,
         color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });
@@ -106,7 +106,7 @@ export async function generateInstagramStory(input: StoryInput): Promise<Blob> {
     strokeRoundedRect(ctx, qrPanelX, qrPanelY, qrPanel, qrPanel, 24, brand.border, 5);
     ctx.drawImage(qrCanvas, (W - qrSize) / 2, qrPanelY + (qrPanel - qrSize) / 2, qrSize, qrSize);
 
-    // "Scan to view our full menu"
+    // Current-link instruction
     ctx.font = '500 38px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = brand.text;
     ctx.fillText(labels.scanToView, W / 2, qrPanelY + qrPanel + 78);

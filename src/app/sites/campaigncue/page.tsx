@@ -462,8 +462,8 @@ const OUTPUTS: OutputFormat[] = [
         status: 'Shoot ready',
     },
     {
-        title: 'UGC script',
-        description: 'Creator instructions, proof points, usage notes, and safe review flags.',
+        title: 'Local creator brief',
+        description: 'Creator-fit checklist, source-backed talking points, disclosure, and safe review flags.',
         icon: LuPlaySquare,
         status: 'Reviewable',
     },
@@ -767,8 +767,8 @@ const POWERHOUSE_FEATURES: PowerhouseFeature[] = [
     },
     {
         label: 'Video',
-        title: 'Reel and UGC briefs',
-        description: 'Create hooks, shot lists, creator instructions, and safe caption notes without rendering spend.',
+        title: 'Reel and local creator briefs',
+        description: 'Create hooks, shot lists, creator-fit notes, and safe caption notes without rendering spend.',
         icon: LuVideo,
         tone: 'pink',
         artifacts: ['Hook', 'Shot list', 'Caption'],
@@ -864,8 +864,8 @@ const CAMPAIGN_WALL_ASSETS: CampaignWallAsset[] = [
         tone: 'ink',
     },
     {
-        label: 'UGC',
-        title: 'Creator prompt',
+        label: 'Creator',
+        title: 'Local creator brief',
         note: 'No fake result claim',
         tone: 'blush',
     },

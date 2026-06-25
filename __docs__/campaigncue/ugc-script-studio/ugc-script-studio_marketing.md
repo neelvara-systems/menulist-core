@@ -2,7 +2,7 @@
 
 ## Positioning
 
-UGC Script Studio helps a local business or agency prepare creator-ready scripts from real campaign facts.
+UGC Script Studio helps a local business or agency prepare local creator test briefs from real campaign facts.
 
 ## Buyer Promise
 

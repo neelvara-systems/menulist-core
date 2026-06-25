@@ -10,12 +10,17 @@ The feature reuses already-loaded owner/store/project/menu data where available 
 
 There are **No new Cloud Functions** and **No new Firestore indexes** for this feature.
 
+The June 25 QR quiet-zone hardening is renderer-only. It changes generated QR margins and verification checks, but it does not add scan logging, WhatsApp-open logging, preview-page logging, Storage uploads, Firestore writes, or Cloud Functions.
+
+Branded QR Action Templates are also renderer/catalog behavior only. Action labels, CTA framing, business identity, and short-link treatment reuse existing template metadata and live store/project context. They do not add a new collection, scan ledger, Storage path, route, or Cloud Function.
+
 ## Operation Ledger
 
 | Operation | Firestore Reads | Firestore Writes | Storage | Functions | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Open `/assets` after dashboard data is loaded | Existing project summary read | 0 | 0 | 0 | Reads the summary document without creating a default project. |
 | Select asset type | 0 | 0 | 0 | 0 | Local UI state only. |
+| Filter or choose action intent | 0 | 0 | 0 | 0 | Uses in-memory template metadata such as menu, order, feedback, booking, offer, or reorder. |
 | Open template actions | 0 | 0 | 0 | 0 | Local UI state only. |
 | Preview non-menu asset | 0 | 0 | 0 | 0 | Temporary browser blob URL only; modal/sheet preview is generated client-side for QR/display and campaign assets. |
 | Customize non-menu asset in editor | 0 | 0 | 0 | 0 | The Creative Editor document is generated from current input and kept in browser memory until download/close. |
@@ -55,6 +60,8 @@ There are **No new Cloud Functions** and **No new Firestore indexes** for this f
 | Creating a Cloud Function render service | Browser generation is already sufficient. |
 | Writing preview history | Owner value is low and cost is avoidable. |
 | Analytics Firestore event per download | Use existing free/non-Firestore analytics path if needed. |
+| Separate branded QR template collection | Existing platform/store template metadata is sufficient. |
+| Per-scan events for standard branded action templates | Measurement belongs to QR WhatsApp Experiments or another governed campaign feature, not normal Assets downloads. |
 
 Saved editor templates pass the current editor preview to the registry only on explicit **Save as template**. Preview, download, and editor-open flows remain browser-local and do not write thumbnails or artifacts.
 

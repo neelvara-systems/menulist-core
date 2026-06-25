@@ -1,7 +1,7 @@
 /**
  * Google Maps Upload Template — 1200×900 PNG (landscape)
  *
- * Store-level "Official Menu" image for Google Business Profile.
+ * Store-level current menu/service image for Google Business Profile.
  * Owner uploads to GBP Photos section.
  *
  * @see __docs__/menu-kit/menu-kit_spec.md
@@ -44,12 +44,12 @@ export async function generateGoogleMapsImage(input: GoogleMapsInput): Promise<B
     ctx.fillStyle = brand.softAccent;
     ctx.fillRect(54, 54, W - 108, 156);
 
-    // "OFFICIAL MENU" — bold, top-left area
+    // "CURRENT MENU" / "CURRENT SERVICES" — bold, top-left area
     ctx.fillStyle = brand.accent;
     ctx.font = 'bold 52px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(labels.officialUpper, 80, 120);
+    ctx.fillText(labels.printCardTitle, 80, 120);
 
     // Decorative line under heading
     ctx.strokeStyle = brand.accent;
@@ -63,7 +63,7 @@ export async function generateGoogleMapsImage(input: GoogleMapsInput): Promise<B
     const qrCanvas = document.createElement('canvas');
     await QRCode.toCanvas(qrCanvas, menuUrl, {
         width: 350,
-        margin: 2,
+        margin: 4,
         color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });
@@ -124,10 +124,10 @@ export async function generateGoogleMapsImage(input: GoogleMapsInput): Promise<B
     ctx.textAlign = 'left';
     ctx.fillText(shortLink, 80, H - 120);
 
-    // "Updated regularly" — bottom, smaller
+    // Current-source note — bottom, smaller
     ctx.font = '26px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = brand.muted;
-    ctx.fillText('Updated regularly', 80, H - 72);
+    ctx.fillText(labels.updatedRegularly, 80, H - 72);
 
     // Bottom branding — subtle, right-aligned
     drawMenuListAttribution(ctx, {

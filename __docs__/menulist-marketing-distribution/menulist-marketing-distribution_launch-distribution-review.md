@@ -65,6 +65,7 @@ Do not add `/global`, `/in`, `/ae`, `/us`, `/partners`, `/audit`, `/examples`, o
 | Old PDF Graveyard / QR Reality Check / Rate Card Roast / Market Walk | Agree | Use as content pillars with demo or permissioned examples only. No insulting real businesses. |
 | Public List Drift Score | Partial | Start as a manual audit worksheet, not an automated score, until inputs, risk labels, and claims are documented. No ranking promise. |
 | Current on MenuList badge | Partial | Use "Official customer link" or "Current on MenuList" only if the freshness/review contract is explicit. Do not say "verified". |
+| QR trust chips and WhatsApp badges on print assets | Partial | Use factual business identity, current link, short URL, and MenuList attribution in existing Assets/Menu Kit. Do not add WhatsApp badges, consent snippets, "official", "secure", "no spam", or "verified" to normal MenuList page QR assets. |
 | Product Hunt as main public event | Partial | Use for credibility, feedback, and partners. Do not treat it as primary SMB acquisition. |
 | LinkedIn/X/Instagram/YouTube/HN/Reddit/Directories | Agree with sequencing | Use each with platform-native intent. HN/Reddit only after proof, not launch-day spam. |
 | AppSumo/review platforms | Defer | Not before onboarding cost, support load, pricing, and plan limits are stable. |

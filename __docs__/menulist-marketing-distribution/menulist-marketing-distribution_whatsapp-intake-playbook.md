@@ -98,6 +98,21 @@ After publish, drive the owner to add the link to at least two customer surfaces
 
 Activation is not just link creation. It is a published link plus real customer-facing placement.
 
+## QR/WhatsApp Print Boundary
+
+Normal MenuList page QR assets should open the live customer page directly and should not show WhatsApp badges, WhatsApp consent snippets, or a WhatsApp preview interstitial.
+
+If a future print asset points directly to WhatsApp instead of a MenuList page, it needs a separate route/product decision before code:
+
+- production WhatsApp number/account and response owner
+- clear business identity and phone display
+- consent copy approved for the message type
+- opt-out handling
+- tracking and privacy decision
+- Firebase cost note if scans/clicks are stored
+
+Until then, use the existing official customer link and Menu Kit/Assets outputs for QR print placement.
+
 ## Measurement Fields
 
 Track manually until runtime instrumentation is added:

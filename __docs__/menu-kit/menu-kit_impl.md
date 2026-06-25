@@ -2,7 +2,7 @@
 
 **Version:** 1.5
 **Status:** ✅ IMPLEMENTED — All code complete, feature flags ON
-**Last Updated:** June 4, 2026 — Premium branded output tokens shared across Menu Kit, QR downloads, and active legacy Today cards
+**Last Updated:** June 25, 2026 — Premium branded output tokens plus four-module QR quiet-zone hardening
 **Companion:** `menu-kit_spec.md` (business requirements)
 
 ---
@@ -17,7 +17,7 @@ Owner clicks "Download Menu Kit"
 Client generates 10 asset files using:
     - jsPDF (table tent PDF, single table/counter card PDF, entrance poster PDF)
     - Canvas API (sticker PNG, social images, placement guide)
-    - qrcode npm package (QR codes)
+    - qrcode npm package (QR codes with four-module quiet zone)
     - UTM-tagged URLs per surface (if ENABLE_MENU_KIT_UTM)
     - shared brand tokens from existing store logo/color context
     ↓
@@ -119,13 +119,13 @@ export interface MenuKitResult {
 
 ### Premium Output Tokens (`src/lib/menu-kit/brandTokens.ts`)
 
-`resolveMenuKitBrandTokens()` normalizes the store/OBP accent color and returns paper, surface, border, text, muted, softAccent, gradient, and QR colors. Brand color is used for premium framing and accents; default QR modules stay near-black (`#111827`) on a high-contrast white panel for scan reliability.
+`resolveMenuKitBrandTokens()` normalizes the store/OBP accent color and returns paper, surface, border, text, muted, softAccent, gradient, and QR colors. Brand color is used for premium framing and accents; default QR modules stay near-black (`#111827`) on a high-contrast white panel for scan reliability. Generated QR margins must stay at four modules.
 
 `resolveStoreBrandColor()` uses the same store fallback order as premium print output: `publicPresence.accentColor` -> `primaryColor` -> `brandColor` -> `themeColor`.
 
 This shared contract is used by Menu Kit, standalone branded QR cards, OBP QR downloads, feedback QR downloads, and the active legacy Today/mobile Hours card generators.
 
-Standalone branded QR cards and feedback QR cards use a taller portrait card treatment with a brand top panel, logo/initials badge, separator-aware store-name hierarchy, purpose pill, scan-safe neutral QR panel, short-link capsule, and MenuList attribution. The QR modules remain near-black on white for scan reliability.
+Standalone branded QR cards and feedback QR cards use a taller portrait card treatment with a brand top panel, logo/initials badge, separator-aware store-name hierarchy, purpose pill, scan-safe neutral QR panel, short-link capsule, and MenuList attribution. The QR modules remain near-black on white with a four-module quiet zone for scan reliability.
 
 `src/lib/menu-kit/platformAttribution.ts` is the shared MenuList attribution contract for generated assets. It draws the MenuList logo mark and standard text:
 
@@ -201,10 +201,13 @@ Tabletop print PDFs are owned by Print Menu Surfaces and bundled by Menu Kit.
 Both renderers use `drawPrintMenuCardFace()` so the folded tent and single card stay visually identical:
 
 - Store name and optional logo from existing store context.
-- Business-type-aware print title and instruction from `getOfferingLabels()`, such as `OUR MENU` + `Scan to view our full menu`, `OUR SERVICES` + `Scan to view our services`, or catalog/offering variants.
+- Business-type-aware print title and instruction from `getOfferingLabels()`, such as `CURRENT MENU` + `Scan to view current menu`, `CURRENT SERVICES` + `Scan to view current services`, or catalog/offering variants.
 - Large near-black QR on a white panel for scan reliability.
 - Store brand color for the top band, badge, and outer card accents; the QR panel keeps a neutral border.
 - MenuList attribution unless `activePlanType` is Premium.
+- Four-module QR quiet zone. Business logo/initials stay outside the QR pattern.
+
+Trust-cue boundary: use business identity, current-link wording, short link, and attribution. Do not add center-logo QR overlays, WhatsApp consent copy, self-declared official badges, "verified", "secure", "no spam", or ordinary scan preview pages inside Menu Kit.
 
 `src/lib/menu-kit/templates/tableTentTemplate.ts` remains a compatibility wrapper only. New physical tabletop layout work belongs under `src/lib/print-menu-surfaces/`.
 
@@ -215,7 +218,7 @@ Both renderers use `drawPrintMenuCardFace()` so the folded tent and single card 
 Key differences:
 
 - **Store-level** (not item-specific)
-- **Text:** "SCAN FOR MENU" (not campaign template text)
+- **Text:** "SCAN FOR CURRENT MENU" (not campaign template text)
 - **Includes:** Store name + QR
 - **No confidence gate** (always available)
 
@@ -267,7 +270,7 @@ Key differences:
 ```typescript
 // Canvas API
 // 1200 × 900 pixels (landscape, GBP-optimized)
-// Layout: "OFFICIAL MENU" (top-left) → QR (left) + Store name (right) → link + "Updated regularly" (bottom)
+// Layout: business-type current title (top-left) → QR (left) + Store name (right) → link + current-source note (bottom)
 // Clean, professional, machine-readable
 ```
 

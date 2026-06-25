@@ -201,7 +201,7 @@ export const CAMPAIGNCUE_OUTPUT_PICKER_ITEMS: CampaignCueOutputPickerItem[] = [
         title: "Ad handoff pack",
     },
     {
-        actionLabel: "Prepare creator brief",
+        actionLabel: "Prepare local creator brief",
         channels: ["ugc", "video", "creative"],
         description: "Local creator fit checklist, lightweight brief, 3-test plan, disclosure, and result prompt.",
         groupId: "handoff",

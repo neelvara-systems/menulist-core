@@ -1,7 +1,7 @@
 # Print Menu Surfaces Spec
 
 **Status:** Implemented
-**Last Updated:** June 4, 2026
+**Last Updated:** June 25, 2026
 
 ## Executive Summary
 
@@ -41,12 +41,15 @@ The table tent and single table/counter card are owned by Print Menu Surfaces. C
 
 - The QR must be the main object on table-facing surfaces.
 - QR modules stay near-black on white.
-- QR quiet zone must be preserved.
+- QR quiet zone must be preserved with a generated four-module margin.
 - Use brand color for CTA and framing, not for QR modules.
 - Use the old-card visual structure owners already recognized: brand top band, floating white card, centered QR, scan line, short link, and footer attribution.
 - The instruction must be short: scan code, view menu.
 - Store name must fit within the card; long names are truncated.
 - MenuList attribution is visible unless the already-loaded plan is Premium.
+- Business logo/initials stay outside the QR pattern. Do not add a center-logo QR overlay until scan-regression coverage exists.
+- Approved trust language is factual: current menu, service list, catalog, live page, short link, and powered-by attribution. Do not use "official", "verified", "secure", "no spam", WhatsApp badge, or WhatsApp opt-in copy on normal MenuList page QR surfaces.
+- Normal menu/page QR scans should go straight to the live page. A preview interstitial is a separate WhatsApp/consent feature, not part of Print Menu Surfaces.
 
 ## Owner Flow
 
@@ -61,6 +64,7 @@ The table tent and single table/counter card are owned by Print Menu Surfaces. C
 - Table tent is portrait on each standing face, not a poster-style landscape face.
 - Single table/counter card is a normal upright A6 portrait PDF and does not rotate any face.
 - QR is black/near-black and at least 59 mm on the A6 face.
+- QR renderers use a four-module quiet zone.
 - Output includes short URL fallback.
 - Menu Kit still bundles the table tent and single table/counter card.
 - Mobile and desktop use the same generator.

@@ -1,7 +1,7 @@
 # Print Menu Surfaces Implementation
 
 **Status:** Implemented
-**Last Updated:** June 6, 2026
+**Last Updated:** June 25, 2026
 
 ## Architecture
 
@@ -46,13 +46,14 @@ The single table/counter card renderer:
 
 | Element | Rule |
 | --- | --- |
-| QR | Near-black modules on white, inside a neutral bordered panel. No brand-colored QR modules, QR border, or accent corner brackets by default. |
-| CTA | `printCardTitle` from business-type labels, for example `OUR MENU`, `OUR SERVICES`, `OUR CATALOG`, or `OUR OFFERINGS`. The renderer receives this as `actionLabel`; it does not compose copy internally. |
-| Instruction | `scanToView` from business-type labels, for example `Scan to view our full menu` or `Scan to view our services`. The renderer receives this as `instructionLabel`. |
+| QR | Near-black modules on white, inside a neutral bordered panel, with a generated four-module quiet zone. No brand-colored QR modules, QR border, accent corner brackets, or logo overlay inside the QR pattern by default. |
+| CTA | `printCardTitle` from business-type labels, for example `CURRENT MENU`, `CURRENT SERVICES`, `CURRENT CATALOG`, or `CURRENT OFFERINGS`. The renderer receives this as `actionLabel`; it does not compose copy internally. |
+| Instruction | `scanToView` from business-type labels, for example `Scan to view current menu` or `Scan to view current services`. The renderer receives this as `instructionLabel`. |
 | Brand | Brand-color top band with a floating white card, logo/initials badge, CTA pill, and outer card accents; brand color is used for framing outside the QR panel. |
 | Store name | Fitted and truncated within safe width. Names with separators such as `Business - Branch` render as primary name plus accent subtitle. |
 | Fallback | Short URL under the QR instruction in a bordered capsule. |
 | Attribution | Hidden only for Premium stores through shared policy. |
+| Trust cues | Business identity, current-action copy, short link, and attribution are allowed. Unsupported "verified", "secure", "no spam", WhatsApp badge, self-declared official badges, and WhatsApp consent copy are not allowed on normal MenuList page QR surfaces. |
 
 ## Reference Adaptation Rules
 
@@ -60,6 +61,7 @@ The June 6 visual pass adapted common premium print-card elements from owner-pro
 
 - keep: top accent panel, centered logo/initials badge, clear business hierarchy, purpose pill, protected neutral QR panel, short-link capsule, and quiet MenuList attribution
 - reject: blurred QR, QR embedded inside product mockup imagery, low-contrast tinted QR as default, oversized floating scan icons, and owner-facing design choices
+- reject: ordinary menu-scan preview interstitials, center-logo QR overlays without scan regression coverage, and WhatsApp consent/trust copy outside a WhatsApp-owned flow
 
 Standalone branded QR/feedback PNGs use the same hierarchy in `src/lib/utils/qrCode.ts` with a taller portrait card ratio. Table tent and single-card PDFs use `src/lib/print-menu-surfaces/templates/printMenuCardFace.ts`.
 
@@ -69,7 +71,7 @@ Menu Kit imports `generatePrintMenuTableTent()` and `generatePrintMenuSingleTabl
 
 ## Firebase and Security
 
-There is no API route and no database write. The only input accepted by the renderer is already-loaded owner/store context. URL validation remains in Menu Kit before QR encoding.
+There is no API route and no database write. The only input accepted by the renderer is already-loaded owner/store context. URL validation remains in Menu Kit before QR encoding. The quiet-zone and trust-cue hardening is renderer-local and does not create scan logs, click logs, or preview-page telemetry.
 
 ## Validation
 

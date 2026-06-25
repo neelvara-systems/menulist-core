@@ -112,7 +112,7 @@ export async function generateTentCardPDF(
     // QR Code
     const qrDataUrl = await QRCode.toDataURL(qrUrl, {
         width: 200,
-        margin: 1,
+        margin: 4,
         color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: "H",
     });

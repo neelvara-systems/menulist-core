@@ -906,6 +906,7 @@ export default function ItemEditSheet({
                                         <>
                                             <input
                                                 accept={getMediaProfileAcceptAttribute('menuItem')}
+                                                capture="environment"
                                                 onChange={handleImageInputChange}
                                                 ref={imageInputRef}
                                                 style={{ display: 'none' }}

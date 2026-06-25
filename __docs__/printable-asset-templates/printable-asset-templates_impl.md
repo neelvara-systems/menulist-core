@@ -2,7 +2,7 @@
 
 ## Implementation Status
 
-**Status:** Implemented on June 6, 2026. Editor-backed printable customization added June 15, 2026.
+**Status:** Implemented on June 6, 2026. Editor-backed printable customization added June 15, 2026. Four-module QR quiet-zone hardening added June 25, 2026.
 
 The feature is live as a guarded owner route at `/assets`, with `/use-menulist/print-assets` kept as a compatibility route. Desktop and mobile both use the same asset type catalog, template family catalog, and `renderPrintableAsset()` adapter. Non-menu printable assets render from shared `CreativeEditorDocument` templates; desktop can open the generated document in the shared editor for governed customization before download.
 
@@ -181,6 +181,7 @@ Single printable assets support PDF and image downloads from the same selected t
 Document rules:
 
 - QR layers are locked and carry source refs for menu/feedback URL.
+- QR layers use a four-module quiet zone. Do not reduce `margin` below 4 or rely only on the surrounding white panel.
 - Short-link layers are locked and carry source refs for the current project URL.
 - Business Card uses one side-by-side editor document with `metadata.printFrames` for front and back. Layers carry `printFrameId`; generated structure layers carry `printFrameLocked`, cannot be unlocked/deleted/reordered, and stay bound to their face.
 - Business Card export normalizes frame-assigned layers back into their front/back bounds before PDF or split PNG rendering. Newly added layers without a `printFrameId` are assigned to the nearest front/back frame during normalization. The side divider is an `editorGuide`/`excludeFromExport` layer, so it helps editing but never appears in downloaded files.
@@ -188,6 +189,7 @@ Document rules:
 - Business name, headline, instruction, and CTA copy remain editable.
 - PNG/PDF export applies MenuList attribution at runtime through `resolveMenuListAttributionPolicy()`, so non-premium output is branded and eligible higher plans can remove it without placing branding inside the editor canvas.
 - The editor document is the source for preview, default download, and customized download.
+- Business logo/initials, short link, and attribution remain outside the QR pattern. Do not add center-logo QR overlays or unsupported trust/consent copy to normal MenuList page QR assets.
 
 Full Print Menu uses the existing Menu Card Export renderer, which currently has three real layout families (`classic`, `premium`, `compact`). Therefore `print_menu` exposes only `classic-luxe`, `modern-calm`, and `qr-first` in Assets so owners do not see nine choices that collapse into the same PDF output. Editor-backed QR/display/campaign assets keep the full 9-family catalog because their renderers own family-specific header, logo, decoration, and color treatments.
 

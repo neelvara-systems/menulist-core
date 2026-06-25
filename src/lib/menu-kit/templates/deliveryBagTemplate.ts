@@ -58,7 +58,7 @@ export async function generateDeliveryBagSticker(input: DeliveryInput): Promise<
     const qrCanvas = document.createElement('canvas');
     await QRCode.toCanvas(qrCanvas, menuUrl, {
         width: 340,
-        margin: 2,
+        margin: 4,
         color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });

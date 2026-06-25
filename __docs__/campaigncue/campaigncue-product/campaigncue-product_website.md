@@ -83,7 +83,7 @@ Public website copy must stay owner-facing. Do not expose internal repo details,
 | Brand and proof layer | Makes implemented Brand Playbook guidance, a Campaign Proof Deck preview, reusable-template loop, UGC/reel disclosure notes, and avoid-list checks visible without promising autopilot publishing or source-proof replacement. |
 | Workflow | Continuous ledger: read business, find cue, prepare pack, check risk, optionally edit/reuse assets, export manually, record result. |
 | Daily Campaign Desk | Explains the first owner screen and why it removes blank-prompt confusion. |
-| Outputs | WhatsApp, Google local, social creative, print/staff, reel brief, UGC script, email/SMS/QR, and ad handoff shown as one output ledger. |
+| Outputs | WhatsApp, Google local, social creative, print/staff, reel brief, local creator brief, email/SMS/QR, and ad handoff shown as one output ledger. |
 | Creative Studio | Shows the shared editor, source-locked design context, Design Cue actions, and export checks. |
 | CueLayers | Explains image upload/generated-flat reuse with editable layer candidates and flat-safe fallback. |
 | Examples | Restaurant, salon, retail, local-service, fitness, clinic, agency, and multi-location examples shown as compact prompt-start rows. |

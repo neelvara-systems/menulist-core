@@ -1,7 +1,7 @@
 # Print Assets Spec
 
 **Status:** Implemented
-**Last Updated:** June 21, 2026
+**Last Updated:** June 25, 2026
 
 ## Problem
 
@@ -51,11 +51,19 @@ Create one focused owner workspace for printables while keeping Use MenuList as 
 - No blank design editor or open-ended creative workspace.
 - No low-level owner-facing QR controls.
 - Supported single print assets may open a governed editor document for practical desktop copy/layout fixes.
+- Branded QR action templates can vary the frame, CTA, short link, and surrounding business identity, but the QR source layer remains protected and scan-safe.
 - Reuse existing logo, brand color, menu URL, project selection, and plan-aware MenuList attribution.
 - Desktop and mobile outputs must come from the same generator path.
 - Generated artifacts stay client-side unless a separate print-shop fulfillment feature is approved.
 - Explicitly saved editor templates may use the Creative Editor Template Registry; this is separate from generated file storage and does not run on preview/download.
 - Do not add quantity estimation in this feature. It adds planning friction and can be handled by the owner/printer without product logic.
+- Treat the printed object as the product: business identity, one clear action, QR, short link, and factual attribution/trust cues.
+- Preserve a four-module QR quiet zone in the renderer. A white card panel is helpful but is not a substitute for the generated QR quiet zone.
+- Keep business logo/initials outside the QR pattern. Do not add a logo overlay inside the QR unless a separate scan-regression suite proves it is safe.
+- MenuList page QR outputs should open the live page directly. Do not add a preview interstitial to ordinary menu/service/catalog scans.
+- Do not print "Verified", "Secure", "No spam", WhatsApp consent text, or WhatsApp badges on normal MenuList page QR assets unless a separate WhatsApp/consent route owns that behavior.
+- Standard branded action surfaces follow [Branded QR Action Templates](../branded-qr-action-templates/README.md): one customer action around a protected QR, not decorative QR art.
+- Tracked QR-to-WhatsApp A/B tests belong to [QR WhatsApp Experiments](../qr-whatsapp-experiments/README.md). Assets may supply the printable creative, but it must not own campaign tokens, consent ledgers, scan logs, WhatsApp-start attribution, or winner logic.
 
 ## Acceptance Criteria
 
@@ -67,3 +75,4 @@ Create one focused owner workspace for printables while keeping Use MenuList as 
 - Readiness, print-shop handoff, and reprint guidance come from shared print-assets helpers on desktop and mobile.
 - Table/card/sticker/poster/flyer/gift/business-card/ID-card/invitation/postcard/tag previews render by semantic asset key and do not build the full ZIP.
 - Firebase cost remains zero for generated printable assets. Saved owner templates are optional explicit saves with bounded registry metadata and Storage JSON cost.
+- QR safety verifiers fail when generated QR margins drop below four modules.

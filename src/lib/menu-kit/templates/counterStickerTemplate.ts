@@ -235,7 +235,7 @@ export async function generateCounterSticker(input: StickerInput): Promise<Blob>
     const qrCanvas = document.createElement('canvas');
     await QRCode.toCanvas(qrCanvas, menuUrl, {
         width: qrSize,
-        margin: 2,
+        margin: 4,
         color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });

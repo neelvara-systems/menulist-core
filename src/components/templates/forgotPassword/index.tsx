@@ -182,6 +182,10 @@ function ForgotPasswordPage() {
                                 />
                             </h1>
                         </div>
+                        <div className={styles.mobileAuthHeader}>
+                            <h2>Reset access</h2>
+                            <p>Enter the email connected to your account.</p>
+                        </div>
                         <div className={styles.desktopAuthHeader}>
                             <h2>Reset access</h2>
                             <p>Enter the email connected to your MenuList account.</p>

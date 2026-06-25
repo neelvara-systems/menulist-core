@@ -63,9 +63,11 @@ assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaign_proof_deck
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "source_to_channel_pack");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "Source-to-channel pack");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "local_creator_test_brief");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "Prepare local creator brief");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "creator_script");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "flat_fee");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "custom_size");
+assertIncludes("src/constants/campaigncue/channels.ts", "Local creator brief");
 assertIncludes("src/constants/campaigncue/index.ts", "outputPicker");
 assertIncludes("src/constants/campaigncue/database.ts", "PLATFORM_PACK_TEMPLATES");
 assertIncludes("src/constants/campaigncue/database.ts", "PACK_TEMPLATE_INDEXES");
@@ -90,14 +92,24 @@ assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadPlatformTem
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadWorkspaceTemplates");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "MAX_WORKSPACE_TEMPLATES");
 assertIncludes("src/lib/campaigncue/server.ts", "Creator fit check");
+assertIncludes("src/lib/campaigncue/server.ts", "baseline views, real comment quality, local audience fit");
 assertIncludes("src/lib/campaigncue/server.ts", "3-test plan");
+assertIncludes("src/lib/campaigncue/server.ts", "test three creators, three hooks, or three nearby audiences");
 assertIncludes("src/lib/campaigncue/server.ts", "CampaignCue does not broker creator deals");
+assertIncludes("src/lib/campaigncue/server.ts", "process payments");
+assertIncludes("src/lib/campaigncue/server.ts", "guarantee reach or revenue");
 assertIncludes("src/lib/campaigncue/server.ts", "Disclose paid, gifted, agency, employee, or incentivized participation");
+assertIncludes("src/lib/campaigncue/server.ts", "Do not present synthetic or fictional people as real customers");
+assertIncludes("src/app/sites/campaigncue/page.tsx", "Local creator brief");
+assertIncludes("src/app/sites/campaigncue/page.tsx", "creator-fit notes");
 assertIncludes("firestore-campaigncue.rules", "campaigncuePlatformPackTemplates");
 assertIncludes("firestore-campaigncue.rules", "packTemplateIndexes");
 assertIncludes("storage-campaigncue.rules", "campaigncue/templates/platform");
 assertIncludes("storage-campaigncue.rules", "campaigncue/templates/workspaces");
 assertIncludes("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_firebase.md", "1 Firestore read");
+assertIncludes("__docs__/campaigncue/ugc-script-studio/ugc-script-studio_firebase.md", "no new Firestore collection, read, write, Storage object, Cloud Function, provider call, model call, creator CRM record, contract record, or payment record");
+assertIncludes("__docs__/campaigncue/campaigncue_founder-research-addendum.md", "not \"build influencer marketing software.\"");
+assertIncludes("__docs__/campaigncue/campaigncue_founder-research-addendum.md", "do not broker, price-guarantee, contract, or pay creators");
 
 const implementation = [
   read("src/lib/campaigncue/pack-templates/catalog.ts"),

@@ -1,7 +1,7 @@
 # Print Assets Verification
 
 **Status:** Freeze-ready
-**Last Updated:** June 21, 2026
+**Last Updated:** June 25, 2026
 
 ## Freeze Decision
 
@@ -12,6 +12,15 @@ Freeze means:
 - The supported print asset catalog is frozen after adding the extended asset set: flyer, gift certificate, front/back business card, ID card, invitation, postcard, product tag, and campaign poster. Blank design studio, print-ordering marketplace, and quantity estimator remain out of scope.
 - Future work should be limited to production bugs, scan/readability regressions, accessibility fixes, and copy corrections.
 - Any additional printable product line beyond the expanded supported catalog must reopen scope with docs first.
+
+## June 25 QR Trust-Cue Hardening
+
+| Check | Result | Notes |
+| --- | --- | --- |
+| Four-module quiet zone source scan | Passed | `npm run verify:menu-card-export` and `npm run verify:printable-asset-templates` now reject QR margins below four modules in generated print/social QR paths. |
+| Trust-cue product boundary | Documented | Accepted business identity, short link, official/customer-link copy, and MenuList attribution. Rejected unsupported "verified", "secure", "no spam", and WhatsApp-consent copy on normal menu/page QR assets. |
+| Firebase cost posture | Preserved | QR hardening stays renderer-local and adds no Firestore, Storage, Cloud Function, API route, or generated-asset artifact writes. |
+| Code quality | Passed | `git diff --check`, focused ESLint, and `npx tsc --noEmit --incremental false --pretty false` passed after the QR quiet-zone changes. |
 
 ## June 21 Asset-Set Update Verification
 
@@ -52,6 +61,7 @@ Included:
 - MenuList attribution with Premium removal policy
 - Table tent, single table/counter card, counter sticker, entrance poster, feedback QR, flyer, gift certificate, front/back business card, ID card, invitation, postcard, product tag, campaign poster, full Print Menu PDF, and complete Menu Kit bundle
 - Premium print hierarchy: brand top panel, logo/initials badge, purpose pill, neutral QR panel, short-link capsule, and scan-safe black QR
+- Four-module QR quiet zone enforced in generated QR paths
 - Lightweight website copy as `Print files`
 
 Not included:

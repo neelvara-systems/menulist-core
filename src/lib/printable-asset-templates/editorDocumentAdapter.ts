@@ -325,7 +325,7 @@ function qrElement(ctx: BuildContext, params: Partial<Extract<CreativeEditorElem
         id: ctx.id("qr"),
         lightColor: "#ffffff",
         locked: true,
-        margin: 3,
+        margin: 4,
         name: "Live QR code",
         opacity: 1,
         sourceRefs: [{

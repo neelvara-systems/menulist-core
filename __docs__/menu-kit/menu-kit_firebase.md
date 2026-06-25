@@ -81,6 +81,7 @@ The premium logo/color treatment remains cost-safe:
 - `menuListBranding.ts` hides visible attribution only for `activePlanType === "premium"` using already-loaded store context.
 - QR/card/PDF-like image generation remains Canvas/jsPDF in memory.
 - Logo rendering uses the existing logo URL when available and does not upload rendered assets.
+- Four-module QR quiet-zone enforcement is local renderer behavior and does not add reads, writes, uploads, functions, or generated-asset storage.
 
 This is the most cost-efficient architecture possible.
 
@@ -91,6 +92,8 @@ This is the most cost-efficient architecture possible.
 ### UTM-Tagged QR Codes (`ENABLE_MENU_KIT_UTM`)
 
 UTM parameters (`utm_source=menu_kit&utm_medium={surface}`) are appended to the menu URL before encoding into QR codes. This happens entirely client-side in the `menuKitGenerator.ts` orchestrator. **Zero Firebase cost** — UTM params are captured by the existing Unified Analytics pipeline that already runs on page views.
+
+Do not add a Firestore scan ledger, WhatsApp-open ledger, or A/B placement ledger to Menu Kit without a separate privacy, analytics, and Firebase cost design.
 
 ### Download Analytics (`MENU_KIT_DOWNLOAD` event)
 

@@ -1,7 +1,7 @@
 # Assets Help
 
 **Status:** Owner Help
-**Last Updated:** June 21, 2026
+**Last Updated:** June 25, 2026
 
 ## What It Does
 
@@ -34,6 +34,10 @@ Open a template first. The preview appears before download, and the same templat
 On desktop, supported single assets also have **Customize in editor**. Use it for small copy or layout adjustments. The QR link stays protected.
 
 Use **Printer Message** when sending files to a local printer. It copies the file specs and menu link so the printer knows what to print.
+
+Keep the printed file focused. Use one customer action, keep the QR area clean, and keep the short link visible under or near the QR. The design can use your brand around the code, but the QR itself should stay easy to scan.
+
+Your normal menu QR should open your live page directly. If you want to test two printed offer QR codes and compare WhatsApp conversations, that belongs to a separate campaign experiment flow.
 
 ## Which File To Use
 

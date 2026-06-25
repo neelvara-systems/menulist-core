@@ -4,6 +4,7 @@
 **Priority:** P0 — Pre-launch essential  
 **Source:** ChatGPT Session #11 → Cascade Review + Codebase Cross-Check  
 **Owner:** Founder
+**Last Updated:** June 25, 2026
 
 ---
 
@@ -39,7 +40,7 @@ Menu Kit is an auto-generated "Launch Pack" of print-ready and social-ready asse
 
 ### What's in the Kit (Frozen — 10 Generated Asset Files + Staff Script + Print Instructions)
 
-All visual assets use the store's existing logo and brand accent color when available. Brand color is used for gradient framing, accent panels, and borders; QR modules stay near-black on a high-contrast white scan panel for scan reliability. Printable/downloadable assets carry subtle MenuList attribution with the logo mark, name, and `menulist.ai` domain unless the store's already-loaded active plan is `premium`.
+All visual assets use the store's existing logo and brand accent color when available. Brand color is used for gradient framing, accent panels, and borders; QR modules stay near-black on a high-contrast white scan panel with a generated four-module quiet zone for scan reliability. Printable/downloadable assets carry subtle MenuList attribution with the logo mark, name, and `menulist.ai` domain unless the store's already-loaded active plan is `premium`.
 
 1. **Table Tent (A5 fold PDF)** — Print Menu Surfaces-owned tabletop card with QR + instruction line + short link fallback + branding
 2. **Single Table / Counter Card (A6 PDF)** — Upright non-folded card for acrylic holders, counters, wall clips, and single-sided stands
@@ -64,6 +65,10 @@ All visual assets use the store's existing logo and brand accent color when avai
 - ❌ Item-specific printed surfaces (volatile, undermines trust)
 - ❌ A/B testing of surface copy
 - ❌ Owner-claim postcards, staff PINs, and signed public claim links — those belong to a separate Public Menu Entry/acquisition extension
+- ❌ Center-logo QR overlays without scan-regression coverage
+- ❌ WhatsApp consent/trust copy on normal MenuList page QR outputs
+- ❌ Preview interstitials before ordinary menu/page QR scans
+- ❌ Artistic QR patterns, QR module distortion, or decorative QR art without scan-regression coverage
 
 ---
 
@@ -88,6 +93,16 @@ Menu Kit bundles the table tent file so owners receive one complete deployment p
 [Print Assets](../print-assets/README.md) is the owner-facing desktop/mobile workspace for downloading the printables. Menu Kit remains the bundle generator and Print Menu Surfaces remains the physical layout owner. Do not add route or mobile-shell logic to Menu Kit when the user job is "find and download printable files."
 
 Individual asset downloads should call `generateMenuKitAsset()` with a semantic asset key. `generateMenuKit()` is for the complete ZIP bundle.
+
+## Branded QR Action Templates Boundary
+
+[Branded QR Action Templates](../branded-qr-action-templates/README.md) is the cross-feature doctrine for QR-heavy physical files. Menu Kit uses only the standard Tier 1 form: brand frame, CTA, short link, business identity, and a protected scan-safe QR. Menu Kit does not own artistic QR patterns or campaign action experiments.
+
+## QR Trust-Cue Boundary
+
+Menu Kit accepts trust cues that are already true from existing inputs: business name/logo or initials, current menu/service/catalog wording, the short link, the live MenuList page URL, placement UTM tags, and MenuList attribution where policy requires it.
+
+Menu Kit does not own WhatsApp opt-in flows, WhatsApp preview pages, scan-to-WhatsApp consent snippets, "Verified Business" claims, "Secure" claims, "No spam" claims, or backend scan -> click -> WhatsApp-open ledgers. Those need separate route, compliance, analytics, Firebase cost, and privacy design before code.
 
 ## Existing Infrastructure (Reusable)
 

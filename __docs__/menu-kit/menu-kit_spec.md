@@ -4,7 +4,7 @@
 **Status:** ✅ IMPLEMENTED — Feature flags ON (`ENABLE_MENU_KIT`, `ENABLE_MENU_KIT_UTM`)  
 **Authority:** Founder  
 **Source:** ChatGPT Session #11 → Cascade Review + Codebase Cross-Check  
-**Last Updated:** June 3, 2026 — Premium store logo/color treatment added without owner design controls
+**Last Updated:** June 25, 2026 — Four-module QR quiet-zone and trust-cue boundary added
 
 ---
 
@@ -18,6 +18,8 @@ When a menu goes live, owners receive a link. But the gap between "link exists" 
 - What to tell staff ("say this line")
 
 Menu Kit eliminates every one of these decisions by auto-generating a complete deployment pack.
+
+The printed object is the customer-facing product. The QR pattern is only one part of that object.
 
 ---
 
@@ -44,12 +46,14 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 
 **Feature ownership:** The table tent is included in Menu Kit, but the layout is owned by [Print Menu Surfaces](../print-menu-surfaces/README.md). Menu Kit must not become the owner of tabletop print design rules.
 
+**QR safety:** QR generation uses a four-module quiet zone. Business identity stays outside the QR pattern.
+
 **Content layout:**
 
 ```
 ┌─────────────────────┐
 │                     │
-│  SCAN TO VIEW MENU  │  <- Bold, large
+│  CURRENT MENU       │  <- Bold, large
 │                     │
 │      ( QR CODE )    │  <- Black QR on white panel
 │                     │
@@ -80,6 +84,8 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 
 **Feature ownership:** This file is owned by [Print Menu Surfaces](../print-menu-surfaces/README.md). Use it when the owner needs one normal upright card instead of a folded table tent.
 
+**QR safety:** QR generation uses a four-module quiet zone. Business identity stays outside the QR pattern.
+
 #### 3. Counter Sticker — 8×8 PNG
 
 | Attribute       | Value                                |
@@ -91,10 +97,12 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 
 **Content layout:**
 
+**QR safety:** QR generation uses a four-module quiet zone. The white panel remains additional protection.
+
 ```
 ┌──────────────┐
 │ SCAN FOR     │  ← Bold
-│ MENU         │
+│ CURRENT MENU │
 │              │
 │  ( QR CODE ) │  ← Min 40mm
 │              │
@@ -116,7 +124,7 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 ```
 ┌─────────────────────────┐
 │                         │
-│  {Business print title} │  ← e.g. OUR MENU / OUR SERVICES
+│  {Business print title} │  ← e.g. CURRENT MENU / CURRENT SERVICES
 │                         │
 │     ( QR CODE )          │  ← 80mm × 80mm (scannable from 1–2m)
 │                         │
@@ -131,6 +139,8 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 ```
 
 **Purpose:** Highest discovery surface — customers check menu before entering. QR is larger than table tent for scanning from distance.
+
+**QR safety:** QR generation uses a four-module quiet zone. The poster must not add a preview interstitial for normal MenuList menu/page scans.
 
 #### 4. Delivery Bag Sticker — 6×6 PNG
 
@@ -156,6 +166,8 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 
 **Purpose:** Off-site discovery surface — customers receiving deliveries scan to view/reorder from the menu. Creates permanent distribution node outside the restaurant.
 
+**QR safety:** QR generation uses a four-module quiet zone.
+
 #### 5. Takeaway Card — 85×55 PNG
 
 | Attribute       | Value                                  |
@@ -179,6 +191,8 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 ```
 
 **Purpose:** Business-card-sized insert for takeaway bags/boxes. Customers keep the card and scan later — creates reorder path from home.
+
+**QR safety:** QR generation uses a four-module quiet zone.
 
 ### Social Assets (Online Distribution)
 
@@ -249,7 +263,7 @@ If the owner has to think about what to print or where to post, Menu Kit has fai
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│    OFFICIAL MENU                │  ← Bold, left-aligned
+│    CURRENT MENU                 │  ← Bold, left-aligned
 │                                 │
 │    ( QR CODE )    {Store Name}  │  ← QR left, text right
 │                                 │

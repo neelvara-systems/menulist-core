@@ -95,6 +95,7 @@ The first serious marketing system should be:
 6. Run a controlled multi-category founder-led pilot before broad paid spend.
 7. Use Product Hunt as a public proof and feedback event, not the primary growth engine.
 8. Use paid ads only after two-surface activation and follow-up conversion are measurable.
+9. Treat QR-to-WhatsApp A/B testing as a separate governed campaign experiment feature, not as normal Assets/Menu Kit QR behavior.
 
 ## Current Next Step
 
@@ -107,6 +108,12 @@ The WhatsApp-first moat plan, public `/whatsapp` route, test-number CTA, and cam
 5. treat Tuesday, August 11, 2026 as a conditional Product Hunt target, not a scheduled launch;
 6. run a small permissioned pilot;
 7. only then launch "100 WhatsApp Lists in 100 Hours" or paid click-to-WhatsApp tests.
+
+## Related Product Decision
+
+QR-to-WhatsApp physical campaign testing now lives in [QR WhatsApp Experiments](../qr-whatsapp-experiments/README.md). It should measure downstream WhatsApp conversations, opt-ins, qualified leads, and conversions, while normal MenuList print assets keep direct live-page QR behavior.
+
+The broader QR creative doctrine now lives in [Branded QR Action Templates](../branded-qr-action-templates/README.md): turn physical QR surfaces into branded customer action points, but keep the QR itself scan-safe and reject artistic QR patterns until scan-regression coverage exists.
 
 ## Market Reality
 

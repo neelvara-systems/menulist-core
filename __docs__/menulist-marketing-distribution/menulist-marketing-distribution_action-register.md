@@ -85,6 +85,9 @@
 | MLD-A010 | Screenshot capture plan | Codex | Done | Created `menulist-marketing-distribution_screenshot-capture-plan.md` with route/state/viewport/redaction plan and approval gates |
 | MLD-A011 | Product Hunt gallery copy from demo universe | Codex | Done | Included in `menulist-marketing-distribution_product-hunt-asset-pack.md`; final image files still not created |
 | MLD-A012 | Placeholder demo asset pack | Codex | Done | Created labelled placeholder SVGs under `public/images/website/demo-placeholders/` and documented them in `menulist-marketing-distribution_demo-placeholder-assets.md`; founder must replace them with approved screenshots/videos before broad campaign use |
+| MLD-A013 | QR print trust-cue hardening review | Codex | Done | Accepted factual trust cues inside existing Assets/Menu Kit; enforced four-module QR quiet zones; rejected standalone QR-product framing, unsupported verified/secure/no-spam claims, WhatsApp consent copy on normal menu QR, and ordinary menu-scan interstitials |
+| MLD-A014 | QR-to-WhatsApp experiment feature boundary | Codex | Done | Created `__docs__/qr-whatsapp-experiments/` and added a disabled feature flag so physical QR campaign tests stay separate from ordinary Assets/Menu Kit QR behavior |
+| MLD-A015 | Branded QR action-template doctrine | Codex | Done | Created `__docs__/branded-qr-action-templates/` and aligned Assets, Printable Asset Templates, Menu Kit, and QR WhatsApp docs around scan-safe branded action files |
 
 ## Research Actions
 
@@ -101,6 +104,8 @@
 | MLD-R009 | Creator distribution article fit review | Codex | Done | Accepted local creator tests only as proof/content experiments for MenuList; CampaignCue owns the creator-fit brief primitive. No MenuList influencer workflow or creator product scope added |
 | MLD-R010 | AI-startup growth playbook fit review | Codex | Done | Captured in `../menulist-signaldesk/menulist-signaldesk_growth-playbook-review-2026-06-24.md`; adopt activation-proof loop and recommended Bengaluru pod hypothesis, reject generic viral/outbound automation copy |
 | MLD-R011 | Founder distribution and automation research | Codex | Done | Captured in `../menulist-signaldesk/menulist-signaldesk_founder-distribution-research-2026-06-24.md`; startup/founder/community research confirms Activation Concierge, proof assets, demand listening, and objection learning before more outbound automation |
+| MLD-R012 | QR-to-WhatsApp A/B testing blueprint review | Codex | Done | Accepted the funnel model only as a future governed experiment feature: physical asset -> tracked landing/redirect -> WhatsApp click -> consent -> outcome dashboard |
+| MLD-R013 | Branded QR physical-action creative review | Codex | Done | Accepted branded physical action points as a MenuList Assets doctrine; rejected generic QR generator and artistic QR output until scan-safety tests exist |
 
 ## Launch Actions
 
@@ -153,3 +158,6 @@
 | MLD-V011 | Launch-distribution review docs verification | Codex | Done | `git diff --check` passed; claim-boundary scan found only guardrail/negative wording and existing historical references |
 | MLD-V012 | Pending-action cross-check verification | Codex | Done | `git diff --check`, markdown relative-link check, claim-boundary scan, `npm run verify:env-targets`, `npm run verify:agent-readiness`, `npm run verify:website-resource-locales`, `npm run verify:public-business-truth`, `npx tsc --noEmit --incremental false --pretty false`, and `npm run lint` passed |
 | MLD-V013 | Placeholder-backed industry route verification | Codex | Done | Passed `git diff --check`, `npm run verify:agent-readiness`, `npm run verify:website-resource-locales`, `npx tsc --noEmit --incremental false --pretty false`, `npm run lint`, local HTTP/text smoke, SVG asset smoke, and browser desktop/mobile render checks |
+| MLD-V014 | QR trust-cue hardening verification | Codex | Done | Passed `npm run verify:menu-card-export`, `npm run verify:printable-asset-templates`, `git diff --check`, focused ESLint, and `npx tsc --noEmit --incremental false --pretty false` |
+| MLD-V015 | QR WhatsApp Experiments docs verification | Codex | Done | Passed `git diff --check`, feature-boundary grep, docs file inventory, claim-boundary scan, and `npx tsc --noEmit --incremental false --pretty false` |
+| MLD-V016 | Branded QR Action Templates alignment verification | Codex | Done | Passed `git diff --check`, docs file inventory, boundary grep, and prohibited-claim scan; hits were only negative guardrail wording |

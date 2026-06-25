@@ -1938,6 +1938,24 @@ export const FEATURE_FLAGS = {
     PRINTABLE_ASSET_TEMPLATE_PLAN_IDS: ['starter', 'pro', 'premium'] as string[],
     PRINTABLE_ASSET_TEMPLATE_FULL_CATALOG_PLAN_IDS: ['pro', 'premium'] as string[],
 
+    /**
+     * QR WhatsApp Experiments — consent-aware physical campaign testing
+     *
+     * When enabled in a future implementation:
+     * - Owners can create explicit campaign QR variants for WhatsApp opt-in,
+     *   booking, order, coupon, feedback, or support experiments.
+     * - Normal MenuList menu/service/catalog QR output stays direct and is not
+     *   converted into an experiment or interstitial by default.
+     * - Runtime must use aggregate-first storage, explicit consent copy, and
+     *   tracked campaign tokens instead of per-scan Firestore documents.
+     *
+     * Firebase cost: disabled by default. Future implementation must use the
+     * cost model in the docs before adding rules, indexes, routes, or writes.
+     *
+     * @see __docs__/qr-whatsapp-experiments/
+     */
+    ENABLE_QR_WHATSAPP_EXPERIMENTS: false,
+
     // ═══════════════════════════════════════════════════════════════
     // MENU KIT (Launch Pack)
     // @see __docs__/menu-kit/
@@ -3032,6 +3050,23 @@ export const FEATURE_FLAGS = {
      * @see __docs__/media-image-system/
      */
     ENABLE_MEDIA_IMAGE_SYSTEM: true,
+
+    /**
+     * Item Photo Capture Assist
+     *
+     * Adds an optional browser-local camera guide to the existing menu item
+     * image upload modal. Captured photos still use the shared menuItem media
+     * profile, existing project save path, and existing Storage rules.
+     *
+     * true: Show guided capture above the existing item image file upload.
+     * false: Keep the existing upload/generate image flow unchanged.
+     *
+     * Cost: Browser-local camera/canvas only until the owner accepts and uploads
+     * through the existing item image path.
+     *
+     * @see __docs__/item-photo-capture-assist/
+     */
+    ENABLE_ITEM_PHOTO_CAPTURE_ASSIST: true,
 
     /**
      * Visual Profile Completion

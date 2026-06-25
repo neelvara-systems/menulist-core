@@ -209,6 +209,10 @@ const editorAdapter = read('src/lib/printable-asset-templates/editorDocumentAdap
   'errorCorrectionLevel: "H"',
   'jsPDF',
 ].forEach((token) => requireToken(editorAdapter, token, 'editor-backed printable asset adapter'));
+requireToken(editorAdapter, 'margin: 4', 'editor-backed printable asset QR quiet zone');
+if (/margin:\s*[123]\b/.test(editorAdapter)) {
+  failures.push('editor-backed printable asset adapter uses a QR quiet zone below four modules');
+}
 
 const creativeEditorTypes = read('src/modules/creative-editor/types.ts');
 [

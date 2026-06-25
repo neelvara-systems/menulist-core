@@ -20,6 +20,7 @@ The current Print Assets screen proves the workflow. The next system must make t
 | Keep owner effort low | One asset type, one template, one download, with optional desktop customization only when the owner asks for it. |
 | Keep outputs consistent | The selected style family can apply across all asset types. |
 | Keep QR reliable | QR modules stay dark on white with required safe area. |
+| Make QR surfaces actionable | Each QR surface should communicate one customer action, not just show a code. |
 | Keep paired print assets aligned | Business Card front/back faces stay tied to protected print frames even after customization. |
 | Keep Firebase cost low | Generation stays client-side using already-loaded data. |
 | Keep template additions easy | Add a template by registering a family and editor-document renderer support, not by adding one-off UI. |
@@ -100,6 +101,7 @@ Each family is a finished layout system that can adapt to different business typ
 | Dynamic data only | Store name, branch, logo, color, URL, copy, currency, and plan state come from live inputs. |
 | No fake placeholder content in output | Placeholder images/text may appear only in empty preview skeletons. |
 | QR modules stay dark | Brand colors may frame the QR but must not recolor QR modules unless scan-safety tests pass. |
+| QR quiet zone | Generated QR layers must use a four-module quiet zone; surrounding white panels are additional protection, not the only quiet zone. |
 | Logo fallback | If no logo exists, render initials from the store name. |
 | Long names fit | Template must split or fit long names without overlap. |
 | Business type aware | Menu, service list, catalog, feedback, and scan copy use shared business-type labels. |
@@ -107,6 +109,20 @@ Each family is a finished layout system that can adapt to different business typ
 | Output parity | Desktop and mobile downloads must use the same template ID and renderer. |
 | No duplicate choices | If an asset renderer maps multiple families to the same output, the UI exposes only the unique supported family choices for that asset. |
 | Governed customization | Desktop customization must start from an approved template document and keep QR/link source layers locked. MenuList attribution must stay out of saved editor documents and be applied only at export time when policy requires it. |
+| Trust cue boundary | Use business identity, current-action copy, short link, and attribution. Do not add "official", "verified", "secure", "no spam", WhatsApp badge, or WhatsApp consent copy to normal MenuList page QR assets. |
+
+## Branded QR Action Template Boundary
+
+[Branded QR Action Templates](../branded-qr-action-templates/README.md) is the cross-feature doctrine for physical QR action files. Printable Asset Templates owns the standard scan-safe version:
+
+- brand frame outside the QR pattern;
+- business name/logo or initials;
+- one clear CTA such as menu, order, feedback, booking, offer, reorder, event, or product info;
+- visible short link where space allows;
+- locked QR/link source layer;
+- no generated scan ledger.
+
+Measured WhatsApp campaigns belong to [QR WhatsApp Experiments](../qr-whatsapp-experiments/README.md). Artistic QR patterns, logo overlays inside the QR, and module distortion stay rejected until scan-regression coverage exists.
 
 ## Plan and Access
 

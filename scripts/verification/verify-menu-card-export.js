@@ -125,6 +125,31 @@ const ownerPrintGuidance = fs.readFileSync(path.join(root, 'src/lib/print-assets
   if (!ownerPrintGuidance.includes(token)) failures.push(`Print Assets owner guidance helper missing token: ${token}`);
 });
 
+const qrQuietZoneFiles = [
+  'src/lib/menu-card-export/render/renderQr.ts',
+  'src/lib/menu-kit/templates/counterStickerTemplate.ts',
+  'src/lib/menu-kit/templates/deliveryBagTemplate.ts',
+  'src/lib/menu-kit/templates/entrancePosterTemplate.ts',
+  'src/lib/menu-kit/templates/googleMapsTemplate.ts',
+  'src/lib/menu-kit/templates/instagramStoryTemplate.ts',
+  'src/lib/menu-kit/templates/takeawayCardTemplate.ts',
+  'src/lib/menu-kit/templates/whatsappStatusTemplate.ts',
+  'src/lib/physical-surfaces/stickerGenerator.ts',
+  'src/lib/physical-surfaces/tentCardGenerator.ts',
+  'src/lib/print-menu-surfaces/templates/singleTableCardTemplate.ts',
+  'src/lib/print-menu-surfaces/templates/tableTentTemplate.ts',
+  'src/lib/utils/qrCode.ts',
+];
+qrQuietZoneFiles.forEach((file) => {
+  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  if (/margin:\s*[123]\b/.test(source)) {
+    failures.push(`${file} uses a QR quiet zone below four modules`);
+  }
+  if (!source.includes('margin: 4') && !source.includes('margin: options?.margin ?? 4')) {
+    failures.push(`${file} missing four-module QR quiet zone token`);
+  }
+});
+
 const menuListBrandingPolicy = fs.readFileSync(path.join(root, 'src/lib/platform/menuListBranding.ts'), 'utf8');
 [
   "MENULIST_BRANDING_REMOVAL_PLAN_TYPE = 'premium'",
@@ -621,8 +646,11 @@ if (!feedbackQrCode.includes('generateBrandedFeedbackQrCode')) {
 }
 
 const businessTypeLabels = fs.readFileSync(path.join(root, 'src/lib/menu-kit/businessTypeLabels.ts'), 'utf8');
-['printCardTitle', 'OUR MENU', 'OUR SERVICES', 'OUR CATALOG', 'OUR OFFERINGS'].forEach((token) => {
+['printCardTitle', 'CURRENT MENU', 'CURRENT SERVICES', 'CURRENT CATALOG', 'CURRENT OFFERINGS', 'Scan to view current'].forEach((token) => {
   if (!businessTypeLabels.includes(token)) failures.push(`Business-type labels missing print card token: ${token}`);
+});
+['officialUpper', 'OFFICIAL MENU', 'OFFICIAL SERVICES', 'OFFICIAL CATALOG', 'OFFICIAL OFFERINGS'].forEach((token) => {
+  if (businessTypeLabels.includes(token)) failures.push(`Business-type labels must not expose self-declared official print token: ${token}`);
 });
 
 const mobileQrSheet = fs.readFileSync(path.join(root, 'src/components/mobile/components/MobileQrCodeSheet.tsx'), 'utf8');
@@ -846,7 +874,7 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   {
     label: 'Menu Kit Google Maps upload',
     file: 'src/lib/menu-kit/templates/googleMapsTemplate.ts',
-    tokens: ['drawMenuListAttribution', 'MENU_LIST_MENU_ATTRIBUTION_TEXT', 'activePlanType'],
+    tokens: ['drawMenuListAttribution', 'MENU_LIST_MENU_ATTRIBUTION_TEXT', 'activePlanType', 'labels.printCardTitle', 'labels.updatedRegularly'],
   },
   {
     label: 'Menu Kit placement guide',
@@ -868,6 +896,9 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   tokens.forEach((token) => {
     if (!source.includes(token)) failures.push(`${label} missing MenuList logo/name/domain attribution token: ${token}`);
   });
+  if (source.includes('labels.officialUpper')) {
+    failures.push(`${label} must not render self-declared official print copy`);
+  }
 });
 
 [

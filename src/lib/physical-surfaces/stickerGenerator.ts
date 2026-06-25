@@ -93,7 +93,7 @@ export async function generateStickerPNG(
     const qrCanvas = document.createElement("canvas");
     await QRCode.toCanvas(qrCanvas, qrUrl, {
         width: 300,
-        margin: 1,
+        margin: 4,
         color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: "H",
     });

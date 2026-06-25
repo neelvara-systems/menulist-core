@@ -54,7 +54,7 @@ export async function generateTakeawayCard(input: TakeawayInput): Promise<Blob> 
     const qrCanvas = document.createElement('canvas');
     await QRCode.toCanvas(qrCanvas, menuUrl, {
         width: 380,
-        margin: 2,
+        margin: 4,
         color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });

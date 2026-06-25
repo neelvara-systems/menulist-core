@@ -37,7 +37,7 @@ export async function generateQrCodeDataUrl(
 ): Promise<string> {
     return await QRCode.toDataURL(value, {
         width: options?.width || 1024,
-        margin: options?.margin || 2,
+        margin: options?.margin ?? 4,
         color: {
             dark: options?.darkColor || '#000000',
             light: options?.lightColor || '#FFFFFF',

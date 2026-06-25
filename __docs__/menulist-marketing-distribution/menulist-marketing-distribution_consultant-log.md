@@ -12,6 +12,40 @@
 - Separate founder-side blockers from Codex-side work.
 - Do not leave important decisions only in chat.
 
+## June 25, 2026 - QR Print Trust-Cue Hardening
+
+### Context
+
+Founder shared an external QR trust-cue proposal covering branded QR cards, WhatsApp badges, consent snippets, HTTPS preview pages, short links, placement UTMs, and a one-week A/B test.
+
+### Decision
+
+Accept the core psychology inside existing MenuList surfaces: the printed object is the product, and it should communicate business identity, current official action, scan-safe QR, short link, and attribution before the customer studies the QR pattern.
+
+Do not create a standalone QR product or route. Assets, Print Menu Surfaces, Printable Asset Templates, and Menu Kit already own the output system. MenuList should not market itself as a QR maker.
+
+Do not add a preview interstitial before ordinary MenuList menu/service/catalog QR scans. Those scans should open the live page directly.
+
+Do not print "Verified", "Secure", "No spam", WhatsApp badges, or WhatsApp consent snippets on normal MenuList page QR assets. WhatsApp-specific consent and preview behavior belongs to a separate WhatsApp-owned flow with production number, response owner, consent copy, tracking, privacy, and Firebase cost decisions.
+
+### Files Changed
+
+- `src/lib/menu-kit/templates/*`
+- `src/lib/print-menu-surfaces/templates/*`
+- `src/lib/printable-asset-templates/editorDocumentAdapter.ts`
+- `src/lib/physical-surfaces/*`
+- `src/lib/utils/qrCode.ts`
+- `scripts/verification/verify-menu-card-export.js`
+- `scripts/verification/verify-printable-asset-templates.js`
+- `__docs__/print-assets/`
+- `__docs__/print-menu-surfaces/`
+- `__docs__/printable-asset-templates/`
+- `__docs__/menu-kit/`
+
+### Boundary
+
+No WhatsApp automation, scan ledger, click ledger, A/B ledger, preview route, Firebase rule/index/function change, Vercel deploy, Firebase deploy, production build, or public WhatsApp claim was added.
+
 ## June 24, 2026 - Activation Proof Runtime Foundation
 
 ### Context
@@ -963,3 +997,80 @@ The founder shared a synthesized review comparing MenuList to fast-growing AI pr
 - No outreach was sent.
 - No runtime feature was added.
 - No public SignalDesk page, public MenuList route, provider send, paid campaign, auto-publish, Firebase deploy, production build, or Vercel deploy was run.
+
+---
+
+## June 25, 2026 - QR WhatsApp Experiments Boundary
+
+### Context
+
+The founder shared an end-to-end QR-to-WhatsApp A/B testing blueprint covering physical exposure, scans, landing pages, WhatsApp click-to-chat, consent, conversation outcomes, dashboards, and experiment decisions.
+
+### Decisions
+
+- Accept the strategic model, but keep it out of ordinary Assets/Menu Kit QR output.
+- Create `qr-whatsapp-experiments` as a separate MenuList feature boundary with docs, mobile review, Firebase cost posture, and a disabled runtime flag.
+- Prefer tracked landing page -> WhatsApp for measurable campaigns.
+- Keep direct QR-to-WhatsApp available only as a lower-measurement mode.
+- Choose campaign winners from qualified WhatsApp starts, consent, leads, bookings, orders, redemptions, or revenue signals, not raw scan count alone.
+- Keep normal MenuList menu/service/catalog QR scans direct to the live page with no interstitial.
+- Require aggregate-first storage and explicit consent handling before runtime implementation.
+
+### Files Updated
+
+- `../qr-whatsapp-experiments/`
+- `../../src/config/features.ts`
+- `../print-assets/README.md`
+- `../print-assets/print-assets_spec.md`
+- `../print-assets/print-assets_firebase.md`
+- `../print-assets/print-assets_marketing.md`
+- `../print-assets/print-assets_helpdoc.md`
+- `menulist-marketing-distribution_action-register.md`
+- `README.md`
+
+### Boundaries
+
+- No WhatsApp provider send was added.
+- No scan ledger, click ledger, webhook, public token route, Firestore rule/index, Storage path, Cloud Function, API route, production build, Vercel deploy, or Firebase deploy was added.
+- This remains docs-ready until security, privacy, public route, and data model work are implemented behind `ENABLE_QR_WHATSAPP_EXPERIMENTS`.
+
+---
+
+## June 25, 2026 - Branded QR Action Templates Alignment
+
+### Context
+
+The founder shared branded QR examples and an external analysis arguing that the larger opportunity is turning physical QR touchpoints into branded, measurable customer-action surfaces rather than making prettier QR codes.
+
+### Decisions
+
+- Accept the core direction as a MenuList Assets doctrine: branded physical action points, not generic QR generation.
+- Keep the production-safe default as a standard QR with strong contrast, four-module quiet zone, visible short link/destination cue, and brand/CTA/frame around the QR.
+- Treat distorted, heavily recolored, logo-overlaid, or artistic QR patterns as rejected until scan-regression coverage exists across devices and printed materials.
+- Keep standard action templates inside Assets/Printable Asset Templates and Menu Kit.
+- Keep measured WhatsApp outcomes inside QR WhatsApp Experiments.
+- Do not add a new runtime feature flag because this is a cross-feature alignment layer over existing `ENABLE_PRINTABLE_ASSET_TEMPLATES`, `ENABLE_MENU_KIT`, and future `ENABLE_QR_WHATSAPP_EXPERIMENTS`.
+
+### Files Updated
+
+- `../branded-qr-action-templates/`
+- `../printable-asset-templates/README.md`
+- `../printable-asset-templates/printable-asset-templates_spec.md`
+- `../printable-asset-templates/printable-asset-templates_marketing.md`
+- `../printable-asset-templates/printable-asset-templates_firebase.md`
+- `../print-assets/README.md`
+- `../print-assets/print-assets_spec.md`
+- `../print-assets/print-assets_marketing.md`
+- `../print-assets/print-assets_website.md`
+- `../print-assets/print-assets_helpdoc.md`
+- `../print-assets/print-assets_firebase.md`
+- `../menu-kit/README.md`
+- `../qr-whatsapp-experiments/`
+- `menulist-marketing-distribution_action-register.md`
+- `README.md`
+
+### Boundaries
+
+- No QR art generator was added.
+- No scan ledger, click ledger, public route, Firestore rule/index, Storage path, Cloud Function, API route, production build, Vercel deploy, or Firebase deploy was added.
+- Public claims remain proof-gated. Do not publish scan-lift or sales-lift claims without measured MenuList data.

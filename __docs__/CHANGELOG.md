@@ -6,6 +6,61 @@
 
 ---
 
+## June 25, 2026 - Item Photo Capture Assist
+
+### Added
+
+- **Item Photo Capture Assist added** - Owners can take an item photo from the existing image upload flow with a simple frame, while saved images still use the existing MenuList media preparation path.
+
+### Boundaries
+
+- **No new media system** - No item media schema, API route, Firestore collection, Cloud Function, Storage path family, public route, score dashboard, Firebase deploy, Vercel deploy, or production build was added.
+
+---
+
+## June 25, 2026 - Branded QR Action Templates Alignment
+
+### Added
+
+- **Branded QR Action Templates docs added** - Added the cross-feature doctrine for turning print QR surfaces into branded customer action points without admitting unsafe QR art.
+- **Assets alignment updated** - Printable Asset Templates and Print Assets now separate standard branded QR frames from measured WhatsApp campaign experiments.
+- **Menu Kit and QR WhatsApp boundaries updated** - Menu Kit stays on standard scan-safe deployment assets; QR WhatsApp Experiments owns measured campaign tokens, consent, and outcomes.
+
+### Boundaries
+
+- **Docs only** - No QR art generator, scan ledger, click ledger, public route, Firestore rule/index, Storage path, Cloud Function, API route, production build, Vercel deploy, or Firebase deploy was added.
+
+---
+
+## June 25, 2026 - QR WhatsApp Experiments Docs
+
+### Added
+
+- **QR WhatsApp Experiments doc set added** - Added the docs-ready feature boundary for physical QR campaign tests that measure WhatsApp taps, chats started, consent, qualified leads, conversions, and guardrails instead of raw scans alone.
+- **Runtime gate added** - Added `ENABLE_QR_WHATSAPP_EXPERIMENTS` as a disabled feature flag for future implementation.
+- **Print Assets boundary updated** - Existing Assets/Menu Kit QR behavior stays direct to the live page; tracked WhatsApp tests belong to the separate experiment feature.
+
+### Boundaries
+
+- **Docs and flag only** - No WhatsApp provider send, scan ledger, click ledger, webhook, public token route, Firestore rule/index, Storage path, Cloud Function, API route, production build, Vercel deploy, or Firebase deploy was added.
+
+---
+
+## June 25, 2026 - QR Print Trust-Cue Hardening
+
+### Changed
+
+- **QR quiet zones strengthened** - Generated Menu Kit, Print Assets, Print Menu Surfaces, standalone branded QR, and active legacy physical-surface QR paths now preserve a four-module quiet zone.
+- **Print trust-cue boundary recorded** - Docs now accept factual business identity, current page wording, short links, and attribution while rejecting unsupported official/verified/secure/no-spam claims, WhatsApp consent copy, and ordinary menu-scan interstitials.
+- **Generated QR copy made current-first** - Menu Kit and branded QR output labels now use `CURRENT MENU` / `CURRENT SERVICES` style titles and `Scan to view current...` instructions instead of generic or self-declared official copy.
+- **QR verifier coverage added** - Print/Menu Kit verifiers now catch QR margin regressions below four modules.
+
+### Boundaries
+
+- **No new QR product** - No WhatsApp automation, scan ledger, click ledger, A/B ledger, preview route, Firebase rule/index/function change, Vercel deploy, Firebase deploy, or production build was added.
+
+---
+
 ## June 24, 2026 - MenuList Activation Proof Runtime
 
 ### Added

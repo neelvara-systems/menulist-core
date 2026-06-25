@@ -270,7 +270,7 @@ async function renderEntrancePosterCanvas(input: PosterInput): Promise<HTMLCanva
         fillRoundedRect(ctx, posterMm(28), posterMm(34), W - posterMm(56), posterMm(32), posterMm(4), brand.softAccent);
     }
 
-    // Heading — "OUR MENU" / "OUR SERVICES" etc.
+    // Heading — "CURRENT MENU" / "CURRENT SERVICES" etc.
     const fontBase = isClassic
         ? 'Georgia, "Times New Roman", serif'
         : 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
@@ -292,7 +292,7 @@ async function renderEntrancePosterCanvas(input: PosterInput): Promise<HTMLCanva
     const qrCanvas = document.createElement('canvas');
     await QRCode.toCanvas(qrCanvas, menuUrl, {
         width: posterMm(80),
-        margin: 2,
+        margin: 4,
         color: { dark: brand.qrDark, light: brand.qrLight },
         errorCorrectionLevel: 'H',
     });
@@ -309,10 +309,10 @@ async function renderEntrancePosterCanvas(input: PosterInput): Promise<HTMLCanva
     strokeRoundedRect(ctx, qrX - posterMm(7), qrY - posterMm(7), qrSize + posterMm(14), qrSize + posterMm(14), posterMm(4), brand.border, posterMm(0.35));
     ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
 
-    // "Scan to view menu" — medium
+    // Current-link instruction — medium
     ctx.font = `500 ${posterPt(17)}px ${fontBase}`;
     ctx.fillStyle = brand.text;
-    ctx.fillText(`Scan to view ${labels.offeringLower}`, W / 2, posterMm(181));
+    ctx.fillText(labels.scanToView, W / 2, posterMm(181));
 
     // Instruction line
     ctx.font = `400 ${posterPt(11)}px ${fontBase}`;

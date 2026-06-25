@@ -2,13 +2,15 @@
 
 ## Elevator Pitch
 
-MenuList gives every business ready-to-print menu and QR files that match its brand, without starting from a blank design tool.
+MenuList gives every business ready-to-print menu and QR action files that match its brand, without starting from a blank design tool.
 
 ## Feature Narrative
 
 Small business owners do not think of table cards, counter stickers, business cards, ID cards, flyers, gift vouchers, postcards, posters, and printed menus as "assets". They think of them as the face of the business. A poor QR card, rushed flyer, or weak business card makes the business look unfinished even when the digital menu is correct.
 
 Printable Asset Templates turns those files into a finished catalog. The owner chooses the file and style, then downloads. When a practical adjustment is needed, supported desktop assets open from the finished template in a governed editor with the QR link protected. Store name, logo, color, menu link, feedback link, and MenuList branding policy are handled automatically.
+
+The strongest QR story is not decorative QR art. It is a branded customer action point: a table card, counter sign, package insert, flyer, business card, or poster that says exactly what the customer should scan for.
 
 ## Positioning
 
@@ -26,9 +28,10 @@ Printable Asset Templates turns those files into a finished catalog. The owner c
 3. **Assets Screen** - One workspace for table, counter, entrance, feedback, and paper menu files.
 4. **Finished Styles** - Real choice without a blank design editor or duplicate output options.
 5. **Current Menu Source** - QR points back to the current approved menu.
-6. **Brand Reuse** - Store color, logo, and name are applied automatically.
-7. **Premium Detail** - Premium stores can remove visible MenuList attribution through the existing policy.
-8. **Low Operating Cost** - Files generate in the browser with no generated Storage upload.
+6. **Customer Action Point** - Each QR file has one plain action such as menu, order, feedback, booking, offer, or reorder.
+7. **Brand Reuse** - Store color, logo, and name are applied automatically around the scan-safe QR.
+8. **Premium Detail** - Premium stores can remove visible MenuList attribution through the existing policy.
+9. **Low Operating Cost** - Files generate in the browser with no generated Storage upload.
 
 ## Approved Talking Points
 
@@ -38,6 +41,7 @@ Printable Asset Templates turns those files into a finished catalog. The owner c
 - "No designer needed."
 - "Premium removes visible MenuList branding."
 - "The QR stays easy to scan."
+- "The file tells customers exactly what to scan for."
 
 ## Avoid
 
@@ -47,6 +51,9 @@ Printable Asset Templates turns those files into a finished catalog. The owner c
 - "Unlimited creative control"
 - "Best-performing template"
 - "Guaranteed more sales"
+- "Decorative QR"
+- "AI QR art"
+- "Guaranteed scan lift"
 
 ## Pricing Story
 

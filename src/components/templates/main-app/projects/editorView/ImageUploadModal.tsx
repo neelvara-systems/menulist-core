@@ -1,10 +1,12 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { APP_THEME_COLOR } from '@constant/common';
+import { FEATURE_FLAGS } from '@config/features';
 import { addImageBatchProcessingJob, updateImageBatchProcessingJob } from '@database/imageBatchProcessing';
 import { applyProjectImagePreferencesToGenerationConfig, extractImagePreferencePatch, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
 import { loadImageGenPreferences, saveImageGenPreferences } from '@lib/imageGenPreferences';
+import { assessItemPhotoReadiness, type ItemPhotoCaptureMode, type ItemPhotoReadinessResult } from '@lib/media/itemPhotoCaptureAssist';
 import { getMediaProfileAcceptAttribute, getSafeMediaAspectRatio } from '@lib/media/imageProfiles';
 import { prepareMediaImage, toPreparedUploadName } from '@lib/media/prepareMediaImage';
 import { logger } from '@lib/monitoring/logger';
@@ -21,6 +23,7 @@ import type { UploadProps } from 'antd';
 import { Button, Flex, message, Modal, Select, Tabs, theme, Typography, Upload } from 'antd';
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { LuArrowLeft, LuSave, LuSparkles, LuUploadCloud, LuX } from 'react-icons/lu';
+import ItemPhotoCaptureAssist from '../../../../shared/media/ItemPhotoCaptureAssist';
 import { NavBar, Popup } from '../../../../mobile/antd';
 import { BatchImageGenerationJobType, ExtractedDataCategory, ExtractedDataItem, GenerateImageViaApiPayloadBatchType, GenerateImageViaApiPayloadGenerationConfiType, GenerateImageViaApiPayloadItemDetailsType, ImageGenerationConfigType, ItemForDropdown, Project, ProjectFileType } from '../types'; // Assuming Project structure
 import AiImageGenerator from './AiImageGenerator';
@@ -449,6 +452,50 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         }
     }
 
+    const addPreparedUploadFile = useCallback(async (
+        file: File & { uid?: string },
+        source: string,
+    ): Promise<ItemPhotoReadinessResult | null> => {
+        const prepared = await prepareMediaImage(file, 'menuItem');
+        const uid = file.uid || `${source}-${Date.now()}-${file.name}`;
+        const newImage: UserUploadedFileType = {
+            blob: prepared.blob,
+            mediaChecksum: prepared.checksum,
+            mediaId: prepared.mediaId,
+            mediaProfile: 'menuItem',
+            mediaVariant: prepared.primaryVariant,
+            mediaVersion: prepared.version,
+            name: toPreparedUploadName(file.name, prepared.mimeType, 'item-image'),
+            preparedMedia: prepared,
+            size: prepared.sizeBytes,
+            source,
+            type: prepared.mimeType,
+            uid,
+            url: prepared.dataUrl,
+        };
+
+        setSelectedImages((prevImages) => {
+            if (prevImages.some((image) => image.uid === newImage.uid)) {
+                return prevImages;
+            }
+            return [...prevImages, newImage];
+        });
+        setGenerationConfig((prev) => {
+            const existingImages = normalizeReferenceImages(prev.referanceImages);
+            if (existingImages.some((image) => image.uid === newImage.uid)) {
+                return prev;
+            }
+            return { ...prev, referanceImages: [...existingImages, newImage] };
+        });
+
+        return assessItemPhotoReadiness(prepared);
+    }, []);
+
+    const handleCaptureAssistPhoto = useCallback((
+        file: File,
+        mode: ItemPhotoCaptureMode,
+    ) => addPreparedUploadFile(file, `capture-assist:${mode}`), [addPreparedUploadFile]);
+
     const uploadProps: UploadProps = {
         name: 'file',
         multiple: true,
@@ -475,36 +522,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         },
         beforeUpload: async (file) => {
             try {
-                const prepared = await prepareMediaImage(file as File, 'menuItem');
-
-                const newImage: UserUploadedFileType = {
-                    blob: prepared.blob,
-                    mediaChecksum: prepared.checksum,
-                    mediaId: prepared.mediaId,
-                    mediaProfile: 'menuItem',
-                    mediaVariant: prepared.primaryVariant,
-                    mediaVersion: prepared.version,
-                    uid: file.uid,
-                    url: prepared.dataUrl,
-                    name: toPreparedUploadName(file.name, prepared.mimeType, 'item-image'),
-                    preparedMedia: prepared,
-                    type: prepared.mimeType,
-                    size: prepared.sizeBytes,
-                };
-
-                setSelectedImages((prevImages) => {
-                    if (prevImages.some((image) => image.uid === newImage.uid)) {
-                        return prevImages;
-                    }
-                    return [...prevImages, newImage];
-                });
-                setGenerationConfig((prev) => {
-                    const existingImages = normalizeReferenceImages(prev.referanceImages);
-                    if (existingImages.some((image) => image.uid === newImage.uid)) {
-                        return prev;
-                    }
-                    return { ...prev, referanceImages: [...existingImages, newImage] };
-                });
+                await addPreparedUploadFile(file as File & { uid?: string }, 'device-upload');
             } catch (error) {
                 logger.error('Error preparing image', error);
                 message.error(error instanceof Error ? error.message : `Error processing file ${file.name}`);
@@ -515,17 +533,28 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         }
     };
 
-    const imageUploadView = (source: 'device' | 'ai') => {
+    const imageUploadView = (_source: 'device' | 'ai') => {
         // Remove the custom preview logic, rely on Upload's listType='picture'
-        return <Upload.Dragger {...uploadProps}>
-            <p className="ant-upload-drag-icon">
-                <LuUploadCloud size={48} color={token.colorPrimary} />
-            </p>
-            <p className="ant-upload-text">Click or drag file(s) to this area to upload</p>
-            <p className="ant-upload-hint">
-                Support for single or bulk upload. Max 10 images. JPG, PNG, or WebP.
-            </p>
-        </Upload.Dragger>;
+        return (
+            <Flex vertical gap={12}>
+                {FEATURE_FLAGS.ENABLE_ITEM_PHOTO_CAPTURE_ASSIST ? (
+                    <ItemPhotoCaptureAssist
+                        disabled={isUploadingSingleItem || !selectedItem?.id}
+                        itemName={selectedItem?.itemName}
+                        onCapture={handleCaptureAssistPhoto}
+                    />
+                ) : null}
+                <Upload.Dragger {...uploadProps}>
+                    <p className="ant-upload-drag-icon">
+                        <LuUploadCloud size={48} color={token.colorPrimary} />
+                    </p>
+                    <p className="ant-upload-text">Click or drag file(s) to this area to upload</p>
+                    <p className="ant-upload-hint">
+                        Support for single or bulk upload. Max 10 images. JPG, PNG, or WebP.
+                    </p>
+                </Upload.Dragger>
+            </Flex>
+        );
     };
 
     const handleSingleItemFlow = () => {
