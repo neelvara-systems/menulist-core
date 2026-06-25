@@ -40,12 +40,12 @@ export const metadata: Metadata = {
 
 const LEDGER_ROWS = [
     ['Entity', 'ConstantLayer Systems'],
-    ['Lineup', CONSTANTLAYER_PRODUCT_LINEUP.map((product) => product.name).join(' / ')],
+    ['Public lineup', CONSTANTLAYER_PRODUCT_LINEUP.map((product) => product.name).join(' / ')],
     ['Public line', CONSTANTLAYER_RELATIONSHIP_LINE],
 ] as const;
 
 const STATS = [
-    ['3', 'product surfaces'],
+    ['3', 'current public surfaces'],
     ['0', 'forms or lead database'],
     ['0', 'Firebase writes'],
     ['7', 'public reference pages'],
@@ -62,8 +62,8 @@ const SPOTLIGHTS = [
     {
         icon: LuLayers,
         variant: 'cool' as const,
-        title: 'Product surfaces stay separate.',
-        body: 'MenuList, Answerlattice, and CampaignCue keep their own claims, onboarding paths, and support context.',
+        title: 'Current public product surfaces stay separate.',
+        body: 'MenuList, Answerlattice, and CampaignCue are the only product surfaces named here. Each keeps its own claims, onboarding paths, and support context.',
         stat: 'No blended product scope',
     },
     {
@@ -84,13 +84,13 @@ export default function ConstantLayerHomePage() {
                     <div className="cl-hero-copy cl-reveal">
                         <span className="cl-eyebrow mono">
                             <span className="cl-pip" aria-hidden="true" />
-                            Operating layer for the product portfolio
+                            Company reference for public product surfaces
                         </span>
                         <h1 className="serif">
                             ConstantLayer <em>Systems</em>
                         </h1>
                         <p>
-                            A quiet company layer for business information products: a clear
+                            A quiet company reference for business information products: a clear
                             entity reference, stable public records, and product relationships
                             that are easy to verify.
                         </p>
@@ -199,7 +199,7 @@ export default function ConstantLayerHomePage() {
                         <span className="mono">Public relationship line</span>
                         <blockquote className="serif">{CONSTANTLAYER_RELATIONSHIP_LINE}</blockquote>
                         <figcaption>
-                            This is the company-level reference. Product-specific websites explain each product.
+                            This is the company-level reference for the current public lineup. Product-specific websites explain each product.
                         </figcaption>
                     </figure>
                 </div>
@@ -242,8 +242,8 @@ export default function ConstantLayerHomePage() {
             <section className="cl-section cl-reveal" id="products-lineup">
                 <div className="cl-wrap cl-product-section glass">
                     <div className="cl-product-summary">
-                        <span className="mono">Portfolio</span>
-                        <strong className="serif">{CONSTANTLAYER_PRODUCT_LINEUP.length} product surfaces</strong>
+                        <span className="mono">Public lineup</span>
+                        <strong className="serif">{CONSTANTLAYER_PRODUCT_LINEUP.length} current public surfaces</strong>
                         <p>One company reference for public relationship checks, legal routing, and product boundaries.</p>
                     </div>
                     <div className="cl-product-list">
@@ -289,7 +289,7 @@ export default function ConstantLayerHomePage() {
                                 Reference complete
                             </span>
                             <h2 className="serif">
-                                Verify the company layer, then move to the right product.
+                                Verify the company layer, then move to the right public product.
                             </h2>
                             <p>
                                 ConstantLayer keeps the entity and product relationship surface clear.

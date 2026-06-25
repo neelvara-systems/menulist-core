@@ -34,12 +34,12 @@ export const metadata: Metadata = {
     },
     keywords: [
         'ConstantLayer Systems',
-        'product portfolio operating layer',
+        'company reference',
+        'public product surfaces',
         'MenuList',
         'Answerlattice',
         'CampaignCue',
         'business information infrastructure',
-        'small business operating systems',
         'business entity website',
     ],
     openGraph: {

@@ -78,7 +78,7 @@ export const NAV_ITEMS: NavItem[] = [
 export const OPERATING_ROWS: InfoCard[] = [
     {
         title: 'Entity clarity',
-        description: 'ConstantLayer Systems is the company-level reference for business, legal, privacy, and product relationship checks.',
+        description: 'ConstantLayer Systems is the company-level reference for business, legal, privacy, and current public product relationship checks.',
         icon: LuBuilding2,
         meta: 'Company record',
         variant: 'warm',
@@ -146,10 +146,10 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         sections: [
             {
                 title: 'Product boundary',
-                body: 'ConstantLayer Systems is the company layer. Product-specific claims, pricing, onboarding, and owner workflows remain on each product surface.',
+                body: 'ConstantLayer Systems is the company reference for the current public lineup. Product-specific claims, pricing, onboarding, and owner workflows remain on each product surface.',
                 items: [
                     'MenuList, Answerlattice, and CampaignCue keep separate product sites and product-specific documentation.',
-                    'Future products should be added here only when they have a public product surface or approved company reference.',
+                    'Only approved public product surfaces appear on this parent website.',
                     'Company, legal, and privacy references can point back to this site when an entity-level source is needed.',
                 ],
             },
@@ -191,7 +191,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                     'The parent site stays calm, narrow, and factual.',
                     'Product-specific marketing stays on product domains.',
                     'MenuList, Answerlattice, and CampaignCue are represented as separate product surfaces.',
-                    'GSTIN and sensitive registration details are not published in v1 unless explicitly approved.',
+                    'GSTIN and sensitive registration details are not published unless explicitly approved.',
                 ],
             },
         ],
@@ -266,7 +266,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 body: 'ConstantLayer Systems keeps parent-site legal information separate from product policies.',
                 items: [
                     'Product privacy, support, pricing, billing, cancellation, and refund terms belong on the relevant product surface.',
-                    'Future products should not be added to legal copy until their public surface and policy scope are approved.',
+                    'Only approved public product surfaces are included in parent-site legal copy.',
                     'Company-level references can link here, but product commitments should not be moved into this parent page.',
                 ],
             },
@@ -305,8 +305,8 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 title: 'Website privacy stance',
                 body: 'ConstantLayer Systems keeps this parent website limited to public informational pages. Product-level privacy details belong on the relevant product surface.',
                 items: [
-                    'There is no newsletter signup or embedded inquiry form in v1.',
-                    'There is no website account, lead database, product onboarding flow, or Firebase write path in v1.',
+                    'There is no newsletter signup or embedded inquiry form on this parent website.',
+                    'There is no website account, lead database, product onboarding flow, or Firebase write path on this parent website.',
                     'The site may remember a basic cookie acknowledgement preference in the visitor browser.',
                     'Product-level privacy details belong on the relevant product surface.',
                 ],
@@ -604,13 +604,13 @@ export function HeroStudioMock() {
                     <span />
                     <span />
                 </span>
-                <span>constantlayer.in / company-reference v1</span>
+                <span>constantlayer.in / company-reference current</span>
             </div>
             <div className="cl-hero-mock-grid">
                 <div className="cl-mock-tile">
                     <span className="cl-tile-label mono">Lineup clarity</span>
                     <strong className="serif">3</strong>
-                    <p>Product surfaces, one company reference.</p>
+                    <p>Current public surfaces, one company reference.</p>
                     <div className="cl-spark-bars" aria-hidden="true">
                         {[36, 44, 30, 58, 46, 68, 82, 74].map((height) => (
                             <span style={{ height: `${height}%` }} key={height} />
@@ -809,7 +809,7 @@ export const BENTO_CARDS = [
         icon: LuGlobe2,
         eyebrow: 'Surfaces',
         title: 'Product relationships stay visible without blending product promises.',
-        body: 'MenuList, Answerlattice, and CampaignCue remain separate product surfaces with their own claims and owner workflows.',
+        body: 'MenuList, Answerlattice, and CampaignCue remain separate public product surfaces with their own claims and owner workflows.',
     },
     {
         className: 'cl-bento-med',
@@ -829,8 +829,8 @@ export const BENTO_CARDS = [
         className: 'cl-bento-small',
         icon: LuCpu,
         eyebrow: 'Routing',
-        title: 'Canonical domain plus local aliases.',
-        body: 'The route works through the existing product-site architecture.',
+        title: 'Canonical domain stays clear.',
+        body: 'The route works through the existing product-site architecture without adding a product runtime.',
     },
     {
         className: 'cl-bento-small',

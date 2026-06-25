@@ -1,9 +1,9 @@
 import { getProductDeploymentTarget } from '@constant/deploymentTargets';
 
 export const CONSTANTLAYER_SITE_URL = getProductDeploymentTarget('constantlayer', 'production').url;
-export const CONSTANTLAYER_SITE_TITLE = 'ConstantLayer Systems - Product Portfolio Operating Layer';
+export const CONSTANTLAYER_SITE_TITLE = 'ConstantLayer Systems - Company Reference For Public Product Surfaces';
 export const CONSTANTLAYER_SITE_DESCRIPTION =
-    'ConstantLayer Systems is the company layer for a portfolio of business information products including MenuList, Answerlattice, and CampaignCue.';
+    'ConstantLayer Systems is the company reference for the current public product lineup: MenuList, Answerlattice, and CampaignCue.';
 
 export const CONSTANTLAYER_CONTACT_EMAIL = 'hello@constantlayer.in';
 export const CONSTANTLAYER_LEGAL_EMAIL = 'legal@constantlayer.in';
@@ -12,7 +12,7 @@ export const CONSTANTLAYER_MENULIST_URL = getProductDeploymentTarget('menulist',
 export const CONSTANTLAYER_ANSWERLATTICE_URL = getProductDeploymentTarget('answerlattice', 'production').url;
 export const CONSTANTLAYER_CAMPAIGNCUE_URL = getProductDeploymentTarget('campaigncue', 'production').url;
 export const CONSTANTLAYER_RELATIONSHIP_LINE =
-    'MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.';
+    'MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.';
 
 export const CONSTANTLAYER_PRODUCT_LINEUP = [
     {
@@ -29,7 +29,7 @@ export const CONSTANTLAYER_PRODUCT_LINEUP = [
     },
     {
         name: 'CampaignCue',
-        status: 'Product lineup',
+        status: 'Public product',
         url: CONSTANTLAYER_CAMPAIGNCUE_URL,
         summary: 'Campaign readiness and source-backed campaign output systems for local businesses.',
     },
@@ -52,7 +52,7 @@ export const CONSTANTLAYER_PUBLIC_PAGES: Array<{
     {
         path: '/products',
         title: 'Products - ConstantLayer Systems',
-        description: 'The product lineup represented by ConstantLayer Systems.',
+        description: 'The current public product lineup represented by ConstantLayer Systems.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },
