@@ -4827,6 +4827,240 @@ export async function runSignalDeskSourceProviderServer(access: SignalDeskAccess
     return { ...imported, providerRunId: providerRunRef.id, provider: input.provider, resultCount: rows.length };
 }
 
+export async function createSignalDeskResearchAgentRunServer(access: SignalDeskAccessContext, input: ResearchAgentInput) {
+    if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_RESEARCH_AGENT_TABLE) {
+        throw new Error("SignalDesk research agent table is disabled");
+    }
+    const db = requireDb();
+    await requireNoActiveKillSwitch(db, "source-provider", "SignalDesk source providers are paused");
+
+    const location = inferResearchLocation(input.prompt, input.city, input.country);
+    const category = inferResearchCategory(input.prompt);
+    const provider = selectResearchProvider({
+        country: location.country || input.country,
+        provider: input.provider,
+        researchType: input.researchType,
+    });
+    const sourcePolicy = await readUsableResearchSourcePolicy(db, access, provider, input.sourcePolicyId);
+    const sourcePolicyId = sourcePolicy.sourcePolicyId;
+    const maxResults = Math.max(1, Math.min(20, Math.floor(numberOrZero(input.maxResults) || 10)));
+    const normalizedQuery = buildResearchProviderQuery({
+        category,
+        city: location.city,
+        prompt: input.prompt,
+        researchType: input.researchType,
+    });
+    const idempotencyKeyHash = normalizeText(input.idempotencyKey) ? hashValue(normalizeText(input.idempotencyKey)) : "";
+    const idempotencyRef = idempotencyKeyHash ? db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS).doc(`research_${idempotencyKeyHash}`) : null;
+    if (idempotencyRef) {
+        const priorKey = await idempotencyRef.get();
+        const priorRunId = priorKey.exists ? normalizeText(priorKey.data()?.entityId) : "";
+        if (priorRunId) {
+            const priorRunSnap = await db.collection(SIGNALDESK_COLLECTIONS.RESEARCH_RUNS).doc(priorRunId).get();
+            const priorRows = await db.collection(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS).where("researchRunId", "==", priorRunId).limit(100).get();
+            if (priorRunSnap.exists) {
+                return {
+                    duplicate: true,
+                    rows: priorRows.docs.map((doc: any) => toPlain(doc.data())) as SignalDeskResearchTableRowSummary[],
+                    run: toPlain({ ...priorRunSnap.data(), status: "duplicate" }) as SignalDeskResearchRunSummary,
+                };
+            }
+        }
+    }
+
+    const timestamp = now();
+    const researchRunId = researchRunIdFor({
+        city: location.city || undefined,
+        country: location.country || undefined,
+        maxResults,
+        prompt: input.prompt,
+        provider,
+        researchType: input.researchType,
+    });
+    const marketPodId = input.marketPodId || `market_pod_${hashValue([
+        normalizeLower(location.city),
+        normalizeLower(location.country),
+        normalizeLower(category),
+        input.researchType,
+    ].join("|")).slice(0, 18)}`;
+    const runRef = db.collection(SIGNALDESK_COLLECTIONS.RESEARCH_RUNS).doc(researchRunId);
+    const startBatch = db.batch();
+    const queuedRun: SignalDeskResearchRunSummary = {
+        category,
+        city: location.city,
+        country: location.country,
+        createdAt: toIso(timestamp),
+        enrichmentColumns: researchColumnsFor(input.researchType),
+        failCount: 0,
+        idempotencyKeyHash: idempotencyKeyHash || null,
+        marketPodId,
+        maxResults,
+        normalizedQuery,
+        passCount: 0,
+        prompt: normalizeText(input.prompt),
+        provider,
+        providerRunIds: [],
+        researchRunId,
+        researchType: input.researchType,
+        sourcePolicyId,
+        sourceTransparency: [`provider:${provider}`, `source-policy:${sourcePolicyId}`],
+        status: "running",
+        tableRowCount: 0,
+        unsureCount: 0,
+        updatedAt: toIso(timestamp),
+    };
+    startBatch.set(runRef, sanitizeForFirestore({ ...queuedRun, pId: SIGNALDESK_PRODUCT_CODE, createdAt: timestamp, updatedAt: timestamp }));
+    if (idempotencyRef) {
+        startBatch.set(idempotencyRef, sanitizeForFirestore({
+            entityId: researchRunId,
+            entityType: "researchRun",
+            idempotencyKeyHash,
+            pId: SIGNALDESK_PRODUCT_CODE,
+            updatedAt: timestamp,
+        }));
+    }
+    writeRunTimeline(db, startBatch, {
+        entityId: researchRunId,
+        entityType: "research",
+        label: "Research agent table",
+        status: "ready",
+        steps: [
+            { label: "Prompt normalized", status: "completed", at: toIso(timestamp) },
+            { label: "Provider run started", status: "ready", at: toIso(timestamp) },
+        ],
+    });
+    await startBatch.commit();
+
+    try {
+        const providerResult = await runSignalDeskSourceProviderServer(access, {
+            city: location.city || undefined,
+            country: location.country || undefined,
+            maxResults,
+            provider,
+            query: normalizedQuery,
+            sourcePolicyId,
+        });
+        const retentionSnap = await db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_SOURCE_RETENTION)
+            .where("sourceRunId", "==", providerResult.run.sourceRunId)
+            .limit(100)
+            .get();
+        const retentionByTarget = new Map<string, SignalDeskProviderSourceRetentionSummary>();
+        retentionSnap.docs.forEach((doc: any) => {
+            const record = toPlain(doc.data()) as SignalDeskProviderSourceRetentionSummary;
+            if (record.targetId) retentionByTarget.set(record.targetId, record);
+        });
+        const rows = providerResult.targets.map((target: SignalDeskTargetSummary, index: number) => buildResearchRow({
+            index,
+            provider,
+            providerRecordUrl: retentionByTarget.get(target.targetId)?.providerRecordUrl || null,
+            researchRunId,
+            researchType: input.researchType,
+            sourcePolicyId,
+            sourceRunId: providerResult.run.sourceRunId,
+            target,
+        }));
+        const passCount = rows.filter((row) => row.fitDecision === "pass").length;
+        const failCount = rows.filter((row) => row.fitDecision === "fail").length;
+        const unsureCount = rows.filter((row) => row.fitDecision === "unsure").length;
+        const completedAt = now();
+        const completeBatch = db.batch();
+        rows.forEach((row) => {
+            completeBatch.set(db.collection(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS).doc(row.researchRowId), sanitizeForFirestore({
+                ...row,
+                pId: SIGNALDESK_PRODUCT_CODE,
+                updatedAt: completedAt,
+            }), { merge: true });
+        });
+        completeBatch.set(runRef, sanitizeForFirestore({
+            failCount,
+            passCount,
+            providerRunIds: [providerResult.providerRunId, providerResult.run.sourceRunId].filter(Boolean),
+            sourceTransparency: [
+                `provider:${provider}`,
+                `source-policy:${sourcePolicyId}`,
+                `source-run:${providerResult.run.sourceRunId}`,
+                `provider-run:${providerResult.providerRunId}`,
+            ],
+            status: "completed",
+            tableRowCount: rows.length,
+            unsureCount,
+            updatedAt: completedAt,
+        }), { merge: true });
+        completeBatch.set(db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(marketPodId), sanitizeForFirestore({
+            category,
+            city: location.city || null,
+            confidence: passCount > 0 ? "medium" : "low",
+            country: location.country || null,
+            marketPodId,
+            monthlyBudgetUsd: 0,
+            name: [category, location.city || location.country || "market"].filter(Boolean).join(" / "),
+            offerAngle: input.researchType === "partner-list"
+                ? "Find trusted operators who can introduce MenuList to restaurant owners."
+                : "Find businesses with weak current-list presence and route them to a reviewable MenuList preview.",
+            recommendation: passCount > 0 ? "activate" : "hold",
+            recommendationReason: `${passCount} pass, ${unsureCount} unsure, ${failCount} fail from research run ${researchRunId}.`,
+            status: passCount > 0 ? "active" : "hold",
+            successMetric: "Activated businesses with current lists live on two customer surfaces within seven days.",
+            updatedAt: completedAt,
+        }), { merge: true });
+        writeRunTimeline(db, completeBatch, {
+            entityId: researchRunId,
+            entityType: "research",
+            label: "Research agent table",
+            status: "completed",
+            steps: [
+                { label: "Prompt normalized", status: "completed", at: toIso(timestamp) },
+                { label: `${provider} provider run completed`, status: "completed", at: toIso(completedAt) },
+                { label: `${rows.length} rows scored pass/fail/unsure`, status: "completed", at: toIso(completedAt) },
+            ],
+        });
+        appendAudit(db, completeBatch, access, "research_agent_run", "researchRun", researchRunId, `${normalizedQuery}: ${rows.length} rows`);
+        updateDailyCost(db, completeBatch, rows.length * 3 + 8);
+        await completeBatch.commit();
+
+        return {
+            duplicate: false,
+            rows: rows.map((row) => ({ ...row, updatedAt: toIso(completedAt) })) as SignalDeskResearchTableRowSummary[],
+            run: {
+                ...queuedRun,
+                failCount,
+                passCount,
+                providerRunIds: [providerResult.providerRunId, providerResult.run.sourceRunId].filter(Boolean),
+                sourceTransparency: [
+                    `provider:${provider}`,
+                    `source-policy:${sourcePolicyId}`,
+                    `source-run:${providerResult.run.sourceRunId}`,
+                    `provider-run:${providerResult.providerRunId}`,
+                ],
+                status: "completed",
+                tableRowCount: rows.length,
+                unsureCount,
+                updatedAt: toIso(completedAt),
+            } as SignalDeskResearchRunSummary,
+        };
+    } catch (error) {
+        const blockedAt = now();
+        const blockBatch = db.batch();
+        blockBatch.set(runRef, sanitizeForFirestore({
+            status: "blocked",
+            updatedAt: blockedAt,
+        }), { merge: true });
+        writeRunTimeline(db, blockBatch, {
+            entityId: researchRunId,
+            entityType: "research",
+            label: "Research agent table",
+            status: "blocked",
+            steps: [
+                { label: "Prompt normalized", status: "completed", at: toIso(timestamp) },
+                { label: "Provider run blocked", status: "blocked", at: toIso(blockedAt) },
+            ],
+        });
+        appendAudit(db, blockBatch, access, "research_agent_blocked", "researchRun", researchRunId, error instanceof Error ? error.message : "blocked");
+        await blockBatch.commit();
+        throw error;
+    }
+}
+
 export async function scoreSignalDeskTargetServer(access: SignalDeskAccessContext, targetId: string) {
     const db = requireDb();
     await requireNoActiveKillSwitch(db, "ai-worker", "SignalDesk AI workers are paused");
