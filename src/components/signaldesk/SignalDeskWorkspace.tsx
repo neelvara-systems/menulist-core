@@ -699,6 +699,10 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [replyPlaybookEscalation, setReplyPlaybookEscalation] = useState(false);
     const [replyPlaybookSuppression, setReplyPlaybookSuppression] = useState(false);
     const [selectedSourceRunId, setSelectedSourceRunId] = useState("");
+    const [researchPrompt, setResearchPrompt] = useState("Find cafes in Koramangala with weak menu presence");
+    const [researchProvider, setResearchProvider] = useState("google-places");
+    const [researchType, setResearchType] = useState("business-prospect");
+    const [researchMaxResults, setResearchMaxResults] = useState(10);
 
     useEffect(() => {
         const evaluate = () => {
@@ -1383,14 +1387,80 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
+    const createResearchAgentRun = (event: FormEvent) => {
+        event.preventDefault();
+        void runAction("create-research-agent-run", {
+            maxResults: researchMaxResults,
+            prompt: researchPrompt,
+            provider: researchProvider,
+            researchType,
+            sourcePolicyId: resolvedProviderPolicyId || undefined,
+        });
+    };
+
     const renderSection = () => {
         if (!data) return null;
         if (activeSection === "dashboard") return <DashboardSection data={data} />;
         if (activeSection === "mission") {
             const activeMission = data.workspace.growthMissions.find((mission) => mission.growthMissionId === resolvedGrowthMissionId) || data.workspace.growthMissions[0];
             const selectedExperiment = data.workspace.experimentCards.find((experiment) => experiment.experimentCardId === resolvedExperimentCardId) || data.workspace.experimentCards[0];
+            const latestResearchRun = data.workspace.researchRuns[0];
+            const latestResearchRows = latestResearchRun
+                ? data.workspace.researchTableRows.filter((row) => row.researchRunId === latestResearchRun.researchRunId)
+                : data.workspace.researchTableRows;
             return (
                 <section className={styles.stack}>
+                    <div className={styles.contentGrid}>
+                        <form className={styles.panel} onSubmit={createResearchAgentRun}>
+                            <div className={styles.panelHeader}>
+                                <h2>Research Agent Table</h2>
+                                <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedProviderPolicyId} type="submit">Run Research</WorkspaceButton>
+                            </div>
+                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setResearchPrompt(event.target.value)} value={researchPrompt} />
+                            <div className={styles.formGrid}>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setResearchProvider(event.target.value)} value={researchProvider}>
+                                    <option value="google-places">Google Places-style</option>
+                                    <option value="apify">Apify Broker</option>
+                                    <option value="fhrs-fhis">FHRS/FHIS UK</option>
+                                </WorkspaceSelect>
+                                <WorkspaceSelect className={styles.input} onChange={(event) => setResearchType(event.target.value)} value={researchType}>
+                                    <option value="business-prospect">Business prospects</option>
+                                    <option value="market-map">Market map</option>
+                                    <option value="partner-list">Partner list</option>
+                                </WorkspaceSelect>
+                                <WorkspaceInput className={styles.input} min={1} max={20} onChange={(event) => setResearchMaxResults(Number(event.target.value))} type="number" value={researchMaxResults} />
+                            </div>
+                            <div className={styles.statusRow}>
+                                <span>Provider policy</span>
+                                <span className={tagClass(resolvedProviderPolicyId ? "ready" : "hold")}>{resolvedProviderPolicyId || "missing"}</span>
+                            </div>
+                        </form>
+
+                        <div className={styles.panel}>
+                            <div className={styles.panelHeader}>
+                                <h2>Research Output</h2>
+                                <span className={tagClass(latestResearchRun?.status || "hold")}>{latestResearchRun?.status || "not run"}</span>
+                            </div>
+                            {latestResearchRun ? (
+                                <div className={styles.list}>
+                                    <div className={styles.listItem}>
+                                        <strong>{latestResearchRun.normalizedQuery}</strong>
+                                        <span>{latestResearchRun.passCount} pass / {latestResearchRun.unsureCount} unsure / {latestResearchRun.failCount} fail</span>
+                                        <span>{latestResearchRun.sourceTransparency.join(" | ")}</span>
+                                    </div>
+                                    {latestResearchRows.slice(0, 8).map((row) => (
+                                        <div className={styles.listItem} key={row.researchRowId}>
+                                            <strong>{row.displayName}</strong>
+                                            <span>{row.category || "category unknown"} / {row.city || "location unknown"} / {row.currentListGap}</span>
+                                            <span className={tagClass(row.fitDecision === "pass" ? "good" : row.fitDecision === "fail" ? "danger" : "warning")}>{row.fitDecision} / {row.recommendedNextAction}</span>
+                                        </div>
+                                    ))}
+                                    {!latestResearchRows.length ? <div className={styles.empty}>Research run created but no table rows are ready.</div> : null}
+                                </div>
+                            ) : <div className={styles.empty}>No research table yet.</div>}
+                        </div>
+                    </div>
+
                     <div className={styles.contentGrid}>
                         <div className={styles.panel}>
                             <div className={styles.panelHeader}>

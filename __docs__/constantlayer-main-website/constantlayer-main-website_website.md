@@ -88,7 +88,7 @@ Establish entity identity and route visitors to the product lineup or company-le
 Eyebrow:
 
 ```text
-Operating layer for the product portfolio
+Company reference for public product surfaces
 ```
 
 H1:
@@ -100,7 +100,7 @@ ConstantLayer Systems
 Support:
 
 ```text
-A quiet company layer for business information products: a clear entity reference, stable public records, and product relationships that are easy to verify.
+A quiet company reference for business information products: a clear entity reference, stable public records, and product relationships that are easy to verify.
 ```
 
 Primary CTA:
@@ -120,8 +120,8 @@ Contact ConstantLayer
 Required fields:
 
 - Entity: ConstantLayer Systems
-- Lineup: MenuList / Answerlattice / CampaignCue
-- Public line: MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+- Public lineup: MenuList / Answerlattice / CampaignCue
+- Public line: MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 
 Visual treatment:
 
@@ -166,7 +166,7 @@ Required cards:
 - Surfaces: product relationships stay visible without blending product promises.
 - Privacy: no account or form is introduced.
 - Runtime: no Firebase-backed product identity.
-- Routing: canonical domain plus local aliases.
+- Routing: canonical domain stays clear.
 - Legal: sensitive identifiers stay out of public copy.
 
 Visual treatment:
@@ -190,14 +190,14 @@ Each card uses the cursor-following glass spotlight primitive.
 Quote:
 
 ```text
-MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 ```
 
 ### Stats Strip
 
 Required stats:
 
-- 3 product surfaces
+- 3 current public surfaces
 - 0 forms or lead database
 - 0 Firebase writes
 - 7 public reference pages
@@ -221,7 +221,7 @@ Required rows:
 
 Visual treatment:
 
-- Use a dark portfolio band with a compact `3 product surfaces` summary panel.
+- Use a dark product band with a compact `3 current public surfaces` summary panel.
 - Do not use an oversized decorative `Portfolio` wordmark; it can wrap poorly and weakens the premium feel.
 - Keep product rows as direct links to each product's canonical public website.
 - Use only a restrained viewport-entry reveal for section blocks; do not add global smooth scrolling, parallax, or animation libraries.
@@ -271,7 +271,7 @@ Required cards:
 
 ### Purpose
 
-Show approved product surfaces in the ConstantLayer lineup without turning the parent site into a product funnel.
+Show approved current public product surfaces in the ConstantLayer lineup without turning the parent site into a product funnel.
 
 ### H1
 
@@ -282,7 +282,7 @@ Products
 ### Intro
 
 ```text
-MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 ```
 
 ### Product Cards
@@ -310,13 +310,13 @@ Each product card links to the product's canonical production website.
 ### Product Boundary
 
 ```text
-ConstantLayer Systems is the company layer. Product-specific claims, pricing, onboarding, and owner workflows remain on each product surface.
+ConstantLayer Systems is the company reference for the current public lineup. Product-specific claims, pricing, onboarding, and owner workflows remain on each product surface.
 ```
 
 Required notes:
 
 - MenuList, Answerlattice, and CampaignCue keep separate product sites and product-specific documentation.
-- Future products should be added here only when they have a public product surface or approved company reference.
+- Only approved public product surfaces appear on this parent website.
 - Company, legal, and privacy references can point back to this site when an entity-level source is needed.
 
 ### Do Not Show
@@ -367,7 +367,7 @@ Required notes:
 - The parent site stays calm, narrow, and factual.
 - Product-specific marketing stays on product domains.
 - MenuList, Answerlattice, and CampaignCue are represented as separate product surfaces.
-- GSTIN and sensitive registration details are not published in v1 unless explicitly approved.
+- GSTIN and sensitive registration details are not published unless explicitly approved.
 
 ---
 
@@ -397,7 +397,7 @@ Legal: legal@constantlayer.in
 Privacy: privacy@constantlayer.in
 ```
 
-No form in v1.
+No form.
 
 ---
 
@@ -420,7 +420,7 @@ Operating name: ConstantLayer Systems
 ```
 
 ```text
-MenuList, Answerlattice, and CampaignCue are product surfaces in the ConstantLayer Systems lineup.
+MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
 ```
 
 ### Public Legal Note
@@ -432,14 +432,14 @@ This page is the public entity reference for the parent website. It is not a pro
 Required notes:
 
 - Product terms and product workflows remain on each product surface.
-- Sensitive entity identifiers are withheld from v1 public copy unless legal review requires disclosure.
+- Sensitive entity identifiers are withheld from public copy unless legal review requires disclosure.
 - This page does not claim incorporation status, subsidiaries, or holding-company structure.
 - Legal inquiries should use the dedicated legal email.
 
 Product policy split:
 
 - Product privacy, support, pricing, billing, cancellation, and refund terms belong on the relevant product surface.
-- Future products should not be added to legal copy until their public surface and policy scope are approved.
+- Only approved public product surfaces are included in parent-site legal copy.
 - Company-level references can link here, but product commitments should not be moved into this parent page.
 
 ---
@@ -464,8 +464,8 @@ Privacy information for the ConstantLayer Systems website.
 
 Required notes:
 
-- There is no newsletter signup or embedded inquiry form in v1.
-- There is no website account, lead database, product onboarding flow, or Firebase write path in v1.
+- There is no newsletter signup or embedded inquiry form on this parent website.
+- There is no website account, lead database, product onboarding flow, or Firebase write path on this parent website.
 - The site may remember a local cookie acknowledgement preference in the visitor browser.
 - Hosting, CDN, and security layers may process page-request metadata and operational logs.
 - If a visitor sends email, the email address, message content, and related mail metadata are handled by the mail provider and relevant inbox.
@@ -538,7 +538,7 @@ Keep it plain. Unmatched ConstantLayer URLs must return HTTP `404` with `noindex
 Before launch:
 
 - Confirm all public pages use "ConstantLayer Systems" consistently.
-- Confirm Products, Legal, Home ledger, and final bands use the approved portfolio relationship line.
+- Confirm Products, Legal, Home ledger, and final bands use the approved current-public-lineup relationship line.
 - Confirm MenuList, Answerlattice, and CampaignCue are the only product surfaces shown.
 - Confirm no route includes pricing, demo, sign-in, blog, careers, press, or investors.
 - Confirm legal pages do not overstate business structure.
