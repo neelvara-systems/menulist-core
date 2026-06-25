@@ -37,7 +37,7 @@
 | --- | --- | --- |
 | CNT-01 | Brand spelling | `ConstantLayer Systems` everywhere |
 | CNT-02 | Relationship line | Approved current-public-lineup sentence appears in Home ledger, Products, Legal, and final bands |
-| CNT-03 | Product lineup | MenuList, Answerlattice, and CampaignCue are shown; no inactive/future/unapproved product cards |
+| CNT-03 | Public lineup | MenuList, Answerlattice, and CampaignCue are shown; no inactive, future, or unapproved product cards |
 | CNT-04 | CTA set | Parent-site primary CTAs route to `View Product Lineup`, contact, or email paths |
 | CNT-05 | No product funnel | No pricing, demo, trial, sign-in, or checkout |
 | CNT-06 | Legal wording safe | No Pvt Ltd/LLP/Inc/group/holding-company claim unless approved |

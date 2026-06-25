@@ -381,6 +381,9 @@ function verifyConnectorProviderAndInvestmentControls() {
   const workflow = read("src/lib/signaldesk/workflowServer.ts");
   const features = read("src/config/features.ts");
   const integrations = read("src/constants/signaldesk/integrations.ts");
+  const database = read("src/constants/signaldesk/database.ts");
+  const firestoreRules = read("firestore-signaldesk.rules");
+  const firestoreIndexes = read("firestore-signaldesk.indexes.json");
   const sourceProviders = read("src/lib/signaldesk/sourceProviders.ts");
   const e2eLocal = read("scripts/verification/e2e-signaldesk-local.js");
 
@@ -415,6 +418,21 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(workflow, "FHRS/FHIS source provider is disabled", "FHRS/FHIS provider feature flag block");
   assertIncludes(workspace, 'value="fhrs-fhis"', "FHRS/FHIS provider exposed in private source run UI");
   assertIncludes(e2eLocal, "assertFhrsFhisSourceProvider", "FHRS/FHIS provider local E2E fixture");
+  assertIncludes(features, "ENABLE_MENULIST_SIGNALDESK_RESEARCH_AGENT_TABLE", "Research Agent Table feature flag");
+  assertIncludes(actions, '"create-research-agent-run"', "Research Agent Table action schema");
+  assertIncludes(actions, "ResearchAgentRunSchema", "Research Agent Table payload validation");
+  assertIncludes(database, 'RESEARCH_RUNS: "signaldeskResearchRuns"', "Research Agent run collection");
+  assertIncludes(database, 'RESEARCH_TABLE_ROWS: "signaldeskResearchTableRows"', "Research Agent table row collection");
+  assertIncludes(types, "SignalDeskResearchRunSummary", "Research Agent run type");
+  assertIncludes(types, "SignalDeskResearchTableRowSummary", "Research Agent table row type");
+  assertIncludes(workflow, "createSignalDeskResearchAgentRunServer", "Research Agent Table workflow");
+  assertIncludes(workflow, "fitDecision", "Research Agent pass/fail/unsure scoring");
+  assertIncludes(workspace, "Research Agent Table", "Research Agent Table UI");
+  assertIncludes(firestoreRules, "signaldeskResearchRuns", "Research Agent run rules");
+  assertIncludes(firestoreRules, "signaldeskResearchTableRows", "Research Agent row rules");
+  assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskResearchRuns"', "Research Agent run indexes");
+  assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskResearchTableRows"', "Research Agent row indexes");
+  assertIncludes(e2eLocal, "assertResearchAgentTable", "Research Agent local E2E fixture");
 
   [
     "providerAccounts",
@@ -439,6 +457,8 @@ function verifyConnectorProviderAndInvestmentControls() {
     "offerCtas",
     "replyPlaybooks",
     "sourceQualitySnapshots",
+    "researchRuns",
+    "researchTableRows",
     "contentSources",
     "contentAssets",
     "contentDistributionDrafts",
@@ -505,6 +525,8 @@ function verifyFirebaseIsolation() {
   assertIncludes(firestoreRules, "signaldeskOfferCtas", "SignalDesk offer CTAs are readable through rules");
   assertIncludes(firestoreRules, "signaldeskReplyPlaybooks", "SignalDesk reply playbooks are readable through rules");
   assertIncludes(firestoreRules, "signaldeskSourceQualitySnapshots", "SignalDesk source quality snapshots are readable through rules");
+  assertIncludes(firestoreRules, "signaldeskResearchRuns", "SignalDesk research runs are readable through rules");
+  assertIncludes(firestoreRules, "signaldeskResearchTableRows", "SignalDesk research table rows are readable through rules");
   assertIncludes(firestoreRules, "signaldeskTrustPartnerProfiles", "SignalDesk partner rail collections remain read-only");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskProviderSourceRetention"', "SignalDesk provider source retention index");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskContentDistributionDrafts"', "SignalDesk content draft indexes");
@@ -512,6 +534,8 @@ function verifyFirebaseIsolation() {
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskGrowthMissions"', "SignalDesk growth mission indexes");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskExperimentCards"', "SignalDesk experiment card indexes");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskSourceQualitySnapshots"', "SignalDesk source quality indexes");
+  assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskResearchRuns"', "SignalDesk research run indexes");
+  assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskResearchTableRows"', "SignalDesk research table row indexes");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskTrustPartnerMetrics"', "SignalDesk trust partner metrics index");
   assertIncludes(storageRules, "allow read, write: if false;", "SignalDesk Storage default deny");
   assertIncludes(storageRules, "function canReadSignalDesk()", "SignalDesk Storage read helper");

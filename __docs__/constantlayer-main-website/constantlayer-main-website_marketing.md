@@ -238,7 +238,7 @@ Home:
 Products:
 
 - Title: `Products - ConstantLayer Systems`
-- Description: `The current public product lineup represented by ConstantLayer Systems.`
+- Description: `The approved public product surfaces represented by ConstantLayer Systems.`
 
 About:
 
