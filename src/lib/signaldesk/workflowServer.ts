@@ -1742,6 +1742,8 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.marketPods = await readList<SignalDeskMarketPodSummary>(db, SIGNALDESK_COLLECTIONS.MARKET_PODS);
         workspace.offerCtas = await readList<SignalDeskOfferCtaSummary>(db, SIGNALDESK_COLLECTIONS.OFFER_CTAS);
         workspace.policies = await readList<SignalDeskSourcePolicy>(db, SIGNALDESK_COLLECTIONS.SOURCE_POLICIES);
+        workspace.researchRuns = await readList<SignalDeskResearchRunSummary>(db, SIGNALDESK_COLLECTIONS.RESEARCH_RUNS);
+        workspace.researchTableRows = await readList<SignalDeskResearchTableRowSummary>(db, SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS);
         workspace.replyPlaybooks = await readList<SignalDeskReplyPlaybookSummary>(db, SIGNALDESK_COLLECTIONS.REPLY_PLAYBOOKS);
         workspace.runTimelines = await readList<SignalDeskRunTimelineSummary>(db, SIGNALDESK_COLLECTIONS.RUN_TIMELINES);
         workspace.selfServiceCtas = await readList<SignalDeskSelfServiceCtaSummary>(db, SIGNALDESK_COLLECTIONS.SELF_SERVICE_CTAS);
@@ -1788,6 +1790,8 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.providerAccounts = await readList<SignalDeskProviderAccountSummary>(db, SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS);
         workspace.providerEvaluations = await readList<SignalDeskProviderEvaluationSummary>(db, SIGNALDESK_COLLECTIONS.PROVIDER_EVALUATIONS);
         workspace.providerSourceRetentions = await readList<SignalDeskProviderSourceRetentionSummary>(db, SIGNALDESK_COLLECTIONS.PROVIDER_SOURCE_RETENTION);
+        workspace.researchRuns = await readList<SignalDeskResearchRunSummary>(db, SIGNALDESK_COLLECTIONS.RESEARCH_RUNS);
+        workspace.researchTableRows = await readList<SignalDeskResearchTableRowSummary>(db, SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS);
         workspace.targets = await readList<SignalDeskTargetSummary>(db, SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES);
         workspace.vendorRuns = await readList<SignalDeskVendorRunSummary>(db, SIGNALDESK_COLLECTIONS.VENDOR_RUNS);
     } else if (section === "ai") {
@@ -1859,6 +1863,8 @@ export async function loadSignalDeskWorkspaceServer(
         workspace.growthMissions = await readList<SignalDeskGrowthMissionSummary>(db, SIGNALDESK_COLLECTIONS.GROWTH_MISSIONS);
         workspace.offerCtas = await readList<SignalDeskOfferCtaSummary>(db, SIGNALDESK_COLLECTIONS.OFFER_CTAS);
         workspace.replyPlaybooks = await readList<SignalDeskReplyPlaybookSummary>(db, SIGNALDESK_COLLECTIONS.REPLY_PLAYBOOKS);
+        workspace.researchRuns = await readList<SignalDeskResearchRunSummary>(db, SIGNALDESK_COLLECTIONS.RESEARCH_RUNS);
+        workspace.researchTableRows = await readList<SignalDeskResearchTableRowSummary>(db, SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS);
         workspace.sourceQualitySnapshots = await readList<SignalDeskSourceQualitySnapshotSummary>(db, SIGNALDESK_COLLECTIONS.SOURCE_QUALITY_SNAPSHOTS);
         workspace.trustPartnerProfiles = await readList<SignalDeskTrustPartnerProfileSummary>(db, SIGNALDESK_COLLECTIONS.TRUST_PARTNER_PROFILES);
     } else if (section === "audit") {
