@@ -10,7 +10,7 @@
 
 The ConstantLayer website does not sell ConstantLayer.
 
-It verifies the company layer behind the current public product lineup, explains the operating focus, and directs product interest to the relevant public product surface.
+It verifies the operating company behind the current product lineup, explains the operating focus, and directs product interest to the relevant product site.
 
 The site should make a visitor think:
 
@@ -29,11 +29,11 @@ Short:
 
 Long:
 
-> ConstantLayer Systems builds and operates products for public business information, governed answers, product context, and source-backed business outputs.
+> ConstantLayer Systems is the company behind MenuList, Answerlattice, and CampaignCue.
 
 Relationship:
 
-> MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
+> MenuList, Answerlattice, and CampaignCue are the current products represented by ConstantLayer Systems.
 
 Entity description:
 
@@ -46,14 +46,14 @@ Entity description:
 Allowed:
 
 - ConstantLayer Systems builds business information products.
-- MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
+- MenuList, Answerlattice, and CampaignCue are the current products represented by ConstantLayer Systems.
 - MenuList focuses on public business information for menus, store facts, and customer-facing surfaces.
 - Answerlattice focuses on governed answer infrastructure for support knowledge and help surfaces.
-- CampaignCue is in the product lineup for campaign readiness and source-backed campaign output systems.
+- CampaignCue is in the product lineup for campaign-ready briefs and marketing assets.
 - ConstantLayer Systems focuses on business information customers, support teams, and operators need to keep accurate.
 - ConstantLayer Systems does not build internal operations software such as POS, payroll, accounting, inventory, or delivery tools.
 
-Only show product surfaces that are approved for company-site mention. Do not add "coming soon" cards or placeholder products.
+Only show products that are approved for company-site mention. Do not add "coming soon" cards or placeholder products.
 
 ---
 
@@ -163,7 +163,7 @@ Hero headline:
 
 Hero support copy:
 
-> A quiet company layer for business information products: a clear entity reference, stable public records, and product relationships that are easy to verify.
+> A quiet operating-company page for business information products: a clear company record, stable public records, and product relationships that are easy to verify.
 
 Do not make the H1 a slogan. The brand/entity name should be the first signal.
 
@@ -179,7 +179,7 @@ Use:
 - meaningful hero artifact instead of blank decoration
 - bento, spotlight-card, comparison, product-lineup, and contact-routing sections
 - clear first-viewport hierarchy
-- restrained proof-style details such as entity, product surface, and contact routing
+- restrained proof-style details such as entity, product, and contact routing
 
 Reject:
 
@@ -195,15 +195,15 @@ Reject:
 
 Products section:
 
-> MenuList, Answerlattice, and CampaignCue share one company reference.
+> MenuList, Answerlattice, and CampaignCue share one operating company.
 
 Use a compact current-public-lineup summary panel and linked product rows. Do not use a giant decorative `Portfolio` word because it can split awkwardly and make the page look less finished.
 
 Product cards should use concise product-specific summaries:
 
-- MenuList: business information infrastructure for menus, store facts, and public customer-facing surfaces.
-- Answerlattice: governed answer infrastructure for support knowledge, approved answers, widgets, and help surfaces.
-- CampaignCue: campaign readiness and source-backed campaign output systems for local businesses.
+- MenuList: keeps menus, store details, and customer-facing business pages aligned.
+- Answerlattice: keeps approved support answers and help content governed across support surfaces.
+- CampaignCue: turns business context into campaign-ready briefs and marketing assets.
 
 Do not describe inactive, private, or unapproved products.
 
@@ -217,7 +217,7 @@ Legal page first paragraph:
 
 Required line:
 
-> MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
+> MenuList, Answerlattice, and CampaignCue are the current products represented by ConstantLayer Systems.
 
 Do not say:
 
@@ -232,13 +232,13 @@ Do not say:
 
 Home:
 
-- Title: `ConstantLayer Systems - Company Reference For Public Product Surfaces`
-- Description: `ConstantLayer Systems is the company reference for the current public product lineup: MenuList, Answerlattice, and CampaignCue.`
+- Title: `ConstantLayer Systems - Company Behind MenuList, Answerlattice, and CampaignCue`
+- Description: `ConstantLayer Systems is the company behind MenuList, Answerlattice, and CampaignCue.`
 
 Products:
 
 - Title: `Products - ConstantLayer Systems`
-- Description: `The approved public product surfaces represented by ConstantLayer Systems.`
+- Description: `The approved public products represented by ConstantLayer Systems.`
 
 About:
 

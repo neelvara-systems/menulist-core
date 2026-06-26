@@ -11,6 +11,8 @@ import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature, RateLimitFeature } from '@lib/rateLimit/configs';
 import { NextRequest, NextResponse } from 'next/server';
 
+const PUBLIC_FORM_TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY;
+
 /**
  * Extract client IP from request headers
  * Handles various proxy configurations (Vercel, Cloudflare, nginx)
@@ -113,4 +115,47 @@ export const sanitizeString = (input?: string): string | undefined => {
 
     // Trim whitespace
     return stripped.trim() || undefined;
+};
+
+/**
+ * Verify optional Cloudflare Turnstile token for public anonymous forms.
+ *
+ * Behavior:
+ * - If TURNSTILE_SECRET_KEY is not set, validation is skipped (backward compatible).
+ * - If secret is set, token must be present and valid.
+ */
+export const verifyTurnstileToken = async (
+    token: string | null | undefined,
+    request: NextRequest,
+): Promise<{ ok: boolean; reason?: string }> => {
+    if (!PUBLIC_FORM_TURNSTILE_SECRET) {
+        return { ok: true };
+    }
+
+    if (!token) {
+        return { ok: false, reason: 'missing_token' };
+    }
+
+    try {
+        const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            body: new URLSearchParams({
+                secret: PUBLIC_FORM_TURNSTILE_SECRET,
+                response: token,
+                remoteip: getClientIp(request),
+            }),
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            method: 'POST',
+        });
+
+        if (!response.ok) {
+            return { ok: false, reason: 'verification_http_error' };
+        }
+
+        const payload = await response.json().catch(() => ({} as any));
+        return payload?.success ? { ok: true } : { ok: false, reason: 'verification_failed' };
+    } catch {
+        return { ok: false, reason: 'verification_exception' };
+    }
 };

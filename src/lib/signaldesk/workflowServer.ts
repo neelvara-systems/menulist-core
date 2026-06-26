@@ -1027,7 +1027,7 @@ const isEmailChannelReady = () => getSignalDeskChannelReadiness().email.configur
 
 const estimateSourceProviderCostUsd = (provider: SourceProviderRunInput["provider"], maxResults: number) => {
     if (provider === "fhrs-fhis") return 0;
-    if (provider === "apify") return Math.min(0.25, Math.max(0.05, Math.min(Math.max(maxResults, 1), 20) * 0.01));
+    if (provider === "apify") return Math.min(0.3, Math.max(0.05, Math.min(Math.max(maxResults, 1), 30) * 0.01));
     return 0.05;
 };
 
@@ -1732,6 +1732,9 @@ export async function loadSignalDeskWorkspaceServer(
         await readCommon();
         workspace.growthMissions = await readList<SignalDeskGrowthMissionSummary>(db, SIGNALDESK_COLLECTIONS.GROWTH_MISSIONS);
         workspace.experimentCards = await readList<SignalDeskExperimentCardSummary>(db, SIGNALDESK_COLLECTIONS.EXPERIMENT_CARDS);
+        workspace.policies = await readList<SignalDeskSourcePolicy>(db, SIGNALDESK_COLLECTIONS.SOURCE_POLICIES);
+        workspace.researchRuns = await readList<SignalDeskResearchRunSummary>(db, SIGNALDESK_COLLECTIONS.RESEARCH_RUNS);
+        workspace.researchTableRows = await readList<SignalDeskResearchTableRowSummary>(db, SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS);
     } else if (section === "mission") {
         await readCommon();
         workspace.contentAssets = await readList<SignalDeskContentAssetSummary>(db, SIGNALDESK_COLLECTIONS.CONTENT_ASSETS);
@@ -4843,7 +4846,7 @@ export async function createSignalDeskResearchAgentRunServer(access: SignalDeskA
     });
     const sourcePolicy = await readUsableResearchSourcePolicy(db, access, provider, input.sourcePolicyId);
     const sourcePolicyId = sourcePolicy.sourcePolicyId;
-    const maxResults = Math.max(1, Math.min(20, Math.floor(numberOrZero(input.maxResults) || 10)));
+    const maxResults = Math.max(1, Math.min(30, Math.floor(numberOrZero(input.maxResults) || 10)));
     const normalizedQuery = buildResearchProviderQuery({
         category,
         city: location.city,

@@ -25,6 +25,8 @@ Structured pre-launch verification checklist. Run through each section before on
 | Firebase project on Blaze plan | ☐ | Required for Cloud Functions |
 | GCP budget alerts configured | ☐ | Set at ₹500, ₹1000, ₹2000 thresholds |
 | Cloud Billing export to BigQuery configured | ☐ | Pre-production cost visibility. Enable Standard + Detailed usage export for billing account `Firebase Payment` into `menulist.cloud_billing_export` or a dedicated FinOps project. |
+| Gemini staging/production keys isolated | ☐ | Dedicated restricted keys per environment; do not share local/staging/prod |
+| Gemini quota/budget monitoring configured | ☐ | Check model/project quota and budget alerts before launch |
 | SAFE_MODE circuit breaker verified | ☐ | Core code exists. Before launch, verify `/ops` toggle, AI route `503`, public menu/OBP unaffected, budget webhook activation, and direct Cloud Function coverage audit. |
 | Environment variables set in Vercel | ☐ | All secrets configured |
 | Firebase Functions deployed | ☐ | `firebase deploy --only functions` |
@@ -104,6 +106,7 @@ Each must:
 | Telegram alerts working | ☐ | Test with manual alert trigger |
 | Platform alert Email/WhatsApp configured | ☐ | Complete `launch-prerequisites.md` Step 7B before production |
 | Menu health monitor deployed | ☐ | See `__docs__/menu-health-monitor/` |
+| AI provider health checks deployed | ☐ | Confirm `_health/aiProvider_gemini` and `platformSummary/answerlatticeAiProviderHealth` update |
 | SAFE_MODE mechanism ready | ☐ | Core built; complete `launch-prerequisites.md` Step 2C before production |
 | GCP budget alerts configured | ☐ | Set progressive thresholds |
 | BigQuery billing export data verified | ☐ | After export is enabled, confirm billing tables receive daily cost rows before production launch |

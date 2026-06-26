@@ -1,7 +1,7 @@
 # Branded QR Action Templates Mobile Support
 
 **Status:** Editor-backed alignment layer
-**Last Updated:** June 25, 2026
+**Last Updated:** June 26, 2026
 
 ## Mobile Admission
 

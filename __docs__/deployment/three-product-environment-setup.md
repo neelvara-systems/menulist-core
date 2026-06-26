@@ -2,7 +2,7 @@
 
 > Status: one-time infrastructure setup runbook
 > Scope: MenuList, Answerlattice, CampaignCue, MyCodex
-> Last updated: June 25, 2026
+> Last updated: June 26, 2026
 
 This document is the setup checklist for fresh staging/local and production
 infrastructure. It is written from the current codebase contract, not from a
@@ -46,6 +46,100 @@ Stop rules:
 - If any instruction conflicts with `src/constants/deploymentTargets.ts`,
   `.firebaserc`, `.env.staging.example`, or `.env.production.example`, stop and
   update this document and the source files together.
+
+## Current Gemini Production Handoff Log
+
+**Date logged:** June 26, 2026
+**Scope:** Gemini/AI provider production readiness for MenuList and Answerlattice
+
+### Codebase Status
+
+- [x] Active source no longer calls Gemini 2.0 Flash models.
+- [x] MenuList Gemini model ids are centralized in `src/constants/AI/models.ts`.
+- [x] Answerlattice app model ids are centralized in `src/constants/answerlattice/ai.ts`.
+- [x] Answerlattice Functions model ids are centralized in `functions-answerlattice/src/constants/ai.ts`.
+- [x] MenuList daily provider health check writes `_health/aiProvider_gemini`.
+- [x] Answerlattice daily provider health check writes `platformSummary/answerlatticeAiProviderHealth`.
+- [x] Local verification passed: root TypeScript, MenuList Functions build, Answerlattice Functions build, AI accounting verifier, menu extraction pipeline verifier, and `git diff --check`.
+
+### Current Cloud Blocker
+
+The current Firebase account does not have access to the required QA projects.
+
+Current `firebase projects:list` visible projects:
+
+```text
+canonica-qa
+ecomsai
+menulist-ai
+sample-firebase-ai-app-aee32
+```
+
+Required projects that must be visible before deploy continues:
+
+```text
+menulist-qa
+menulist
+answerlattice-qa
+answerlattice
+campaigncue-qa
+campaigncue
+```
+
+Do not substitute `ecomsai`, `menulist-ai`, `canonica-qa`, or a sample project.
+
+### Deploy Attempts Already Run
+
+MenuList QA health-check deploy attempt:
+
+```bash
+firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --config firebase.json
+```
+
+Result:
+
+```text
+Predeploy lint/build passed.
+HTTP Error: 403, The caller does not have permission.
+```
+
+Answerlattice QA health-check deploy attempt:
+
+```bash
+firebase deploy --only functions:answerlattice:answerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json
+```
+
+Result:
+
+```text
+Predeploy build passed.
+HTTP Error: 403, The caller does not have permission.
+```
+
+Local Firebase CLI note: Firebase CLI `14.15.1` requires Node 20 or newer. If the shell uses Node 18, switch to Node 20/22/24 before running Firebase deploy commands.
+
+### Owner Action Register
+
+Complete these in order. Do not skip to production until QA passes.
+
+1. [ ] Grant the setup/deploy account access to the exact Firebase/GCP projects listed above, or create them with the exact project ids.
+2. [ ] Enable billing, Secret Manager API, required Firebase services, and Vertex AI where applicable for `menulist-qa`, `menulist`, `answerlattice-qa`, and `answerlattice`.
+3. [ ] Create dedicated Gemini staging and production keys. Restrict each key to the Gemini API. Do not reuse local/staging keys in production.
+4. [ ] Store staging Gemini values in Vercel staging and Firebase Secret Manager for `menulist-qa`.
+5. [ ] Store production Gemini values in Vercel production and Firebase Secret Manager for `menulist`.
+6. [ ] Add `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and `GEMINI_AI_KEY_4` only when real rotation/failover keys exist. Do not treat them as quota scaling when they belong to the same Google project.
+7. [ ] Configure budget alerts, spend monitoring, and model/project quota checks for the Google Cloud project that owns each Gemini key.
+8. [ ] Deploy MenuList QA Functions after secrets exist:
+   ```bash
+   firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --config firebase.json
+   ```
+9. [ ] Deploy Answerlattice QA Functions after project access is fixed:
+   ```bash
+   firebase deploy --only functions:answerlattice:answerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json
+   ```
+10. [ ] Confirm `_health/aiProvider_gemini` updates after the MenuList scheduler runs.
+11. [ ] Confirm `platformSummary/answerlatticeAiProviderHealth` updates after the Answerlattice scheduler runs.
+12. [ ] Repeat the same setup and deploy flow for production only after QA health checks pass.
 
 ## Non-Negotiable Setup Contract
 

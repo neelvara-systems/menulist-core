@@ -7,7 +7,7 @@ import styles from './PublicCookieConsentBanner.module.css';
 
 export type PublicCookieConsentChoice = 'accepted' | 'declined';
 
-type PublicCookieConsentProduct = 'menulist' | 'answerlattice' | 'campaigncue' | 'constantlayer' | 'neutral';
+type PublicCookieConsentProduct = 'menulist' | 'answerlattice' | 'campaigncue' | 'neutral';
 
 interface PublicCookieConsentBannerProps {
     storageKey: string;

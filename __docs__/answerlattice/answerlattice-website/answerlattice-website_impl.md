@@ -204,7 +204,7 @@ src/content/answerlatticePublic/
 
 Related AnswerLattice route constants live in `src/constants/answerlattice/routes.ts`. `src/constants/answerlattice/navigations.ts` re-exports those constants for existing dashboard imports while keeping icon-heavy sidebar metadata out of lightweight public client islands such as `/get-started`.
 
-Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM`, validates with Zod, ignores honeypot submissions, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase.
+Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM`, validates with Zod, ignores honeypot submissions, verifies `captchaToken` when `TURNSTILE_SECRET_KEY` is configured, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase. The client form renders Cloudflare Turnstile from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; both env keys must be configured together.
 
 ## Self-Sellable Positioning Pass
 

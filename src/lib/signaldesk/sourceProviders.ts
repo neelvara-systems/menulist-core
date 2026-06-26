@@ -31,9 +31,9 @@ type SourceProviderTargetRow = {
 };
 
 const env = (key: string) => process.env[key]?.trim() || "";
-const clampMaxResults = (value: number) => Math.min(Math.max(value, 1), 20);
+const clampMaxResults = (value: number) => Math.min(Math.max(value, 1), 30);
 const estimateApifyCostCapUsd = (maxResults: number) => (
-    Math.min(0.25, Math.max(0.05, clampMaxResults(maxResults) * 0.01))
+    Math.min(0.3, Math.max(0.05, clampMaxResults(maxResults) * 0.01))
 );
 const normalizeApifyActorId = (actorId: string) => actorId.trim().replace(/\//g, "~");
 const FHRS_BUSINESS_TYPE_IDS: Array<{ id: number; tokens: string[] }> = [

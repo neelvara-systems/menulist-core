@@ -34,6 +34,8 @@ signaldeskExperimentCards
 signaldeskOfferCtas
 signaldeskReplyPlaybooks
 signaldeskSourceQualitySnapshots
+signaldeskResearchRuns
+signaldeskResearchTableRows
 ```
 
 ## Actions
@@ -46,6 +48,7 @@ review-experiment-card
 upsert-offer-cta
 upsert-reply-playbook
 create-source-quality-snapshot
+create-research-agent-run
 ```
 
 ## Server Rules
@@ -58,11 +61,24 @@ create-source-quality-snapshot
 - `upsert-offer-cta` records approved owner asks and blocked claims.
 - `upsert-reply-playbook` records approved reply playbooks.
 - `create-source-quality-snapshot` computes quality from source runs, targets, outcomes, demand, and vendor data.
+- `create-research-agent-run` converts a plain-English prompt into a governed provider run, target import, research table rows, source-transparent enrichment columns, pass/fail/unsure decisions, and a market-pod update.
+- Dashboard and Mission views read the compact research run/table summaries so the founder can review a prepared lead batch without opening raw provider details.
 
 ## UI
 
+The Dashboard screen should show:
+
+- Market Search form.
+- Area/category prompt presets.
+- Latest lead-batch run status.
+- Today's Lead Batch capped at 30 rows.
+- Structured evidence, contact path, share message, and recommended safe action per lead.
+- Failed research rows and suppressed/held/rejected fallback targets are excluded from the daily lead batch.
+
 The Mission screen should show:
 
+- Research Agent Table form and output rows.
+- Today's Lead Batch for deeper workflow access.
 - Daily Growth Mission panel.
 - Experiment card form and list.
 - Offer/CTA form and list.
@@ -83,3 +99,4 @@ It must not:
 - bypass source policy;
 - bypass suppression;
 - write MenuList customer truth.
+- convert source-only data into contact permission.

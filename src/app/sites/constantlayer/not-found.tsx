@@ -16,7 +16,7 @@ export default function ConstantLayerNotFound() {
                 <div className="cl-container cl-final-band">
                     <div>
                         <span className="cl-eyebrow">ConstantLayer Systems</span>
-                        <h2>Return to the company reference or product lineup.</h2>
+                        <h2>Return to the company page or product lineup.</h2>
                         <p>Company, legal, privacy, and product relationship information remains available from the main ConstantLayer pages.</p>
                     </div>
                     <div className="cl-actions">

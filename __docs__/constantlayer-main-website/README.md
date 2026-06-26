@@ -11,7 +11,7 @@
 
 This doc set defines the first public website for ConstantLayer Systems.
 
-The site is a quiet operating-entity and trust surface. It explains what ConstantLayer Systems is, confirms the relationship to the current public product lineup, provides basic legal/contact information, and routes product interest to the relevant public product surface.
+The site is a quiet operating-entity and trust surface. It explains what ConstantLayer Systems is, confirms the relationship to the current product lineup, provides basic legal/contact information, and routes product interest to the relevant product site.
 
 It is not a replacement for any product site, not a product funnel, not an owner app, and not a Firebase-backed product runtime.
 
@@ -28,8 +28,9 @@ Build ConstantLayer inside the existing Next.js/Vercel product-site architecture
 - production domain: `https://constantlayer.in`
 - no `PRODUCT_IDS` entry
 - no Firebase project
-- no API routes, auth, CMS, contact form, or analytics in v1
-- public cookie banner is essential-storage acknowledgement only; there is no analytics or ads consent claim in v1
+- no API routes, auth, CMS, contact form, analytics, or cookie banner in v1
+- optional public contact email env keys only: `NEXT_PUBLIC_CONSTANTLAYER_CONTACT_EMAIL`, `NEXT_PUBLIC_CONSTANTLAYER_LEGAL_EMAIL`, `NEXT_PUBLIC_CONSTANTLAYER_PRIVACY_EMAIL`
+- no ConstantLayer-owned browser preference storage is required in v1
 - Prism glass visual system applied only to presentation: mesh, grain, glass cards, spotlight cards, and responsive section layout; no product funnel behavior added
 
 Reason: the repo already uses a shared Vercel app with hostname/path-prefix routing for public product sites. ConstantLayer should follow that routing architecture while staying outside database-backed product identity.
@@ -38,9 +39,9 @@ Reason: the repo already uses a shared Vercel app with hostname/path-prefix rout
 
 ## Canonical Public Relationship
 
-Use this exact sentence where the current public product relationship needs to be explicit:
+Use this exact sentence where the current product relationship needs to be explicit:
 
-> MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
+> MenuList, Answerlattice, and CampaignCue are the current products represented by ConstantLayer Systems.
 
 Use this safer entity description unless legal counsel/CA confirms stronger wording:
 
@@ -80,9 +81,10 @@ Validation completed:
 - `/__constantlayer/` local dev path maps to `/sites/constantlayer`
 - no `PRODUCT_IDS` entry or Firebase requirement added
 - no API routes, forms, auth, Firestore, Storage, Cloud Functions, or schedulers added
+- ConstantLayer contact, legal, and privacy email addresses are read from optional public env-backed constants with current address fallbacks
 - Prism glass redesign route and responsive checks completed at desktop, mobile, and narrow-mobile viewports
 - legal/privacy/terms/contact content audit completed against current official DPDP and e-commerce references
-- shared public cookie acknowledgement mounted in the website layout without adding analytics, forms, auth, Firebase, or API routes
+- no cookie banner, browser preference storage, analytics, forms, auth, Firebase, or API routes are mounted for ConstantLayer
 
 ---
 

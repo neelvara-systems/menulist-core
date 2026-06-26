@@ -4,6 +4,7 @@ import { EMPTY_ERROR } from "@constant/common";
 import { PRODUCT_IDS } from '@constant/product';
 import { CLIENT_DASHBOARD_ROUTING, HOME_ROUTING, NAVIGARIONS_ROUTINGS } from "@constant/navigations";
 import { ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX, isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
+import { resolveProductSiteByDevPath, resolveProductSiteByHostname } from '@constant/productDomains';
 import BrandWordmark from '@/components/website/shared/BrandWordmark';
 import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
 import { useAppSelector } from "@hook/useAppSelector";
@@ -75,6 +76,33 @@ const LOGIN_ERRORS = {
 }
 const { Text } = Typography;
 const JOURNEY_MOTION_MEDIA = '(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)';
+const NON_MENULIST_PRODUCT_ROUTE_ROOTS = new Set([
+  'answerlattice',
+  'campaigncue',
+  'constantlayer',
+  'mycodex',
+  'sites',
+]);
+
+const getCallbackPathname = (callbackUrl?: string | null) => {
+  if (!callbackUrl) return '';
+
+  try {
+    return new URL(callbackUrl, 'https://menulist.local').pathname;
+  } catch {
+    return '';
+  }
+};
+
+const isNonMenuListProductPath = (pathname: string) => {
+  if (!pathname || pathname === '/') return false;
+
+  const devPathProduct = resolveProductSiteByDevPath(pathname);
+  if (devPathProduct && devPathProduct.product.id !== 'menulist') return true;
+
+  const [routeRoot] = pathname.split('/').filter(Boolean);
+  return Boolean(routeRoot && NON_MENULIST_PRODUCT_ROUTE_ROOTS.has(routeRoot));
+};
 
 function LoginPage() {
   const router = useRouter();
@@ -92,6 +120,7 @@ function LoginPage() {
   const loginIdentifier = Form.useWatch('email', loginForm) || '';
   const [credentialMode, setCredentialMode] = useState<CredentialMode>('default');
   const [otpPanelKey, setOtpPanelKey] = useState(0);
+  const [loginHostname, setLoginHostname] = useState('');
   const loginIdentifierKind = getLoginIdentifierKind(loginIdentifier);
   const shouldOfferPhoneOtp = FEATURE_FLAGS.ENABLE_PHONE_OTP_AUTH
     && loginIdentifierKind === 'phone'
@@ -99,6 +128,10 @@ function LoginPage() {
   const shouldShowSecretInput = loginIdentifierKind !== 'empty' && !shouldOfferPhoneOtp;
   const secretLabel = getSecretLabel(loginIdentifierKind);
   const secretPlaceholder = getSecretPlaceholder(loginIdentifierKind);
+  const callbackPathname = getCallbackPathname(searchParams?.get('callbackUrl'));
+  const hostProduct = loginHostname ? resolveProductSiteByHostname(loginHostname) : undefined;
+  const usesGenericProductArtwork = Boolean(hostProduct && hostProduct.id !== 'menulist')
+    || isNonMenuListProductPath(callbackPathname);
 
   const getPostLoginRedirect = () => {
     const callbackUrl = searchParams?.get('callbackUrl');
@@ -201,6 +234,11 @@ function LoginPage() {
     };
   }, [resetJourneyMotion]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setLoginHostname(window.location.hostname);
+  }, []);
+
   const getSafePostLoginRedirect = () => {
     const target = getPostLoginRedirect();
     if (typeof window === 'undefined') return target;
@@ -248,18 +286,10 @@ function LoginPage() {
     }
   }, [searchParams]);
 
-  // Apply theme changes when dark mode changes
-  useEffect(() => {
-    console.log("isDarkMode changed to:", isDarkMode);
-    // Force re-render when theme changes
-  }, [isDarkMode]);
-
   // Handle post-login setup (for both Google and redirect-based logins)
   useEffect(() => {
     const setupFirebaseAuth = async () => {
       if (Boolean(sessionData?.user) && sessionData?.user?.email) {
-        console.log("User found, setting up Firebase Auth...");
-
         const syncFirebaseAuthForCurrentSession = async () => {
           // Check if Firebase Auth is already signed in
           const currentUser = firebaseAuth.currentUser;
@@ -267,8 +297,6 @@ function LoginPage() {
           if (!currentUser) {
             // User is logged in with NextAuth but not Firebase Auth
             // This happens after Google OAuth redirect
-            console.log("Setting up Firebase Auth for OAuth user...");
-
             try {
               // Get custom token from server for OAuth users
               const setClaimsResponse = await fetch('/api/auth/set-claims', {
@@ -285,18 +313,12 @@ function LoginPage() {
                   const { signInWithCustomToken } = await import('firebase/auth');
                   await signInWithCustomToken(firebaseAuth, data.customToken);
                   await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
-                  console.log('✅ Firebase Auth established with custom token');
-                  console.log('✅ Custom claims:', data.claims);
                 }
-              } else {
-                console.warn('⚠️ Failed to get custom token for OAuth user');
               }
-            } catch (error) {
-              console.error("Firebase Auth setup error:", error);
+            } catch {
+              // NextAuth remains the source of truth; server-side auth routes own detailed security logging.
             }
           } else if (sameLoginEmail(currentUser.email, sessionData.user.email)) {
-            console.log("✅ Firebase Auth already active");
-
             // Ensure custom claims are set
             try {
               const setClaimsResponse = await fetch('/api/auth/set-claims', {
@@ -307,16 +329,13 @@ function LoginPage() {
 
               if (setClaimsResponse.ok) {
                 const data = await setClaimsResponse.json();
-                console.log('✅ Custom claims verified/set');
                 await currentUser.getIdToken(true); // Refresh token
                 await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
               }
-            } catch (error) {
-              console.warn('Custom claims check failed:', error);
+            } catch {
+              // Keep the login flow resilient; token refresh can be retried by downstream guarded calls.
             }
           } else {
-            console.log("Switching Firebase Auth to the current account...");
-
             try {
               const setClaimsResponse = await fetch('/api/auth/set-claims', {
                 method: 'POST',
@@ -331,13 +350,10 @@ function LoginPage() {
                   const { signInWithCustomToken } = await import('firebase/auth');
                   await signInWithCustomToken(firebaseAuth, data.customToken);
                   await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
-                  console.log('✅ Firebase Auth switched to current account');
                 }
-              } else {
-                console.warn('⚠️ Failed to switch Firebase Auth account');
               }
-            } catch (error) {
-              console.warn('Firebase Auth account switch failed:', error);
+            } catch {
+              // NextAuth remains active even if Firebase client sync must retry later.
             }
           }
         };
@@ -365,11 +381,9 @@ function LoginPage() {
             } else {
               // Claim failed — clear token, continue to dashboard normally
               localStorage.removeItem('pendingClaimToken');
-              console.warn('[Login] Claim account failed:', claimData.error);
             }
-          } catch (claimError) {
+          } catch {
             localStorage.removeItem('pendingClaimToken');
-            console.warn('[Login] Claim account error:', claimError);
           } finally {
             setClaimProcessing(false);
           }
@@ -418,7 +432,7 @@ function LoginPage() {
       } else {
         dispatch(showErrorToast(data.error || 'Failed to set up account'));
       }
-    } catch (err) {
+    } catch {
       dispatch(showErrorToast('An error occurred. Please try again.'));
     } finally {
       dispatch(stopLoader(requestId));
@@ -457,7 +471,7 @@ function LoginPage() {
       } else {
         dispatch(showErrorToast(data.error || 'Failed to set up account'));
       }
-    } catch (err) {
+    } catch {
       dispatch(showErrorToast('An error occurred. Please try again.'));
     } finally {
       dispatch(stopLoader(requestId));
@@ -488,7 +502,6 @@ function LoginPage() {
         const activeSession = await getSession();
         const firebaseLoginEmail = activeSession?.user?.email || values.email;
         const userCredential = await signInWithEmailAndPassword(firebaseAuth, firebaseLoginEmail, values.password);
-        console.log('✅ Firebase Auth client session established');
 
         // Step 3: Set custom claims on Firebase Auth token
         try {
@@ -500,24 +513,20 @@ function LoginPage() {
 
           if (setClaimsResponse.ok) {
             const data = await setClaimsResponse.json();
-            console.log('✅ Custom claims set on Firebase Auth token');
             // Force token refresh to get new claims
             await userCredential.user.getIdToken(true);
             await syncAnswerlatticeAuthWithCustomToken(data.answerlatticeCustomToken);
-          } else {
-            console.warn('⚠️ Failed to set custom claims');
           }
-        } catch (claimsError) {
-          console.warn('⚠️ Custom claims error:', claimsError);
+        } catch {
+          // Keep credentials login resilient; downstream guarded calls can refresh claims again.
         }
-      } catch (firebaseError: any) {
-        console.warn('⚠️ Firebase Auth signin failed, but NextAuth succeeded:', firebaseError.message);
+      } catch {
         // Continue anyway - NextAuth is working
       }
 
       dispatch(stopLoader(requestId))
       router.push(getPostLoginRedirect())
-    } catch (error) {
+    } catch {
       dispatch(stopLoader(requestId))
       dispatch(showErrorToast("An error occurred during sign in"));
     }
@@ -569,7 +578,10 @@ function LoginPage() {
     onPointerMove={handleJourneyPointerMove}
   >
     <div className={styles.staticBackdrop} aria-hidden="true">
-      <span ref={journeyArtRef} className={styles.journeyArt} />
+      <span
+        ref={journeyArtRef}
+        className={`${styles.journeyArt} ${usesGenericProductArtwork ? styles.genericJourneyArt : styles.menuListJourneyArt}`}
+      />
     </div>
     <header className={styles.topBar}>
       <Space className={styles.headerWrap} align="center">
@@ -578,10 +590,7 @@ function LoginPage() {
           icon={isDarkMode ? <LuSun /> : <LuMoon />}
           size="large"
           title={isDarkMode ? 'Use light theme' : 'Use dark theme'}
-          onClick={() => {
-            console.log("Toggling dark mode from", isDarkMode, "to", !isDarkMode);
-            dispatch(toggleDarkMode(!isDarkMode));
-          }}
+          onClick={() => dispatch(toggleDarkMode(!isDarkMode))}
         />
       </Space>
     </header>

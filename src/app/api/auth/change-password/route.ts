@@ -73,13 +73,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     let firebaseUser;
     try {
       firebaseUser = await authAdmin.getUserByEmail(email);
-    } catch (err: any) {
-      if (err.code === "auth/user-not-found") {
-        return NextResponse.json({
-          error: "No password-based account found. You may be using Google sign-in only.",
-        }, { status: 400 });
-      }
-      throw err;
+    } catch {
+      return NextResponse.json({
+        error: "Unable to verify current credentials.",
+      }, { status: 400 });
     }
 
     // Check if user has a password provider (not just Google)
@@ -89,13 +86,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     if (!hasPasswordProvider) {
       return NextResponse.json({
-        error: "Your account uses Google sign-in. There is no password to change.",
+        error: "Unable to verify current credentials.",
       }, { status: 400 });
     }
 
     // Verify current password by attempting to sign in
     // (Admin SDK doesn't have a "verify password" method, so we use a workaround)
-    const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    const firebaseApiKey = process.env.FIREBASE_API_KEY;
     if (!firebaseApiKey) {
       logger.error("[change-password] Firebase API key missing", undefined, {
         ...buildSecurityContext(session, request),
@@ -119,7 +116,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       });
 
       if (!verifyRes.ok) {
-        return NextResponse.json({ error: "Current password is incorrect" }, { status: 403 });
+        return NextResponse.json({ error: "Unable to verify current credentials." }, { status: 403 });
       }
     } catch (verifyError) {
       logger.error("[change-password] Current password verification failed", verifyError, {

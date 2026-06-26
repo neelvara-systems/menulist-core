@@ -21,12 +21,14 @@ The Mission screen may be read on mobile for emergency visibility, but creation,
 ## Mobile Allowance
 
 - View mission summary.
+- View recent research table output.
 - View blocked/risk actions.
 - Use existing emergency kill switches through Control Room.
 
 ## Mobile Blocked
 
 - Create experiment card.
+- Run Research Agent Table prompts or source-provider research.
 - Edit offer/CTA.
 - Edit reply playbook.
 - Review sender/source/provider gates.

@@ -339,6 +339,24 @@ const TEAM_ROLE_OPTIONS: Array<{ label: string; value: SignalDeskRole }> = [
     { label: "Read-only analyst", value: "readonly-analyst" },
 ];
 
+const MARKET_SEARCH_PRESETS = [
+    {
+        label: "Hadapsar cafes",
+        prompt: "Find cafes in Hadapsar Pune Maharashtra with weak menu presence",
+        researchType: "business-prospect",
+    },
+    {
+        label: "Pune QSR",
+        prompt: "Find quick-service restaurants in Pune with PDF-only or Instagram-only menus",
+        researchType: "business-prospect",
+    },
+    {
+        label: "Partner list",
+        prompt: "Find restaurant consultants and menu photographers in Pune for MenuList partner intros",
+        researchType: "partner-list",
+    },
+];
+
 const tagClass = (tone?: string) => {
     if (tone === "good" || tone === "healthy" || tone === "active" || tone === "approved" || tone === "interested" || tone === "ready" || tone === "completed" || tone === "verified") return styles.tagGood;
     if (tone === "warning" || tone === "partial" || tone === "paused" || tone === "stale" || tone === "pending" || tone === "queued" || tone === "needs_review" || tone === "hold" || tone === "held" || tone === "evaluation" || tone === "candidate") return styles.tagWarning;
@@ -572,11 +590,411 @@ function TargetList({
     );
 }
 
-function DashboardSection({ data }: { data: SignalDeskWorkspaceResponse }) {
+type LeadPlan = {
+    detail: string;
+    label: string;
+    tone?: string;
+};
+
+const opportunityLabelForLead = (opportunity?: string | null) => {
+    if (opportunity === "missing-current-list") return "Missing current menu link";
+    if (opportunity === "stale-menu") return "Stale menu signal";
+    if (opportunity === "instagram-only") return "Instagram-only menu";
+    if (opportunity === "pdf-only") return "PDF-only menu";
+    if (opportunity === "no-link") return "No menu link";
+    return "Menu presence unclear";
+};
+
+const sourceLabelForLead = (sourceRefs: string[] = [], sourcePolicyId?: string | null) => {
+    const firstSource = sourceRefs[0] || (sourcePolicyId ? `source-policy:${sourcePolicyId}` : "");
+    if (!firstSource) return "source pending";
+    return firstSource
+        .replace("source-policy:", "policy ")
+        .replace("source-run:", "run ")
+        .replace("provider-run:", "provider ");
+};
+
+const leadStatusForDecision = (decision?: string): LeadPlan => {
+    if (decision === "pass") return { detail: "Ready for founder review", label: "Validated", tone: "good" };
+    if (decision === "unsure") return { detail: "Needs one more evidence check", label: "Needs evidence", tone: "warning" };
+    return { detail: "Keep out of today's actions", label: "Hold", tone: "danger" };
+};
+
+const contactPlanForLead = (contactability?: string, recommendedNextAction?: string): LeadPlan => {
+    if (recommendedNextAction === "hold") {
+        return { detail: "Not safe for outreach from this batch.", label: "Do not contact", tone: "danger" };
+    }
+    if (recommendedNextAction === "partner-review") {
+        return { detail: "Use partner intro review, not consumer-style influencer outreach.", label: "Partner intro", tone: "warning" };
+    }
+    if (recommendedNextAction === "pod-review") {
+        return { detail: "Review pod fit before any target action.", label: "Pod review", tone: "warning" };
+    }
+    if (contactability === "ready") {
+        return { detail: "Use only after evidence and approval gates pass.", label: "Email/export likely", tone: "good" };
+    }
+    if (contactability === "limited") {
+        return { detail: "Prefer website/contact form or assisted social, then approval.", label: "Manual contact path", tone: "warning" };
+    }
+    if (contactability === "blocked") {
+        return { detail: "Source/evidence use only. Do not use for outreach.", label: "Source-only", tone: "danger" };
+    }
+    return { detail: "Find a permitted contact path before outreach.", label: "Contact missing", tone: "warning" };
+};
+
+const sharePlanForLead = (currentListGap?: string | null, recommendedNextAction?: string): LeadPlan => {
+    if (recommendedNextAction === "partner-review") {
+        return { detail: "Ask for trusted intros around one current customer-ready menu link.", label: "Partner brief", tone: "warning" };
+    }
+    if (recommendedNextAction === "hold") {
+        return { detail: "No message until the row is reviewed again.", label: "No message", tone: "danger" };
+    }
+    if (currentListGap === "pdf-only") {
+        return { detail: "Turn the PDF menu into one mobile current link for QR, WhatsApp, Google/Profile, and Instagram.", label: "PDF to live link", tone: "good" };
+    }
+    if (currentListGap === "instagram-only") {
+        return { detail: "Keep Instagram for discovery, but use one reviewed current menu link as the customer source.", label: "Instagram plus current link", tone: "good" };
+    }
+    if (currentListGap === "missing-current-list" || currentListGap === "no-link") {
+        return { detail: "Create one current menu link customers can open from QR, WhatsApp, Google/Profile, and Instagram.", label: "One current menu link", tone: "good" };
+    }
+    if (currentListGap === "stale-menu") {
+        return { detail: "Prepare a reviewed current-menu preview so outdated links do not keep spreading.", label: "Refresh current menu", tone: "warning" };
+    }
+    return { detail: "Use only evidence-backed current-list wording.", label: "Evidence-bound message", tone: "warning" };
+};
+
+const actionLabelForLead = (action?: string) => {
+    if (action === "score") return "Score next";
+    if (action === "evidence") return "Build evidence";
+    if (action === "partner-review") return "Review partner fit";
+    if (action === "pod-review") return "Review pod fit";
+    if (action === "hold") return "Hold";
+    if (action === "draft") return "Draft";
+    return action || "Review";
+};
+
+function LeadPlanBlock({ plan, title }: { plan: LeadPlan; title: string }) {
+    return (
+        <div className={styles.leadPlanBlock}>
+            <span>{title}</span>
+            <strong className={plan.tone ? tagClass(plan.tone) : undefined}>{plan.label}</strong>
+            <small>{plan.detail}</small>
+        </div>
+    );
+}
+
+function LeadActionControls({
+    disabled,
+    nextAction,
+    onDraft,
+    onEvidence,
+    onScore,
+    targetId,
+}: {
+    disabled: boolean;
+    nextAction?: string;
+    onDraft: (targetId: string) => void;
+    onEvidence: (targetId: string) => void;
+    onScore: (targetId: string) => void;
+    targetId?: string | null;
+}) {
+    if (!targetId || nextAction === "hold" || nextAction === "partner-review" || nextAction === "pod-review") {
+        return <span className={tagClass(nextAction)}>{actionLabelForLead(nextAction)}</span>;
+    }
+
+    if (nextAction === "evidence") {
+        return <WorkspaceButton className={styles.button} disabled={disabled} onClick={() => onEvidence(targetId)} type="button">Build Evidence</WorkspaceButton>;
+    }
+
+    if (nextAction === "draft") {
+        return <WorkspaceButton className={styles.button} disabled={disabled} onClick={() => onDraft(targetId)} type="button">Draft</WorkspaceButton>;
+    }
+
+    return <WorkspaceButton className={styles.button} disabled={disabled} onClick={() => onScore(targetId)} type="button">Score Lead</WorkspaceButton>;
+}
+
+function TodayLeadBatch({
+    data,
+    mobileReadOnly,
+    onDraft,
+    onEvidence,
+    onScore,
+    saving,
+}: {
+    data: SignalDeskWorkspaceResponse;
+    mobileReadOnly: boolean;
+    onDraft: (targetId: string) => void;
+    onEvidence: (targetId: string) => void;
+    onScore: (targetId: string) => void;
+    saving: boolean;
+}) {
+    const latestResearchRunId = data.workspace.researchRuns[0]?.researchRunId;
+    const researchRows = latestResearchRunId
+        ? data.workspace.researchTableRows.filter((row) => row.researchRunId === latestResearchRunId)
+        : data.workspace.researchTableRows;
+    const rows = researchRows
+        .filter((row) => row.fitDecision !== "fail")
+        .slice()
+        .sort((left, right) => {
+            const decisionRank = (decision: string) => decision === "pass" ? 0 : decision === "unsure" ? 1 : 2;
+            return decisionRank(left.fitDecision) - decisionRank(right.fitDecision) || right.fitScore - left.fitScore;
+        })
+        .slice(0, 30);
+    const fallbackTargets = researchRows.length ? [] : data.workspace.targets
+        .filter((target) => target.suppressionStatus === "clear" && target.segment !== "hold" && target.segment !== "reject" && target.nextAction !== "hold" && target.nextAction !== "reject")
+        .slice(0, 30);
+    const emptyMessage = researchRows.length
+        ? "Latest market search produced no actionable leads. Refine the prompt or source."
+        : "Run a market search to prepare today's lead batch.";
+
+    return (
+        <div className={styles.panelWide}>
+            <div className={styles.panelHeader}>
+                <h2>Today&apos;s Lead Batch</h2>
+                <span className={styles.tag}>{rows.length || fallbackTargets.length}/30</span>
+            </div>
+            {rows.length ? (
+                <div className={styles.table}>
+                    {rows.map((row) => {
+                        const contactPlan = contactPlanForLead(row.contactability, row.recommendedNextAction);
+                        const sharePlan = sharePlanForLead(row.currentListGap, row.recommendedNextAction);
+                        const statusPlan = leadStatusForDecision(row.fitDecision);
+                        return (
+                            <div className={styles.leadCard} key={row.researchRowId}>
+                                <div className={styles.leadCardHeader}>
+                                    <div>
+                                        <strong>{row.displayName}</strong>
+                                        <span>{[row.category, row.city, row.country].filter(Boolean).join(" / ") || "Unknown location"}</span>
+                                    </div>
+                                    <div className={styles.leadScore}>
+                                        <span className={tagClass(statusPlan.tone)}>{statusPlan.label}</span>
+                                        <span>{row.fitScore}/100</span>
+                                    </div>
+                                </div>
+                                <div className={styles.leadPlanGrid}>
+                                    <LeadPlanBlock plan={{
+                                        detail: sourceLabelForLead(row.sourceRefs, row.sourcePolicyId),
+                                        label: opportunityLabelForLead(row.currentListGap),
+                                        tone: row.fitDecision === "pass" ? "good" : "warning",
+                                    }} title="Evidence" />
+                                    <LeadPlanBlock plan={contactPlan} title="Contact" />
+                                    <LeadPlanBlock plan={sharePlan} title="Share" />
+                                    <div className={styles.leadActionBlock}>
+                                        <span>Next</span>
+                                        <LeadActionControls
+                                            disabled={saving || mobileReadOnly}
+                                            nextAction={row.recommendedNextAction}
+                                            onDraft={onDraft}
+                                            onEvidence={onEvidence}
+                                            onScore={onScore}
+                                            targetId={row.targetId}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            ) : fallbackTargets.length ? (
+                <div className={styles.table}>
+                    {fallbackTargets.map((target) => {
+                        const contactPlan = contactPlanForLead(target.contactability, target.nextAction);
+                        const sharePlan = sharePlanForLead(target.primaryOpportunity, target.nextAction);
+                        return (
+                            <div className={styles.leadCard} key={target.targetId}>
+                                <div className={styles.leadCardHeader}>
+                                    <div>
+                                        <strong>{target.displayName}</strong>
+                                        <span>{[target.category, target.city, target.country].filter(Boolean).join(" / ") || "Uncategorized"}</span>
+                                    </div>
+                                    <div className={styles.leadScore}>
+                                        <span className={tagClass(target.segment === "a" || target.segment === "b" ? "good" : "warning")}>{target.segment.toUpperCase()}</span>
+                                        <span>{target.fitScore ?? target.currentListGapScore ?? 0}/100</span>
+                                    </div>
+                                </div>
+                                <div className={styles.leadPlanGrid}>
+                                    <LeadPlanBlock plan={{
+                                        detail: sourceLabelForLead([], target.sourcePolicyId),
+                                        label: opportunityLabelForLead(target.primaryOpportunity),
+                                        tone: target.segment === "a" || target.segment === "b" ? "good" : "warning",
+                                    }} title="Evidence" />
+                                    <LeadPlanBlock plan={contactPlan} title="Contact" />
+                                    <LeadPlanBlock plan={sharePlan} title="Share" />
+                                    <div className={styles.leadActionBlock}>
+                                        <span>Next</span>
+                                        <LeadActionControls
+                                            disabled={saving || mobileReadOnly}
+                                            nextAction={target.nextAction}
+                                            onDraft={onDraft}
+                                            onEvidence={onEvidence}
+                                            onScore={onScore}
+                                            targetId={target.targetId}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            ) : <div className={styles.empty}>{emptyMessage}</div>}
+        </div>
+    );
+}
+
+function ResearchAgentSearchPanel({
+    actionDisabled,
+    buttonLabel = "Find Leads",
+    onSubmit,
+    researchMaxResults,
+    researchPrompt,
+    researchProvider,
+    researchType,
+    resolvedResearchPolicyId,
+    setResearchMaxResults,
+    setResearchPrompt,
+    setResearchProvider,
+    setResearchType,
+    title = "Market Search",
+}: {
+    actionDisabled: boolean;
+    buttonLabel?: string;
+    onSubmit: (event: FormEvent) => void;
+    researchMaxResults: number;
+    researchPrompt: string;
+    researchProvider: string;
+    researchType: string;
+    resolvedResearchPolicyId: string;
+    setResearchMaxResults: (value: number) => void;
+    setResearchPrompt: (value: string) => void;
+    setResearchProvider: (value: string) => void;
+    setResearchType: (value: string) => void;
+    title?: string;
+}) {
+    return (
+        <form className={styles.panel} onSubmit={onSubmit}>
+            <div className={styles.panelHeader}>
+                <h2>{title}</h2>
+                <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedResearchPolicyId} type="submit">{buttonLabel}</WorkspaceButton>
+            </div>
+            <WorkspaceTextarea
+                className={styles.textarea}
+                onChange={(event) => setResearchPrompt(event.target.value)}
+                placeholder="Find cafes in Hadapsar Pune Maharashtra with weak menu presence"
+                value={researchPrompt}
+            />
+            <div className={styles.quickPrompts}>
+                {MARKET_SEARCH_PRESETS.map((preset) => (
+                    <WorkspaceButton
+                        className={styles.ghostButton}
+                        disabled={actionDisabled}
+                        key={preset.label}
+                        onClick={() => {
+                            setResearchPrompt(preset.prompt);
+                            setResearchType(preset.researchType);
+                            setResearchMaxResults(30);
+                        }}
+                        type="button"
+                    >
+                        {preset.label}
+                    </WorkspaceButton>
+                ))}
+            </div>
+            <div className={styles.formGrid}>
+                <WorkspaceSelect className={styles.input} onChange={(event) => setResearchProvider(event.target.value)} value={researchProvider}>
+                    <option value="google-places">Google Places-style</option>
+                    <option value="apify">Apify Broker</option>
+                    <option value="fhrs-fhis">FHRS/FHIS UK</option>
+                </WorkspaceSelect>
+                <WorkspaceSelect className={styles.input} onChange={(event) => setResearchType(event.target.value)} value={researchType}>
+                    <option value="business-prospect">Business prospects</option>
+                    <option value="market-map">Market map</option>
+                    <option value="partner-list">Partner list</option>
+                </WorkspaceSelect>
+                <WorkspaceInput className={styles.input} min={1} max={30} onChange={(event) => setResearchMaxResults(Number(event.target.value))} type="number" value={researchMaxResults} />
+            </div>
+            <div className={styles.statusRow}>
+                <span>Provider policy</span>
+                <span className={tagClass(resolvedResearchPolicyId ? "ready" : "hold")}>{resolvedResearchPolicyId || "missing"}</span>
+            </div>
+        </form>
+    );
+}
+
+function DashboardSection({
+    actionDisabled,
+    data,
+    mobileReadOnly,
+    onDraft,
+    onEvidence,
+    onResearchSubmit,
+    onScore,
+    researchMaxResults,
+    researchPrompt,
+    researchProvider,
+    researchType,
+    resolvedResearchPolicyId,
+    saving,
+    setResearchMaxResults,
+    setResearchPrompt,
+    setResearchProvider,
+    setResearchType,
+}: {
+    actionDisabled: boolean;
+    data: SignalDeskWorkspaceResponse;
+    mobileReadOnly: boolean;
+    onDraft: (targetId: string) => void;
+    onEvidence: (targetId: string) => void;
+    onResearchSubmit: (event: FormEvent) => void;
+    onScore: (targetId: string) => void;
+    researchMaxResults: number;
+    researchPrompt: string;
+    researchProvider: string;
+    researchType: string;
+    resolvedResearchPolicyId: string;
+    saving: boolean;
+    setResearchMaxResults: (value: number) => void;
+    setResearchPrompt: (value: string) => void;
+    setResearchProvider: (value: string) => void;
+    setResearchType: (value: string) => void;
+}) {
     return (
         <>
             <OwnerControlModel />
             <SummaryMetrics data={data} />
+            <section className={styles.contentGrid}>
+                <ResearchAgentSearchPanel
+                    actionDisabled={actionDisabled}
+                    onSubmit={onResearchSubmit}
+                    researchMaxResults={researchMaxResults}
+                    researchPrompt={researchPrompt}
+                    researchProvider={researchProvider}
+                    researchType={researchType}
+                    resolvedResearchPolicyId={resolvedResearchPolicyId}
+                    setResearchMaxResults={setResearchMaxResults}
+                    setResearchPrompt={setResearchPrompt}
+                    setResearchProvider={setResearchProvider}
+                    setResearchType={setResearchType}
+                />
+                <div className={styles.panel}>
+                    <div className={styles.panelHeader}>
+                        <h2>Lead Batch Status</h2>
+                        <span className={tagClass(data.workspace.researchRuns[0]?.status || "hold")}>{data.workspace.researchRuns[0]?.status || "waiting"}</span>
+                    </div>
+                    {data.workspace.researchRuns[0] ? (
+                        <div className={styles.statusList}>
+                            <div className={styles.statusRow}><span>Query</span><span>{data.workspace.researchRuns[0].normalizedQuery}</span></div>
+                            <div className={styles.statusRow}><span>Rows</span><span>{data.workspace.researchRuns[0].tableRowCount}</span></div>
+                            <div className={styles.statusRow}><span>Pass</span><span>{data.workspace.researchRuns[0].passCount}</span></div>
+                            <div className={styles.statusRow}><span>Unsure</span><span>{data.workspace.researchRuns[0].unsureCount}</span></div>
+                            <div className={styles.statusRow}><span>Fail</span><span>{data.workspace.researchRuns[0].failCount}</span></div>
+                        </div>
+                    ) : <div className={styles.empty}>No market search has run yet.</div>}
+                </div>
+            </section>
+            <section className={styles.stack}>
+                <TodayLeadBatch data={data} mobileReadOnly={mobileReadOnly} onDraft={onDraft} onEvidence={onEvidence} onScore={onScore} saving={saving} />
+            </section>
             <OperatingPanels data={data} />
         </>
     );
@@ -699,10 +1117,10 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [replyPlaybookEscalation, setReplyPlaybookEscalation] = useState(false);
     const [replyPlaybookSuppression, setReplyPlaybookSuppression] = useState(false);
     const [selectedSourceRunId, setSelectedSourceRunId] = useState("");
-    const [researchPrompt, setResearchPrompt] = useState("Find cafes in Koramangala with weak menu presence");
+    const [researchPrompt, setResearchPrompt] = useState("Find cafes in Hadapsar Pune Maharashtra with weak menu presence");
     const [researchProvider, setResearchProvider] = useState("google-places");
     const [researchType, setResearchType] = useState("business-prospect");
-    const [researchMaxResults, setResearchMaxResults] = useState(10);
+    const [researchMaxResults, setResearchMaxResults] = useState(30);
 
     useEffect(() => {
         const evaluate = () => {
@@ -738,6 +1156,9 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const providerPolicies = data?.workspace.policies.filter((policy) => policy.sourceType === "provider") || [];
     const resolvedProviderPolicyId = data
         ? (providerPolicies.some((policy) => policy.sourcePolicyId === sourcePolicyId) ? sourcePolicyId : firstProviderPolicyId(data))
+        : "";
+    const resolvedResearchPolicyId = data
+        ? data.workspace.policies.find((policy) => policy.sourceType === "provider" && policy.provider === researchProvider)?.sourcePolicyId || resolvedProviderPolicyId
         : "";
     const resolvedWaterfallId = data ? (selectedWaterfallId || firstWaterfallId(data)) : "";
     const resolvedMarketPodId = data ? firstMarketPodId(data) : "";
@@ -1394,13 +1815,33 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             prompt: researchPrompt,
             provider: researchProvider,
             researchType,
-            sourcePolicyId: resolvedProviderPolicyId || undefined,
+            sourcePolicyId: resolvedResearchPolicyId || undefined,
         });
     };
 
     const renderSection = () => {
         if (!data) return null;
-        if (activeSection === "dashboard") return <DashboardSection data={data} />;
+        if (activeSection === "dashboard") return (
+            <DashboardSection
+                actionDisabled={actionDisabled}
+                data={data}
+                mobileReadOnly={mobileReadOnly}
+                onDraft={createDraft}
+                onEvidence={createEvidence}
+                onResearchSubmit={createResearchAgentRun}
+                onScore={scoreTarget}
+                researchMaxResults={researchMaxResults}
+                researchPrompt={researchPrompt}
+                researchProvider={researchProvider}
+                researchType={researchType}
+                resolvedResearchPolicyId={resolvedResearchPolicyId}
+                saving={saving}
+                setResearchMaxResults={setResearchMaxResults}
+                setResearchPrompt={setResearchPrompt}
+                setResearchProvider={setResearchProvider}
+                setResearchType={setResearchType}
+            />
+        );
         if (activeSection === "mission") {
             const activeMission = data.workspace.growthMissions.find((mission) => mission.growthMissionId === resolvedGrowthMissionId) || data.workspace.growthMissions[0];
             const selectedExperiment = data.workspace.experimentCards.find((experiment) => experiment.experimentCardId === resolvedExperimentCardId) || data.workspace.experimentCards[0];
@@ -1411,30 +1852,21 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             return (
                 <section className={styles.stack}>
                     <div className={styles.contentGrid}>
-                        <form className={styles.panel} onSubmit={createResearchAgentRun}>
-                            <div className={styles.panelHeader}>
-                                <h2>Research Agent Table</h2>
-                                <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedProviderPolicyId} type="submit">Run Research</WorkspaceButton>
-                            </div>
-                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setResearchPrompt(event.target.value)} value={researchPrompt} />
-                            <div className={styles.formGrid}>
-                                <WorkspaceSelect className={styles.input} onChange={(event) => setResearchProvider(event.target.value)} value={researchProvider}>
-                                    <option value="google-places">Google Places-style</option>
-                                    <option value="apify">Apify Broker</option>
-                                    <option value="fhrs-fhis">FHRS/FHIS UK</option>
-                                </WorkspaceSelect>
-                                <WorkspaceSelect className={styles.input} onChange={(event) => setResearchType(event.target.value)} value={researchType}>
-                                    <option value="business-prospect">Business prospects</option>
-                                    <option value="market-map">Market map</option>
-                                    <option value="partner-list">Partner list</option>
-                                </WorkspaceSelect>
-                                <WorkspaceInput className={styles.input} min={1} max={20} onChange={(event) => setResearchMaxResults(Number(event.target.value))} type="number" value={researchMaxResults} />
-                            </div>
-                            <div className={styles.statusRow}>
-                                <span>Provider policy</span>
-                                <span className={tagClass(resolvedProviderPolicyId ? "ready" : "hold")}>{resolvedProviderPolicyId || "missing"}</span>
-                            </div>
-                        </form>
+                        <ResearchAgentSearchPanel
+                            actionDisabled={actionDisabled}
+                            buttonLabel="Run Research"
+                            onSubmit={createResearchAgentRun}
+                            researchMaxResults={researchMaxResults}
+                            researchPrompt={researchPrompt}
+                            researchProvider={researchProvider}
+                            researchType={researchType}
+                            resolvedResearchPolicyId={resolvedResearchPolicyId}
+                            setResearchMaxResults={setResearchMaxResults}
+                            setResearchPrompt={setResearchPrompt}
+                            setResearchProvider={setResearchProvider}
+                            setResearchType={setResearchType}
+                            title="Research Agent Table"
+                        />
 
                         <div className={styles.panel}>
                             <div className={styles.panelHeader}>
@@ -1460,6 +1892,8 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             ) : <div className={styles.empty}>No research table yet.</div>}
                         </div>
                     </div>
+
+                    <TodayLeadBatch data={data} mobileReadOnly={mobileReadOnly} onDraft={createDraft} onEvidence={createEvidence} onScore={scoreTarget} saving={saving} />
 
                     <div className={styles.contentGrid}>
                         <div className={styles.panel}>
@@ -2023,7 +2457,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         <div className={styles.formGrid}>
                             <WorkspaceInput className={styles.input} onChange={(event) => setSourceCity(event.target.value)} value={sourceCity} />
                             <WorkspaceInput className={styles.input} onChange={(event) => setSourceCountry(event.target.value)} value={sourceCountry} />
-                            <WorkspaceInput className={styles.input} max={20} min={1} onChange={(event) => setSourceMaxResults(Number(event.target.value))} type="number" value={sourceMaxResults} />
+                            <WorkspaceInput className={styles.input} max={30} min={1} onChange={(event) => setSourceMaxResults(Number(event.target.value))} type="number" value={sourceMaxResults} />
                         </div>
                         <WorkspaceSelect className={styles.input} onChange={(event) => setSourcePolicyId(event.target.value)} value={resolvedProviderPolicyId}>
                             {providerPolicies.length ? providerPolicies.map((policy) => (
@@ -2858,7 +3292,25 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         if (activeSection === "control-room") {
             return (
                 <>
-                    <DashboardSection data={data} />
+                    <DashboardSection
+                        actionDisabled={actionDisabled}
+                        data={data}
+                        mobileReadOnly={mobileReadOnly}
+                        onDraft={createDraft}
+                        onEvidence={createEvidence}
+                        onResearchSubmit={createResearchAgentRun}
+                        onScore={scoreTarget}
+                        researchMaxResults={researchMaxResults}
+                        researchPrompt={researchPrompt}
+                        researchProvider={researchProvider}
+                        researchType={researchType}
+                        resolvedResearchPolicyId={resolvedResearchPolicyId}
+                        saving={saving}
+                        setResearchMaxResults={setResearchMaxResults}
+                        setResearchPrompt={setResearchPrompt}
+                        setResearchProvider={setResearchProvider}
+                        setResearchType={setResearchType}
+                    />
                     <section className={styles.contentGrid}>
                         <div className={styles.panel}>
                             <div className={styles.panelHeader}>

@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import TurnstileWidget, { isTurnstileClientEnabled, type TurnstileStatus } from '@/components/security/TurnstileWidget';
+import { FormEvent, useCallback, useState } from 'react';
 import { LuCheckCircle, LuLoader, LuSend } from 'react-icons/lu';
 
 type ContactTopic = 'setup' | 'demo' | 'pricing' | 'partnership' | 'security' | 'other';
@@ -51,6 +52,10 @@ export default function AnswerlatticeContactForm({ basePath = '' }: { basePath?:
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
+    const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+    const captchaRequired = isTurnstileClientEnabled();
 
     const linkTo = (path: string) => `${basePath}${path}`;
 
@@ -58,9 +63,21 @@ export default function AnswerlatticeContactForm({ basePath = '' }: { basePath?:
         setForm((current) => ({ ...current, [field]: value }));
     };
 
+    const resetCaptcha = useCallback(() => {
+        if (!captchaRequired) return;
+        setCaptchaToken(null);
+        setCaptchaResetSignal((current) => current + 1);
+    }, [captchaRequired]);
+
     const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setError(null);
+
+        if (captchaRequired && !captchaToken) {
+            setError('Complete the security check and try again.');
+            return;
+        }
+
         setSubmitting(true);
 
         try {
@@ -72,9 +89,11 @@ export default function AnswerlatticeContactForm({ basePath = '' }: { basePath?:
                     sourcePath: getSourcePath(),
                     phoneNumber: form.phoneNumber || null,
                     productUrl: form.productUrl || null,
+                    captchaToken: captchaToken || undefined,
                 }),
             });
             const result = await response.json().catch(() => null);
+            resetCaptcha();
 
             if (!response.ok || !result?.accepted) {
                 throw new Error(result?.error || 'Could not send right now. Please email hello@answerlattice.com.');
@@ -84,6 +103,7 @@ export default function AnswerlatticeContactForm({ basePath = '' }: { basePath?:
             setForm(initialForm);
         } catch (submitError) {
             setError(submitError instanceof Error ? submitError.message : 'Could not send right now. Please email hello@answerlattice.com.');
+            resetCaptcha();
         } finally {
             setSubmitting(false);
         }
@@ -230,9 +250,24 @@ export default function AnswerlatticeContactForm({ basePath = '' }: { basePath?:
                     </p>
                 )}
 
+                <TurnstileWidget
+                    action="answerlattice_contact"
+                    className="flex min-h-[65px] justify-center rounded-xl border border-white/[0.06] bg-[#0f1023] p-3"
+                    onStatusChange={setCaptchaStatus}
+                    onTokenChange={setCaptchaToken}
+                    resetSignal={captchaResetSignal}
+                    theme="dark"
+                />
+
+                {captchaRequired && captchaStatus === 'error' ? (
+                    <p className="rounded-xl border border-red-400/20 bg-red-400/[0.06] p-3 text-sm text-red-100" role="alert">
+                        Security check did not load. Refresh the page and try again.
+                    </p>
+                ) : null}
+
                 <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || (captchaRequired && !captchaToken)}
                     className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                     {submitting ? <LuLoader size={17} className="animate-spin" aria-hidden /> : <LuSend size={17} aria-hidden />}

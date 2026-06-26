@@ -173,7 +173,7 @@ reviewUrl?: string;        // Google Review URL for CTA
 
 ### Production Boundary Confirmed June 11, 2026
 
-- Public submissions go through `POST /api/public/feedback/submit`; direct unauthenticated Firestore creates are denied.
+- Public submissions go through `POST /api/public/feedback/submit`; direct unauthenticated Firestore creates are denied. When `TURNSTILE_SECRET_KEY` is configured, the browser form must send `captchaToken` from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`.
 - The public API verifies project existence, project active/deleted status, store tenant match, store active/deleted/blocked state, project feedback toggle, and store feedback toggle before writing.
 - Store-owned field defaults are enforced on the server. Hidden contact fields are dropped even if a caller posts them directly, and required fields are validated by the API.
 - Store-scoped owner/manager sessions can update only feedback from their store. Updates are limited to `status`, `needsAttention`, `modifiedOn`, `modifiedBy`, and `ownerNote`.

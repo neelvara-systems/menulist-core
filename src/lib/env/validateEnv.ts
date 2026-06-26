@@ -77,6 +77,7 @@ const OPTIONAL_VARS: readonly string[] = [
     'BATCH_IMAGE_GENERATION_WORKER_SECRET', // Batch menu image generation worker auth
     'BATCH_IMAGE_GENERATION_WORKER_URL',    // Batch menu image generation worker
     'FIREBASE_PROJECT_LOCATION',            // Google Cloud Tasks queue location
+    'FIREBASE_API_KEY',                    // Firebase Auth REST/API calls should use server-side key (not NEXT_PUBLIC)
 ] as const;
 
 const PRODUCT_PROJECT_VARS: Record<DeploymentProductId, readonly string[]> = {
@@ -156,6 +157,10 @@ export function validateEnvironment(): EnvValidationResult {
         if (!process.env[varName]) {
             warnings.push(`${varName} not set — feature requires configuration when enabled`);
         }
+    }
+
+    if (!process.env.FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+        warnings.push('FIREBASE_API_KEY is recommended for server-side Firebase REST calls. NEXT_PUBLIC_FIREBASE_API_KEY is public and should not be used for server-auth operations.');
     }
 
     (['menulist', 'answerlattice', 'campaigncue'] as DeploymentProductId[]).forEach((productId) => {

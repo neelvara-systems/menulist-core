@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     const token = searchParams.get("token");
 
     if (!token || token.length < 20) {
-      return NextResponse.json({ valid: false, error: "Invalid token" }, { status: 400 });
+      return NextResponse.json({ valid: false, error: "Invalid or expired claim link." }, { status: 400 });
     }
 
     // Find user by claimToken
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       .get();
 
     if (userQuery.empty) {
-      return NextResponse.json({ valid: false, error: "Token not found or already used" }, { status: 404 });
+      return NextResponse.json({ valid: false, error: "Invalid or expired claim link." }, { status: 404 });
     }
 
     const userDoc = userQuery.docs[0];
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         claimTokenExpiredAt: now,
         modifiedOn: now,
       });
-      return NextResponse.json({ valid: false, error: "Claim link expired" }, { status: 410 });
+      return NextResponse.json({ valid: false, error: "This claim link has expired." }, { status: 410 });
     }
 
     // Return minimal info for the login page welcome message

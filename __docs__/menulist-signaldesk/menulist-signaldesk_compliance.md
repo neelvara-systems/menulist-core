@@ -22,6 +22,7 @@ SignalDesk must record source rights, field storage permission, outreach eligibi
 | Google Maps / Places-like data | Temporary candidate signal only after source policy | Scraping/storing as prospect truth or using GBP APIs for lead gen |
 | Foursquare Places PAYG | Identity/category signal only if terms allow | Contacting businesses as prospective customers |
 | Apify/Outscraper-style data | Gated discovery/evidence only after source policy, provider approval, env-controlled Actor review, and budget cap | Default source for outreach or scrape-and-send |
+| Research Agent Table | Prompt-to-table planning, evidence rows, pass/fail/unsure fit, and market-pod mapping after source policy | Treating table rows as outreach permission or auto-sequence input |
 
 External source-policy evidence is recorded in the end-to-end research memo:
 
@@ -46,6 +47,7 @@ Adopted compliance additions:
 | Phone/SMS/robotext | Automated phone/text marketing is blocked unless explicit consent and jurisdiction-specific review exist. Do not treat third-party lead-source consent as enough. |
 | Places-like providers | Use narrow field masks, avoid contact fields, store provider IDs/source references, keep non-exempt provider content short-lived, and do not turn provider output into durable prospect truth without source-policy approval. |
 | Apify source broker | Apify can run only the configured source Actor, cannot accept arbitrary browser Actor IDs, cannot store raw dataset payloads, and must rely on source-policy contact-use stripping before any contact field is retained. |
+| Research Agent Table | Research rows must preserve provider, source policy, source run, and row-level source refs. `pass` means review priority, not permission to contact. |
 | AI risk | AI outputs must remain governed, mapped, measured, and managed through model version, prompt version, confidence, rejected facts, edits, eval failures, cost, and pause conditions. |
 
 ## Channel Policy

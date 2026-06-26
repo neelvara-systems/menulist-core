@@ -544,6 +544,10 @@ async function assertResearchAgentTable() {
     assert(result.rows.every((row) => row.enrichment.some((item) => item.key === "source-transparency")), "Research rows missed source transparency enrichment");
     const rowCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS, (data) => data.researchRunId === result.run.researchRunId);
     assert(rowCount === 2, "Research table rows were not stored");
+    const dashboardWorkspace = await loadSignalDeskWorkspaceServer(access, "dashboard");
+    assert(dashboardWorkspace.workspace.researchRuns.some((run) => run.researchRunId === result.run.researchRunId), "Dashboard workspace did not load latest research run");
+    assert(dashboardWorkspace.workspace.researchTableRows.some((row) => row.researchRunId === result.run.researchRunId), "Dashboard workspace did not load research table rows for lead batch");
+    assert(dashboardWorkspace.workspace.policies.some((workspacePolicy) => workspacePolicy.sourcePolicyId === policy.sourcePolicyId), "Dashboard workspace did not load provider source policy for market search");
     const podSnap = await db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(result.run.marketPodId).get();
     assert(podSnap.exists, "Research agent did not create/update market pod map");
     const contactIdentityCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES, (data) => (

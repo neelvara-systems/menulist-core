@@ -9,7 +9,7 @@
 
 ## 1. Product Context
 
-ConstantLayer Systems is the operating trade name / parent trust layer for the current public product lineup.
+ConstantLayer Systems is the operating trade name / parent trust layer for the current product lineup.
 
 The website must make the entity credible, searchable, and legally consistent without pulling commercial attention away from MenuList, Answerlattice, or CampaignCue.
 
@@ -29,12 +29,12 @@ Therefore the ConstantLayer website is implemented as a static public site insid
 Create a small public website that answers five questions:
 
 1. What is ConstantLayer Systems?
-2. What product surfaces are in the lineup today?
+2. What products are in the lineup today?
 3. How is it related to MenuList, Answerlattice, and CampaignCue?
 4. How can someone contact the operator?
 5. Where can someone find basic legal, privacy, and terms information?
 
-The website succeeds when a visitor can verify the company layer behind the current public product lineup without being invited into a second sales flow.
+The website succeeds when a visitor can verify the operating company behind the current product lineup without being invited into a second sales flow.
 
 ---
 
@@ -66,7 +66,7 @@ If another product becomes legally and publicly ready, add it only through a sep
 
 ### Primary
 
-People who need to verify the company layer behind the current public product lineup:
+People who need to verify the operating company behind the current product lineup:
 
 - Prospective product customers checking business legitimacy
 - Partners, vendors, payment providers, and service providers
@@ -103,11 +103,11 @@ ConstantLayer Systems builds business information products.
 
 Use this long-form positioning internally and in public copy where appropriate:
 
-> ConstantLayer Systems builds and operates products for public business information, governed answers, product context, and source-backed business outputs.
+> ConstantLayer Systems is the company behind MenuList, Answerlattice, and CampaignCue.
 
 Use this relationship line exactly:
 
-> MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
+> MenuList, Answerlattice, and CampaignCue are the current products represented by ConstantLayer Systems.
 
 ### Safer Legal Description
 
@@ -133,7 +133,7 @@ unless the legal structure changes and legal/CA review approves the wording.
 | Route | Purpose | Sitemap | Notes |
 | --- | --- | --- | --- |
 | `/` | Entity introduction and product-lineup routing | Yes | Main trust page |
-| `/products` | Shows approved product surfaces in the lineup | Yes | No unapproved placeholder cards |
+| `/products` | Shows approved products in the lineup | Yes | No unapproved placeholder cards |
 | `/about` | Explains operating focus and boundaries | Yes | No founder bio required |
 | `/contact` | Email-based contact paths | Yes | No form in v1 |
 | `/legal` | Basic operating identity and links to policies | Yes | No GSTIN/PAN/address unless approved |
@@ -176,7 +176,7 @@ Before launch:
 - Do not show GSTIN/PAN/residential address unless legally required or explicitly approved.
 - Confirm GST registration/business activity/SAC/NIC details if they must appear in policies, invoices, or vendor onboarding.
 - Keep parent website privacy/terms separate from product privacy/terms once a product collects account, business, profile, customer interaction, support, campaign, or billing data.
-- Add paid-service policies on the relevant product surface before that product accepts payments.
+- Add paid-service policies on the relevant product site before that product accepts payments.
 
 External legal/compliance references are listed in the README. These docs are not legal advice.
 

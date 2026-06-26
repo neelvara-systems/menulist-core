@@ -10,7 +10,7 @@
 
 Do not create a help center for ConstantLayer v1.
 
-The parent website only needs a short FAQ-style support policy that can live on the Contact or Legal page. Product support belongs to the relevant product surface.
+The parent website only needs a short FAQ-style support policy that can live on the Contact or Legal page. Product support belongs to the relevant product site.
 
 The Prism glass redesign does not change support routing, data collection, legal scope, or product-support boundaries.
 
@@ -21,13 +21,13 @@ The Prism glass redesign does not change support routing, data collection, legal
 | Inquiry type | Route |
 | --- | --- |
 | Product usage | Relevant product support/contact surface |
-| Business inquiry | `hello@constantlayer.in` |
-| Legal inquiry | `legal@constantlayer.in` |
-| Privacy/data inquiry | `privacy@constantlayer.in` |
+| Business inquiry | `NEXT_PUBLIC_CONSTANTLAYER_CONTACT_EMAIL` displayed on the Contact page |
+| Legal inquiry | `NEXT_PUBLIC_CONSTANTLAYER_LEGAL_EMAIL` displayed on the Contact page |
+| Privacy/data inquiry | `NEXT_PUBLIC_CONSTANTLAYER_PRIVACY_EMAIL` displayed on the Contact page |
 | Billing/refund/cancellation | Relevant product policy surface once paid services exist |
-| Vendor verification | Legal page + `legal@constantlayer.in` |
+| Vendor verification | Legal page + configured legal email |
 
-Email addresses are placeholders until the ConstantLayer domain is configured.
+Email addresses are env-backed public display values with current code fallbacks. Updating the deployment env changes the displayed mailto links and structured data without changing code.
 
 ---
 
@@ -35,15 +35,15 @@ Email addresses are placeholders until the ConstantLayer domain is configured.
 
 ### What is ConstantLayer Systems?
 
-ConstantLayer Systems is the company reference for the current public product lineup: MenuList, Answerlattice, and CampaignCue.
+ConstantLayer Systems builds business information products including MenuList, Answerlattice, and CampaignCue.
 
 ### What products are in the ConstantLayer lineup?
 
-MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
+MenuList, Answerlattice, and CampaignCue are the current products represented by ConstantLayer Systems.
 
 ### Is MenuList part of the ConstantLayer lineup?
 
-Yes. MenuList is one of the product surfaces represented by ConstantLayer Systems.
+Yes. MenuList is one of the products represented by ConstantLayer Systems.
 
 ### Does ConstantLayer sell software directly from this website?
 
@@ -52,6 +52,10 @@ No. This website provides company, product-routing, contact, privacy, and terms 
 ### How do I contact ConstantLayer Systems?
 
 Use the contact addresses listed on the Contact page.
+
+### Can I ask a company-level question?
+
+Yes. Email the configured ConstantLayer business contact with a short note. Keep the first message high level and do not include private records, secrets, or customer datasets. Product support and account questions should go through the relevant product website.
 
 ### Where do I find product information?
 
@@ -67,7 +71,7 @@ Use:
 - calm wording
 - no speculation
 - no legal structure claims beyond approved wording
-- product routing when the question belongs to a product surface
+- product routing when the question belongs to a product site
 
 Avoid:
 
@@ -97,7 +101,7 @@ Do not answer product-data questions from the ConstantLayer parent policy unless
 
 If a user asks for legal identity:
 
-> ConstantLayer Systems is the company reference used for the current public lineup of business information products. MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.
+> ConstantLayer Systems builds business information products. MenuList, Answerlattice, and CampaignCue are the current products represented by ConstantLayer Systems.
 
 If a user asks for GSTIN/PAN/address:
 
@@ -129,4 +133,4 @@ Product legal pages should cover, when applicable:
 - service availability
 - product-specific user obligations
 
-Do not merge these policies just because the parent site links to product surfaces.
+Do not merge these policies just because the parent site links to product sites.

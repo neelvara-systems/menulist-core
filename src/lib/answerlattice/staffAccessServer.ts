@@ -272,8 +272,10 @@ const resolveStaffLoginDisplayId = (value?: string | null) => formatStaffLoginId
 
 const resolveStaffLoginUsername = (value?: string | null) => normalizeStaffLoginUsername(value);
 
+const getFirebaseAuthApiKey = () => process.env.FIREBASE_API_KEY;
+
 const sendFirebasePasswordResetEmail = async (email: string) => {
-    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    const apiKey = getFirebaseAuthApiKey();
     if (!apiKey) {
         return { ok: false, error: 'FIREBASE_API_KEY_MISSING' };
     }
@@ -289,7 +291,8 @@ const sendFirebasePasswordResetEmail = async (email: string) => {
 
     if (response.ok) return { ok: true };
     const data = await response.json().catch(() => ({}));
-    return { ok: false, error: data?.error?.message || 'PASSWORD_RESET_EMAIL_FAILED' };
+    const apiError = data?.error?.message || 'PASSWORD_RESET_EMAIL_FAILED';
+    return { ok: false, error: apiError };
 };
 
 const serializeTimestamp = (value: any) => {
@@ -820,7 +823,7 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
         message: hasEmail
             ? 'Team member added. They can set their password from the email.'
             : 'Team member added. Share the staff ID and temporary passcode.',
-        passwordResetEmailError: hasEmail && !passwordResetEmail.ok ? passwordResetEmail.error : undefined,
+        passwordResetEmailError: hasEmail && !passwordResetEmail.ok ? 'password_reset_email_failed' : undefined,
         passwordResetEmailSent: hasEmail ? passwordResetEmail.ok : false,
         staffAuthMode,
         staffLoginId: userDoc.staffLoginId,

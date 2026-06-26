@@ -111,12 +111,6 @@
   color: #0f172a;
 }
 
-.banner[data-product="constantlayer"] .privacyLink {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.75rem;
-}
-
 .banner[data-product="menulist"] {
   border-color: var(--ws-border-default, rgb(15 23 42 / 10%));
   background: var(--ws-bg-elevated, rgb(255 255 255 / 96%));
@@ -161,16 +155,6 @@
   color: #061a78;
 }
 
-.banner[data-product="constantlayer"] {
-  border-color: #dbe4ef;
-  color: #0f172a;
-}
-
-.banner[data-product="constantlayer"] .accept {
-  background: #eff6ff;
-  color: #0051d1;
-}
-
 @media (prefers-color-scheme: dark) {
   .banner {
     border-color: rgb(148 163 184 / 14%);
@@ -204,7 +188,6 @@
     color: #ffffff;
   }
 
-  .banner[data-product="constantlayer"],
   .banner[data-product="campaigncue"] {
     background: rgb(18 20 23 / 96%);
     color: #f8fafc;
@@ -285,39 +268,4 @@
     grid-column: 1;
   }
 
-  .banner[data-product="constantlayer"] .actions {
-    grid-template-columns: minmax(0, 1fr) minmax(86px, auto);
-  }
-
-  .banner[data-product="constantlayer"] .privacyLink {
-    grid-column: auto;
-  }
-}
-
-@media (max-width: 360px) {
-  .banner[data-product="constantlayer"] {
-    gap: 0.6rem;
-    padding: 0.75rem;
-  }
-
-  .banner[data-product="constantlayer"] .message {
-    font-size: 0.82rem;
-    line-height: 1.3;
-  }
-
-  .banner[data-product="constantlayer"] .actions {
-    gap: 0.5rem;
-  }
-
-  .banner[data-product="constantlayer"] .accept {
-    min-height: 2.25rem;
-    padding: 0 0.8rem;
-    font-size: 0.88rem;
-  }
-
-  .banner[data-product="constantlayer"] .privacyLink {
-    min-height: 2.25rem;
-    font-size: 0.78rem;
-    justify-content: flex-end;
-  }
 }

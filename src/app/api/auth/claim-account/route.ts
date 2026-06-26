@@ -30,7 +30,9 @@ import { authOptions } from "@lib/auth";
 import { isInternalAuthEmail } from "@lib/auth/loginIdentifiers";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
-import { getEmailValidationError, validateEmail } from "@lib/validation/emailDomainValidator";
+import { validateEmail } from "@lib/validation/emailDomainValidator";
+import { buildSecurityContext } from "@lib/security/securityContext";
+import { logger } from "@lib/monitoring/logger";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -82,6 +84,13 @@ async function linkClaimedSubscriptions(params: {
 const getMessagingPhone = (messagingUser: FirebaseFirestore.DocumentData) => (
   String(messagingUser.phone || messagingUser.providerDisplayId || "").trim()
 );
+
+const claimFailure = (message: string, status = 400) => NextResponse.json({ error: message }, { status });
+
+const buildAnonymousSecurityContext = (request: NextRequest) => ({
+  ...buildSecurityContext(null, request),
+  endpoint: request.nextUrl.pathname,
+});
 
 const createOrUpdateFirebasePasswordUser = async (params: {
   displayName?: string;
@@ -140,7 +149,12 @@ export async function POST(request: NextRequest) {
     const { claimToken, email, password, useWhatsappPhone } = body;
 
     if (!claimToken || typeof claimToken !== "string" || claimToken.length < 20) {
-      return NextResponse.json({ error: "Invalid claim token" }, { status: 400 });
+      logger.security("Input Validation Failed - Claim Account", {
+        ...buildAnonymousSecurityContext(request),
+        reason: "invalid_claim_token",
+      }, "medium");
+
+      return claimFailure("Unable to complete account claim.");
     }
 
     // Find the messaging-onboarded user doc by claimToken
@@ -151,7 +165,12 @@ export async function POST(request: NextRequest) {
       .get();
 
     if (messagingUserQuery.empty) {
-      return NextResponse.json({ error: "Claim token not found or already used" }, { status: 404 });
+      logger.security("Claim Token Not Found", {
+        ...buildAnonymousSecurityContext(request),
+        claimToken: claimToken.slice(0, 8),
+      }, "medium");
+
+      return claimFailure("Unable to complete account claim.", 404);
     }
 
     const messagingUserDoc = messagingUserQuery.docs[0];
@@ -166,12 +185,12 @@ export async function POST(request: NextRequest) {
         claimTokenExpiredAt: now,
         modifiedOn: now,
       });
-      return NextResponse.json({ error: "Claim link expired. Please request a new sign-in link." }, { status: 410 });
+      return claimFailure("This claim link has expired.", 410);
     }
 
     // Check the messaging user actually has a tenant/store
     if (!messagingUser.tenantId || !messagingUser.storeId) {
-      return NextResponse.json({ error: "No business found for this claim" }, { status: 400 });
+      return claimFailure("Unable to complete account claim.");
     }
 
     const messagingPhone = getMessagingPhone(messagingUser);
@@ -187,14 +206,17 @@ export async function POST(request: NextRequest) {
     if (useWhatsappPhone && password) {
       const validation = ClaimWithWhatsappPhoneSchema.safeParse(body);
       if (!validation.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: validation.error.flatten() },
-          { status: 400 },
-        );
+        logger.security("Input Validation Failed - Claim Account", {
+          ...buildAnonymousSecurityContext(request),
+          mode: "whatsapp_phone",
+          reason: validation.error?.issues?.[0]?.message || "invalid_input",
+        }, "medium");
+
+        return claimFailure("Unable to complete account claim.");
       }
 
       if (!phoneUsername) {
-        return NextResponse.json({ error: "No WhatsApp phone number found for this claim" }, { status: 400 });
+        return claimFailure("Unable to complete account claim.");
       }
 
       const { password: cleanPassword, name } = validation.data;
@@ -253,8 +275,6 @@ export async function POST(request: NextRequest) {
         storeIds: [String(messagingUser.storeId)],
       });
 
-      console.log(`[claim-account] ✅ WhatsApp phone setup: ${phoneUsername.slice(-4)} → tenant ${messagingUser.tenantId}`);
-
       return NextResponse.json({
         success: true,
         mode: "whatsapp-phone",
@@ -268,19 +288,20 @@ export async function POST(request: NextRequest) {
     if (email && password) {
       const validation = ClaimWithPasswordSchema.safeParse(body);
       if (!validation.success) {
-        return NextResponse.json(
-          { error: "Invalid input", details: validation.error.flatten() },
-          { status: 400 },
-        );
+        logger.security("Input Validation Failed - Claim Account", {
+          ...buildAnonymousSecurityContext(request),
+          mode: "email_password",
+          reason: validation.error?.issues?.[0]?.message || "invalid_input",
+        }, "medium");
+
+        return claimFailure("Unable to complete account claim.");
       }
 
       const { email: cleanEmail, password: cleanPassword, name } = validation.data;
       const lowerEmail = cleanEmail.toLowerCase().trim();
       const emailValidation = validateEmail(lowerEmail);
       if (!emailValidation.valid) {
-        return NextResponse.json({
-          error: getEmailValidationError(lowerEmail),
-        }, { status: 400 });
+        return claimFailure("Unable to complete account claim.");
       }
 
       // Check if email already exists in Firestore users
@@ -291,9 +312,7 @@ export async function POST(request: NextRequest) {
         .get();
 
       if (!existingUserQuery.empty) {
-        return NextResponse.json({
-          error: "This email is already registered. Please sign in with Google or use a different email.",
-        }, { status: 409 });
+        return claimFailure("Unable to complete account claim.", 409);
       }
 
       let firebaseUid: string;
@@ -306,9 +325,7 @@ export async function POST(request: NextRequest) {
         });
       } catch (fbError: any) {
         if (fbError.code === "auth/email-already-exists") {
-          return NextResponse.json({
-            error: "This email is already registered. Please use a different email or sign in with Google.",
-          }, { status: 409 });
+          return claimFailure("Unable to complete account claim.", 409);
         }
         throw fbError;
       }
@@ -364,8 +381,6 @@ export async function POST(request: NextRequest) {
         storeIds: [String(messagingUser.storeId)],
       });
 
-      console.log(`[claim-account] ✅ Email/password setup: ${lowerEmail} → tenant ${messagingUser.tenantId}`);
-
       return NextResponse.json({
         success: true,
         mode: "email-password",
@@ -378,7 +393,7 @@ export async function POST(request: NextRequest) {
     // ━━━ MODE 1: Google OAuth (requires active NextAuth session) ━━━
     const session = await getServerSession(authOptions);
     if (!session?.user?.email || !session?.user?.id) {
-      return NextResponse.json({ error: "Not authenticated. Please sign in with Google first." }, { status: 401 });
+      return claimFailure("Unable to complete account claim.", 401);
     }
 
     const googleEmail = session.user.email;
@@ -391,9 +406,7 @@ export async function POST(request: NextRequest) {
     if (googleUserDoc.exists) {
       const googleUserData = googleUserDoc.data();
       if (googleUserData?.tenantId) {
-        return NextResponse.json({
-          error: "Your Google account is already linked to a business.",
-        }, { status: 409 });
+        return claimFailure("Unable to complete account claim.", 409);
       }
     }
 
@@ -467,8 +480,6 @@ export async function POST(request: NextRequest) {
       userDocId: googleUserId,
     });
 
-    console.log(`[claim-account] ✅ Google OAuth claim: ${googleEmail} → tenant ${messagingUser.tenantId}`);
-
     return NextResponse.json({
       success: true,
       mode: "google",
@@ -477,7 +488,11 @@ export async function POST(request: NextRequest) {
       message: "Account linked successfully! You can now manage your business.",
     });
   } catch (error) {
-    console.error("[claim-account] Error:", (error as Error).message);
+    logger.error("[claim-account] Error", error instanceof Error ? error : new Error(String(error)), {
+      ...buildAnonymousSecurityContext(request),
+      errorContext: "claim_account_unexpected_error",
+    });
+
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

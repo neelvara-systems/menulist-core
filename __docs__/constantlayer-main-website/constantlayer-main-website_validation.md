@@ -69,13 +69,14 @@ Screenshots captured:
 | Hero identifies brand in first viewport | Pass | Home H1 is `ConstantLayer Systems` |
 | Hero brand does not split mid-word | Pass | Desktop and mobile screenshots show `ConstantLayer` intact |
 | Hero leaves next-section signal | Pass | Home page shows the entity ledger on all tested desktop, tablet, and mobile viewports |
-| Touch targets | Pass | Visible links/buttons measured with no sub-36px hit areas after scoped brand, footer, and compact ConstantLayer cookie-banner target fixes |
+| Touch targets | Pass | Visible links/buttons measured with no sub-36px hit areas after scoped brand and footer target fixes |
 | Active navigation | Pass | Header nav marks Products, About, Contact, and Legal-family pages with `aria-current="page"` |
 | Public-facing copy | Pass | Homepage no longer exposes internal UI/design critique language |
 | Text overlap guards | Pass | CSS uses `min-width: 0`, responsive clamps, and wrapping rules |
 | Mobile breakpoint coverage | Pass | Browser checks at 390px and 320px |
-| Public lineup positioning | Pass | Runtime copy shows MenuList, Answerlattice, and CampaignCue as current public product surfaces without the old MenuList-only relationship line |
+| Public lineup positioning | Pass | Runtime copy shows MenuList, Answerlattice, and CampaignCue as current products represented by ConstantLayer Systems without the old MenuList-only relationship line |
 | Product links | Pass | Home and Products page link to `https://menulist.ai`, `https://answerlattice.com`, and `https://campaigncue.ai` |
+| Product logos | Pass | Home product rows render the MenuList logo mark, Answerlattice logo mark, and CampaignCue icon from existing repo assets/components |
 | Product link affordance | Pass | Linked product rows show an external-link icon on desktop and mobile |
 | Product section visual strength | Pass | Home product section uses a dark product band with a compact current-public-lineup summary panel |
 | Reference presentation depth | Pass | Home page uses the Prism hero mock, entity ledger, bento grid, spotlight cards, comparison table, product band, and contact-routing cards |
@@ -133,9 +134,9 @@ Audit date: June 20, 2026.
 | --- | --- | --- |
 | Official privacy reference checked | Pass | DPDP Act and DPDP Rules official MeitY/PIB references reviewed for clear notice, purpose, and contact expectations |
 | Official e-commerce reference checked | Pass | Consumer Protection e-commerce duties reviewed; parent site has no checkout, order flow, marketplace, refund path, or paid-service terms |
-| Runtime legal copy scoped | Pass | `/legal` says product policies stay on product surfaces and does not claim incorporation, subsidiaries, or holding-company structure |
+| Runtime legal copy scoped | Pass | `/legal` says product policies stay on product sites and does not claim incorporation, subsidiaries, or holding-company structure |
 | Runtime privacy copy scoped | Pass | `/privacy` identifies technical request logs, visitor-initiated email data, and product-policy exclusions |
-| Runtime terms copy scoped | Pass | `/terms` keeps checkout, subscriptions, product onboarding, refunds, cancellation, payment, warranty, and service availability on product surfaces |
+| Runtime terms copy scoped | Pass | `/terms` keeps checkout, subscriptions, product onboarding, refunds, cancellation, payment, warranty, and service availability on product sites |
 | Runtime contact copy scoped | Pass | `/contact` warns not to send PAN, residential address, private registration records, or sensitive documents unless requested by the legal/privacy inbox |
 | Structured data scoped | Pass | Rendered JSON-LD uses `knowsAbout` for MenuList, Answerlattice, and CampaignCue and does not use `owns` |
 
@@ -209,6 +210,8 @@ Rendered content checks confirmed all public pages include the current-public-li
 
 Rendered product-link checks confirmed the Products page exposes MenuList, Answerlattice, and CampaignCue canonical production URLs.
 
+Rendered product-boundary checks confirmed no exact public-page hits for private, reserved, or unapproved names: Canonica, GrowthOS, Growth Kits, KitStamp, SurfaceOS, MyCodex, or SignalDesk. The same rendered sweep found no `future products`, `product portfolio`, or standalone `portfolio` wording.
+
 ---
 
 ## Browser QA
@@ -232,7 +235,7 @@ Additional measured evidence:
 - mobile 375x812 document width: `375px`, scroll width: `375px`
 - mobile 320x720 document width: `320px`, scroll width: `320px`
 - mobile 320x720 ledger top: `715px`
-- first-visit cookie banner height: `95px` desktop, `135px` at 375px mobile, `123px` at 320px mobile
+- ConstantLayer cookie banner check: no banner is mounted
 - visible touch-target check: no small visible targets across all tested routes/viewports
 - large hero mock is hidden on small phones by design; desktop/tablet retains the full studio mock
 - active nav check: Products/About/Contact mark themselves; Legal also marks Legal, Privacy, and Terms pages
@@ -253,7 +256,7 @@ Additional measured evidence:
 | Marketing no longer pre-redesign | Pass | Presentation direction accepts scoped Prism mesh/glass and rejects unrelated gradient systems |
 | Help/support boundary current | Pass | Helpdoc confirms the redesign does not alter support routing or data scope |
 | Test cases include visual checks | Pass | Test cases include Prism mesh/glass, section order, mobile hero, and CTA contrast checks |
-| Implementation inventory current | Pass | Implementation doc lists `SpotlightCard.tsx`, Prism styles, and the ConstantLayer-only cookie-banner touch-target stylesheet change |
+| Implementation inventory current | Pass | Implementation doc lists `SpotlightCard.tsx`, Prism styles, and confirms no ConstantLayer cookie-banner mount remains |
 
 ---
 

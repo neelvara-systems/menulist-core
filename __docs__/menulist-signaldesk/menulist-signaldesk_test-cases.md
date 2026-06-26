@@ -89,6 +89,20 @@
 | Source run has no max result count | Blocked. |
 | Provider cost exceeds cap | Paused or requires approval. |
 
+## Research Agent Table Tests
+
+| Test | Expected |
+| --- | --- |
+| Prompt-to-table run | Creates a research run, provider-backed source run, target imports, table rows, and market-pod update. |
+| Dashboard lead batch | `/signaldesk` shows Market Search, prompt presets, latest run status, and up to 30 pass/unsure cards with evidence, contact path, share message, and next safe action. |
+| Failed rows excluded | Failed research rows remain visible in Research Output but are not shown as daily leads. |
+| Research row scoring | Every row has `pass`, `fail`, or `unsure` plus a recommended next action. |
+| Source transparency | Run and rows include provider, source policy, source run, and provider-run/source references. |
+| Duplicate idempotency key | Returns the existing run/rows and creates no duplicate table rows. |
+| Source-only provider data | Does not create contact identities unless the source policy allows contact use. |
+| Mobile research run | Blocked by mobile read-only runtime policy. |
+| Mobile lead-batch actions | Dashboard/Mission lead-batch actions are disabled by UI and still blocked by server-side mobile policy. |
+
 ## Mobile Tests
 
 | Test | Expected |

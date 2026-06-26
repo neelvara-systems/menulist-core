@@ -543,6 +543,7 @@ export const guestFeedbackSubmitSchema = z.object({
     customerName: z.string().max(60).optional(),
     customerPhone: z.string().max(20).regex(/^[0-9+\-\s()]*$/, 'Invalid phone number.').optional(),
     customerEmail: z.string().email().max(120).optional(),
+    captchaToken: z.string().max(2048).optional(),
 
     // Honeypot field (for bot detection)
     // Must be empty - bots often fill hidden fields

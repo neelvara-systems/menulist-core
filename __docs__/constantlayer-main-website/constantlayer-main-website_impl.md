@@ -36,7 +36,6 @@ Middleware uses the existing generic product-site rewrite flow. No ConstantLayer
 | `src/constants/constantlayer/website.ts` | Canonical URL, public pages, contact emails, relationship line |
 | `src/constants/constantlayer/index.ts` | ConstantLayer constant exports |
 | `src/app/sites/constantlayer/layout.tsx` | Metadata, viewport, icon configuration |
-| `src/app/sites/constantlayer/ConstantLayerCookieConsentBanner.tsx` | Client-side essential-storage banner with local-prefix-aware privacy link |
 | `src/app/sites/constantlayer/content.tsx` | Shared content, shell, header/footer, cards, structured data |
 | `src/app/sites/constantlayer/ScrollRevealController.tsx` | Local viewport-entry reveal controller with reduced-motion fallback |
 | `src/app/sites/constantlayer/SpotlightCard.tsx` | Client-side cursor spotlight primitive for glass cards |
@@ -66,7 +65,6 @@ Middleware uses the existing generic product-site rewrite flow. No ConstantLayer
 | `src/constants/urls.ts` | Added ConstantLayer domain notes and reserved subdomain slug |
 | `src/lib/env/validateEnv.ts` | Added no-Firebase env validation entry for ConstantLayer |
 | `scripts/verification/verify-agent-readiness.js` | Added ConstantLayer routing and no-Firebase assertions |
-| `src/components/shared/publicCookieConsent/PublicCookieConsentBanner.module.css` | Added ConstantLayer-only privacy-link touch target styling |
 | `__docs__/CHANGELOG.md` | Recorded corrected Next/Vercel implementation |
 
 ---
@@ -76,7 +74,7 @@ Middleware uses the existing generic product-site rewrite flow. No ConstantLayer
 | Route | Responsibility |
 | --- | --- |
 | `/` | State the entity first, explain the product lineup, provide product-lineup/contact CTAs |
-| `/products` | Show approved product surfaces in the ConstantLayer lineup and link to product domains |
+| `/products` | Show approved products in the ConstantLayer lineup and link to product domains |
 | `/about` | Explain operating focus and boundaries |
 | `/contact` | List business, legal, and privacy contact points |
 | `/legal` | Provide entity and product relationship reference |
@@ -129,7 +127,7 @@ The site has:
 - no Firebase imports
 - no client-side state requirement
 - no analytics script
-- shared public cookie acknowledgement only; no analytics, ads, personalization, account, form, or gated-download behavior is introduced
+- no ConstantLayer cookie banner or browser preference storage; no analytics, ads, personalization, account, form, or gated-download behavior is introduced
 - no product app route
 - no owner/mobile PWA surface
 
@@ -160,7 +158,7 @@ Do not implement in v1:
 - product login
 - pricing
 - checkout
-- product-specific privacy terms for any product surface
+- product-specific privacy terms for any product site
 - blog
 - careers
 - press kit

@@ -77,24 +77,24 @@ export const NAV_ITEMS: NavItem[] = [
 
 export const OPERATING_ROWS: InfoCard[] = [
     {
-        title: 'Entity clarity',
-        description: 'ConstantLayer Systems is the company-level reference for business, legal, privacy, and current public product relationship checks.',
+        title: 'Company contact',
+        description: 'Business, legal, and privacy questions route to direct ConstantLayer email addresses.',
         icon: LuBuilding2,
-        meta: 'Company record',
+        meta: 'Direct inboxes',
         variant: 'warm',
     },
     {
-        title: 'Product relationship',
-        description: 'Each product keeps its own website, workflows, and product information while the company relationship stays clear here.',
+        title: 'Product lineup',
+        description: 'MenuList, Answerlattice, and CampaignCue are the current products represented here.',
         icon: LuLayers,
-        meta: 'Boundary kept',
+        meta: 'Current products',
         variant: 'cool',
     },
     {
-        title: 'Direct verification',
-        description: 'Public company questions route to business, legal, and privacy contacts without a form, account, or data collection surface.',
+        title: 'Business inbox',
+        description: 'Company and product-relationship questions start with a direct email, not a web form.',
         icon: LuShieldCheck,
-        meta: 'No parent database',
+        meta: 'Company email',
         variant: 'amber',
     },
 ];
@@ -133,7 +133,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
     products: {
         slug: 'products',
         title: 'Products',
-        description: 'MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.',
+        description: 'MenuList, Answerlattice, and CampaignCue are the current products represented by ConstantLayer Systems.',
         eyebrow: 'Public lineup',
         cards: CONSTANTLAYER_PRODUCT_LINEUP.map((product, index) => ({
             title: product.name,
@@ -146,11 +146,11 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         sections: [
             {
                 title: 'Product boundary',
-                body: 'ConstantLayer Systems is the company reference for the current public lineup. Product-specific claims, pricing, onboarding, and owner workflows remain on each product surface.',
+                body: 'ConstantLayer Systems represents the current product lineup. Product details, pricing, onboarding, and support remain on each product website.',
                 items: [
                     'MenuList, Answerlattice, and CampaignCue keep separate product sites and product-specific documentation.',
-                    'Only approved public product surfaces appear on this parent website.',
-                    'Company, legal, and privacy references can point back to this site when an entity-level source is needed.',
+                    'Only approved public products appear on this website.',
+                    'Company, legal, and privacy questions route through the ConstantLayer contact paths.',
                 ],
             },
         ],
@@ -163,7 +163,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         cards: [
             {
                 title: 'Business information',
-                description: 'The work is centered on stable public facts, governed answers, product context, and source-backed business outputs.',
+                description: 'The work is centered on clear public business facts, approved answers, and practical product context.',
                 icon: LuFileText,
                 meta: 'Public facts',
                 variant: 'warm',
@@ -190,7 +190,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 items: [
                     'The parent site stays calm, narrow, and factual.',
                     'Product-specific marketing stays on product domains.',
-                    'MenuList, Answerlattice, and CampaignCue are represented as separate product surfaces.',
+                    'MenuList, Answerlattice, and CampaignCue are represented as separate products.',
                     'GSTIN and sensitive registration details are not published unless explicitly approved.',
                 ],
             },
@@ -218,6 +218,15 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                     'Use the legal email for vendor, entity, or contract verification.',
                     'Use the privacy email for website privacy or data inquiries.',
                     'Do not send PAN, residential address, private registration records, or sensitive documents unless the legal or privacy inbox requests them.',
+                ],
+            },
+            {
+                title: 'Company questions',
+                body: `For company-level questions about ConstantLayer Systems or its current products, email ${CONSTANTLAYER_CONTACT_EMAIL}.`,
+                items: [
+                    'Use the business inbox for company questions and product relationship questions.',
+                    'Keep the first message high level; do not include private records, secrets, or customer datasets.',
+                    'Product support should go through the relevant product site.',
                 ],
             },
         ],
@@ -255,7 +264,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 title: 'Public legal note',
                 body: 'This page is the public entity reference for the parent website. It is not a product pricing page, owner dashboard, or customer support portal.',
                 items: [
-                    'Product terms and product workflows remain on each product surface.',
+                    'Product terms and product workflows remain on each product site.',
                     'Sensitive entity identifiers are withheld from parent-site public copy unless legal review requires disclosure.',
                     'This page does not claim incorporation status, subsidiaries, or holding-company structure.',
                     'Legal inquiries should use the dedicated legal email.',
@@ -265,8 +274,8 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 title: 'Product policy split',
                 body: 'ConstantLayer Systems keeps parent-site legal information separate from product policies.',
                 items: [
-                    'Product privacy, support, pricing, billing, cancellation, and refund terms belong on the relevant product surface.',
-                    'Only approved public product surfaces are included in parent-site legal copy.',
+                    'Product privacy, support, pricing, billing, cancellation, and refund terms belong on the relevant product site.',
+                    'Only approved public products are included in parent-site legal copy.',
                     'Company-level references can link here, but product commitments should not be moved into this parent page.',
                 ],
             },
@@ -303,12 +312,12 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
         sections: [
             {
                 title: 'Website privacy stance',
-                body: 'ConstantLayer Systems keeps this parent website limited to public informational pages. Product-level privacy details belong on the relevant product surface.',
+                body: 'ConstantLayer Systems keeps this parent website limited to public informational pages. Product-level privacy details belong on the relevant product site.',
                 items: [
                     'There is no newsletter signup or embedded inquiry form on this parent website.',
                     'There is no website account, lead database, product onboarding flow, or Firebase write path on this parent website.',
-                    'The site may remember a basic cookie acknowledgement preference in the visitor browser.',
-                    'Product-level privacy details belong on the relevant product surface.',
+                    'There is no ConstantLayer-owned cookie banner or preference storage on this parent website.',
+                    'Product-level privacy details belong on the relevant product site.',
                 ],
             },
             {
@@ -316,7 +325,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
                 body: 'The parent website may involve only limited technical request data and visitor-initiated email communication.',
                 items: [
                     'Hosting, CDN, and security layers may process page-request metadata and operational logs.',
-                    'A local acknowledgement preference may be stored in the visitor browser so the cookie notice does not repeat on every page.',
+                    'The parent website does not use ConstantLayer-owned analytics, form storage, or preference storage.',
                     'If a visitor sends email, the email address, message content, and related mail metadata are handled by the mail provider and relevant inbox.',
                     'This parent notice does not cover product account, business, support, campaign, billing, or customer interaction data.',
                 ],
@@ -347,7 +356,7 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
             },
             {
                 title: 'Product separation',
-                description: 'Product usage is governed by each product surface and its product terms.',
+                description: 'Product usage is governed by the relevant product and its product terms.',
                 icon: LuLayers,
                 meta: 'Separated terms',
                 variant: 'cool',
@@ -372,9 +381,9 @@ export const PAGE_DATA: Record<PageData['slug'], PageData> = {
             },
             {
                 title: 'Product terms stay separate',
-                body: 'Product usage is governed by the relevant product surface and its product terms.',
+                body: 'Product usage is governed by the relevant product and its product terms.',
                 items: [
-                    'Refund, cancellation, payment, warranty, and service-availability terms must be handled on product surfaces before paid services are accepted there.',
+                    'Refund, cancellation, payment, warranty, and service-availability terms must be handled on product sites before paid services are accepted there.',
                     'Product websites may change their product pages, pricing, support paths, or terms independently from this parent site.',
                     'Legal questions should use the dedicated legal email.',
                 ],
@@ -388,30 +397,30 @@ export const MARQUEE_ITEMS = [
     'MenuList',
     'Answerlattice',
     'CampaignCue',
-    'Company reference',
-    'Legal routing',
+    'Business information products',
+    'Company email',
     'Privacy inbox',
-    'Product boundary',
+    'Legal inbox',
 ];
 
 export const COMPARISON_ROWS: ComparisonRow[] = [
     {
         label: 'Purpose',
-        company: 'Company relationship and entity reference.',
-        products: 'Product claims, product pages, and onboarding.',
-        apps: 'Authenticated owner workflows and product data.',
+        company: 'Company name, current products, and official contact routes.',
+        products: 'Product details, pricing, onboarding, and customer-facing promises.',
+        apps: 'Signed-in owner workflows, account settings, and product data.',
+    },
+    {
+        label: 'Contact',
+        company: 'Business, legal, and privacy email addresses.',
+        products: 'Product support, sales, help docs, and account guidance.',
+        apps: 'Owner actions, team operations, and account work.',
     },
     {
         label: 'Data',
-        company: 'Static pages and a local cookie acknowledgement.',
+        company: 'Static public pages and visitor-initiated email.',
         products: 'Product-specific public policies and support paths.',
-        apps: 'Product runtime data governed by product architecture.',
-    },
-    {
-        label: 'Inquiries',
-        company: 'Business, legal, and privacy email routes.',
-        products: 'Product support and customer-facing questions.',
-        apps: 'Owner actions, team operations, and account work.',
+        apps: 'Product data governed by each product architecture.',
     },
     {
         label: 'Claims',
@@ -591,7 +600,7 @@ export function StructuredData() {
 export function HeroStudioMock() {
     const pipelineRows = [
         ['Entity', 'current', '#8ee0ff'],
-        ['Products', '3 surfaces', '#b89cff'],
+        ['Products', '3 products', '#b89cff'],
         ['Contacts', 'direct', '#ffb37a'],
         ['Storage', 'none', '#ff8fb1'],
     ] as const;
@@ -604,13 +613,13 @@ export function HeroStudioMock() {
                     <span />
                     <span />
                 </span>
-                <span>constantlayer.in / company-reference current</span>
+                <span>constantlayer.in / current products</span>
             </div>
             <div className="cl-hero-mock-grid">
                 <div className="cl-mock-tile">
                     <span className="cl-tile-label mono">Lineup clarity</span>
                     <strong className="serif">3</strong>
-                    <p>Current public surfaces, one company reference.</p>
+                    <p>Current products represented by ConstantLayer Systems.</p>
                     <div className="cl-spark-bars" aria-hidden="true">
                         {[36, 44, 30, 58, 46, 68, 82, 74].map((height) => (
                             <span style={{ height: `${height}%` }} key={height} />
@@ -707,7 +716,7 @@ export function BoundaryList() {
         ['Company contacts', true],
         ['Product pricing', false],
         ['Owner dashboard', false],
-        ['Firebase runtime', false],
+        ['Contact form', false],
     ] as const;
 
     return (
@@ -736,8 +745,8 @@ export function SecondaryPage({ page }: { page: PageData }) {
                     <p>{page.description}</p>
                     <div className="cl-page-hero-meta glass">
                         <span className="mono">{page.slug}</span>
-                        <span className="mono">company reference</span>
-                        <span className="mono">static surface</span>
+                        <span className="mono">company site</span>
+                        <span className="mono">email routes</span>
                     </div>
                 </div>
             </section>
@@ -778,7 +787,7 @@ export function SecondaryPage({ page }: { page: PageData }) {
                         <p>{CONSTANTLAYER_SITE_DESCRIPTION}</p>
                     </div>
                     <div className="cl-actions">
-                        {page.slug === 'products' ? (
+                        {page.slug === 'products' || page.slug === 'contact' ? (
                             <a className="cl-button cl-button-solid cl-button-large" href={`mailto:${CONSTANTLAYER_CONTACT_EMAIL}`}>
                                 Contact ConstantLayer
                                 <LuMail aria-hidden="true" />
@@ -800,37 +809,37 @@ export const BENTO_CARDS = [
     {
         className: 'cl-bento-tall',
         icon: LuFingerprint,
-        eyebrow: 'Entity',
-        title: 'One company record visitors can check quickly.',
-        body: 'The parent site says what the company layer is, what it is not, and where official company questions go.',
+        eyebrow: 'Company',
+        title: 'ConstantLayer Systems builds business information products.',
+        body: 'This site shows the company name, current product lineup, and official contact routes.',
     },
     {
         className: 'cl-bento-wide',
         icon: LuGlobe2,
-        eyebrow: 'Surfaces',
-        title: 'Product relationships stay visible without blending product promises.',
-        body: 'MenuList, Answerlattice, and CampaignCue remain separate public product surfaces with their own claims and owner workflows.',
+        eyebrow: 'Products',
+        title: 'MenuList, Answerlattice, and CampaignCue stay clearly separated.',
+        body: 'Each product keeps its own website, onboarding, support, pricing, and product-specific terms.',
     },
     {
         className: 'cl-bento-med',
         icon: LuLock,
-        eyebrow: 'Privacy',
-        title: 'No account or form is introduced.',
-        body: 'Company questions route to direct inboxes. The parent website does not create a lead database.',
+        eyebrow: 'Contact',
+        title: 'Company questions go to email.',
+        body: 'Visitors can email ConstantLayer for company, legal, or privacy questions. Product support stays on product sites.',
     },
     {
         className: 'cl-bento-med',
         icon: LuDatabase,
-        eyebrow: 'Runtime',
-        title: 'No Firebase-backed product identity.',
-        body: 'ConstantLayer stays a static website surface and does not become a stored product code or owner app.',
+        eyebrow: 'No form',
+        title: 'The site does not collect messages in a database.',
+        body: 'There is no contact form, newsletter signup, account, or parent-site lead database.',
     },
     {
         className: 'cl-bento-small',
         icon: LuCpu,
-        eyebrow: 'Routing',
-        title: 'Canonical domain stays clear.',
-        body: 'The route works through the existing product-site architecture without adding a product runtime.',
+        eyebrow: 'Support',
+        title: 'Product support stays on product sites.',
+        body: 'MenuList, Answerlattice, and CampaignCue handle their own product-specific questions.',
     },
     {
         className: 'cl-bento-small',

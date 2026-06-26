@@ -445,38 +445,59 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
 | Lifecycle messaging (emails)  | ✅ Auto    | Fires on billing events, renewal reminders     |
 | AI key rotation               | ✅ Auto    | Rotates on 429 errors, retries with next key   |
 | SMTP setup for messaging      | ❌ Manual  | One-time setup (10 min) — Gmail or custom SMTP |
-| Add extra Gemini API keys     | ❌ Manual  | Optional — add 2-3 extra keys for high traffic |
+| Gemini key isolation          | ❌ Manual  | Required — separate restricted staging/prod keys |
+| Optional Gemini rotation keys | ❌ Manual  | Optional — leak response/failover, not quota scaling |
+| AI provider health records    | ☐ Pre-prod verify | `_health/aiProvider_gemini` and `platformSummary/answerlatticeAiProviderHealth` |
 
 ---
 
-## Step 9: AI Key Rotation Setup (5 minutes) — OPTIONAL
+## Step 9: Gemini Key Isolation And Health Verification
 
-> Only needed if you expect high concurrent AI usage (100+ simultaneous users).
-> With a single key, the gateway still provides retry + backoff protection.
+> Required before production. A single unrestricted Gemini key shared across local,
+> staging, and production is not acceptable for launch.
 
-### Add Extra Gemini API Keys
+### Required Owner Steps
 
-1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
-2. Create 2-3 additional API keys (same project is fine)
-3. Store in Firebase Functions secrets:
+1. Go to [Google AI Studio](https://aistudio.google.com/apikey).
+2. Create a dedicated staging key and a dedicated production key.
+3. Restrict each key to the Gemini API.
+4. Confirm the production key is not used by local development or staging.
+5. Store the staging key in Vercel staging `GEMINI_AI_KEY`.
+6. Store the production key in Vercel production `GEMINI_AI_KEY`.
+7. Store the MenuList Functions values in Firebase Secret Manager for `menulist-qa` and `menulist`.
+8. Configure budget alerts, spend monitoring, and model/project quota checks for the key's Google Cloud project.
+9. Deploy the Functions that own AI provider health checks after project access and secrets are ready.
+10. Confirm the provider health records update:
 
-```bash
-firebase functions:secrets:set GEMINI_AI_KEY_2
-# Paste: AIza...
-
-firebase functions:secrets:set GEMINI_AI_KEY_3
-# Paste: AIza...
-
-firebase functions:secrets:set GEMINI_AI_KEY_4
-# Paste: AIza...
+```text
+MenuList: _health/aiProvider_gemini
+Answerlattice: platformSummary/answerlatticeAiProviderHealth
 ```
 
-4. Add to Vercel environment variables (same key names)
-5. Redeploy both CF and Vercel
+Current blocker logged June 26, 2026: this shell account cannot deploy to
+`menulist-qa` or `answerlattice-qa`; both deploy attempts passed predeploy build
+and then failed with Cloud Resource Manager `403 The caller does not have
+permission`.
 
-**How it works:** The KeyManager auto-discovers available keys at startup. On 429 rate limit errors, it rotates to the next healthy key and retries immediately. Keys that hit rate limits get a 60s→120s→5min exponential cooldown.
+### Optional Rotation Keys
 
-**Cost: ₹0** — Google AI Studio API keys are free to create. You pay per API call, not per key.
+Add these only when real rotation/failover keys exist. They are useful for
+credential rotation, leak response, and transient failover. They do not create
+unlimited capacity when all keys belong to the same Google project.
+
+```bash
+firebase functions:secrets:set GEMINI_AI_KEY_2 --project menulist-qa
+firebase functions:secrets:set GEMINI_AI_KEY_3 --project menulist-qa
+firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa
+```
+
+Repeat with `--project menulist` for production values after QA passes.
+
+**How it works:** The KeyManager auto-discovers available keys at startup. On
+429 rate limit errors, it rotates to the next healthy key and retries. Keys that
+hit rate limits get a 60s→120s→5min exponential cooldown. Rate limits still
+belong to the Google project/model tier, so production scaling requires billing,
+quota monitoring, budget alerts, and quota increase requests.
 
 ---
 
@@ -489,3 +510,4 @@ firebase functions:secrets:set GEMINI_AI_KEY_4
 | 1.2     | March 13, 2026    | Added Step 9: AI key rotation setup for multi-key Gemini protection        |
 | 1.3     | May 24, 2026      | Added Cloud Billing export and SAFE_MODE pre-production verification gates |
 | 1.4     | June 2, 2026      | Added platform alert Email/WhatsApp go-live checklist                      |
+| 1.5     | June 26, 2026     | Reframed Gemini setup around key isolation, quota monitoring, and AI provider health verification |

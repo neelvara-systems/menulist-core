@@ -669,8 +669,19 @@ const applyRateLimit = async (
     );
 };
 
+const getFirebaseAuthApiKey = () => process.env.FIREBASE_API_KEY;
+
+const resolveStoreMappingErrorCode = (error: unknown): string => {
+    const rawCode = error instanceof Error ? error.message : '';
+    if (rawCode === 'DUPLICATE_STORE_MAPPING' || rawCode === 'STORE_NOT_FOUND' || rawCode === 'ROLE_NOT_FOUND') {
+        return rawCode;
+    }
+
+    return 'INVALID_STORE_OR_ROLE';
+};
+
 const sendFirebasePasswordResetEmail = async (email: string) => {
-    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    const apiKey = getFirebaseAuthApiKey();
     if (!apiKey) {
         return { ok: false, error: "FIREBASE_API_KEY_MISSING" };
     }
@@ -687,9 +698,10 @@ const sendFirebasePasswordResetEmail = async (email: string) => {
     if (response.ok) return { ok: true };
 
     const data = await response.json().catch(() => ({}));
+    const apiError = data?.error?.message || "PASSWORD_RESET_EMAIL_FAILED";
     return {
         ok: false,
-        error: data?.error?.message || "PASSWORD_RESET_EMAIL_FAILED",
+        error: apiError,
     };
 };
 
@@ -774,7 +786,13 @@ export const createStaffUser = async (
             storeId: input.storeId,
         }], input.tenantId);
     } catch (error: any) {
-        return jsonError("Invalid store or role", 400, error.message);
+        const code = resolveStoreMappingErrorCode(error);
+        logSecurity('Input Validation Failed - Staff Store Mapping', session, request, {
+            code,
+            tenantId: input.tenantId,
+            storeId: input.storeId,
+        }, 'medium');
+        return jsonError("Invalid store or role", 400, code);
     }
 
     const hasStaffEmail = Boolean(input.email);
@@ -964,7 +982,7 @@ export const createStaffUser = async (
             ? "Staff user created. They can set their password via the login page."
             : "Staff user created. Share the staff ID and temporary passcode with them.",
         mode: "new_user_created",
-        passwordResetEmailError: hasStaffEmail && !passwordResetEmail.ok ? passwordResetEmail.error : undefined,
+        passwordResetEmailError: hasStaffEmail && !passwordResetEmail.ok ? "password_reset_email_failed" : undefined,
         passwordResetEmailSent: hasStaffEmail ? passwordResetEmail.ok : false,
         staffAuthMode: authMode,
         staffLoginId,
@@ -1015,7 +1033,13 @@ export const updateStaffUser = async (
             ? await validateStoreMappings(input.stores, input.tenantId)
             : currentStores;
     } catch (error: any) {
-        return jsonError("Invalid store or role", 400, error.message);
+        const code = resolveStoreMappingErrorCode(error);
+        logSecurity('Input Validation Failed - Staff Store Mapping', session, request, {
+            code,
+            tenantId: input.tenantId,
+            userId: input.userId,
+        }, 'medium');
+        return jsonError("Invalid store or role", 400, code);
     }
 
     if (input.storeId && !nextStores.some((store) => Number(store.storeId) === input.storeId)) {

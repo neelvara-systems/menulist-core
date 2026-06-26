@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import ConstantLayerCookieConsentBanner from './ConstantLayerCookieConsentBanner';
 import './styles.css';
 import {
     CONSTANTLAYER_SITE_DESCRIPTION,
@@ -34,8 +33,8 @@ export const metadata: Metadata = {
     },
     keywords: [
         'ConstantLayer Systems',
-        'company reference',
-        'public product surfaces',
+        'business information products',
+        'custom business information solutions',
         'MenuList',
         'Answerlattice',
         'CampaignCue',
@@ -82,10 +81,5 @@ interface ConstantLayerLayoutProps {
 }
 
 export default function ConstantLayerLayout({ children }: ConstantLayerLayoutProps) {
-    return (
-        <>
-            {children}
-            <ConstantLayerCookieConsentBanner />
-        </>
-    );
+    return <>{children}</>;
 }

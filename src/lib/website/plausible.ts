@@ -8,26 +8,38 @@ type PlausibleFunction = ((eventName: string, options?: { interactive?: boolean 
     q?: IArguments[];
 };
 
-const PUBLIC_WEBSITE_ANALYTICS_CONSENT_KEYS = [
-    'menulist_website_analytics_consent_v1',
-    'answerlattice_website_analytics_consent_v1',
-];
-
-const HAS_PLAUSIBLE_WEBSITE_ANALYTICS = Boolean(
-    process.env.NEXT_PUBLIC_MENULIST_PLAUSIBLE_DOMAIN ||
-    process.env.NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN,
-);
+const MENULIST_ANALYTICS_CONSENT_KEY = 'menulist_website_analytics_consent_v1';
+const ANSWERLATTICE_ANALYTICS_CONSENT_KEY = 'answerlattice_website_analytics_consent_v1';
 
 function normalizeEventName(eventName?: string | null): string | undefined {
     const normalized = eventName?.trim();
     return normalized || undefined;
 }
 
+function isAnswerlatticePublicWebsite(): boolean {
+    const hostname = window.location.hostname.replace(/^www\./, '');
+    const pathname = window.location.pathname;
+
+    return hostname.includes('answerlattice') || pathname.startsWith('/__answerlattice');
+}
+
+function hasPlausibleAnalyticsForActiveWebsite(): boolean {
+    return isAnswerlatticePublicWebsite()
+        ? Boolean(process.env.NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN)
+        : Boolean(process.env.NEXT_PUBLIC_MENULIST_PLAUSIBLE_DOMAIN);
+}
+
+function getActivePublicWebsiteConsentKey(): string {
+    if (isAnswerlatticePublicWebsite()) {
+        return ANSWERLATTICE_ANALYTICS_CONSENT_KEY;
+    }
+
+    return MENULIST_ANALYTICS_CONSENT_KEY;
+}
+
 function hasAcceptedPublicWebsiteAnalyticsConsent(): boolean {
     try {
-        return PUBLIC_WEBSITE_ANALYTICS_CONSENT_KEYS.some((storageKey) => (
-            window.localStorage.getItem(storageKey) === 'accepted'
-        ));
+        return window.localStorage.getItem(getActivePublicWebsiteConsentKey()) === 'accepted';
     } catch {
         return false;
     }
@@ -50,7 +62,8 @@ function getOrCreatePlausibleQueue(analyticsWindow: PlausibleWindow): PlausibleF
 
 export function trackPlausibleEvent(eventName?: string | null) {
     if (typeof window === 'undefined') return;
-    if (!HAS_PLAUSIBLE_WEBSITE_ANALYTICS) return;
+    if (process.env.NODE_ENV === 'development') return;
+    if (!hasPlausibleAnalyticsForActiveWebsite()) return;
 
     const normalizedEventName = normalizeEventName(eventName);
     if (!normalizedEventName) return;

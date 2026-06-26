@@ -2,7 +2,7 @@
 
 **Status:** Editor-backed alignment layer
 **Owner:** MenuList
-**Last Updated:** June 25, 2026
+**Last Updated:** June 26, 2026
 
 Branded QR Action Templates is the product contract for turning a physical QR surface into a branded customer action point without becoming a generic QR generator or unsafe QR art tool.
 

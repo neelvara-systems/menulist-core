@@ -105,14 +105,15 @@ The implemented runtime covers:
 17. Google Places source-provider import.
 18. FHRS/FHIS UK source-provider import as source/evidence only, not contact permission.
 19. Apify Source Broker import and webhook event logging.
-20. Gemini AI assist through model routes and budget checks.
-21. Provider registry and budget governor.
-22. AI model routes and model evaluation summaries.
-23. Vendor run ledger.
-23. Enrichment waterfall policies and normalized enrichment results.
-24. Audience and signal segments.
-25. Market pod recommender.
-26. Weekly strategist memo.
+20. Dashboard lead batch and Origami-style Research Agent Table with prompt presets, prompt-to-provider plan, enrichment rows, pass/fail/unsure scoring, source transparency, idempotency, market-pod mapping, failed-row exclusion from daily leads, contact path, share message, and next safe action.
+21. Gemini AI assist through model routes and budget checks.
+22. Provider registry and budget governor.
+23. AI model routes and model evaluation summaries.
+24. Vendor run ledger.
+25. Enrichment waterfall policies and normalized enrichment results.
+26. Audience and signal segments.
+27. Market pod recommender.
+28. Weekly strategist memo.
 27. Provider-source retention refresh records.
 28. Provider evaluation shell.
 29. Self-service proof CTA model.
@@ -216,6 +217,7 @@ Current posture:
 - Apify Source Broker is implemented as a gated source/evidence connector.
 - FHRS/FHIS UK source-provider import is implemented as official establishment seed/evidence only; no contact permission or public rating feature is inferred.
 - Google Places source-provider import is implemented.
+- Dashboard lead batch and Research Agent Table are implemented inside `/signaldesk` and `/signaldesk/mission`; they copy Origami's useful prompt-to-table behavior without adding Origami integration, sequencer sending, or public SignalDesk pages.
 - Gemini AI assist is implemented behind model route, provider approval, and budget gates.
 - Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, and similar paid adapters are intentionally skipped for now.
 - External sequencer APIs such as Smartlead, Instantly, and lemlist are not sending. SignalDesk may create handoff readiness records only.

@@ -1,9 +1,9 @@
 # MenuList SignalDesk - Documentation Hub
 
 **Project:** MenuList SignalDesk
-**Status:** Internal workflow, internal team access management, connector settings, FHRS/FHIS UK source provider, Apify source broker, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation shell, gated provider/source/AI/channel runtime, Content Distribution Rail runtime, Trust Partner Rail runtime, and solo-founder Operating Layer runtime implemented for internal testing; paid campaigns, paid external adapters, provider send, auto-publish, and Firebase deploy skipped
+**Status:** Internal workflow, internal team access management, connector settings, dashboard lead batch, FHRS/FHIS UK source provider, Apify source broker, Origami-style Research Agent Table, owned email sequencer queue, market pod planner, weekly strategist memo, provider evaluation shell, gated provider/source/AI/channel runtime, Content Distribution Rail runtime, Trust Partner Rail runtime, and solo-founder Operating Layer runtime implemented for internal testing; paid campaigns, paid external adapters, provider send, auto-publish, and Firebase deploy skipped
 **Created:** June 23, 2026
-**Last Updated:** June 25, 2026
+**Last Updated:** June 26, 2026
 **Owner:** Danny and MenuList marketing/growth team
 **Audience:** Internal only
 
@@ -44,6 +44,7 @@ private MenuList growth control room
 -> attribution to MenuList outcomes
 -> demand signals from MenuList links, QR, shares, and claim attempts
 -> founder observes, monitors, approves, pauses, or redirects
+-> dashboard shows up to 30 prepared leads with evidence, contact path, share message, and next safe action
 -> content source assets become approval-gated distribution drafts and queued calendar items
 ```
 
@@ -91,6 +92,7 @@ Do not start with:
 | [Content Distribution Rail](./signaldesk-content-distribution-rail/README.md) | Owned proof assets, platform-ready drafts, approvals, calendar queue, and manual performance capture. |
 | [Trust Partner Rail](./signaldesk-trust-partner-rail/README.md) | Partner/creator trust-channel testing, lean briefs, deal tracking, deliverables, and renewal decisions. |
 | [Operating Layer](./signaldesk-operating-layer/README.md) | Daily Growth Mission, experiment cards, offer CTA OS, reply playbooks, source quality learning, and 7-day trial controls. |
+| [Research Agent Table](./signaldesk-operating-layer/signaldesk-operating-layer_research-agent-table.md) | Prompt-to-table research workflow plus dashboard lead batch with source-provider runs, enrichment columns, pass/fail/unsure scoring, source transparency, idempotency, and market-pod mapping. |
 | [Specification](./menulist-signaldesk_spec.md) | Business/product requirements for the internal project. |
 | [Implementation Plan](./menulist-signaldesk_impl.md) | Technical blueprint, architecture, module order, and reserved file layout. |
 | [Firebase Cost Plan](./menulist-signaldesk_firebase.md) | Separate Firebase posture, collections, cost controls, and dashboard read strategy. |
@@ -150,7 +152,7 @@ Reserved or owner-gated modules:
 - campaign experiments
 - local cluster expansion
 - AI optimizer
-- solo-founder operating layer: Daily Growth Mission, Offer and CTA OS, Reply-to-Conversion Assistant, Experiment Cards, and Source Quality Learning are implemented as private runtime records and `/signaldesk/mission`; self-serve owner route, referral loop, and public MenuList marketing surfaces remain separate MenuList-side work
+- solo-founder operating layer: Dashboard lead batch, Research Agent Table, Daily Growth Mission, Offer and CTA OS, Reply-to-Conversion Assistant, Experiment Cards, and Source Quality Learning are implemented as private runtime records and `/signaldesk` / `/signaldesk/mission`; self-serve owner route, referral loop, and public MenuList marketing surfaces remain separate MenuList-side work
 
 ## Architecture Summary
 
@@ -216,3 +218,5 @@ Approved sources
 | 2.6 | 2026-06-24 | Created the separate MenuList Activation Concierge doc set and preserved SignalDesk as outcome observer only, with no MenuList truth writes or send/provider expansion. |
 | 2.7 | 2026-06-25 | Added SignalDesk-only internal team access management in Settings: founder admins can add/update/deactivate members by login email, assign SignalDesk roles, preserve private auth gating, and audit membership changes. |
 | 2.8 | 2026-06-25 | Added the FHRS/FHIS UK source provider as an official establishment seed for source/evidence use only, with source policy, provider account, provider budget, retention, verifier, and E2E coverage; no contact permission, public rating feature, or send enablement added. |
+| 2.9 | 2026-06-26 | Added the Origami-style Research Agent Table to SignalDesk Mission: prompt-to-provider plan, governed source run, enrichment table rows, pass/fail/unsure scoring, source transparency, idempotency, market-pod update, verifier, and local E2E coverage; no Origami integration or send automation added. |
+| 3.0 | 2026-06-26 | Added and tightened the Dashboard lead-batch search flow: Market Search on `/signaldesk`, prompt presets, Today's Lead Batch on Dashboard/Mission, structured evidence/contact/share/next cards, failed-row exclusion, 30-row governed cap, verifier assertions, and local E2E dashboard workspace coverage; no provider send or MenuList truth write added. |

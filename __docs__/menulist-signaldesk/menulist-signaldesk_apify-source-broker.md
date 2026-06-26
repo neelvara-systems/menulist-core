@@ -54,7 +54,7 @@ The configured source Actor must accept the compact local-business input shape S
 3. Runs require an active provider source policy.
 4. Runs require evidence use to be allowed by that policy.
 5. Contact fields returned by Apify are stripped unless the source policy explicitly allows contact use.
-6. Each run is capped at 1-20 rows.
+6. Each run is capped at 1-30 rows.
 7. Each run is checked against provider account and budget policies before the external call.
 8. Spend is recorded only after a successful provider run/import.
 9. Webhooks store event type, run ID, payload hash, source health, and status only.

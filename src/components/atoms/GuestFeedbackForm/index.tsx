@@ -3,10 +3,11 @@
 import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults, GuestFeedbackSubmitState } from '@type/guestFeedback';
 import type { StoreDataType } from '@type/platform/store';
 import OBPThemeToggle from '@/app/client/obp/OBPThemeToggle';
+import TurnstileWidget, { isTurnstileClientEnabled, type TurnstileStatus } from '@/components/security/TurnstileWidget';
 import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
 import MenuFooter from '@template/main-app/projects/b2cView/output/MenuFooter';
 import { message } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     LuBadgeCheck,
     LuChevronRight,
@@ -193,6 +194,10 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
     const [reviewUrl, setReviewUrl] = useState<string | null>(null);
     const [ratingTouched, setRatingTouched] = useState(false);
     const [touchedFields, setTouchedFields] = useState<Partial<Record<keyof Omit<FormState, 'website'>, boolean>>>({});
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
+    const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+    const captchaRequired = isTurnstileClientEnabled();
 
     const settings = { ...DEFAULT_FEEDBACK_SETTINGS, ...feedbackDefaults };
     const ratingCopy = RATING_COPY[rating] || {
@@ -233,6 +238,12 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
         setTouchedFields((current) => ({ ...current, [field]: true }));
     };
 
+    const resetCaptcha = useCallback(() => {
+        if (!captchaRequired) return;
+        setCaptchaToken(null);
+        setCaptchaResetSignal((current) => current + 1);
+    }, [captchaRequired]);
+
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
@@ -253,6 +264,11 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
             return;
         }
 
+        if (captchaRequired && !captchaToken) {
+            message.error('Complete the security check and try again.');
+            return;
+        }
+
         setSubmitState('submitting');
 
         try {
@@ -270,10 +286,12 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                     customerPhone: formValues.customerPhone.trim() || undefined,
                     customerEmail: formValues.customerEmail.trim() || undefined,
                     website: formValues.website,
+                    captchaToken: captchaToken || undefined,
                 }),
             });
 
             const data = await response.json();
+            resetCaptcha();
 
             if (response.ok && data.success) {
                 setSubmitState('success');
@@ -288,10 +306,13 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                 : '';
             message.error(validationMessage || data.error || 'Failed to submit feedback');
         } catch {
+            resetCaptcha();
             setSubmitState('error');
             message.error('Network error. Please try again.');
         }
     };
+
+    const submitDisabled = rating === 0 || submitState === 'submitting' || (captchaRequired && !captchaToken);
 
     const publicFooter = storeDetails ? (
         <div className={styles.menuFooter}>
@@ -541,13 +562,27 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                                 value={formValues.website}
                             />
 
+                            <TurnstileWidget
+                                action="guest_feedback"
+                                onStatusChange={setCaptchaStatus}
+                                onTokenChange={setCaptchaToken}
+                                resetSignal={captchaResetSignal}
+                                theme="auto"
+                            />
+
+                            {captchaRequired && captchaStatus === 'error' ? (
+                                <p className={styles.errorText}>
+                                    Security check did not load. Refresh the page and try again.
+                                </p>
+                            ) : null}
+
                             <button
                                 className={[
                                     styles.cta,
-                                    rating === 0 || submitState === 'submitting' ? styles.ctaDisabled : '',
+                                    submitDisabled ? styles.ctaDisabled : '',
                                 ].filter(Boolean).join(' ')}
-                                disabled={rating === 0 || submitState === 'submitting'}
-                                style={rating === 0 || submitState === 'submitting'
+                                disabled={submitDisabled}
+                                style={submitDisabled
                                     ? undefined
                                     : { background: primaryCtaColor, color: primaryCtaTextColor }}
                                 type="submit"

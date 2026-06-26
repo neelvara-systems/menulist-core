@@ -1401,7 +1401,6 @@ export default function CreativeEditor({
     const [imageUrl, setImageUrl] = useState("");
     const [qrValue, setQrValue] = useState("https://example.com/");
     const [qrDarkColor, setQrDarkColor] = useState("#16231f");
-    const [qrLightColor, setQrLightColor] = useState("#ffffff");
     const [qrSize, setQrSize] = useState(164);
     const [selectedQrActionPresetId, setSelectedQrActionPresetId] = useState<QrActionPreset["id"]>("menu");
     const [backgroundMode, setBackgroundMode] = useState<"solid" | "gradient">(
@@ -2526,7 +2525,6 @@ export default function CreativeEditor({
         setImageUrl("");
         setQrValue("https://example.com/");
         setQrDarkColor("#16231f");
-        setQrLightColor("#ffffff");
         setQrSize(164);
         setDrawerSearch("");
         setRecentInsertions([]);
@@ -3550,7 +3548,7 @@ export default function CreativeEditor({
             darkColor: qrDarkColor,
             errorCorrectionLevel: "H",
             height: size,
-            lightColor: qrLightColor,
+            lightColor: "#ffffff",
             margin: 4,
             width: size,
             x: Math.round((documentRef.current.canvas.width - size) / 2),
@@ -5564,16 +5562,8 @@ export default function CreativeEditor({
                                 value={qrDarkColor}
                             />
                         </label>
-                        <label>
-                            Background
-                            <input
-                                aria-label="QR background color"
-                                onChange={(event) => setQrLightColor(event.target.value)}
-                                type="color"
-                                value={qrLightColor}
-                            />
-                        </label>
                     </div>
+                    <p className={styles.legacyHelperText}>QR scan panel stays white for reliable printing.</p>
                     <label>
                         Size
                         <input
@@ -6680,16 +6670,20 @@ export default function CreativeEditor({
                                     value={selectedElement.darkColor || "#16231f"}
                                 />
                             </label>
-                            <label>
-                                Background
-                                <input
-                                    disabled={selectedIsLocked}
-                                    onChange={(event) => updateSelected({ lightColor: event.target.value } as Partial<CreativeEditorElement>)}
-                                    type="color"
-                                    value={selectedElement.lightColor || "#ffffff"}
-                                />
-                            </label>
                         </div>
+                        {selectedElement.lightColor && selectedElement.lightColor !== "#ffffff" ? (
+                            <button
+                                className={styles.inlineActionButton}
+                                disabled={selectedIsLocked}
+                                onClick={() => updateSelected({ errorCorrectionLevel: "H", lightColor: "#ffffff", margin: 4 } as Partial<CreativeEditorElement>)}
+                                type="button"
+                            >
+                                <LuShieldCheck size={16} />
+                                Reset white scan panel
+                            </button>
+                        ) : (
+                            <p className={styles.legacyHelperText}>QR scan panel stays white for reliable printing.</p>
+                        )}
                     </>
                 ) : null}
                 {renderQuickColorControls()}
@@ -8363,16 +8357,20 @@ export default function CreativeEditor({
                                                 value={selectedElement.darkColor || "#16231f"}
                                             />
                                         </label>
-                                        <label>
-                                            Background
-                                            <input
-                                                disabled={selectedElement.locked}
-                                                onChange={(event) => updateSelected({ lightColor: event.target.value } as Partial<CreativeEditorElement>)}
-                                                type="color"
-                                                value={selectedElement.lightColor || "#ffffff"}
-                                            />
-                                        </label>
                                     </div>
+                                    {selectedElement.lightColor && selectedElement.lightColor !== "#ffffff" ? (
+                                        <button
+                                            className={styles.inlineActionButton}
+                                            disabled={selectedElement.locked}
+                                            onClick={() => updateSelected({ errorCorrectionLevel: "H", lightColor: "#ffffff", margin: 4 } as Partial<CreativeEditorElement>)}
+                                            type="button"
+                                        >
+                                            <LuShieldCheck size={16} />
+                                            Reset white scan panel
+                                        </button>
+                                    ) : (
+                                        <p className={styles.legacyHelperText}>QR scan panel stays white for reliable printing.</p>
+                                    )}
                                 </>
                             ) : null}
                         </div>

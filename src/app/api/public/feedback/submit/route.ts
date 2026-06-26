@@ -17,9 +17,15 @@ import { logFeedbackMOLEventAdmin, submitGuestFeedbackAdmin } from '@database/gu
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { secureError } from '@lib/security/secureLogger';
+import { withCORS } from '@lib/security/corsValidation';
 import { guestFeedbackSubmitSchema } from '@lib/validation/apiSchemas';
 import { NextRequest, NextResponse } from 'next/server';
-import { checkPublicRateLimit, sanitizeString, validateHoneypot } from 'src/middleware/publicApi';
+import {
+    checkPublicRateLimit,
+    sanitizeString,
+    validateHoneypot,
+    verifyTurnstileToken,
+} from 'src/middleware/publicApi';
 
 type EffectiveFeedbackDefaults = {
     collectComment: boolean;
@@ -45,12 +51,11 @@ function resolveFeedbackDefaults(raw: any): EffectiveFeedbackDefaults {
     };
 }
 
-function requiredFieldError(field: string, message: string) {
+function requiredFieldError() {
     return NextResponse.json(
         {
             success: false,
             error: 'Validation failed.',
-            details: [{ field, message }],
         },
         { status: 400 },
     );
@@ -62,7 +67,7 @@ function requiredFieldError(field: string, message: string) {
  * Submit guest feedback for a restaurant.
  * Public endpoint - no authentication required.
  */
-export async function POST(req: NextRequest) {
+async function postGuestFeedback(req: NextRequest) {
     // 1. Check feature flag
     if (!FEATURE_FLAGS.ENABLE_GUEST_FEEDBACK) {
         return NextResponse.json(
@@ -93,10 +98,6 @@ export async function POST(req: NextRequest) {
             {
                 success: false,
                 error: 'Validation failed.',
-                details: validation.error.issues.map(i => ({
-                    field: i.path.join('.'),
-                    message: i.message,
-                })),
             },
             { status: 400 }
         );
@@ -110,6 +111,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
             { success: true, feedbackId: 'submitted' },
             { status: 201 }
+        );
+    }
+
+    const captchaResult = await verifyTurnstileToken(data.captchaToken, req);
+    if (!captchaResult.ok) {
+        return NextResponse.json(
+            {
+                success: false,
+                error: 'Could not verify request. Please try again.',
+            },
+            { status: 403 },
         );
     }
 
@@ -213,10 +225,10 @@ export async function POST(req: NextRequest) {
     const effectivePhone = defaults.collectPhone ? sanitizedPhone : undefined;
     const effectiveEmail = defaults.collectEmail ? sanitizedEmail : undefined;
 
-    if (defaults.collectCommentRequired && !effectiveMessage) return requiredFieldError('message', 'Comment is required.');
-    if (defaults.collectNameRequired && !effectiveName) return requiredFieldError('customerName', 'Name is required.');
-    if (defaults.collectPhoneRequired && !effectivePhone) return requiredFieldError('customerPhone', 'Phone is required.');
-    if (defaults.collectEmailRequired && !effectiveEmail) return requiredFieldError('customerEmail', 'Email is required.');
+    if (defaults.collectCommentRequired && !effectiveMessage) return requiredFieldError();
+    if (defaults.collectNameRequired && !effectiveName) return requiredFieldError();
+    if (defaults.collectPhoneRequired && !effectivePhone) return requiredFieldError();
+    if (defaults.collectEmailRequired && !effectiveEmail) return requiredFieldError();
 
     // 9. Submit feedback
     try {
@@ -254,17 +266,4 @@ export async function POST(req: NextRequest) {
     }
 }
 
-/**
- * OPTIONS - CORS preflight
- */
-export async function OPTIONS() {
-    return new NextResponse(null, {
-        status: 204,
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Max-Age': '86400',
-        },
-    });
-}
+export const POST = withCORS(postGuestFeedback);

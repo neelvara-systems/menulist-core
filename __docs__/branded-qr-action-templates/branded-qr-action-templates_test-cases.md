@@ -1,7 +1,7 @@
 # Branded QR Action Templates Test Cases
 
 **Status:** Editor-backed alignment layer
-**Last Updated:** June 25, 2026
+**Last Updated:** June 26, 2026
 
 ## Docs Alignment Tests
 
@@ -17,6 +17,8 @@
 - Adding an action card creates editable frame, headline, helper, destination hint, QR panel, and QR layers.
 - Action-card QR uses `errorCorrectionLevel: "H"`, `margin: 4`, and `lightColor: "#ffffff"`.
 - Plain QR insertion still works for simple QR-only use cases.
+- QR drawer and selected-QR inspector do not expose raw QR background color controls.
+- Legacy non-white QR layers can be repaired with Reset white scan panel.
 - Project style changes do not recolor QR light modules away from white.
 - Campaign starters that include QR preserve the same scan-safe QR defaults.
 

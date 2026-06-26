@@ -14,11 +14,18 @@ import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { secureError, secureLog } from '@lib/security/secureLogger';
+import { withCORS } from '@lib/security/corsValidation';
 import * as admin from 'firebase-admin';
 import { createHash } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { checkPublicRateLimit, getClientIp, sanitizeString, validateHoneypot } from 'src/middleware/publicApi';
+import {
+    checkPublicRateLimit,
+    getClientIp,
+    sanitizeString,
+    validateHoneypot,
+    verifyTurnstileToken,
+} from 'src/middleware/publicApi';
 
 const ContactTopicSchema = z.enum(['setup', 'demo', 'pricing', 'partnership', 'security', 'other']);
 
@@ -32,6 +39,7 @@ const ContactRequestSchema = z.object({
     consent: z.boolean().refine((value) => value === true),
     sourcePath: z.string().trim().max(240).optional().nullable(),
     website: z.string().optional().nullable(),
+    captchaToken: z.string().max(2048).optional(),
 });
 
 const getAnswerlatticeDb = () => {
@@ -48,7 +56,7 @@ const hashIp = (ip: string): string => (
     createHash('sha256').update(ip || 'unknown').digest('hex')
 );
 
-export async function POST(request: NextRequest) {
+async function postAnswerlatticeContact(request: NextRequest) {
     const rateLimitResponse = await checkPublicRateLimit(request, 'ANSWERLATTICE_CONTACT_FORM');
     if (rateLimitResponse) return rateLimitResponse;
 
@@ -67,6 +75,14 @@ export async function POST(request: NextRequest) {
     const body = validation.data;
     if (!validateHoneypot(body.website || undefined)) {
         return NextResponse.json({ accepted: true });
+    }
+
+    const captchaResult = await verifyTurnstileToken(body.captchaToken, request);
+    if (!captchaResult.ok) {
+        return NextResponse.json(
+            { accepted: false, error: 'Could not verify request. Please try again.' },
+            { status: 403 },
+        );
     }
 
     const db = getAnswerlatticeDb();
@@ -118,3 +134,5 @@ export async function POST(request: NextRequest) {
         );
     }
 }
+
+export const POST = withCORS(postAnswerlatticeContact);

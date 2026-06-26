@@ -46,7 +46,8 @@
     "verify:public-business-truth": "node scripts/verification/verify-public-business-truth.js",
     "verify:growthos": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/verify-growthos-flow.ts",
     "verify:owner-business-assistant": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/verify-owner-business-assistant-hardening.ts",
-    "verify:ai-menu-manager": "node scripts/verification/verify-ai-menu-manager.js"
+    "verify:ai-menu-manager": "node scripts/verification/verify-ai-menu-manager.js",
+    "verify:auth-security-failure-matrix": "node scripts/verification/verify-auth-security-failure-matrix.js"
   },
   "overrides": {
     "zod": "^3.25.0"

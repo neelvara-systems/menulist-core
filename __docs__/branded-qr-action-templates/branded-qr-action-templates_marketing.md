@@ -1,7 +1,7 @@
 # Branded QR Action Templates Marketing
 
 **Status:** Internal
-**Last Updated:** June 25, 2026
+**Last Updated:** June 26, 2026
 
 ## One-Liner
 
@@ -18,6 +18,7 @@ The value is not prettier QR codes. The value is a finished physical prompt with
 - "Each QR file says what customers should do next."
 - "Your business name, color, logo, short link, and QR stay together."
 - "The QR stays scan-safe."
+- "The desktop editor includes guided QR action cards for common business jobs."
 - "Standard QR files keep opening the live MenuList page."
 - "Campaign QR tests are separate and measured only when enabled."
 

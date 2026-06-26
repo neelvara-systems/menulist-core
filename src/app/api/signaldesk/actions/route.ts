@@ -225,7 +225,7 @@ const CaptureDemandSignalSchema = z.object({
 const SourceProviderRunSchema = z.object({
     city: z.string().trim().max(120).optional(),
     country: z.string().trim().max(120).optional(),
-    maxResults: z.number().int().min(1).max(20).default(10),
+    maxResults: z.number().int().min(1).max(30).default(10),
     provider: z.enum(["google-places", "foursquare", "apify", "fhrs-fhis"]),
     query: z.string().trim().min(3).max(180),
     sourcePolicyId: z.string().trim().min(3).max(160),
@@ -451,7 +451,7 @@ const ResearchAgentRunSchema = z.object({
     country: z.string().trim().max(120).optional(),
     idempotencyKey: z.string().trim().max(180).optional(),
     marketPodId: z.string().trim().max(180).optional(),
-    maxResults: z.number().int().min(1).max(20).default(10),
+    maxResults: z.number().int().min(1).max(30).default(10),
     prompt: z.string().trim().min(5).max(600),
     provider: z.enum(["google-places", "apify", "fhrs-fhis"]).optional(),
     researchType: z.enum(["business-prospect", "market-map", "partner-list"]).default("business-prospect"),

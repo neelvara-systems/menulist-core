@@ -57,7 +57,7 @@
 | LEG-05 | Privacy scope | Privacy page covers parent website only |
 | LEG-06 | Terms scope | Terms page covers parent website only |
 | LEG-07 | Product split | Product data/terms are not absorbed into parent terms |
-| LEG-08 | Paid service deferral | Refund/cancellation/payment terms deferred to relevant product surfaces |
+| LEG-08 | Paid service deferral | Refund/cancellation/payment terms deferred to relevant product sites |
 | LEG-09 | Structured data scope | JSON-LD does not claim product ownership, subsidiaries, or holding-company structure |
 | LEG-10 | Privacy notice detail | Privacy page identifies likely technical logs and visitor-initiated email data |
 

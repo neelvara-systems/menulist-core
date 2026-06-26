@@ -118,16 +118,31 @@
     inset: 0;
     background: var(--auth-journey-color);
     filter: var(--auth-journey-filter);
-    mask-image: url("/assets/images/loginPage/startup-journey-line-art.svg");
     mask-mode: alpha;
-    mask-position: center bottom 4px;
     mask-repeat: no-repeat;
-    mask-size: min(980px, 140vw) auto;
     opacity: var(--auth-journey-opacity);
+    -webkit-mask-repeat: no-repeat;
+  }
+
+  .genericJourneyArt::before {
+    mask-image: url("/assets/images/loginPage/startup-journey-line-art.svg");
+    mask-position: center bottom 4px;
+    mask-size: min(980px, 140vw) auto;
     -webkit-mask-image: url("/assets/images/loginPage/startup-journey-line-art.svg");
     -webkit-mask-position: center bottom 4px;
-    -webkit-mask-repeat: no-repeat;
     -webkit-mask-size: min(980px, 140vw) auto;
+  }
+
+  .menuListJourneyArt {
+    transform-origin: 38% 72%;
+  }
+
+  .menuListJourneyArt::before {
+    background:
+      url("/assets/images/loginPage/menulist-qr-menu-line-art.png") center bottom -14px / min(1040px, 150vw) auto no-repeat;
+    filter: invert(1) drop-shadow(0 0 16px rgba(0, 218, 243, 0.1)) drop-shadow(0 20px 36px rgba(0, 0, 0, 0.2));
+    mix-blend-mode: screen;
+    opacity: 0.5;
   }
 
   @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
@@ -550,11 +565,16 @@
       --auth-journey-opacity: 0.7;
     }
 
-    .journeyArt::before {
+    .genericJourneyArt::before {
       mask-position: left clamp(72px, 7vw, 148px) bottom clamp(54px, 7vh, 96px);
       mask-size: min(980px, 48vw) auto;
       -webkit-mask-position: left clamp(72px, 7vw, 148px) bottom clamp(54px, 7vh, 96px);
       -webkit-mask-size: min(980px, 48vw) auto;
+    }
+
+    .menuListJourneyArt::before {
+      background-position: left clamp(54px, 5vw, 112px) bottom clamp(46px, 6vh, 70px);
+      background-size: clamp(620px, 46vw, 760px) auto;
     }
 
     .staticBackdrop::after {
@@ -687,6 +707,12 @@
     color: #065f46;
   }
 
+  &.loginPageLight .menuListJourneyArt::before {
+    filter: drop-shadow(0 18px 28px rgba(15, 23, 42, 0.08));
+    mix-blend-mode: multiply;
+    opacity: 0.38;
+  }
+
   // Tablet and below
   @media screen and (max-width: 1024px) {
     .topBar {
@@ -694,9 +720,14 @@
       padding: 18px 22px;
     }
 
-    .journeyArt::before {
+    .genericJourneyArt::before {
       mask-size: min(860px, 158vw) auto;
       -webkit-mask-size: min(860px, 158vw) auto;
+    }
+
+    .menuListJourneyArt::before {
+      background-position: center bottom -18px;
+      background-size: min(920px, 172vw) auto;
     }
 
     .bodyWrap {

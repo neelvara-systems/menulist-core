@@ -10,6 +10,7 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { secureError } from '@lib/security/secureLogger';
+import { withCORS } from '@lib/security/corsValidation';
 import { unstable_cache } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 import { checkPublicRateLimit } from 'src/middleware/publicApi';
@@ -138,7 +139,7 @@ function resolveAcceptedDate(
     return dateString;
 }
 
-export async function POST(req: NextRequest) {
+async function postAnalyticsTrack(req: NextRequest) {
     const rateLimitResponse = await checkPublicRateLimit(req, 'PUBLIC_ANALYTICS');
     if (rateLimitResponse) return rateLimitResponse;
 
@@ -206,14 +207,4 @@ export async function POST(req: NextRequest) {
     }
 }
 
-export async function OPTIONS() {
-    return new NextResponse(null, {
-        status: 204,
-        headers: {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Max-Age': '86400',
-        },
-    });
-}
+export const POST = withCORS(postAnalyticsTrack);

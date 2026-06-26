@@ -107,6 +107,9 @@ function verifyEditorQaHooks() {
   assertIncludes(editor, 'errorCorrectionLevel: "H"', "Editor QR defaults use high error correction");
   assertIncludes(editor, "margin: 4", "Editor QR defaults use four-module quiet-zone margin");
   assertIncludes(editor, 'lightColor: "#ffffff"', "Editor QR action cards preserve white QR panels");
+  assertIncludes(editor, "Reset white scan panel", "Editor can repair legacy non-white QR scan panels");
+  assertNotIncludes(editor, "setQrLightColor", "Editor does not expose QR background color state");
+  assertNotIncludes(editor, "QR background color", "Editor does not expose raw QR background color controls");
   assertNotIncludes(editor, "templateRegistryDal", "Shared editor does not import product template registry DAL");
   assertNotIncludes(editor, "storeAssetTemplates", "Shared editor does not import MenuList store template collection");
 }

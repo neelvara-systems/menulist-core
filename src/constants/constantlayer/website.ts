@@ -1,37 +1,48 @@
 import { getProductDeploymentTarget } from '@constant/deploymentTargets';
 
 export const CONSTANTLAYER_SITE_URL = getProductDeploymentTarget('constantlayer', 'production').url;
-export const CONSTANTLAYER_SITE_TITLE = 'ConstantLayer Systems - Company Reference For Public Product Surfaces';
+export const CONSTANTLAYER_SITE_TITLE = 'ConstantLayer Systems - Company Behind MenuList, Answerlattice, and CampaignCue';
 export const CONSTANTLAYER_SITE_DESCRIPTION =
-    'ConstantLayer Systems is the company reference for the current public product lineup: MenuList, Answerlattice, and CampaignCue.';
+    'ConstantLayer Systems is the company behind MenuList, Answerlattice, and CampaignCue.';
 
-export const CONSTANTLAYER_CONTACT_EMAIL = 'hello@constantlayer.in';
-export const CONSTANTLAYER_LEGAL_EMAIL = 'legal@constantlayer.in';
-export const CONSTANTLAYER_PRIVACY_EMAIL = 'privacy@constantlayer.in';
+const publicEnvOrFallback = (value: string | undefined, fallback: string) => value?.trim() || fallback;
+
+export const CONSTANTLAYER_CONTACT_EMAIL = publicEnvOrFallback(
+    process.env.NEXT_PUBLIC_CONSTANTLAYER_CONTACT_EMAIL,
+    'hello@constantlayer.in',
+);
+export const CONSTANTLAYER_LEGAL_EMAIL = publicEnvOrFallback(
+    process.env.NEXT_PUBLIC_CONSTANTLAYER_LEGAL_EMAIL,
+    'legal@constantlayer.in',
+);
+export const CONSTANTLAYER_PRIVACY_EMAIL = publicEnvOrFallback(
+    process.env.NEXT_PUBLIC_CONSTANTLAYER_PRIVACY_EMAIL,
+    'privacy@constantlayer.in',
+);
 export const CONSTANTLAYER_MENULIST_URL = getProductDeploymentTarget('menulist', 'production').url;
 export const CONSTANTLAYER_ANSWERLATTICE_URL = getProductDeploymentTarget('answerlattice', 'production').url;
 export const CONSTANTLAYER_CAMPAIGNCUE_URL = getProductDeploymentTarget('campaigncue', 'production').url;
 export const CONSTANTLAYER_RELATIONSHIP_LINE =
-    'MenuList, Answerlattice, and CampaignCue are the current public product surfaces in the ConstantLayer Systems lineup.';
+    'MenuList, Answerlattice, and CampaignCue are the current products represented by ConstantLayer Systems.';
 
 export const CONSTANTLAYER_PRODUCT_LINEUP = [
     {
         name: 'MenuList',
         status: 'Public product',
         url: CONSTANTLAYER_MENULIST_URL,
-        summary: 'Business information infrastructure for menus, store facts, and public customer-facing surfaces.',
+        summary: 'Keeps menus, store details, and customer-facing business pages aligned.',
     },
     {
         name: 'Answerlattice',
         status: 'Public product',
         url: CONSTANTLAYER_ANSWERLATTICE_URL,
-        summary: 'Governed answer infrastructure for support knowledge, approved answers, widgets, and help surfaces.',
+        summary: 'Keeps approved support answers and help content governed across support surfaces.',
     },
     {
         name: 'CampaignCue',
         status: 'Public product',
         url: CONSTANTLAYER_CAMPAIGNCUE_URL,
-        summary: 'Campaign readiness and source-backed campaign output systems for local businesses.',
+        summary: 'Turns business context into campaign-ready briefs and marketing assets.',
     },
 ] as const;
 
@@ -52,7 +63,7 @@ export const CONSTANTLAYER_PUBLIC_PAGES: Array<{
     {
         path: '/products',
         title: 'Products - ConstantLayer Systems',
-        description: 'The approved public product surfaces represented by ConstantLayer Systems.',
+        description: 'The products represented by ConstantLayer Systems.',
         priority: 0.8,
         changeFrequency: 'monthly',
     },

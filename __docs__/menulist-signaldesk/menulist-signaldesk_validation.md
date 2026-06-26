@@ -154,6 +154,23 @@ SignalDesk now includes FHRS/FHIS as a free official UK food-business establishm
 
 The long-term use is UK market-pod discovery: official establishment seed -> source policy -> target import -> website/menu/social enrichment -> current-menu gap score -> evidence packet -> owner-approved outreach/export. It does not change MenuList product truth and does not publish hygiene claims.
 
+## Research Agent Table - June 26, 2026
+
+SignalDesk now includes an Origami-style prompt-to-table workflow inside the private Mission screen. It turns a plain-English research prompt into a governed source-provider run, normalized target import, enrichment rows, pass/fail/unsure scoring, source transparency, and market-pod update.
+
+| Area | Implementation Evidence |
+| --- | --- |
+| Feature gate | `src/config/features.ts` adds `ENABLE_MENULIST_SIGNALDESK_RESEARCH_AGENT_TABLE`. |
+| Types | `src/types/signaldesk/index.ts` adds `SignalDeskResearchRunSummary`, `SignalDeskResearchTableRowSummary`, and `SignalDeskResearchProviderId`. |
+| Collections | `src/constants/signaldesk/database.ts` adds `signaldeskResearchRuns` and `signaldeskResearchTableRows`; Firestore rules keep them internal-read/server-write only. |
+| API | `src/app/api/signaldesk/actions/route.ts` adds protected `create-research-agent-run` validation, permission mapping, mobile read-only classification, and safe errors. |
+| Workflow | `src/lib/signaldesk/workflowServer.ts` adds `createSignalDeskResearchAgentRunServer`, deterministic prompt parsing, provider policy resolution, optional idempotency, source-provider execution, row scoring, source transparency, and market-pod update. |
+| UI | `src/components/signaldesk/SignalDeskWorkspace.tsx` adds Dashboard `Market Search`, prompt presets, Dashboard/Mission `Today's Lead Batch`, and the Mission `Research Agent Table`, with prompt, provider, research type, 30-row cap, latest run summary, structured evidence/contact/share/next cards, failed-row exclusion from the daily batch, contact path, share message, and next action. |
+| Verification | `scripts/verification/verify-signaldesk-runtime.js` checks flag/action/type/collection/UI/rules/index contracts; `scripts/verification/e2e-signaldesk-local.js` mocks FHRS/FHIS, creates a research table, verifies idempotency, row source refs, market-pod update, and no source-only contact identities. |
+| Documentation | `__docs__/menulist-signaldesk/signaldesk-operating-layer/signaldesk-operating-layer_research-agent-table.md` records the workflow, row contract, boundaries, and verification. |
+
+This is not an Origami integration, not a sequencer, and not auto-outreach. It copies the useful product behavior: prompt-to-table, provider-backed discovery, enrichment columns, pass/fail/unsure scoring, source transparency, async-compatible run records, idempotency, market mapping, and a founder-first 30-row lead batch.
+
 ## Owned Email Sequencer Self-Build - June 23, 2026
 
 The third-party sequencer review changed the implementation order. SignalDesk now attempts the self-owned path first and keeps Smartlead/Instantly/lemlist as optional fallback rails.

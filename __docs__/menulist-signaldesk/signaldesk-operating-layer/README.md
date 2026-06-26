@@ -16,6 +16,8 @@ It gives Danny and the growth team:
 - approved offer/CTA records;
 - reply-to-conversion playbooks;
 - source-quality learning snapshots;
+- an Origami-style Research Agent Table that turns one prompt into a source-policy governed provider run, enrichment rows, pass/fail/unsure scoring, and source-transparent pod mapping;
+- a Today's Lead Batch dashboard that shows up to 30 pass/unsure leads with recommended next action, contact path, and share message;
 - a 7-day operating trial workflow.
 
 ## Boundary
@@ -39,11 +41,15 @@ SignalDesk prepares, ranks, records, and summarizes. MenuList remains the author
 | [Compliance](./signaldesk-operating-layer_compliance.md) | Source, claim, send, public-surface, and approval boundaries. |
 | [Mobile Support](./signaldesk-operating-layer_mobile-support.md) | Desktop-first decision with emergency mobile visibility only. |
 | [Test Cases](./signaldesk-operating-layer_test-cases.md) | Functional, safety, and verification matrix. |
+| [Research Agent Table](./signaldesk-operating-layer_research-agent-table.md) | Prompt-to-table workflow adapted from Origami-style research without adding send automation. |
 
 ## First Runtime Slice
 
 ```txt
 seed defaults
+  -> open dashboard lead batch
+  -> run research agent table
+  -> review up to 30 pass/unsure leads
   -> create daily mission
   -> create experiment card
   -> upsert offer/CTA

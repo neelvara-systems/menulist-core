@@ -1,12 +1,11 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import {
     LuArrowRight,
     LuBuilding2,
     LuExternalLink,
     LuLayers,
     LuMail,
-    LuScale,
-    LuShieldCheck,
 } from 'react-icons/lu';
 import {
     CONSTANTLAYER_CONTACT_EMAIL,
@@ -31,6 +30,8 @@ import {
 } from './content';
 import { ConstantLayerLink } from './SiteHeaderNav';
 import SpotlightCard from './SpotlightCard';
+import MenuListLogoMark from '@/components/website/shared/LogoMark';
+import AnswerlatticeLogoMark from '@/components/atoms/answerlatticeLogoMark';
 
 export const metadata: Metadata = {
     title: CONSTANTLAYER_SITE_TITLE,
@@ -39,41 +40,62 @@ export const metadata: Metadata = {
 };
 
 const LEDGER_ROWS = [
-    ['Entity', 'ConstantLayer Systems'],
-    ['Public lineup', CONSTANTLAYER_PRODUCT_LINEUP.map((product) => product.name).join(' / ')],
-    ['Public line', CONSTANTLAYER_RELATIONSHIP_LINE],
+    ['Company', 'ConstantLayer Systems'],
+    ['Products', CONSTANTLAYER_PRODUCT_LINEUP.map((product) => product.name).join(' / ')],
+    ['Contact', CONSTANTLAYER_CONTACT_EMAIL],
 ] as const;
 
 const STATS = [
-    ['3', 'current public surfaces'],
-    ['0', 'forms or lead database'],
-    ['0', 'Firebase writes'],
-    ['7', 'public reference pages'],
+    ['3', 'current products'],
+    ['1', 'business email for company questions'],
+    ['0', 'contact forms'],
+    ['7', 'public company pages'],
 ] as const;
 
 const SPOTLIGHTS = [
     {
         icon: LuBuilding2,
         variant: 'warm' as const,
-        title: 'Company record, not another product funnel.',
-        body: 'The site gives external visitors one place to verify the operating name and product relationship without entering an app flow.',
-        stat: 'Static parent surface',
+        title: 'The company behind the current product lineup.',
+        body: 'ConstantLayer Systems is the operating company behind MenuList, Answerlattice, and CampaignCue.',
+        stat: 'Operating company',
     },
     {
         icon: LuLayers,
         variant: 'cool' as const,
-        title: 'Current public product surfaces stay separate.',
-        body: 'MenuList, Answerlattice, and CampaignCue are the only product surfaces named here. Each keeps its own claims, onboarding paths, and support context.',
-        stat: 'No blended product scope',
+        title: 'Three products, separate promises.',
+        body: 'MenuList handles public business menus and facts. Answerlattice handles governed support answers. CampaignCue handles campaign-ready business context.',
+        stat: 'Product boundaries',
     },
     {
-        icon: LuShieldCheck,
+        icon: LuMail,
         variant: 'amber' as const,
-        title: 'Inquiries route directly.',
-        body: 'Business, legal, and privacy questions use explicit email routes instead of a form, account, or tracking workflow.',
-        stat: 'No parent-site database',
+        title: 'Company questions go through email.',
+        body: 'For company-level questions, send a short note by email. Product support still belongs on the product site.',
+        stat: 'Email only',
     },
 ] as const;
+
+function ProductLogo({ name }: { name: typeof CONSTANTLAYER_PRODUCT_LINEUP[number]['name'] }) {
+    if (name === 'MenuList') {
+        return <MenuListLogoMark height={28} className="cl-product-logo-svg" />;
+    }
+
+    if (name === 'Answerlattice') {
+        return <AnswerlatticeLogoMark height={30} className="cl-product-logo-svg" idPrefix="constantlayer-answerlattice-product-logo" />;
+    }
+
+    return (
+        <Image
+            alt=""
+            aria-hidden="true"
+            className="cl-product-logo-img"
+            height={38}
+            src="/campaigncue-icon.svg"
+            width={38}
+        />
+    );
+}
 
 export default function ConstantLayerHomePage() {
     return (
@@ -84,32 +106,32 @@ export default function ConstantLayerHomePage() {
                     <div className="cl-hero-copy cl-reveal">
                         <span className="cl-eyebrow mono">
                             <span className="cl-pip" aria-hidden="true" />
-                            Company reference for public product surfaces
+                            Company behind MenuList, Answerlattice, and CampaignCue
                         </span>
                         <h1 className="serif">
                             ConstantLayer <em>Systems</em>
                         </h1>
                         <p>
-                            A quiet company reference for business information products: a clear
-                            entity reference, stable public records, and product relationships
-                            that are easy to verify.
+                            We build business information products: MenuList for public menus
+                            and store facts, Answerlattice for governed support answers, and
+                            CampaignCue for campaign-ready business context.
                         </p>
                         <div className="cl-actions">
                             <ConstantLayerLink className="cl-button cl-button-solid cl-button-large" href="/products">
-                                View Product Lineup
+                                View Products
                                 <LuArrowRight aria-hidden="true" />
                             </ConstantLayerLink>
                             <a className="cl-button cl-button-glass cl-button-large" href={`mailto:${CONSTANTLAYER_CONTACT_EMAIL}`}>
-                                Contact ConstantLayer
+                                Email ConstantLayer
                                 <LuMail aria-hidden="true" />
                             </a>
                         </div>
                         <div className="cl-hero-meta mono" aria-label="ConstantLayer operating boundaries">
-                            <span>Static parent site</span>
+                            <span>Business information products</span>
                             <i aria-hidden="true" />
-                            <span>No form</span>
+                            <span>Email-only contact</span>
                             <i aria-hidden="true" />
-                            <span>No Firebase runtime</span>
+                            <span>No contact form</span>
                         </div>
                     </div>
                     <HeroStudioMock />
@@ -136,13 +158,13 @@ export default function ConstantLayerHomePage() {
                     <div>
                         <span className="cl-eyebrow mono">
                             <span className="cl-pip" aria-hidden="true" />
-                            The company layer
+                            What ConstantLayer does
                         </span>
                         <h2 className="serif">
-                            One glass surface for the <em>narrow</em> company questions.
+                            The company, products, and contact routes in one place.
                         </h2>
                     </div>
-                    <SegmentControl items={['Entity', 'Products', 'Contacts']} />
+                    <SegmentControl items={['Company', 'Products', 'Contact']} />
                 </div>
                 <div className="cl-wrap">
                     <div className="cl-bento">
@@ -199,7 +221,7 @@ export default function ConstantLayerHomePage() {
                         <span className="mono">Public relationship line</span>
                         <blockquote className="serif">{CONSTANTLAYER_RELATIONSHIP_LINE}</blockquote>
                         <figcaption>
-                            This is the company-level reference for the current public lineup. Product-specific websites explain each product.
+                            This is the company-level reference for the current lineup. Product-specific websites explain each product.
                         </figcaption>
                     </figure>
                 </div>
@@ -226,12 +248,12 @@ export default function ConstantLayerHomePage() {
                             Boundary map
                         </span>
                         <h2 className="serif">
-                            Company information stays separate from <em>product work</em>.
+                            Company information stays separate from <em>product support</em>.
                         </h2>
                     </div>
                     <p>
-                        The parent site is intentionally narrow. It identifies the company layer,
-                        product relationships, and inquiry routes without becoming a product runtime.
+                        This site identifies the company and the current products. Product pricing,
+                        onboarding, support, and account questions stay on the relevant product site.
                     </p>
                 </div>
                 <div className="cl-wrap">
@@ -243,16 +265,19 @@ export default function ConstantLayerHomePage() {
                 <div className="cl-wrap cl-product-section glass">
                     <div className="cl-product-summary">
                         <span className="mono">Public lineup</span>
-                        <strong className="serif">{CONSTANTLAYER_PRODUCT_LINEUP.length} current public surfaces</strong>
-                        <p>One company reference for public relationship checks, legal routing, and product boundaries.</p>
+                        <strong className="serif">{CONSTANTLAYER_PRODUCT_LINEUP.length} current products</strong>
+                        <p>MenuList, Answerlattice, and CampaignCue are the products currently represented by ConstantLayer Systems.</p>
                     </div>
                     <div className="cl-product-list">
                         {CONSTANTLAYER_PRODUCT_LINEUP.map((product) => (
                             <a href={product.url} className="cl-product-row" key={product.name}>
+                                <span className="cl-product-logo-wrap" aria-hidden="true">
+                                    <ProductLogo name={product.name} />
+                                </span>
                                 <span className="mono">{product.status}</span>
                                 <strong>{product.name}</strong>
                                 <p>{product.summary}</p>
-                                <LuExternalLink aria-hidden="true" />
+                                <LuExternalLink className="cl-product-link-icon" aria-hidden="true" />
                             </a>
                         ))}
                     </div>
@@ -267,12 +292,12 @@ export default function ConstantLayerHomePage() {
                             Contact routes
                         </span>
                         <h2 className="serif">
-                            Three direct inboxes, <em>no</em> parent-site form.
+                            Email the right inbox. <em>No</em> parent-site form.
                         </h2>
                     </div>
                     <p>
-                        Business, legal, and privacy contacts stay explicit and reviewable.
-                        Sensitive documents should only be sent when requested by the right inbox.
+                            Use the business inbox for company questions. Legal and privacy
+                            questions have separate routes.
                     </p>
                 </div>
                 <div className="cl-wrap">
@@ -286,25 +311,26 @@ export default function ConstantLayerHomePage() {
                         <div>
                             <span className="cl-eyebrow mono">
                                 <span className="cl-pip" aria-hidden="true" />
-                                Reference complete
+                                Company questions
                             </span>
                             <h2 className="serif">
-                                Verify the company layer, then move to the right public product.
+                                Need to reach ConstantLayer Systems?
                             </h2>
                             <p>
-                                ConstantLayer keeps the entity and product relationship surface clear.
-                                Product-specific details remain on product domains.
+                                Email ConstantLayer for company, legal, privacy, or product
+                                relationship questions. Product support and account questions stay
+                                on the relevant product site.
                             </p>
                         </div>
                         <div className="cl-actions">
-                            <ConstantLayerLink className="cl-button cl-button-solid cl-button-large" href="/products">
+                            <a className="cl-button cl-button-solid cl-button-large" href={`mailto:${CONSTANTLAYER_CONTACT_EMAIL}`}>
+                                Email ConstantLayer
+                                <LuMail aria-hidden="true" />
+                            </a>
+                            <ConstantLayerLink className="cl-button cl-button-glass cl-button-large" href="/products">
                                 View Products
                                 <LuArrowRight aria-hidden="true" />
                             </ConstantLayerLink>
-                            <a className="cl-button cl-button-glass cl-button-large" href={`mailto:${CONSTANTLAYER_CONTACT_EMAIL}`}>
-                                Contact
-                                <LuScale aria-hidden="true" />
-                            </a>
                         </div>
                     </div>
                 </div>

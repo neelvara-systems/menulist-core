@@ -22,6 +22,8 @@ const summaryCollections = [
   "signaldeskDemandSignalSummaries",
   "signaldeskContentAssets",
   "signaldeskContentDistributionDrafts",
+  "signaldeskResearchRuns",
+  "signaldeskResearchTableRows",
   "signaldeskTrustPartnerProfiles",
 ];
 

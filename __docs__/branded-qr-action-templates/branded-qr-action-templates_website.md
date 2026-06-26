@@ -1,7 +1,7 @@
 # Branded QR Action Templates Website Guidance
 
 **Status:** Internal
-**Last Updated:** June 25, 2026
+**Last Updated:** June 26, 2026
 
 ## Website Decision
 
@@ -19,6 +19,7 @@ Branded QR files for every customer action.
 | --- | --- |
 | Homepage | Keep compact `Print files` output. Do not over-index on QR. |
 | Print Kit feature page | Add a section showing table/counter/packaging/flyer/business-card action examples. |
+| Editor screenshots | Use the guided QR action-card picker and final printable card, not raw QR module controls. |
 | WhatsApp page | Only mention tracked QR campaigns after QR WhatsApp Experiments runtime exists. |
 | Help/resources | Explain scan-safe printing, QR placement, and short link trust cues. |
 

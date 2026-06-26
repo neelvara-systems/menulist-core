@@ -99,7 +99,8 @@
 | SD-I049 | Harden email export sender readiness | Codex | Done | Export-only email records now require a ready sender domain in addition to approval, source policy, evidence, suppression, and contactability checks |
 | SD-I050 | Add internal team access management | Codex | Done | Settings now lets founder admins add/update/deactivate SignalDesk team members by login email, assign roles, audit changes, and keep mobile/public access blocked |
 | SD-I051 | Add FHRS/FHIS UK source provider | Codex | Done | Official UK food-business establishment seed added behind feature flag, source policy, provider account/budget, retention, verifier, and local E2E; no contact permission, public hygiene-rating feature, or send enablement |
-| SD-I052 | Run first activation-proof operating trial | Founder + Codex | Blocked | Use one founder-approved pod, source policy, CTA, proof asset, sender identity, and manual/export path; no provider send, paid campaign, or public SignalDesk surface |
+| SD-I052 | Add dashboard lead-batch search flow | Codex | Done | Dashboard exposes Market Search presets and Today's Lead Batch; Mission exposes Research Agent Table and Today's Lead Batch with up to 30 pass/unsure leads, evidence, contact path, share message, and next safe action; failed rows stay out of the daily batch, source-policy/provider gates remain in force, and no send automation was added |
+| SD-I053 | Run first activation-proof operating trial | Founder + Codex | Blocked | Use one founder-approved pod, source policy, CTA, proof asset, sender identity, and manual/export path; no provider send, paid campaign, or public SignalDesk surface |
 
 ## Feature Doc Backlog
 
@@ -127,6 +128,7 @@
 | SD-F020 | `signaldesk-experiment-cards` doc coverage | Done | Covered in consolidated Operating Layer docs and runtime through `signaldeskExperimentCards` and review decisions |
 | SD-F021 | `signaldesk-source-quality-learning` doc coverage | Done | Covered in consolidated Operating Layer docs and runtime through `signaldeskSourceQualitySnapshots` |
 | SD-F022 | `menulist-activation-concierge` doc/runtime foundation | Done | Created separate MenuList-side docs and existing-surface runtime foundation in `../menulist-activation-concierge/`; MenuList owns activation truth and SignalDesk observes outcomes only |
+| SD-F023 | Origami-style Research Agent Table | Done | Prompt-to-table workflow implemented in SignalDesk Mission with governed provider run, enrichment rows, pass/fail/unsure scoring, source transparency, idempotency, market-pod update, verifier, and local E2E; no Origami API integration or send automation |
 
 ## Founder Decisions Needed
 

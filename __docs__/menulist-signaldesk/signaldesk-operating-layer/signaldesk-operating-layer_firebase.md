@@ -12,6 +12,8 @@
 | `signaldeskOfferCtas` | Approved owner asks, blocked claims, proof-match rules, and activation surface. | Read only for SignalDesk members/admins. |
 | `signaldeskReplyPlaybooks` | Approved reply-to-conversion playbooks. | Read only for SignalDesk members/admins. |
 | `signaldeskSourceQualitySnapshots` | Source quality snapshots by usable targets, duplicates, outcomes, cost, and risk. | Read only for SignalDesk members/admins. |
+| `signaldeskResearchRuns` | Prompt-to-table research runs, provider/source plan, source transparency, pass/fail/unsure totals, and idempotency reference. | Read only for SignalDesk members/admins. |
+| `signaldeskResearchTableRows` | Per-row research table output with enrichment columns, source refs, fit decision, and next action. | Read only for SignalDesk members/admins. |
 
 Client writes remain denied. Mutations run through protected action APIs.
 
@@ -26,6 +28,9 @@ Client writes remain denied. Mutations run through protected action APIs.
 | Upsert offer/CTA | 0-1 reads | 3 writes: offer, audit, timeline |
 | Upsert reply playbook | 0 reads | 3 writes: playbook, audit, timeline |
 | Create source-quality snapshot | Up to 6 capped list reads | 3 writes: snapshot, audit, timeline |
+| Create research agent table | Source policy lookup plus provider-run/import reads; provider result cap max 30 | 1 run write, provider-run/import writes, one row write per result, market-pod update, audit, timeline, optional idempotency key |
+
+Dashboard and Mission views read compact research run/table summaries so the first screen can show the latest 30-row lead batch without reading raw provider payloads, raw import rows, or MenuList truth collections.
 
 ## Indexes
 
@@ -35,7 +40,9 @@ Indexes are needed for:
 - experiment status/updatedAt;
 - offer status/updatedAt;
 - playbook intent/status;
-- source quality source/run updatedAt.
+- source quality source/run updatedAt;
+- research run status/type updatedAt;
+- research table row run/decision updatedAt.
 
 ## Deploy
 

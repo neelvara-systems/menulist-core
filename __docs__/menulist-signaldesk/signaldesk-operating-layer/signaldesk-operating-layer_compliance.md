@@ -10,6 +10,7 @@
 - Offer/CTA records must store blocked claims.
 - Reply playbooks must map unsubscribe, stop, complaint, wrong-contact, and DNC-like replies to suppression or human review.
 - Source-quality snapshots must measure risk and outcomes, not only lead volume.
+- Research Agent Table rows must preserve source refs and use `pass`, `fail`, or `unsure` as review priority only; they are not contact permission.
 - Experiment cards must include stop rules before execution.
 - Provider send remains blocked until sender, physical address, unsubscribe, bounce, complaint, suppression sync, and caps are implemented and approved.
 

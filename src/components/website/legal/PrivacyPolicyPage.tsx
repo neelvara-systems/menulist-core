@@ -53,6 +53,13 @@ const privacyHighlights = [
     { label: 'Model-backed features', value: 'Selected inputs are sent to configured AI providers only when a product feature needs that processing.' },
 ];
 
+const dataLocationFacts = [
+    { label: 'Application and customer data', value: 'Firestore, Authentication, and Storage run through Firebase in Google Cloud as configured for each environment/project.' },
+    { label: 'Marketing site traffic data', value: 'Optional website analytics tools are configured through third-party services and run under their own privacy/retention settings.' },
+    { label: 'Payments', value: 'Payment processing details are handled by Razorpay as a separate card-payment and checkout provider.' },
+    { label: 'Media processing', value: 'Generated and uploaded content is prepared in provider tools where needed and stored in MenuList storage buckets for delivery.' },
+];
+
 const howWeUse = [
     { label: 'Provide services', value: 'Process your content and generate assets' },
     { label: 'Customer support', value: 'Manage your account and assist you' },
@@ -292,6 +299,26 @@ export default function PrivacyPolicyPage() {
                             </ul>
                         </div>
                     </AnimateStaggerChild>
+                </div>
+            </SectionWrapper>
+
+            {/* Data locations */}
+            <SectionWrapper variant="default">
+                <AnimateOnScroll>
+                    <SectionHeading
+                        title="Where your data is kept"
+                        subtitle="Storage and processing locations used by this product."
+                    />
+                </AnimateOnScroll>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 'var(--ws-space-3)', marginTop: 'var(--ws-space-10)', maxWidth: '900px', marginLeft: 'auto', marginRight: 'auto' }}>
+                    {dataLocationFacts.map((fact, i) => (
+                        <AnimateStaggerChild key={fact.label} index={i}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 'var(--ws-space-4) var(--ws-space-5)', backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-lg)', border: '1px solid var(--ws-border-default)', gap: 'var(--ws-space-4)' }}>
+                                <span style={{ fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', flex: '1 1 0', minWidth: 0 }}>{fact.label}</span>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ws-text-primary)', textAlign: 'right', flex: '1.4 1 0', minWidth: 0, maxWidth: '300px', overflowWrap: 'anywhere' }}>{fact.value}</span>
+                            </div>
+                        </AnimateStaggerChild>
+                    ))}
                 </div>
             </SectionWrapper>
 

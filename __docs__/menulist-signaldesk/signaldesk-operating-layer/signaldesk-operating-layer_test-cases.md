@@ -8,6 +8,7 @@
 | Case | Expected |
 | --- | --- |
 | Open Mission route | `/signaldesk/mission` renders the Mission workspace. |
+| Open Dashboard route | `/signaldesk` renders Market Search, latest run status, and Today's Lead Batch. |
 | Create daily mission | Writes one mission with at most five ranked actions. |
 | Review daily mission | Updates mission status and decision note. |
 | Create experiment card | Writes hypothesis, pod, source, CTA, proof, stop rule, and owner decision state. |
@@ -15,6 +16,13 @@
 | Upsert offer/CTA | Writes approved ask, blocked claims, and activation surface. |
 | Upsert reply playbook | Writes intent, approved reply, route type, and review rules. |
 | Create source-quality snapshot | Writes activation-oriented source quality snapshot. |
+| Create research agent table | Prompt creates provider-run-backed table rows with enrichment columns, pass/fail/unsure fit decisions, and source refs. |
+| Dashboard lead batch | Latest pass/unsure research rows appear as up to 30 lead cards with evidence, contact path, share message, and next action. |
+| Failed research rows | Remain in Research Output but are excluded from Today's Lead Batch. |
+| Fallback target batch | Includes only clear, non-held, non-rejected targets. |
+| Market prompt presets | Fill area/category prompt, research type, and 30-row cap without bypassing source policy. |
+| Duplicate research idempotency key | Returns existing research run/rows and creates no duplicate rows. |
+| Research run updates market pod | Writes or updates the pod map with pass/unsure/fail counts and recommendation reason. |
 
 ## Security
 
@@ -24,6 +32,9 @@
 | Invalid payload | Returns `Invalid input`. |
 | Client Firestore write | Denied by rules. |
 | Provider send attempt | Not part of operating-layer actions. |
+| Source-only provider records | Do not become contact identities unless the source policy separately allows contact use. |
+| Mobile research run | Blocked by server-side mobile read-only policy as a provider-run action. |
+| Mobile lead batch actions | Score, evidence, draft, and search controls are disabled/blocked by the existing mobile read-only gate. |
 
 ## Verification
 

@@ -1,7 +1,7 @@
 # Branded QR Action Templates Help Doc Draft
 
 **Status:** Draft
-**Last Updated:** June 25, 2026
+**Last Updated:** June 26, 2026
 
 ## What It Means
 
@@ -16,6 +16,10 @@ Some printed files are not just QR codes. They tell the customer what to do:
 - reorder later.
 
 MenuList keeps the QR easy to scan and places your business name, color, logo, short link, and instruction around it.
+
+## In The Editor
+
+On desktop, choose the QRCode tab and pick an action style such as Menu, Feedback, Order, Offer, Book, or Loyalty. Use Add action card for a finished scan prompt. Use Add plain QR only when you need a simple QR without surrounding copy.
 
 ## Best Practices
 
