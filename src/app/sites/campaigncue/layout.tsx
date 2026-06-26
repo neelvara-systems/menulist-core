@@ -7,6 +7,11 @@ import {
     CAMPAIGNCUE_SITE_URL,
     buildCampaignCueUrl,
 } from '@constant/campaigncue/website';
+import {
+    CAMPAIGNCUE_MANIFEST_PATH,
+    CAMPAIGNCUE_SITE_THEME_COLOR,
+    getStaticCampaignCueAppleStartupImages,
+} from '@lib/campaigncue/pwaAssets';
 
 export const metadata: Metadata = {
     applicationName: 'CampaignCue',
@@ -20,14 +25,22 @@ export const metadata: Metadata = {
     },
     description: CAMPAIGNCUE_SITE_DESCRIPTION,
     metadataBase: new URL(CAMPAIGNCUE_SITE_URL),
-    manifest: '/campaigncue.webmanifest',
+    manifest: CAMPAIGNCUE_MANIFEST_PATH,
     icons: {
-        icon: [{ url: '/campaigncue-icon.svg', type: 'image/svg+xml' }],
+        icon: [
+            { url: '/campaigncue-favicon.ico', sizes: 'any' },
+            { url: '/campaigncue-icon.svg', type: 'image/svg+xml' },
+            { url: '/campaigncue-favicon-16.png', sizes: '16x16', type: 'image/png' },
+            { url: '/campaigncue-favicon-32.png', sizes: '32x32', type: 'image/png' },
+            { url: '/campaigncue-icon-192.png', sizes: '192x192', type: 'image/png' },
+        ],
+        apple: [{ url: '/campaigncue-apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
     },
     appleWebApp: {
         capable: true,
         title: 'CampaignCue',
         statusBarStyle: 'default',
+        startupImage: getStaticCampaignCueAppleStartupImages(),
     },
     formatDetection: {
         telephone: false,
@@ -46,13 +59,22 @@ export const metadata: Metadata = {
         description: CAMPAIGNCUE_SITE_DESCRIPTION,
         url: CAMPAIGNCUE_SITE_URL,
         siteName: 'CampaignCue',
+        images: [
+            {
+                url: buildCampaignCueUrl('/campaigncue-og-image.png'),
+                width: 1200,
+                height: 630,
+                alt: CAMPAIGNCUE_SITE_TITLE,
+            },
+        ],
         locale: 'en_US',
         type: 'website',
     },
     twitter: {
-        card: 'summary',
+        card: 'summary_large_image',
         title: CAMPAIGNCUE_SITE_TITLE,
         description: CAMPAIGNCUE_SITE_DESCRIPTION,
+        images: [buildCampaignCueUrl('/campaigncue-og-image.png')],
     },
     robots: {
         index: true,
@@ -73,7 +95,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
-    themeColor: '#061a78',
+    themeColor: CAMPAIGNCUE_SITE_THEME_COLOR,
 };
 
 interface CampaignCueLayoutProps {

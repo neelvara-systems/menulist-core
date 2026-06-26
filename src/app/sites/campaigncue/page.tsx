@@ -1066,7 +1066,7 @@ function withBasePath(basePath: string, href: string): string {
 function BrandMark() {
     return (
         <span className="campaigncue-brand-mark" aria-hidden="true">
-            <LuMegaphone />
+            <img src="/campaigncue-icon.svg" alt="" />
         </span>
     );
 }

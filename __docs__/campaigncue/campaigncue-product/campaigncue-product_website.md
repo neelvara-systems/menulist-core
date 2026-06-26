@@ -171,10 +171,10 @@ Mobile is the primary public-site reading context. Any homepage, feature-page, o
 
 The active CampaignCue website palette follows the provided business-card reference: deep navy for authority surfaces, navy for primary text and product UI, rose pink for campaign accents, soft pink for supporting surfaces, and white for clean workspace contrast. Current CSS tokens:
 
-- `--cc-ink: #061a78`
+- `--cc-ink: #011b6d`
 - `--cc-deep-navy: #020c4f`
 - `--cc-navy-soft: #152567`
-- `--cc-pink: #d96f9f`
+- `--cc-pink: #d96e9b`
 - `--cc-pink-soft: #f4d2e2`
 - `--cc-bg: #fbf7fa`
 - `--cc-surface: #ffffff`

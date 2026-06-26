@@ -95,7 +95,15 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | `src/lib/firebase/campaigncue*` | Dedicated CampaignCue Firebase config/Admin boundary. |
 | `firebase-campaigncue.json`, `firestore-campaigncue.rules`, `storage-campaigncue.rules` | CampaignCue Firebase deploy files. |
 | `public/campaigncue.webmanifest` | CampaignCue-specific PWA manifest to avoid MenuList manifest leakage. |
-| `public/campaigncue-icon.svg` | CampaignCue-specific icon metadata asset. |
+| `public/campaigncue-icon.svg` | Transparent canonical CampaignCue logo source asset. |
+| `public/campaigncue-favicon.ico`, `public/campaigncue-favicon-16.png`, `public/campaigncue-favicon-32.png` | Generated browser favicon assets from the canonical transparent logo. |
+| `public/campaigncue-icon-*.png`, `public/campaigncue-icon-maskable-*.png`, `public/campaigncue-apple-touch-icon.png` | Generated CampaignCue install/PWA icon set. Regular icons preserve transparent corners; maskable icons use the CampaignCue site background. |
+| `public/campaigncue-logo-mark.png`, `public/campaigncue-logo-mark-wide.png` | Generated reusable raster logo marks for website metadata and future media surfaces. |
+| `public/campaigncue-og-image.png` | Generated CampaignCue social share preview image wired into Open Graph and Twitter metadata. |
+| `public/campaigncue-splash/apple-splash-*.png` | Generated CampaignCue iOS startup images for installed web app launch. |
+| `src/lib/campaigncue/pwaAssets.ts` | CampaignCue PWA constants and static Apple startup image metadata. |
+| `scripts/website-assets/generate-campaigncue-logo-assets.js` | Deterministic generator for CampaignCue favicon, PWA icon, logo-mark, maskable, and splash assets. |
+| `scripts/verification/verify-campaigncue-pwa-assets.js` | Asset contract verifier for manifest coverage, metadata wiring, transparent SVG source, PNG dimensions, and splash/icon rendering. |
 | `src/components/atoms/campaignCueLoaderLogo/index.tsx` | CampaignCue loader mark. |
 | `src/components/atoms/brandedPageLoader/index.tsx` and `src/app/loading.tsx` | Server loading state supports CampaignCue product branding. |
 | `src/components/organisms/loader/*` | Client global loader supports CampaignCue product branding. |

@@ -35,6 +35,9 @@
   --auth-journey-opacity: 0.6;
   --auth-journey-color: rgba(208, 244, 247, 0.62);
   --auth-journey-filter: drop-shadow(0 0 16px rgba(0, 218, 243, 0.14)) drop-shadow(0 20px 36px rgba(0, 0, 0, 0.28));
+  --auth-menu-art-opacity: 0.58;
+  --auth-menu-art-filter: brightness(0) saturate(100%) invert(91%) sepia(12%) saturate(420%) hue-rotate(136deg) brightness(106%) contrast(94%)
+    drop-shadow(0 0 16px rgba(0, 218, 243, 0.14)) drop-shadow(0 20px 36px rgba(0, 0, 0, 0.28));
   --auth-journey-shift-x: 0px;
   --auth-journey-shift-y: 0px;
   --auth-journey-tilt-x: 0deg;
@@ -74,6 +77,9 @@
     --auth-journey-opacity: 0.42;
     --auth-journey-color: rgba(7, 81, 104, 0.48);
     --auth-journey-filter: drop-shadow(0 18px 28px rgba(15, 23, 42, 0.14));
+    --auth-menu-art-opacity: 0.36;
+    --auth-menu-art-filter: brightness(0) saturate(100%) invert(24%) sepia(47%) saturate(837%) hue-rotate(151deg) brightness(91%) contrast(92%)
+      drop-shadow(0 18px 28px rgba(15, 23, 42, 0.1));
   }
 
   &.loginPageDark {
@@ -138,11 +144,11 @@
   }
 
   .menuListJourneyArt::before {
-    background:
-      url("/assets/images/loginPage/menulist-qr-menu-line-art.png") center bottom -14px / min(1040px, 150vw) auto no-repeat;
-    filter: invert(1) drop-shadow(0 0 16px rgba(0, 218, 243, 0.1)) drop-shadow(0 20px 36px rgba(0, 0, 0, 0.2));
-    mix-blend-mode: screen;
-    opacity: 0.5;
+    background: url("/assets/images/loginPage/menulist-qr-menu-line-art.svg") center bottom -14px / min(1040px, 150vw) auto no-repeat;
+    filter: var(--auth-menu-art-filter);
+    mask-image: none;
+    opacity: var(--auth-menu-art-opacity);
+    -webkit-mask-image: none;
   }
 
   @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
@@ -563,6 +569,7 @@
     &.loginPageLight {
       --auth-journey-color: rgba(7, 81, 104, 0.34);
       --auth-journey-opacity: 0.7;
+      --auth-menu-art-opacity: 0.42;
     }
 
     .genericJourneyArt::before {
@@ -705,12 +712,6 @@
     border-color: rgba(6, 95, 70, 0.18);
     background: rgba(6, 95, 70, 0.08);
     color: #065f46;
-  }
-
-  &.loginPageLight .menuListJourneyArt::before {
-    filter: drop-shadow(0 18px 28px rgba(15, 23, 42, 0.08));
-    mix-blend-mode: multiply;
-    opacity: 0.38;
   }
 
   // Tablet and below

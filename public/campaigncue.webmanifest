@@ -3,13 +3,88 @@
   "short_name": "CampaignCue",
   "description": "Campaign packs from real business data.",
   "start_url": "/",
+  "scope": "/",
+  "id": "/campaigncue",
   "display": "standalone",
-  "background_color": "#f5f7f4",
-  "theme_color": "#0f766e",
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
+  "orientation": "portrait",
+  "background_color": "#fbf7fa",
+  "theme_color": "#011b6d",
+  "dir": "auto",
+  "lang": "en-US",
+  "categories": [
+    "business",
+    "productivity",
+    "marketing"
+  ],
   "icons": [
     {
+      "src": "/campaigncue-favicon-16.png",
+      "sizes": "16x16",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/campaigncue-favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/campaigncue-icon-48.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/campaigncue-icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/campaigncue-icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/campaigncue-apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/campaigncue-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/campaigncue-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/campaigncue-icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/campaigncue-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "/campaigncue-icon.svg",
-      "sizes": "64x64",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     }
