@@ -26,6 +26,11 @@ const firebaseAdminExternals = [
     'firebase-admin',
     'firebase-admin/firestore',
 ];
+const nativeCanvasExternals = [
+    '@napi-rs/canvas',
+    '@napi-rs/canvas-linux-x64-gnu',
+    '@napi-rs/canvas-linux-x64-musl',
+];
 
 // Disable memory-heavy webpack plugins on Vercel preview builds
 // Production deploys (VERCEL_ENV=production) get full PWA
@@ -287,7 +292,7 @@ const nextConfig = {
         includePaths: [path.join(__dirname, 'app/styles')],
     },
     experimental: {
-        serverComponentsExternalPackages: ['@google-cloud/tasks', 'firebase-admin'],
+        serverComponentsExternalPackages: ['@google-cloud/tasks', 'firebase-admin', '@napi-rs/canvas'],
         webpackBuildWorker: false,
         serverSourceMaps: false,
         outputFileTracingExcludes: {
@@ -346,6 +351,7 @@ const nextConfig = {
             config.externals = [
                 ...config.externals,
                 ...firebaseAdminExternals,
+                ...nativeCanvasExternals,
                 '@google-cloud/tasks',
                 'exceljs',
                 'pdfjs-dist',
@@ -383,7 +389,13 @@ const nextConfig = {
             },
         });
 
-        config.externals.push({ sharp: 'commonjs sharp', canvas: 'commonjs canvas' });
+        config.externals.push({
+            sharp: 'commonjs sharp',
+            canvas: 'commonjs canvas',
+            '@napi-rs/canvas': 'commonjs @napi-rs/canvas',
+            '@napi-rs/canvas-linux-x64-gnu': 'commonjs @napi-rs/canvas-linux-x64-gnu',
+            '@napi-rs/canvas-linux-x64-musl': 'commonjs @napi-rs/canvas-linux-x64-musl',
+        });
         config.module.rules.push({ test: /\.svg$/, use: ['@svgr/webpack'] });
 
         // Keep server runtime chunk resolution aligned with Next's emitted
